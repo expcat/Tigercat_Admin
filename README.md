@@ -24,7 +24,10 @@ Tigercat_Admin/
 ### 安装依赖
 
 ```bash
-# 安装前端依赖
+# 安装前端依赖（使用 workspace）
+pnpm install
+
+# 或者单独安装
 cd Tigercat.Admin.Vue && pnpm install
 cd ../Tigercat.Admin.React && pnpm install
 ```
@@ -38,9 +41,20 @@ cd Tigercat.Aspire
 dotnet run
 ```
 
-访问 Aspire Dashboard 查看所有服务状态和管理。
+访问 Aspire Dashboard 查看所有服务状态和管理。Dashboard 会自动启动所有配置的服务（API + 前端）。
 
-#### 方式 2: 单独运行各个项目
+#### 方式 2: 使用解决方案构建
+
+```bash
+# 构建整个解决方案
+dotnet build Tigercat.Admin.sln
+
+# 运行 Aspire
+cd Tigercat.Aspire
+dotnet run
+```
+
+#### 方式 3: 单独运行各个项目
 
 **后端 API:**
 ```bash
@@ -66,8 +80,11 @@ pnpm dev
 - ✅ .NET 10 Minimal API 后端
 - ✅ Vue3 + Vite 前端
 - ✅ React 19 + Vite 前端
-- ✅ PNPM 包管理
+- ✅ PNPM Workspace 管理
 - ✅ 基础健康检查 API
+- ✅ CORS 跨域支持
+- ✅ API 代理配置
+- ✅ 解决方案文件 (Tigercat.Admin.sln)
 - ⏳ Tigercat UI 集成（待实现）
 - ⏳ 路由配置（待实现）
 - ⏳ 状态管理（待实现）
