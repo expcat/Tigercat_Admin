@@ -1,0 +1,3 @@
+packages:
+  - 'Tigercat.Admin.Vue'
+  - 'Tigercat.Admin.React'
