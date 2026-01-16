@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 
 const apiInfo = ref(null)
+const hiMessage = ref(null)
 const error = ref(null)
 
 onMounted(async () => {
@@ -10,6 +11,13 @@ onMounted(async () => {
     apiInfo.value = await response.json()
   } catch (e) {
     error.value = e.message
+  }
+
+  try {
+    const hiResponse = await fetch('/api/hi')
+    hiMessage.value = await hiResponse.json()
+  } catch (e) {
+    console.error('Failed to fetch hi message:', e)
   }
 })
 </script>
@@ -34,6 +42,11 @@ onMounted(async () => {
             <li>包管理器: PNPM</li>
             <li>UI 组件: Tigercat UI (待集成)</li>
           </ul>
+        </div>
+
+        <div class="api-test" v-if="hiMessage">
+          <h3>API 连接测试</h3>
+          <p class="hi-message">{{ hiMessage }}</p>
         </div>
 
         <div class="api-status" v-if="apiInfo">
@@ -113,6 +126,26 @@ onMounted(async () => {
 .info-section h3, .api-status h3, .next-steps h3 {
   margin-top: 0;
   color: #764ba2;
+}
+
+.api-test {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: #e6fffa;
+  border-radius: 8px;
+  border-left: 4px solid #38b2ac;
+}
+
+.api-test h3 {
+  margin-top: 0;
+  color: #234e52;
+}
+
+.hi-message {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #38b2ac;
+  margin: 0.5rem 0;
 }
 
 ul {

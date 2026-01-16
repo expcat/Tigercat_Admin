@@ -3,6 +3,7 @@ import './App.css'
 
 function App() {
   const [apiInfo, setApiInfo] = useState(null)
+  const [hiMessage, setHiMessage] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -10,6 +11,11 @@ function App() {
       .then(response => response.json())
       .then(data => setApiInfo(data))
       .catch(err => setError(err.message))
+
+    fetch('/api/hi')
+      .then(response => response.json())
+      .then(data => setHiMessage(data))
+      .catch(err => console.error('Failed to fetch hi message:', err))
   }, [])
 
   return (
@@ -33,6 +39,13 @@ function App() {
               <li>UI 组件: Tigercat UI (待集成)</li>
             </ul>
           </div>
+
+          {hiMessage && (
+            <div className="api-test">
+              <h3>API 连接测试</h3>
+              <p className="hi-message">{hiMessage}</p>
+            </div>
+          )}
 
           {apiInfo && (
             <div className="api-status">

@@ -32,4 +32,7 @@ app.MapGet("/api/info", () => Results.Ok(new
 }))
     .WithName("GetInfo");
 
+app.MapGet("/api/hi", () => Results.Ok("Hello world!"))
+    .WithName("SayHi");
+
 app.Run();

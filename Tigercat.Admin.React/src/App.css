@@ -53,6 +53,26 @@
   color: #764ba2;
 }
 
+.api-test {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: #e6fffa;
+  border-radius: 8px;
+  border-left: 4px solid #38b2ac;
+}
+
+.api-test h3 {
+  margin-top: 0;
+  color: #234e52;
+}
+
+.hi-message {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #38b2ac;
+  margin: 0.5rem 0;
+}
+
 ul {
   padding-left: 1.5rem;
   text-align: left;
