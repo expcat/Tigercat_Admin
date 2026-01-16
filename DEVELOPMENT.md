@@ -269,6 +269,22 @@ cd Tigercat.Admin.React
 pnpm add tigercat-ui-react
 ```
 
+## 端口分配策略
+
+项目使用以下端口分配，避免冲突：
+
+| 服务 | 默认端口 | 说明 |
+|------|---------|------|
+| API | 5137 | 后端 API 服务 |
+| Vue3 | 5173 | Vue 开发服务器 |
+| React | 5174 | React 开发服务器 |
+| Aspire Dashboard | 动态分配 | Aspire 管理面板 |
+
+端口可通过环境变量覆盖：
+- Vue: `PORT=5175 pnpm dev`
+- React: `PORT=5176 pnpm dev`
+- API: 修改 `Properties/launchSettings.json`
+
 ## 故障排查
 
 ### 端口冲突
