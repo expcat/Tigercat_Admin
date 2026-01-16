@@ -10,9 +10,12 @@ importers:
 
   Tigercat.Admin.React:
     dependencies:
+      '@expcat/tigercat-core':
+        specifier: ^0.1.0
+        version: 0.1.0
       '@expcat/tigercat-react':
-        specifier: ^0.0.42
-        version: 0.0.42(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: ^0.1.0
+        version: 0.1.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       autoprefixer:
         specifier: ^10.4.23
         version: 10.4.23(postcss@8.5.6)
@@ -20,51 +23,54 @@ importers:
         specifier: ^8.5.6
         version: 8.5.6
       react:
-        specifier: ^19.2.0
+        specifier: ^19.2.3
         version: 19.2.3
       react-dom:
-        specifier: ^19.2.0
+        specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
     devDependencies:
       '@eslint/js':
-        specifier: ^9.39.1
+        specifier: ^9.39.2
         version: 9.39.2
       '@tailwindcss/postcss':
         specifier: ^4.1.18
         version: 4.1.18
       '@types/react':
-        specifier: ^19.2.5
+        specifier: ^19.2.8
         version: 19.2.8
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.8)
       '@vitejs/plugin-react':
-        specifier: ^5.1.1
+        specifier: ^5.1.2
         version: 5.1.2(vite@7.3.1(jiti@2.6.1)(lightningcss@1.30.2))
       eslint:
-        specifier: ^9.39.1
+        specifier: ^9.39.2
         version: 9.39.2(jiti@2.6.1)
       eslint-plugin-react-hooks:
         specifier: ^7.0.1
         version: 7.0.1(eslint@9.39.2(jiti@2.6.1))
       eslint-plugin-react-refresh:
-        specifier: ^0.4.24
+        specifier: ^0.4.26
         version: 0.4.26(eslint@9.39.2(jiti@2.6.1))
       globals:
         specifier: ^16.5.0
         version: 16.5.0
       vite:
-        specifier: ^7.2.4
+        specifier: ^7.3.1
         version: 7.3.1(jiti@2.6.1)(lightningcss@1.30.2)
 
   Tigercat.Admin.Vue:
     dependencies:
+      '@expcat/tigercat-core':
+        specifier: ^0.1.0
+        version: 0.1.0
       '@expcat/tigercat-vue':
-        specifier: ^0.0.42
-        version: 0.0.42(vue@3.5.26)
+        specifier: ^0.1.0
+        version: 0.1.0(vue@3.5.26)
       autoprefixer:
         specifier: ^10.4.23
         version: 10.4.23(postcss@8.5.6)
@@ -75,17 +81,17 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       vue:
-        specifier: ^3.5.24
+        specifier: ^3.5.26
         version: 3.5.26
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.18
         version: 4.1.18
       '@vitejs/plugin-vue':
-        specifier: ^6.0.1
+        specifier: ^6.0.3
         version: 6.0.3(vite@7.3.1(jiti@2.6.1)(lightningcss@1.30.2))(vue@3.5.26)
       vite:
-        specifier: ^7.2.4
+        specifier: ^7.3.1
         version: 7.3.1(jiti@2.6.1)(lightningcss@1.30.2)
 
 packages:
@@ -371,17 +377,17 @@ packages:
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@expcat/tigercat-core@0.0.42':
-    resolution: {integrity: sha512-P6xoxtr3G1/hI49GlgaF6qWuSfWPCXMzWde99kqLFAQJ5gwzRVkCG13alz+jMDUKzdJsW6F9HwuKT7w06CJsTg==}
+  '@expcat/tigercat-core@0.1.0':
+    resolution: {integrity: sha512-oWdAvnz+C8WzA0DiEjTDX1OaUx6cXu02vcYCB+UZE2eT3u/XlVwkVk08DZMfest0C636PTAurQpDZqhH4jBrvg==}
 
-  '@expcat/tigercat-react@0.0.42':
-    resolution: {integrity: sha512-aEemgNVK5uCBNtKG9iLQ1kfYLWnj+wTQaRgdhyzrtbwJT+QKHmLMxQMXJTkmFWIbq1ekMpOXVDm47dPNW+9r9Q==}
+  '@expcat/tigercat-react@0.1.0':
+    resolution: {integrity: sha512-PvJdckPUqmPqPzP22vomhtZVE6F45vIXglbRM2yhvyrjkqbCcS1ihVgeH+0pXCNJi99tRti+EBmMMSiTQ/wxkQ==}
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
 
-  '@expcat/tigercat-vue@0.0.42':
-    resolution: {integrity: sha512-M2K64IFkCtkWuhd8slKcwSmfoO1f+VSD1GIzgqw1sswyz+e05IxkLLW3fqxOMaM8CucVOI2ThA7/Py204J84Aw==}
+  '@expcat/tigercat-vue@0.1.0':
+    resolution: {integrity: sha512-aDZSwS/1C+mB4B0TGBvvi7j0ReK/PvaiTMbIzundwfii6zTjdElQ60qlxDLOFnyGy5iBBrWEUjVzJ1NSQIAMvQ==}
     peerDependencies:
       vue: ^3.0.0
 
@@ -731,8 +737,8 @@ packages:
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
 
-  baseline-browser-mapping@2.9.14:
-    resolution: {integrity: sha512-B0xUquLkiGLgHhpPBqvl7GWegWBUNuujQ6kXd/r1U38ElPT6Ok8KZ8e+FpUGEc2ZoRQUzq/aUnaKFc/svWUGSg==}
+  baseline-browser-mapping@2.9.15:
+    resolution: {integrity: sha512-kX8h7K2srmDyYnXRIppo4AH/wYgzWVCs+eKr3RusRSQ5PvRYoEFmR/I0PbdTjKFAoKqp5+kbxnNTFO9jOfSVJg==}
     hasBin: true
 
   brace-expansion@1.1.12:
@@ -1532,17 +1538,17 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
-  '@expcat/tigercat-core@0.0.42': {}
+  '@expcat/tigercat-core@0.1.0': {}
 
-  '@expcat/tigercat-react@0.0.42(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@expcat/tigercat-react@0.1.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@expcat/tigercat-core': 0.0.42
+      '@expcat/tigercat-core': 0.1.0
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
 
-  '@expcat/tigercat-vue@0.0.42(vue@3.5.26)':
+  '@expcat/tigercat-vue@0.1.0(vue@3.5.26)':
     dependencies:
-      '@expcat/tigercat-core': 0.0.42
+      '@expcat/tigercat-core': 0.1.0
       vue: 3.5.26
 
   '@humanfs/core@0.19.1': {}
@@ -1856,7 +1862,7 @@ snapshots:
 
   balanced-match@1.0.2: {}
 
-  baseline-browser-mapping@2.9.14: {}
+  baseline-browser-mapping@2.9.15: {}
 
   brace-expansion@1.1.12:
     dependencies:
@@ -1865,7 +1871,7 @@ snapshots:
 
   browserslist@4.28.1:
     dependencies:
-      baseline-browser-mapping: 2.9.14
+      baseline-browser-mapping: 2.9.15
       caniuse-lite: 1.0.30001764
       electron-to-chromium: 1.5.267
       node-releases: 2.0.27

@@ -36,7 +36,7 @@ onMounted(async () => {
 
       <Alert v-if="hiMessage" type="success" class="mb-6" :closable="false">
         <template #title>API 连接成功</template>
-        <template #description>{{ hiMessage }}</template>
+        <template #description >{{ hiMessage }}</template>
       </Alert>
 
       <Alert v-if="error" type="error" class="mb-6">
