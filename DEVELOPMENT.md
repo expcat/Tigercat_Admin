@@ -199,7 +199,7 @@ export default Component
 
 ### API 调用
 
-前端通过 `/api` 路径访问后端，Vite 会自动代理：
+前端通过 `/api` 路径访问后端，Vite 会自动代理。API 地址由 Aspire 通过 `VITE_API_URL` 环境变量提供：
 
 ```javascript
 // Vue 或 React 中
@@ -214,12 +214,14 @@ fetch('/api/health')
 server: {
   proxy: {
     '/api': {
-      target: process.env.VITE_API_URL || 'http://localhost:5000',
+      target: process.env.VITE_API_URL,  // 由 Aspire 提供
       changeOrigin: true,
     }
   }
 }
 ```
+
+**注意**: 运行前端项目时，需要通过 Aspire 启动以获取正确的 API 地址。
 
 ## 构建和部署
 
