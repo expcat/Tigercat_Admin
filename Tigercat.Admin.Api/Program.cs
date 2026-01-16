@@ -22,8 +22,7 @@ app.UseCors();
 app.MapDefaultEndpoints();
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
-    .WithName("HealthCheck")
-    .WithOpenApi();
+    .WithName("HealthCheck");
 
 app.MapGet("/api/info", () => Results.Ok(new 
 { 
@@ -31,7 +30,6 @@ app.MapGet("/api/info", () => Results.Ok(new
     version = "1.0.0",
     description = "Tigercat Admin Backend API"
 }))
-    .WithName("GetInfo")
-    .WithOpenApi();
+    .WithName("GetInfo");
 
 app.Run();
