@@ -41,7 +41,12 @@ Tigercat_Admin/
 ## 🧩 组件与框架
 
 - 前端使用 Vite 作为构建工具。
-- Tigercat UI 尚未集成，未来新增 UI 组件时需保持两端实现一致。
+- **UI 组件库**：
+  - Vue 项目：优先使用 `@expcat/tigercat-vue` ([组件文档](https://raw.githubusercontent.com/expcat/Tigercat/refs/heads/main/docs/components-vue.md))。
+  - React 项目：优先使用 `@expcat/tigercat-react` ([组件文档](https://raw.githubusercontent.com/expcat/Tigercat/refs/heads/main/docs/components-react.md))。
+  - **约束**：尽量使用组件库原生能力，不添加过多多余的样式。
+  - **需求反馈**：若组件不满足需求或缺少功能，需在 [docs/upstream-requirements.md](docs/upstream-requirements.md) 中详细记录，说明需要上游提供什么功能或新增什么组件。
+- 保持两端界面与交互逻辑高度一致。
 
 ## 🧪 测试与验证
 
