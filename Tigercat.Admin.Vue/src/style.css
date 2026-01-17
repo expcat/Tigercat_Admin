@@ -1,0 +1,4 @@
+@import "tailwindcss";
+
+@source "../node_modules/@expcat/tigercat-vue/dist/**/*.{js,mjs}";
+@source "../node_modules/@expcat/tigercat-core/dist/**/*.{js,mjs}";

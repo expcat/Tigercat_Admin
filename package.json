@@ -1,0 +1,12 @@
+{
+  "name": "tigercat-admin-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:vue": "pnpm --filter tigercat-admin-vue dev",
+    "dev:react": "pnpm --filter tigercat-admin-react dev",
+    "build:vue": "pnpm --filter tigercat-admin-vue build",
+    "build:react": "pnpm --filter tigercat-admin-react build",
+    "build:all": "pnpm -r build"
+  }
+}
