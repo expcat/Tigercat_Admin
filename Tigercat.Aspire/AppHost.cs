@@ -3,6 +3,8 @@ var builder = DistributedApplication.CreateBuilder(args);
 var api = builder.AddProject<Projects.Tigercat_Admin_Api>("tigercat-admin-api")
     .WithExternalHttpEndpoints();
 
+api.WithUrl("scalar", $"{api.GetEndpoint("http")}/scalar");
+
 var vue = builder.AddNpmApp("tigercat-admin-vue", "../Tigercat.Admin.Vue")
     .WithHttpEndpoint(env: "PORT")
     .WithExternalHttpEndpoints()
