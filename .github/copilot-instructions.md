@@ -24,7 +24,7 @@ Tigercat_Admin/
 ### 结构与职责
 
 - **Aspire 主控**：负责编排后端与前端服务，优先通过 Aspire 启动与调试。
-- **后端 API**：.NET 10 Minimal API，提供 `/api/health` 与 `/api/info` 等基础端点。
+- **后端 API**：.NET 10 Minimal API，提供 `/api/health` 与 `/api/info` 等基础端点。API 端语法与库版本以 .NET 10 最新内容为准。
 - **前端**：Vue3 与 React 两套实现需保持界面与交互一致。
 
 ### 代码与改动范围
