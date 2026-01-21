@@ -6,6 +6,11 @@ public class InMemoryUserStore : IUserStore
 {
     private readonly ConcurrentDictionary<string, UserRecord> _users = new(StringComparer.OrdinalIgnoreCase);
 
+    public InMemoryUserStore()
+    {
+        SeedDefaultUsers();
+    }
+
     public bool TryCreateUser(string username, string passwordHash)
     {
         var record = new UserRecord(username, passwordHash);
@@ -31,6 +36,22 @@ public class InMemoryUserStore : IUserStore
     public bool Exists(string username)
     {
         return _users.ContainsKey(username);
+    }
+
+    private void SeedDefaultUsers()
+    {
+        var defaults = new (string Username, string Password)[]
+        {
+            ("admin", "admin"),
+            ("Admin", "Admin"),
+            ("test", "test")
+        };
+
+        foreach (var (username, password) in defaults)
+        {
+            var hash = PasswordHasher.Hash(password);
+            TryCreateUser(username, hash);
+        }
     }
 
     private record UserRecord(string Username, string PasswordHash);
