@@ -10,64 +10,18 @@ Tigercat Admin 后端 API 服务，基于 .NET 10 Minimal API。
 - CORS 支持
 - OpenAPI + Scalar UI
 
-## API 端点
+## API 文档
 
-- `GET /api/health` - 健康检查
-- `GET /api/info` - 应用信息
-- `POST /api/auth/register` - 注册用户
-- `POST /api/auth/login` - 登录获取 Token
-- `POST /api/auth/change-password` - 修改密码（需登录）
-- `GET /api/home` - 示例受保护接口（需登录）
+接口列表、参数与返回说明见 [docs/api.md](../docs/api.md)。
 
 ## OpenAPI 文档
 
 - OpenAPI JSON：`/openapi/v1.json`
 - UI（Scalar）：`/scalar`
 
-## 登录与 Token 使用
+## 认证说明
 
-### 1) 登录获取 Token
-
-请求：
-
-```bash
-curl -X POST http://localhost:5137/api/auth/login \
-    -H "Content-Type: application/json" \
-    -d '{"username":"admin","password":"admin"}'
-```
-
-响应示例：
-
-```json
-{
-  "code": 200,
-  "message": "Success",
-  "data": {
-    "token": "<TOKEN>",
-    "expiresAt": "2026-01-21T00:00:00Z",
-    "username": "admin"
-  },
-  "success": true
-}
-```
-
-### 2) 携带 Token 访问受保护接口
-
-支持两种方式：
-
-1. `X-Token` 请求头
-
-```bash
-curl http://localhost:5137/api/home \
-    -H "X-Token: <TOKEN>"
-```
-
-2. `Authorization: Bearer` 请求头
-
-```bash
-curl http://localhost:5137/api/home \
-    -H "Authorization: Bearer <TOKEN>"
-```
+认证方式与示例见 [docs/api.md](../docs/api.md)。
 
 ### 默认用户（开发环境）
 
