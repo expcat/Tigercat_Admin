@@ -9,8 +9,8 @@ Tigercat_Admin/
 ├── Tigercat.Aspire/              # Aspire 主控项目 (.NET 10)
 ├── Tigercat.ServiceDefaults/     # Aspire 服务默认配置
 ├── Tigercat.Admin.Api/           # 后端 API (.NET 10 Minimal API)
-├── Tigercat.Admin.Vue/           # Vue3 前端项目
-└── Tigercat.Admin.React/         # React 前端项目
+├── Tigercat.Admin.Vue/           # Vue3 前端项目 (TypeScript)
+└── Tigercat.Admin.React/         # React 前端项目 (TypeScript)
 ```
 
 ## 🔧 开发环境
@@ -26,6 +26,19 @@ Tigercat_Admin/
 - **Aspire 主控**：负责编排后端与前端服务，优先通过 Aspire 启动与调试。
 - **后端 API**：.NET 10 Minimal API，提供 `/api/health` 与 `/api/info` 等基础端点。API 端语法与库版本以 .NET 10 最新内容为准。
 - **前端**：Vue3 与 React 两套实现需保持界面与交互一致。
+
+### 前端架构 (TypeScript)
+
+- **语言**：全面使用 TypeScript 进行开发。
+- **组件开发**：
+  - React 项目使用 `.tsx` 文件。
+  - Vue 项目使用 `<script setup lang="ts">`。
+- **工具函数**：逻辑代码拆分至 `src/utils/` 目录，按功能模块化：
+  - `request.ts`：统一 API 请求封装 (`apiRequest`)，包含类型定义 (`ApiResponse<T>`)。
+  - `auth.ts`：认证逻辑 (Session 解析) 与简单的 Hash 路由处理。
+  - `validation.ts`：表单验证逻辑 (`validate`) 与类型定义 (`AuthForm`)。
+  - `common.ts`：通用工具函数 (如 `debounce`)。
+  - `constants.ts`：全局常量定义 (`SESSION_KEY` 等)。
 
 ### 代码与改动范围
 

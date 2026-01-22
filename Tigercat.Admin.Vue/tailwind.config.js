@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
-// tailwind.config.js
+import { tigercatPlugin } from '@expcat/tigercat-core';
+
 export default {
   content: [
     './index.html',
@@ -9,5 +10,5 @@ export default {
   theme: {
     extend: {},
   },
-  plugins: [],
+  plugins: [tigercatPlugin],
 };
