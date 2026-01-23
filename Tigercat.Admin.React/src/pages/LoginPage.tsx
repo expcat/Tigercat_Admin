@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -7,32 +8,55 @@ import {
   FormItem,
   Input,
 } from '@expcat/tigercat-react';
-import { AuthForm, AuthErrors } from '../utils';
-
-interface Notice {
-  type: 'success' | 'error' | '';
-  message: string;
-}
+import {
+  type AuthForm,
+  debounce,
+  useAuthForm,
+  apiRequest,
+  type Session,
+  type Notice,
+} from '../utils';
 
 interface LoginPageProps {
-  form: AuthForm;
-  errors?: AuthErrors;
-  loading: boolean;
-  notice: Notice;
-  onSubmit: () => void;
+  onSuccess: (session: Session) => void;
   onSwitch: (key: string) => void;
-  onFieldChange: (field: keyof AuthForm, value: any) => void;
 }
 
-function LoginPage({
-  form,
-  errors,
-  loading,
-  notice,
-  onSubmit,
-  onSwitch,
-  onFieldChange,
-}: LoginPageProps) {
+function LoginPage({ onSuccess, onSwitch }: LoginPageProps) {
+  const { form, errors, setField, validateForm } = useAuthForm({
+    username: '',
+    password: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState<Notice>({ type: '', message: '' });
+
+  const handleLogin = useMemo(
+    () =>
+      debounce(async () => {
+        if (!validateForm()) return;
+
+        setNotice({ type: '', message: '' });
+        setLoading(true);
+        try {
+          const payload = await apiRequest('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify(form),
+          });
+          const nextSession: Session = {
+            token: payload?.data?.token,
+            username: payload?.data?.username,
+            expiresAt: payload?.data?.expiresAt,
+          };
+          onSuccess(nextSession);
+        } catch (error: any) {
+          setNotice({ type: 'error', message: error.message });
+        } finally {
+          setLoading(false);
+        }
+      }, 300),
+    [form, validateForm, onSuccess],
+  );
+
   return (
     <Card title="Tigercat Admin 登录" className="max-w-xl mx-auto">
       {notice?.message && (
@@ -49,7 +73,7 @@ function LoginPage({
           <Input
             value={form.username || ''}
             placeholder="请输入用户名"
-            onChange={(value) => onFieldChange('username', value)}
+            onChange={(value) => setField('username', value)}
             status={errors?.username ? 'error' : undefined}
             errorMessage={errors?.username}
           />
@@ -59,7 +83,7 @@ function LoginPage({
             value={form.password || ''}
             type="password"
             placeholder="请输入密码"
-            onChange={(value) => onFieldChange('password', value)}
+            onChange={(value) => setField('password', value)}
             status={errors?.password ? 'error' : undefined}
             errorMessage={errors?.password}
           />
@@ -70,7 +94,7 @@ function LoginPage({
             block
             loading={loading}
             type="button"
-            onClick={onSubmit}>
+            onClick={handleLogin}>
             登录
           </Button>
           <Button
