@@ -9,6 +9,7 @@ import {
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import { MainLayout } from './components/MainLayout';
 import {
   SESSION_KEY,
   PAGE_KEYS,
@@ -35,7 +36,8 @@ function App() {
   const [notice, setNotice] = useState<Notice>({ type: '', message: '' });
   const [homeError, setHomeError] = useState('');
   const [changeOpen, setChangeOpen] = useState(false);
-  const [activeMenu, setActiveMenu] = useState('home');
+  // activeMenu logic is handled in MainLayout for visual mostly,
+  // but if we had multiple pages we'd lift state here.
 
   const isAuthed = Boolean(session?.token);
 
@@ -131,66 +133,65 @@ function App() {
     }
   };
 
+  if (!isAuthed) {
+    return (
+      <div className="min-h-screen bg-slate-50 p-6 flex items-start pt-20 justify-center">
+        <Container className="w-full max-w-4xl" padding={false}>
+          {page === 'login' && (
+            <LoginPage onSuccess={onLoginSuccess} onSwitch={handlePageSwitch} />
+          )}
+          {page === 'register' && <RegisterPage onSwitch={handlePageSwitch} />}
+        </Container>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <Container width="100%" padding={false}>
-        {!isAuthed && page === 'login' && (
-          <LoginPage onSuccess={onLoginSuccess} onSwitch={handlePageSwitch} />
-        )}
+    <MainLayout
+      user={session ? { username: session.username } : null}
+      onLogout={handleLogout}
+      onChangePassword={() => setChangeOpen(true)}>
+      <HomePage
+        notice={notice}
+        homeMessage={homeMessage}
+        homeError={homeError}
+      />
 
-        {!isAuthed && page === 'register' && (
-          <RegisterPage onSwitch={handlePageSwitch} />
-        )}
-
-        {isAuthed && (
-          <HomePage
-            session={session}
-            notice={notice}
-            homeMessage={homeMessage}
-            homeError={homeError}
-            activeMenu={activeMenu}
-            onMenuSelect={setActiveMenu}
-            onOpenChangePassword={() => setChangeOpen(true)}
-            onLogout={handleLogout}
-          />
-        )}
-
-        <Modal
-          open={changeOpen}
-          title="修改密码"
-          okText="确认修改"
-          cancelText="取消"
-          onOk={handleChangePassword}
-          onCancel={() => setChangeOpen(false)}>
-          <Form model={changeForm} labelWidth={88}>
-            <FormItem name="oldPassword" label="旧密码">
-              <Input
-                value={changeForm.oldPassword}
-                placeholder="请输入旧密码"
-                onChange={(value) =>
-                  setChangeForm((prev) => ({
-                    ...prev,
-                    oldPassword: normalizeInput(value),
-                  }))
-                }
-              />
-            </FormItem>
-            <FormItem name="newPassword" label="新密码">
-              <Input
-                value={changeForm.newPassword}
-                placeholder="请输入新密码"
-                onChange={(value) =>
-                  setChangeForm((prev) => ({
-                    ...prev,
-                    newPassword: normalizeInput(value),
-                  }))
-                }
-              />
-            </FormItem>
-          </Form>
-        </Modal>
-      </Container>
-    </div>
+      <Modal
+        open={changeOpen}
+        title="修改密码"
+        okText="确认修改"
+        cancelText="取消"
+        onOk={handleChangePassword}
+        onCancel={() => setChangeOpen(false)}>
+        <Form model={changeForm} labelWidth={88}>
+          <FormItem name="oldPassword" label="旧密码">
+            <Input
+              value={changeForm.oldPassword}
+              placeholder="请输入旧密码"
+              onChange={(value) =>
+                setChangeForm((prev) => ({
+                  ...prev,
+                  oldPassword: normalizeInput(value),
+                }))
+              }
+            />
+          </FormItem>
+          <FormItem name="newPassword" label="新密码">
+            <Input
+              value={changeForm.newPassword}
+              placeholder="请输入新密码"
+              onChange={(value) =>
+                setChangeForm((prev) => ({
+                  ...prev,
+                  newPassword: normalizeInput(value),
+                }))
+              }
+            />
+          </FormItem>
+        </Form>
+      </Modal>
+    </MainLayout>
   );
 }
 

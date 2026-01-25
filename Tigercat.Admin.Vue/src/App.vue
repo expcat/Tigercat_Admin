@@ -4,6 +4,7 @@ import { ConfigProvider, Container, Form, FormItem, Input, Modal, Message } from
 import HomePage from './pages/HomePage.vue'
 import LoginPage from './pages/LoginPage.vue'
 import RegisterPage from './pages/RegisterPage.vue'
+import MainLayout from './components/MainLayout.vue'
 import {
   SESSION_KEY,
   PAGE_KEYS,
@@ -22,7 +23,7 @@ const loading = ref(false)
 const notice = ref<Notice>({ type: '', message: '' })
 const homeError = ref('')
 const changeOpen = ref(false)
-const activeMenu = ref('home')
+// activeMenu logic in MainLayout
 const page = ref('login')
 
 const isAuthed = computed(() => Boolean(session.value?.token))
@@ -123,31 +124,33 @@ watch([isAuthed, page], ensureAuthPage)
 
 <template>
   <ConfigProvider>
-    <div class="min-h-screen bg-slate-50 p-6">
-      <Container width="100%" :padding="false">
+    <div v-if="!isAuthed" class="min-h-screen bg-slate-50 p-6 flex items-start pt-20 justify-center">
+      <Container width="100%" :padding="false" class="w-full max-w-4xl">
         <LoginPage
-          v-if="!isAuthed && page === 'login'"
+          v-if="page === 'login'"
           @success="onLoginSuccess"
           @switch="handlePageSwitch"
         />
 
         <RegisterPage
-          v-if="!isAuthed && page === 'register'"
+          v-if="page === 'register'"
           @switch="handlePageSwitch"
         />
+      </Container>
+    </div>
 
+    <MainLayout
+      v-else
+      :session="session"
+      @logout="handleLogout"
+      @change-password="changeOpen = true"
+    >
         <HomePage
-          v-if="isAuthed"
-          :session="session!"
           :notice="notice"
           :home-message="homeMessage"
           :home-error="homeError"
-          :active-menu="activeMenu"
-          @select-menu="(val: string) => activeMenu = val"
-          @open-change-password="changeOpen = true"
-          @logout="handleLogout"
         />
-
+        
         <Modal
           v-model="changeOpen"
           title="修改密码"
@@ -171,7 +174,6 @@ watch([isAuthed, page], ensureAuthPage)
             </FormItem>
           </Form>
         </Modal>
-      </Container>
-    </div>
+    </MainLayout>
   </ConfigProvider>
 </template>

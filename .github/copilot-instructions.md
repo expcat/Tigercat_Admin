@@ -40,6 +40,9 @@ Tigercat_Admin/
   - `common.ts`：通用工具函数 (如 `debounce`)。
   - `constants.ts`：全局常量定义 (`SESSION_KEY` 等)。
 
+- **常用公共组件**：
+  - `components/MainLayout`：后台管理主布局（包含 Sidebar 与 Header），用于所有需认证页面。
+
 ### 代码与改动范围
 
 - 优先在对应子项目内修改与新增代码，避免跨项目耦合。
