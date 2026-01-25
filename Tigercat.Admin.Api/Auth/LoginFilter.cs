@@ -12,14 +12,14 @@ public class LoginFilter : IEndpointFilter
         var token = GetToken(httpContext);
         if (string.IsNullOrWhiteSpace(token))
         {
-            return Results.Json(ApiResult.Fail("Unauthorized", 401), AppJsonContext.Default.ApiResponseObject, statusCode: 401);
+            return Results.Json(ApiResult.Fail("未授权", 401), AppJsonContext.Default.ApiResponseObject, statusCode: 401);
         }
 
         var sessionStore = httpContext.RequestServices.GetRequiredService<ISessionStore>();
         var session = sessionStore.ValidateSession(token);
         if (session is null)
         {
-            return Results.Json(ApiResult.Fail("Unauthorized", 401), AppJsonContext.Default.ApiResponseObject, statusCode: 401);
+            return Results.Json(ApiResult.Fail("未授权", 401), AppJsonContext.Default.ApiResponseObject, statusCode: 401);
         }
 
         httpContext.Items[AuthConstants.UsernameItemKey] = session.Username;

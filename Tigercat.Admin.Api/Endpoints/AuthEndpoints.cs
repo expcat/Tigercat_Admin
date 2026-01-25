@@ -27,12 +27,12 @@ public class AuthEndpoints : IEndpointDefinition
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return ApiResult.Fail<UserResponse>("Invalid username or password", 400);
+            return ApiResult.Fail<UserResponse>("用户名或密码不能为空", 400);
         }
 
         if (userStore.Exists(request.Username))
         {
-            return ApiResult.Fail<UserResponse>("User already exists", 409);
+            return ApiResult.Fail<UserResponse>("用户已存在", 409);
         }
 
         var passwordHash = PasswordHasher.Hash(request.Password);
@@ -44,13 +44,13 @@ public class AuthEndpoints : IEndpointDefinition
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return ApiResult.Fail<LoginResponse>("Invalid credentials", 401);
+            return ApiResult.Fail<LoginResponse>("用户名或密码不能为空", 401);
         }
 
         var passwordHash = PasswordHasher.Hash(request.Password);
         if (!userStore.ValidateUser(request.Username, passwordHash))
         {
-            return ApiResult.Fail<LoginResponse>("Invalid credentials", 401);
+            return ApiResult.Fail<LoginResponse>("用户名或密码错误", 401);
         }
 
         var session = sessionStore.CreateSession(request.Username, SessionTtl);
@@ -61,18 +61,18 @@ public class AuthEndpoints : IEndpointDefinition
     {
         if (!httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var userObj) || userObj is not string username)
         {
-            return ApiResult.Fail<MessageResponse>("Unauthorized", 401);
+            return ApiResult.Fail<MessageResponse>("未授权", 401);
         }
 
         var oldHash = PasswordHasher.Hash(request.OldPassword);
         if (!userStore.ValidateUser(username, oldHash))
         {
-            return ApiResult.Fail<MessageResponse>("Invalid credentials", 401);
+            return ApiResult.Fail<MessageResponse>("旧密码错误", 401);
         }
 
         var newHash = PasswordHasher.Hash(request.NewPassword);
         userStore.UpdatePassword(username, newHash);
 
-        return ApiResult.Ok(new MessageResponse("Password updated"));
+        return ApiResult.Ok(new MessageResponse("密码修改成功"));
     }
 }
