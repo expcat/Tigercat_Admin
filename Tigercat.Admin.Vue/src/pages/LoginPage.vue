@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Alert, Button, Card, Divider, Form, FormItem, Input } from '@expcat/tigercat-vue'
-import { debounce, useAuthForm, apiRequest, type Session, type Notice } from '../utils'
+import { Button, Card, Divider, Form, FormItem, Input, Message } from '@expcat/tigercat-vue'
+import { debounce, useAuthForm, apiRequest, type Session } from '../utils'
 
 const emit = defineEmits<{
   (e: 'success', session: Session): void;
@@ -10,12 +10,10 @@ const emit = defineEmits<{
 
 const { form, errors, setField, validateForm } = useAuthForm({ username: '', password: '' })
 const loading = ref(false)
-const notice = ref<Notice>({ type: '', message: '' })
 
 const handleLogin = debounce(async () => {
   if (!validateForm()) return
 
-  notice.value = { type: '', message: '' }
   loading.value = true
   try {
     const payload = await apiRequest<{ token: string; username: string; expiresAt: string }>('/api/auth/login', {
@@ -34,7 +32,10 @@ const handleLogin = debounce(async () => {
     }
     emit('success', nextSession)
   } catch (error: any) {
-    notice.value = { type: 'error', message: error.message }
+    Message.error({
+      content: error.message,
+      duration: 3000
+    })
   } finally {
     loading.value = false
   }
@@ -43,14 +44,6 @@ const handleLogin = debounce(async () => {
 
 <template>
   <Card title="Tigercat Admin 登录" class="max-w-xl mx-auto">
-    <Alert
-      v-if="notice.message"
-      :type="notice.type || 'info'"
-      :title="notice.type === 'error' ? '操作失败' : '操作成功'"
-      :description="notice.message"
-      :closable="false"
-      class="mb-4"
-    />
     <Divider />
     <Form :model="form" :label-width="88">
       <FormItem name="username" label="用户名">

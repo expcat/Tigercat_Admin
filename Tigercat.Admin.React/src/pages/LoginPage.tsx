@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import {
-  Alert,
   Button,
   Card,
   Divider,
   Form,
   FormItem,
   Input,
+  Message,
 } from '@expcat/tigercat-react';
 import {
   type AuthForm,
@@ -14,7 +14,6 @@ import {
   useAuthForm,
   apiRequest,
   type Session,
-  type Notice,
 } from '../utils';
 
 interface LoginPageProps {
@@ -28,14 +27,12 @@ function LoginPage({ onSuccess, onSwitch }: LoginPageProps) {
     password: '',
   });
   const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState<Notice>({ type: '', message: '' });
 
   const handleLogin = useMemo(
     () =>
       debounce(async () => {
         if (!validateForm()) return;
 
-        setNotice({ type: '', message: '' });
         setLoading(true);
         try {
           const payload = await apiRequest('/api/auth/login', {
@@ -49,7 +46,10 @@ function LoginPage({ onSuccess, onSwitch }: LoginPageProps) {
           };
           onSuccess(nextSession);
         } catch (error: any) {
-          setNotice({ type: 'error', message: error.message });
+          Message.error({
+            content: error.message,
+            duration: 3000,
+          });
         } finally {
           setLoading(false);
         }
@@ -59,14 +59,6 @@ function LoginPage({ onSuccess, onSwitch }: LoginPageProps) {
 
   return (
     <Card title="Tigercat Admin 登录" className="max-w-xl mx-auto">
-      {notice?.message && (
-        <Alert
-          type={notice.type || 'info'}
-          title={notice.type === 'error' ? '操作失败' : '操作成功'}
-          description={notice.message}
-          closable={false}
-        />
-      )}
       <Divider />
       <Form model={form} labelWidth={88}>
         <FormItem name="username" label="用户名">
