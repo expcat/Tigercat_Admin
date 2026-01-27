@@ -27,10 +27,7 @@ onBeforeUnmount(() => {
   clearRegisterRedirectTimer()
 })
 
-const handleRegister = debounce(async () => {
-  if (!validateForm()) return
-
-  loading.value = true
+const doRegister = debounce(async () => {
   try {
     const payload = await apiRequest<RegisterResult>('/api/auth/register', {
       method: 'POST',
@@ -57,6 +54,12 @@ const handleRegister = debounce(async () => {
     loading.value = false
   }
 }, 300)
+
+const handleRegister = () => {
+  if (!validateForm()) return
+  loading.value = true
+  doRegister()
+}
 </script>
 
 <template>

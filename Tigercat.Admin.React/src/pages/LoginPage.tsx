@@ -28,12 +28,9 @@ function LoginPage({ onSuccess, onSwitch }: LoginPageProps) {
   });
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = useMemo(
+  const doLogin = useMemo(
     () =>
       debounce(async () => {
-        if (!validateForm()) return;
-
-        setLoading(true);
         try {
           const payload = await apiRequest('/api/auth/login', {
             method: 'POST',
@@ -54,8 +51,14 @@ function LoginPage({ onSuccess, onSwitch }: LoginPageProps) {
           setLoading(false);
         }
       }, 300),
-    [form, validateForm, onSuccess],
+    [form, onSuccess],
   );
+
+  const handleLogin = () => {
+    if (!validateForm()) return;
+    setLoading(true);
+    doLogin();
+  };
 
   return (
     <Card title="Tigercat Admin 登录" className="max-w-xl mx-auto">
