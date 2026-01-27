@@ -11,11 +11,11 @@ importers:
   Tigercat.Admin.React:
     dependencies:
       '@expcat/tigercat-core':
-        specifier: ^0.1.8
-        version: 0.1.8
+        specifier: ^0.2.0
+        version: 0.2.0
       '@expcat/tigercat-react':
-        specifier: ^0.1.8
-        version: 0.1.8(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: ^0.2.0
+        version: 0.2.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       autoprefixer:
         specifier: ^10.4.23
         version: 10.4.23(postcss@8.5.6)
@@ -66,11 +66,11 @@ importers:
   Tigercat.Admin.Vue:
     dependencies:
       '@expcat/tigercat-core':
-        specifier: ^0.1.8
-        version: 0.1.8
+        specifier: ^0.2.0
+        version: 0.2.0
       '@expcat/tigercat-vue':
-        specifier: ^0.1.8
-        version: 0.1.8(vue@3.5.27)
+        specifier: ^0.2.0
+        version: 0.2.0(vue@3.5.27)
       autoprefixer:
         specifier: ^10.4.23
         version: 10.4.23(postcss@8.5.6)
@@ -377,19 +377,28 @@ packages:
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@expcat/tigercat-core@0.1.8':
-    resolution: {integrity: sha512-tL/QxVR7sFCyYA5VbTHrL2I4PeNgTqd6RBi8R5M6yPlfRB2aR54qorCfwKrbfp9EN9xMPQJp+LGernxcdDdkSw==}
+  '@expcat/tigercat-core@0.2.0':
+    resolution: {integrity: sha512-Da8uVL9jB1kiiYlb9HhakXQPCeSO6iGDnQQC8BhFbWIfsp9plquvcPqcM4GIRtpji9lthJE3B7n8FqmPnRtvwQ==}
 
-  '@expcat/tigercat-react@0.1.8':
-    resolution: {integrity: sha512-g0IYVVZ3rDZcQ5J3u/BhU6WTw3VU7awed1gMaXr6BCzsF52sej1qQ2X7PFG5M8AXElwrK+lJj5AK3oq7C3Z4SA==}
+  '@expcat/tigercat-react@0.2.0':
+    resolution: {integrity: sha512-Kc6e/k+0g1QOO56ATAbla+Y0RYrWWreZLuXZI/SzF77IFeagdy1VFUMeSIwrzjCX1N9TDZjkRUnjPptJJ727MA==}
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
 
-  '@expcat/tigercat-vue@0.1.8':
-    resolution: {integrity: sha512-Xjn4nqy1T6hwu7/qYk0AkoXrTdmhz8U3IOsHF+bNVWUX+p5AirhwRTuaRff/Q4nvoHSvUOrQC9+WhPlXWUER2w==}
+  '@expcat/tigercat-vue@0.2.0':
+    resolution: {integrity: sha512-vbrOS8us7zSffWJlGJXXLLAKrwxm/bKeTkg5K2HdWTOucmwhWo6a/JBBzlJFjxaFEQ7DTRzFY9cgV5X64AY3UA==}
     peerDependencies:
       vue: ^3.0.0
+
+  '@floating-ui/core@1.7.3':
+    resolution: {integrity: sha512-sGnvb5dmrJaKEZ+LDIpguvdX3bDlEllmv4/ClQ9awcmCZrlx5jQyyMWFM5kBI+EyNOCDDiKk8il0zeuX3Zlg/w==}
+
+  '@floating-ui/dom@1.7.4':
+    resolution: {integrity: sha512-OOchDgh4F2CchOX94cRVqhvy7b3AFb+/rQXyswmzmGakRfkMgoWVjfnLWkRirfLEfuD4ysVW16eXzwt3jHIzKA==}
+
+  '@floating-ui/utils@0.2.10':
+    resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -1538,18 +1547,31 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
-  '@expcat/tigercat-core@0.1.8': {}
-
-  '@expcat/tigercat-react@0.1.8(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@expcat/tigercat-core@0.2.0':
     dependencies:
-      '@expcat/tigercat-core': 0.1.8
+      '@floating-ui/dom': 1.7.4
+
+  '@expcat/tigercat-react@0.2.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      '@expcat/tigercat-core': 0.2.0
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
 
-  '@expcat/tigercat-vue@0.1.8(vue@3.5.27)':
+  '@expcat/tigercat-vue@0.2.0(vue@3.5.27)':
     dependencies:
-      '@expcat/tigercat-core': 0.1.8
+      '@expcat/tigercat-core': 0.2.0
       vue: 3.5.27
+
+  '@floating-ui/core@1.7.3':
+    dependencies:
+      '@floating-ui/utils': 0.2.10
+
+  '@floating-ui/dom@1.7.4':
+    dependencies:
+      '@floating-ui/core': 1.7.3
+      '@floating-ui/utils': 0.2.10
+
+  '@floating-ui/utils@0.2.10': {}
 
   '@humanfs/core@0.19.1': {}
 
