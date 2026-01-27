@@ -11,10 +11,7 @@ const emit = defineEmits<{
 const { form, errors, setField, validateForm } = useAuthForm({ username: '', password: '' })
 const loading = ref(false)
 
-const handleLogin = debounce(async () => {
-  if (!validateForm()) return
-
-  loading.value = true
+const doLogin = debounce(async () => {
   try {
     const payload = await apiRequest<{ token: string; username: string; expiresAt: string }>('/api/auth/login', {
       method: 'POST',
@@ -40,6 +37,12 @@ const handleLogin = debounce(async () => {
     loading.value = false
   }
 }, 300)
+
+const handleLogin = () => {
+  if (!validateForm()) return
+  loading.value = true
+  doLogin()
+}
 </script>
 
 <template>

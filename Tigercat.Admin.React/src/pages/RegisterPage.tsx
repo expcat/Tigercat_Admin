@@ -37,12 +37,9 @@ function RegisterPage({ onSwitch }: RegisterPageProps) {
     [],
   );
 
-  const handleRegister = useMemo(
+  const doRegister = useMemo(
     () =>
       debounce(async () => {
-        if (!validateForm()) return;
-
-        setLoading(true);
         try {
           const payload = await apiRequest('/api/auth/register', {
             method: 'POST',
@@ -68,8 +65,14 @@ function RegisterPage({ onSwitch }: RegisterPageProps) {
           setLoading(false);
         }
       }, 300),
-    [form, validateForm, onSwitch],
+    [form, onSwitch],
   );
+
+  const handleRegister = () => {
+    if (!validateForm()) return;
+    setLoading(true);
+    doRegister();
+  };
 
   return (
     <Card title="Tigercat Admin 注册" className="max-w-xl mx-auto">
