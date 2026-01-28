@@ -155,6 +155,7 @@ function App() {
         notice={notice}
         homeMessage={homeMessage}
         homeError={homeError}
+        username={session?.username}
       />
 
       <Modal
