@@ -149,6 +149,7 @@ watch([isAuthed, page], ensureAuthPage)
           :notice="notice"
           :home-message="homeMessage"
           :home-error="homeError"
+          :username="session?.username"
         />
         
         <Modal
