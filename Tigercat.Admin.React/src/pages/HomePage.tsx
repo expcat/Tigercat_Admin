@@ -60,17 +60,34 @@ function HomePage({ notice, homeMessage, homeError, username }: HomePageProps) {
       )}
 
       {/* 欢迎区域 */}
-      <Card>
-        <div className="flex items-center justify-between">
-          <div>
-            <Text size="lg" weight="bold" className="text-slate-800">
-              👋 欢迎回来，{username || 'Admin'}！
-            </Text>
-            <Text size="sm" color="secondary" className="mt-1">
-              {homeMessage || '今天是个好日子，让我们开始工作吧！'}
-            </Text>
+      <Card className="overflow-hidden">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4" />
+          <div className="relative flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                  <span className="text-xl text-white">🐯</span>
+                </div>
+                <div>
+                  <Text size="lg" weight="bold" className="text-slate-800">
+                    欢迎回来，{username || 'Admin'}！
+                  </Text>
+                  <Text size="sm" color="secondary">
+                    {homeMessage || '今天是个好日子，让我们开始工作吧！'}
+                  </Text>
+                </div>
+              </div>
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
+              <Tag color="blue" size="sm">
+                管理员
+              </Tag>
+              <Tag color="green" size="sm">
+                已认证
+              </Tag>
+            </div>
           </div>
-          <div className="text-4xl">🐯</div>
         </div>
       </Card>
 
@@ -86,10 +103,12 @@ function HomePage({ notice, homeMessage, homeError, username }: HomePageProps) {
 
       {/* 统计卡片 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
+        {stats.map((stat, index) => (
+          <Card
+            key={stat.label}
+            className="group hover:shadow-lg transition-shadow duration-300">
             <div className="flex items-start justify-between">
-              <div>
+              <div className="flex-1">
                 <Text size="sm" color="secondary">
                   {stat.label}
                 </Text>
@@ -99,7 +118,7 @@ function HomePage({ notice, homeMessage, homeError, username }: HomePageProps) {
                 {stat.trend && (
                   <div className="mt-2 flex items-center gap-1">
                     <Tag color={stat.trendUp ? 'green' : 'red'} size="sm">
-                      {stat.trend}
+                      {stat.trendUp ? '↑' : '↓'} {stat.trend}
                     </Tag>
                     <Text size="xs" color="secondary">
                       较昨日
@@ -109,12 +128,23 @@ function HomePage({ notice, homeMessage, homeError, username }: HomePageProps) {
                 {stat.status && (
                   <div className="mt-2">
                     <Tag color="green" size="sm">
-                      运行中
+                      ● 运行中
                     </Tag>
                   </div>
                 )}
               </div>
-              <div className="text-3xl opacity-80">{stat.icon}</div>
+              <div
+                className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110 ${
+                  index === 0
+                    ? 'bg-blue-100'
+                    : index === 1
+                      ? 'bg-purple-100'
+                      : index === 2
+                        ? 'bg-orange-100'
+                        : 'bg-green-100'
+                }`}>
+                {stat.icon}
+              </div>
             </div>
           </Card>
         ))}
@@ -125,12 +155,24 @@ function HomePage({ notice, homeMessage, homeError, username }: HomePageProps) {
         {/* 快捷操作 */}
         <Card title="快捷操作" className="lg:col-span-1">
           <div className="grid grid-cols-2 gap-3">
-            {quickActions.map((action) => (
+            {quickActions.map((action, index) => (
               <button
                 key={action.key}
-                className="flex flex-col items-center justify-center p-4 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer border border-slate-200">
-                <span className="text-2xl mb-2">{action.icon}</span>
-                <Text size="sm">{action.label}</Text>
+                className={`group flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br transition-all duration-300 cursor-pointer border border-slate-200 hover:border-transparent hover:shadow-md ${
+                  index === 0
+                    ? 'from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200'
+                    : index === 1
+                      ? 'from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200'
+                      : index === 2
+                        ? 'from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200'
+                        : 'from-green-50 to-green-100 hover:from-green-100 hover:to-green-200'
+                }`}>
+                <span className="text-2xl mb-2 transition-transform group-hover:scale-110">
+                  {action.icon}
+                </span>
+                <Text size="sm" weight="medium">
+                  {action.label}
+                </Text>
               </button>
             ))}
           </div>
@@ -170,38 +212,58 @@ function HomePage({ notice, homeMessage, homeError, username }: HomePageProps) {
 
       {/* 系统信息 */}
       <Card title="系统信息">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div>
-            <Text size="sm" color="secondary">
-              系统版本
-            </Text>
-            <Text size="sm" weight="medium" className="mt-1">
-              v1.0.0
-            </Text>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+              📦
+            </div>
+            <div>
+              <Text size="xs" color="secondary">
+                系统版本
+              </Text>
+              <Text size="sm" weight="medium">
+                v1.0.0
+              </Text>
+            </div>
           </div>
-          <div>
-            <Text size="sm" color="secondary">
-              运行环境
-            </Text>
-            <Text size="sm" weight="medium" className="mt-1">
-              .NET 10 + React 19
-            </Text>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
+              ⚡
+            </div>
+            <div>
+              <Text size="xs" color="secondary">
+                运行环境
+              </Text>
+              <Text size="sm" weight="medium">
+                .NET 10 + React 19
+              </Text>
+            </div>
           </div>
-          <div>
-            <Text size="sm" color="secondary">
-              最后更新
-            </Text>
-            <Text size="sm" weight="medium" className="mt-1">
-              2026-01-28
-            </Text>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">
+              📅
+            </div>
+            <div>
+              <Text size="xs" color="secondary">
+                最后更新
+              </Text>
+              <Text size="sm" weight="medium">
+                2026-01-28
+              </Text>
+            </div>
           </div>
-          <div>
-            <Text size="sm" color="secondary">
-              API 状态
-            </Text>
-            <Tag color="green" size="sm">
-              在线
-            </Tag>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+              🌐
+            </div>
+            <div>
+              <Text size="xs" color="secondary">
+                API 状态
+              </Text>
+              <Tag color="green" size="sm">
+                ● 在线
+              </Tag>
+            </div>
           </div>
         </div>
       </Card>

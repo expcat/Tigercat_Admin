@@ -13,37 +13,46 @@ export function MainHeader({
   onChangePassword,
 }: MainHeaderProps) {
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm z-10 transition-colors">
-      <div className="flex items-center">
-        <Text size="lg" weight="bold">
-          Admin Portal
-        </Text>
+    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm z-10">
+      {/* 左侧标题 */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">🏠</span>
+          <Text size="lg" weight="bold" className="text-slate-800">
+            管理中心
+          </Text>
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      {/* 右侧操作区 */}
+      <div className="flex items-center gap-3">
+        {/* 用户信息 */}
         {session && (
-          <div className="flex items-center gap-2">
-            <Avatar className="bg-blue-100 text-blue-600 font-bold">
+          <div className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200">
+            <Avatar className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm">
               {session.username.charAt(0).toUpperCase()}
             </Avatar>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">{session.username}</span>
-            </div>
+            <span className="text-sm font-medium text-slate-700">
+              {session.username}
+            </span>
           </div>
         )}
 
-        <div className="h-6 w-px bg-slate-200 mx-2"></div>
-
-        <button
-          onClick={onChangePassword}
-          className="text-sm text-slate-600 hover:text-blue-600 cursor-pointer">
-          Password
-        </button>
-        <button
-          onClick={onLogout}
-          className="text-sm text-red-600 hover:text-red-700 font-medium cursor-pointer">
-          Logout
-        </button>
+        {/* 操作按钮 */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onChangePassword}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors">
+            <span>🔒</span>
+            <span>修改密码</span>
+          </button>
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 hover:text-red-700 font-medium transition-colors">
+            <span>🚪</span>
+            <span>退出</span>
+          </button>
+        </div>
       </div>
     </header>
   );
