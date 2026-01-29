@@ -124,7 +124,7 @@ watch([isAuthed, page], ensureAuthPage)
 
 <template>
   <ConfigProvider>
-    <div v-if="!isAuthed" class="min-h-screen bg-slate-50 p-6 flex items-start pt-20 justify-center">
+    <div v-if="!isAuthed" class="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 p-6 flex items-center justify-center">
       <Container width="100%" :padding="false" class="w-full max-w-4xl">
         <LoginPage
           v-if="page === 'login'"

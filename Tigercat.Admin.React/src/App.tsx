@@ -135,7 +135,7 @@ function App() {
 
   if (!isAuthed) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6 flex items-start pt-20 justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 p-6 flex items-center justify-center">
         <Container className="w-full max-w-4xl" padding={false}>
           {page === 'login' && (
             <LoginPage onSuccess={onLoginSuccess} onSwitch={handlePageSwitch} />
