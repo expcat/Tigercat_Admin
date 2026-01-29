@@ -56,19 +56,25 @@ export function MainSidebar({
 
   return (
     <aside
-      className={`flex flex-col bg-white border-r border-slate-200 transition-all duration-300 shrink-0 ${
+      className={`flex flex-col bg-white border-r border-slate-200 transition-all duration-300 shrink-0 shadow-sm ${
         collapsed ? 'w-16' : 'w-60'
       }`}>
       {/* Logo */}
-      <div className="flex h-14 items-center justify-center border-b border-slate-100">
-        <div className="flex items-center gap-2 font-bold text-lg text-slate-800">
-          <span className="text-xl">🐯</span>
-          {!collapsed && <span className="transition-opacity">Tigercat</span>}
+      <div className="flex h-16 items-center justify-center border-b border-slate-100">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shrink-0">
+            <span className="text-lg text-white">🐯</span>
+          </div>
+          {!collapsed && (
+            <span className="font-bold text-lg text-slate-800 tracking-wide whitespace-nowrap">
+              Tigercat
+            </span>
+          )}
         </div>
       </div>
 
       {/* Menu */}
-      <nav className="flex-1 overflow-y-auto py-2 px-2">
+      <nav className="flex-1 overflow-y-auto py-4 px-3">
         <ul className="space-y-1">
           {MENU_ITEMS.map((item) => (
             <li key={item.key}>
@@ -77,18 +83,20 @@ export function MainSidebar({
                 <>
                   <button
                     onClick={() => toggleExpand(item.key)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                       isExpanded(item.key)
                         ? 'bg-slate-100 text-slate-900'
                         : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                     }`}>
-                    <span className="text-base">{item.icon}</span>
+                    <span className="text-base shrink-0">{item.icon}</span>
                     {!collapsed && (
-                      <span className="flex-1 text-left">{item.label}</span>
+                      <span className="flex-1 text-left whitespace-nowrap">
+                        {item.label}
+                      </span>
                     )}
                     {!collapsed && (
                       <span
-                        className={`text-xs transition-transform ${
+                        className={`text-xs transition-transform duration-200 ${
                           isExpanded(item.key) ? 'rotate-90' : ''
                         }`}>
                         ▶
@@ -97,18 +105,22 @@ export function MainSidebar({
                   </button>
                   {/* 子菜单 */}
                   {!collapsed && isExpanded(item.key) && (
-                    <ul className="mt-1 ml-4 space-y-1 border-l-2 border-slate-100 pl-2">
+                    <ul className="mt-1 ml-4 space-y-1 border-l-2 border-slate-200 pl-3">
                       {item.children.map((child) => (
                         <li key={child.key}>
                           <button
                             onClick={() => onMenuSelect(child.key)}
-                            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
                               isActive(child.key)
-                                ? 'bg-blue-50 text-blue-600 font-medium'
-                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium shadow-md'
+                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                             }`}>
-                            <span className="text-sm">{child.icon}</span>
-                            <span>{child.label}</span>
+                            <span className="text-sm shrink-0">
+                              {child.icon}
+                            </span>
+                            <span className="whitespace-nowrap">
+                              {child.label}
+                            </span>
                           </button>
                         </li>
                       ))}
@@ -119,13 +131,15 @@ export function MainSidebar({
                 // 无子菜单
                 <button
                   onClick={() => onMenuSelect(item.key)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                     isActive(item.key)
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}>
-                  <span className="text-base">{item.icon}</span>
-                  {!collapsed && <span>{item.label}</span>}
+                  <span className="text-base shrink-0">{item.icon}</span>
+                  {!collapsed && (
+                    <span className="whitespace-nowrap">{item.label}</span>
+                  )}
                 </button>
               )}
             </li>
@@ -137,9 +151,12 @@ export function MainSidebar({
       <div className="p-3 border-t border-slate-100">
         <button
           onClick={() => onCollapsedChange(!collapsed)}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors">
-          <span>{collapsed ? '▶' : '◀'}</span>
-          {!collapsed && <span>收起菜单</span>}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all duration-200">
+          <span
+            className={`transition-transform duration-200 shrink-0 ${collapsed ? '' : 'rotate-180'}`}>
+            ▶
+          </span>
+          {!collapsed && <span className="whitespace-nowrap">收起菜单</span>}
         </button>
       </div>
     </aside>

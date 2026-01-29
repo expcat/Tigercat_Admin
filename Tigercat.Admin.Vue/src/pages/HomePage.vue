@@ -50,17 +50,30 @@ const recentActivities = [
     />
 
     <!-- 欢迎区域 -->
-    <Card>
-      <div class="flex items-center justify-between">
-        <div>
-          <Text size="lg" weight="bold" class="text-slate-800">
-            👋 欢迎回来，{{ username || 'Admin' }}！
-          </Text>
-          <Text size="sm" color="secondary" class="mt-1">
-            {{ homeMessage || '今天是个好日子，让我们开始工作吧！' }}
-          </Text>
+    <Card class="overflow-hidden">
+      <div class="relative">
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4"></div>
+        <div class="relative flex items-center justify-between">
+          <div>
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                <span class="text-xl text-white">🐯</span>
+              </div>
+              <div>
+                <Text size="lg" weight="bold" class="text-slate-800">
+                  欢迎回来，{{ username || 'Admin' }}！
+                </Text>
+                <Text size="sm" color="secondary">
+                  {{ homeMessage || '今天是个好日子，让我们开始工作吧！' }}
+                </Text>
+              </div>
+            </div>
+          </div>
+          <div class="hidden sm:flex items-center gap-2">
+            <Tag color="blue" size="sm">管理员</Tag>
+            <Tag color="green" size="sm">已认证</Tag>
+          </div>
         </div>
-        <div class="text-4xl">🐯</div>
       </div>
     </Card>
 
@@ -75,9 +88,13 @@ const recentActivities = [
 
     <!-- 统计卡片 -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <Card v-for="stat in stats" :key="stat.label">
+      <Card 
+        v-for="(stat, index) in stats" 
+        :key="stat.label"
+        class="group hover:shadow-lg transition-shadow duration-300"
+      >
         <div class="flex items-start justify-between">
-          <div>
+          <div class="flex-1">
             <Text size="sm" color="secondary">{{ stat.label }}</Text>
             <div class="text-2xl font-bold mt-2 text-slate-800">{{ stat.value }}</div>
             <div v-if="stat.trend" class="mt-2 flex items-center gap-1">
@@ -85,15 +102,25 @@ const recentActivities = [
                 :color="stat.trendUp ? 'green' : 'red'" 
                 size="sm"
               >
-                {{ stat.trend }}
+                {{ stat.trendUp ? '↑' : '↓' }} {{ stat.trend }}
               </Tag>
               <Text size="xs" color="secondary">较昨日</Text>
             </div>
             <div v-if="stat.status" class="mt-2">
-              <Tag color="green" size="sm">运行中</Tag>
+              <Tag color="green" size="sm">● 运行中</Tag>
             </div>
           </div>
-          <div class="text-3xl opacity-80">{{ stat.icon }}</div>
+          <div 
+            class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110"
+            :class="[
+              index === 0 ? 'bg-blue-100' : '',
+              index === 1 ? 'bg-purple-100' : '',
+              index === 2 ? 'bg-orange-100' : '',
+              index === 3 ? 'bg-green-100' : '',
+            ]"
+          >
+            {{ stat.icon }}
+          </div>
         </div>
       </Card>
     </div>
@@ -104,12 +131,18 @@ const recentActivities = [
       <Card title="快捷操作" class="lg:col-span-1">
         <div class="grid grid-cols-2 gap-3">
           <button
-            v-for="action in quickActions"
+            v-for="(action, index) in quickActions"
             :key="action.key"
-            class="flex flex-col items-center justify-center p-4 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer border border-slate-200"
+            class="group flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br transition-all duration-300 cursor-pointer border border-slate-200 hover:border-transparent hover:shadow-md"
+            :class="[
+              index === 0 ? 'from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200' : '',
+              index === 1 ? 'from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200' : '',
+              index === 2 ? 'from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200' : '',
+              index === 3 ? 'from-green-50 to-green-100 hover:from-green-100 hover:to-green-200' : '',
+            ]"
           >
-            <span class="text-2xl mb-2">{{ action.icon }}</span>
-            <Text size="sm">{{ action.label }}</Text>
+            <span class="text-2xl mb-2 transition-transform group-hover:scale-110">{{ action.icon }}</span>
+            <Text size="sm" weight="medium">{{ action.label }}</Text>
           </button>
         </div>
       </Card>
@@ -142,22 +175,34 @@ const recentActivities = [
 
     <!-- 系统信息 -->
     <Card title="系统信息">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-        <div>
-          <Text size="sm" color="secondary">系统版本</Text>
-          <Text size="sm" weight="medium" class="mt-1">v1.0.0</Text>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">📦</div>
+          <div>
+            <Text size="xs" color="secondary">系统版本</Text>
+            <Text size="sm" weight="medium">v1.0.0</Text>
+          </div>
         </div>
-        <div>
-          <Text size="sm" color="secondary">运行环境</Text>
-          <Text size="sm" weight="medium" class="mt-1">.NET 10 + Vue 3</Text>
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">⚡</div>
+          <div>
+            <Text size="xs" color="secondary">运行环境</Text>
+            <Text size="sm" weight="medium">.NET 10 + Vue 3</Text>
+          </div>
         </div>
-        <div>
-          <Text size="sm" color="secondary">最后更新</Text>
-          <Text size="sm" weight="medium" class="mt-1">2026-01-28</Text>
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">📅</div>
+          <div>
+            <Text size="xs" color="secondary">最后更新</Text>
+            <Text size="sm" weight="medium">2026-01-28</Text>
+          </div>
         </div>
-        <div>
-          <Text size="sm" color="secondary">API 状态</Text>
-          <Tag color="green" size="sm">在线</Tag>
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600">🌐</div>
+          <div>
+            <Text size="xs" color="secondary">API 状态</Text>
+            <Tag color="green" size="sm">● 在线</Tag>
+          </div>
         </div>
       </div>
     </Card>

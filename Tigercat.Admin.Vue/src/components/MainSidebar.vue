@@ -69,51 +69,55 @@ const isActive = (key: string) => props.activeMenu === key
 
 <template>
   <aside 
-    class="flex flex-col bg-white border-r border-slate-200 transition-all duration-300 shrink-0"
+    class="flex flex-col bg-white border-r border-slate-200 transition-all duration-300 shrink-0 shadow-sm"
     :class="collapsed ? 'w-16' : 'w-60'"
   >
     <!-- Logo -->
-    <div class="flex h-14 items-center justify-center border-b border-slate-100">
-      <div class="flex items-center gap-2 font-bold text-lg text-slate-800">
-        <span class="text-xl">🐯</span>
-        <span v-if="!collapsed" class="transition-opacity">Tigercat</span>
+    <div class="flex h-16 items-center justify-center border-b border-slate-100">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shrink-0">
+          <span class="text-lg text-white">🐯</span>
+        </div>
+        <span v-if="!collapsed" class="font-bold text-lg text-slate-800 tracking-wide whitespace-nowrap">Tigercat</span>
       </div>
     </div>
 
     <!-- Menu -->
-    <nav class="flex-1 overflow-y-auto py-2 px-2">
+    <nav class="flex-1 overflow-y-auto py-4 px-3">
       <ul class="space-y-1">
         <template v-for="item in menuItems" :key="item.key">
           <!-- 有子菜单 -->
           <li v-if="item.children && item.children.length > 0">
             <button
               @click="toggleExpand(item.key)"
-              class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+              class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
               :class="[
-                isExpanded(item.key) ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                isExpanded(item.key) 
+                  ? 'bg-slate-100 text-slate-900' 
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               ]"
             >
-              <span class="text-base">{{ item.icon }}</span>
-              <span v-if="!collapsed" class="flex-1 text-left">{{ item.label }}</span>
-              <span v-if="!collapsed" class="text-xs transition-transform" :class="isExpanded(item.key) ? 'rotate-90' : ''">▶</span>
+              <span class="text-base shrink-0">{{ item.icon }}</span>
+              <span v-if="!collapsed" class="flex-1 text-left whitespace-nowrap">{{ item.label }}</span>
+              <span v-if="!collapsed" class="text-xs transition-transform duration-200" :class="isExpanded(item.key) ? 'rotate-90' : ''">▶</span>
             </button>
             <!-- 子菜单 -->
             <ul 
               v-if="!collapsed && isExpanded(item.key)" 
-              class="mt-1 ml-4 space-y-1 border-l-2 border-slate-100 pl-2"
+              class="mt-1 ml-4 space-y-1 border-l-2 border-slate-200 pl-3"
             >
               <li v-for="child in item.children" :key="child.key">
                 <button
                   @click="handleMenuSelect(child.key)"
-                  class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors"
+                  class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200"
                   :class="[
                     isActive(child.key) 
-                      ? 'bg-blue-50 text-blue-600 font-medium' 
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium shadow-md' 
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   ]"
                 >
-                  <span class="text-sm">{{ child.icon }}</span>
-                  <span>{{ child.label }}</span>
+                  <span class="text-sm shrink-0">{{ child.icon }}</span>
+                  <span class="whitespace-nowrap">{{ child.label }}</span>
                 </button>
               </li>
             </ul>
@@ -122,15 +126,15 @@ const isActive = (key: string) => props.activeMenu === key
           <li v-else>
             <button
               @click="handleMenuSelect(item.key)"
-              class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+              class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
               :class="[
                 isActive(item.key) 
-                  ? 'bg-blue-50 text-blue-600' 
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md' 
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
               ]"
             >
-              <span class="text-base">{{ item.icon }}</span>
-              <span v-if="!collapsed">{{ item.label }}</span>
+              <span class="text-base shrink-0">{{ item.icon }}</span>
+              <span v-if="!collapsed" class="whitespace-nowrap">{{ item.label }}</span>
             </button>
           </li>
         </template>
@@ -141,10 +145,10 @@ const isActive = (key: string) => props.activeMenu === key
     <div class="p-3 border-t border-slate-100">
       <button 
         @click="toggleCollapsed" 
-        class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+        class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all duration-200"
       >
-        <span>{{ collapsed ? '▶' : '◀' }}</span>
-        <span v-if="!collapsed">收起菜单</span>
+        <span class="transition-transform duration-200 shrink-0" :class="collapsed ? '' : 'rotate-180'">▶</span>
+        <span v-if="!collapsed" class="whitespace-nowrap">收起菜单</span>
       </button>
     </div>
   </aside>
