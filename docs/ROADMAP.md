@@ -2,7 +2,7 @@
 
 > **项目定位**：演示 & 验证项目，以模拟全功能后台管理系统为载体，磨合 .NET 10 + Tigercat UI 组件库，持续优化并反馈上游组件需求。
 
-**最后更新**：2026-01-28
+**最后更新**：2026-01-30
 
 ---
 
@@ -171,21 +171,35 @@ src/
 
 ### Phase 1：基础设施升级 🏗️
 
-> **目标**：完成路由库集成、EF Core 内存数据库改造，为后续功能开发奠定基础
-
-**预计周期**：1-2 周
+> **目标**：完成路由库集成、EF Core 内存数据库改造、Redis 集成，为后续功能开发奠定基础
 
 #### 1.1 前端路由升级
 
-| 任务           | Vue 项目               | React 项目              | 状态    |
-| -------------- | ---------------------- | ----------------------- | ------- |
-| 安装路由依赖   | `vue-router@4`         | `react-router-dom@6`    | 📋 待办 |
-| 创建路由配置   | `src/router/index.ts`  | `src/router/index.tsx`  | 📋 待办 |
-| 定义路由表     | `src/router/routes.ts` | `src/router/routes.tsx` | 📋 待办 |
-| 实现路由守卫   | `beforeEach` 导航守卫  | `ProtectedRoute` 组件   | 📋 待办 |
-| 改造 App 组件  | 使用 `<RouterView>`    | 使用 `<RouterProvider>` | 📋 待办 |
-| 改造页面导航   | `router.push()`        | `useNavigate()`         | 📋 待办 |
-| 移除旧路由代码 | 删除 hash 路由逻辑     | 删除 hash 路由逻辑      | 📋 待办 |
+**当前状态分析**：
+
+- 两端均使用手写 Hash 路由（`window.location.hash` + `hashchange` 事件）
+- 路由逻辑分散在 `App.vue/tsx`、`utils/auth.ts`、`utils/constants.ts`
+- 页面切换通过条件渲染实现，无法支持嵌套路由和路由守卫
+
+**改造目标**：
+
+| 任务           | Vue 项目               | React 项目                |
+| -------------- | ---------------------- | ------------------------- |
+| 安装路由依赖   | `vue-router@4`         | `react-router-dom@6`      |
+| 创建路由配置   | `src/router/index.ts`  | `src/router/index.tsx`    |
+| 定义路由表     | `src/router/routes.ts` | `src/router/routes.tsx`   |
+| 实现路由守卫   | `beforeEach` 导航守卫  | `ProtectedRoute` 高阶组件 |
+| 改造 App 组件  | 使用 `<RouterView>`    | 使用 `<RouterProvider>`   |
+| 改造页面导航   | `router.push()`        | `useNavigate()`           |
+| 移除旧路由代码 | 删除 hash 路由逻辑     | 删除 hash 路由逻辑        |
+
+**需要移除的旧代码**：
+
+| 文件                  | 移除内容                                         |
+| --------------------- | ------------------------------------------------ |
+| `utils/auth.ts`       | `getPageFromHash()` 函数                         |
+| `utils/constants.ts`  | `PAGE_KEYS` 常量                                 |
+| `App.vue` / `App.tsx` | `page` 状态、`hashchange` 监听、条件渲染页面逻辑 |
 
 **路由结构设计**：
 
@@ -215,61 +229,197 @@ const routes = [
 ];
 ```
 
+**路由守卫逻辑**：
+
+```typescript
+// 认证守卫伪代码
+beforeEach((to, from, next) => {
+  const isAuthenticated = !!getSession();
+
+  // 需要认证但未登录 → 跳转登录页
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    return next({ name: 'Login', query: { redirect: to.fullPath } });
+  }
+
+  // 已登录访问登录/注册页 → 跳转首页
+  if (isAuthenticated && ['Login', 'Register'].includes(to.name)) {
+    return next({ name: 'Dashboard' });
+  }
+
+  next();
+});
+```
+
 #### 1.2 后端 EF Core 集成
 
-| 任务                  | 说明                                      | 状态    |
-| --------------------- | ----------------------------------------- | ------- |
-| 添加 EF Core 依赖     | `Microsoft.EntityFrameworkCore.InMemory`  | 📋 待办 |
-| 创建 DbContext        | `AdminDbContext` + 实体配置               | 📋 待办 |
-| 定义 User 实体        | Id, Username, PasswordHash, CreatedAt     | 📋 待办 |
-| 定义 Session 实体     | Id, Token, Username, ExpiresAt, CreatedAt | 📋 待办 |
-| 定义 OutboxEvent 实体 | Outbox 模式支持（可选）                   | 📋 待办 |
-| 改造 IUserStore       | 同步 → 异步接口                           | 📋 待办 |
-| 改造 ISessionStore    | 同步 → 异步接口                           | 📋 待办 |
-| 实现 EfUserStore      | 基于 EF Core 的用户存储                   | 📋 待办 |
-| 实现 EfSessionStore   | 基于 EF Core 的会话存储                   | 📋 待办 |
-| 改造 API 端点         | 适配异步接口                              | 📋 待办 |
-| 数据初始化            | 种子数据（默认用户）                      | 📋 待办 |
+**当前状态分析**：
+
+- 使用 `InMemoryUserStore` 和 `InMemorySessionStore`（`ConcurrentDictionary` 存储）
+- 接口为**同步**设计（`bool TryCreateUser(...)` 等）
+- 无 EF Core 依赖，无 `Data/` 目录
+
+**改造目标**：
+
+| 任务              | 说明                                                     |
+| ----------------- | -------------------------------------------------------- |
+| 添加 EF Core 依赖 | `Microsoft.EntityFrameworkCore.InMemory`                 |
+| 创建 DbContext    | `Data/AdminDbContext.cs` + 实体配置                      |
+| 定义实体类        | `User`, `Session` (Phase 1)；`Role`, `Permission` 预留   |
+| 接口异步化        | `IUserStore`, `ISessionStore` 方法改为 `Task<T>` 返回    |
+| 实现 EF Store     | `EfUserStore`, `EfSessionStore` 基于 DbContext           |
+| 适配调用方        | `AuthEndpoints`, `HomeEndpoints`, `LoginFilter` 改为异步 |
+| 种子数据          | 保留默认用户 `admin/admin123`                            |
+
+**接口异步化对照表**：
+
+| 原方法签名                                       | 异步化后签名                                                    |
+| ------------------------------------------------ | --------------------------------------------------------------- |
+| `bool TryCreateUser(username, passwordHash)`     | `Task<bool> TryCreateUserAsync(username, passwordHash, ct)`     |
+| `bool ValidateUser(username, passwordHash)`      | `Task<bool> ValidateUserAsync(username, passwordHash, ct)`      |
+| `bool UpdatePassword(username, newPasswordHash)` | `Task<bool> UpdatePasswordAsync(username, newPasswordHash, ct)` |
+| `bool Exists(username)`                          | `Task<bool> ExistsAsync(username, ct)`                          |
+| `SessionRecord CreateSession(username, ttl)`     | `Task<SessionRecord> CreateSessionAsync(username, ttl, ct)`     |
+| `SessionRecord? ValidateSession(token)`          | `Task<SessionRecord?> ValidateSessionAsync(token, ct)`          |
+| `void Revoke(token)`                             | `Task RevokeAsync(token, ct)`                                   |
+
+**实体定义**：
+
+```csharp
+// Data/Entities/User.cs
+public class User
+{
+    public int Id { get; set; }
+    public required string Username { get; set; }
+    public required string PasswordHash { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
+// Data/Entities/Session.cs
+public class Session
+{
+    public int Id { get; set; }
+    public required string Token { get; set; }
+    public required string Username { get; set; }
+    public DateTime ExpiresAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+```
+
+**目录结构变更**：
+
+```
+Tigercat.Admin.Api/
+├── Data/                        # [新增]
+│   ├── AdminDbContext.cs
+│   └── Entities/
+│       ├── User.cs
+│       └── Session.cs
+├── Auth/
+│   ├── IUserStore.cs            # [改造] 异步接口
+│   ├── ISessionStore.cs         # [改造] 异步接口
+│   ├── InMemoryUserStore.cs     # [改造] 实现异步接口
+│   ├── InMemorySessionStore.cs  # [改造] 实现异步接口
+│   ├── EfUserStore.cs           # [新增]
+│   ├── EfSessionStore.cs        # [新增]
+│   └── LoginFilter.cs           # [改造] 调用异步方法
+└── Endpoints/
+    ├── AuthEndpoints.cs         # [改造] 调用异步方法
+    └── HomeEndpoints.cs         # [改造] 调用异步方法
+```
 
 #### 1.3 Redis 缓存与事件总线集成
 
-| 任务                 | 说明                                | 状态    |
-| -------------------- | ----------------------------------- | ------- |
-| 添加 Redis 依赖      | `StackExchange.Redis` + `FreeRedis` | 📋 待办 |
-| 配置 Aspire Redis    | AppHost 添加 Redis 容器编排         | 📋 待办 |
-| 实现 ICacheService   | StackExchange.Redis 缓存封装        | 📋 待办 |
-| 定义事件信封模型     | `EventEnvelope` 统一事件格式        | 📋 待办 |
-| 实现 IEventPublisher | FreeRedis XADD 发布                 | 📋 待办 |
-| 实现 IEventConsumer  | FreeRedis XREADGROUP 消费           | 📋 待办 |
-| 实现幂等去重         | 基于 eventId 的去重机制             | 📋 待办 |
-| 实现 Pending 回收    | 后台服务定期 XCLAIM                 | 📋 待办 |
-| 实现 DLQ 处理        | 死信队列写入与查询                  | 📋 待办 |
-| Outbox 发布服务      | 后台异步发布 outbox 事件（可选）    | 📋 待办 |
+**依赖说明**：此模块依赖 1.2 后端 EF Core 集成完成后进行。
+
+**改造目标**：
+
+| 任务                 | 说明                                                  |
+| -------------------- | ----------------------------------------------------- |
+| 添加 Redis 依赖      | `StackExchange.Redis`（缓存）+ `FreeRedis`（Streams） |
+| 配置 Aspire Redis    | `AppHost.cs` 添加 Redis 容器编排                      |
+| 实现 ICacheService   | 基于 StackExchange.Redis 的缓存服务封装               |
+| 定义事件信封模型     | `EventEnvelope` 统一事件格式                          |
+| 实现 IEventPublisher | 基于 FreeRedis 的 XADD 发布实现                       |
+| 实现 IEventConsumer  | 基于 FreeRedis 的 XREADGROUP 消费实现                 |
+| 实现幂等去重         | 基于 `eventId` 的去重机制                             |
+| 实现 Pending 回收    | 后台服务定期 XCLAIM 处理超时消息                      |
+| 实现 DLQ 处理        | 死信队列写入与查询（超过重试次数的消息）              |
+
+**目录结构变更**：
+
+```
+Tigercat.Admin.Api/
+├── Caching/                     # [新增]
+│   ├── ICacheService.cs
+│   └── RedisCacheService.cs
+├── EventBus/                    # [新增]
+│   ├── EventEnvelope.cs         # 事件信封模型
+│   ├── IEventPublisher.cs       # 发布接口
+│   ├── IEventConsumer.cs        # 消费接口
+│   ├── RedisStreamPublisher.cs  # FreeRedis 发布实现
+│   ├── RedisStreamConsumer.cs   # FreeRedis 消费实现
+│   └── PendingReclaimService.cs # 后台回收服务
+```
+
+**Aspire 编排变更**：
+
+```csharp
+// Tigercat.Aspire/AppHost.cs
+var redis = builder.AddRedis("redis");
+
+var api = builder.AddProject<Projects.Tigercat_Admin_Api>("api")
+    .WithReference(redis);  // [新增] 注入 Redis 连接
+```
 
 **配置项规范**：
 
 ```json
 {
   "ConnectionStrings": {
-    "Redis": "localhost:6379",
-    "RedisStreams": "localhost:6379"
+    "Redis": "localhost:6379"
   },
   "EventBus": {
     "Streams": {
       "ConsumerGroup": "tigercat-admin",
       "BlockMs": 5000,
       "ReadCount": 10,
-      "MaxDeliveries": 3,
-      "Pending": {
-        "ReclaimIntervalSeconds": 60,
-        "MinIdleSeconds": 300
-      }
+      "MaxDeliveries": 3
     }
   }
 }
 ```
 
-**数据库切换预留**：
+#### 1.4 新增页面组件
+
+**依赖说明**：此模块依赖 1.1 前端路由升级完成后进行。
+
+**需要新增的页面**（双端同步）：
+
+| 页面         | 路由路径           | 功能说明     | 关联组件验证      |
+| ------------ | ------------------ | ------------ | ----------------- |
+| UsersPage    | `/system/users`    | 用户管理列表 | Table, Pagination |
+| RolesPage    | `/system/roles`    | 角色管理列表 | Table, Tag        |
+| SettingsPage | `/system/settings` | 系统设置表单 | Form, Switch      |
+| AboutPage    | `/about`           | 关于页面     | Card, Text        |
+
+**页面组件目录结构**：
+
+```
+src/pages/
+├── auth/
+│   ├── Login.vue/tsx      # [已有]
+│   └── Register.vue/tsx   # [已有]
+├── dashboard/
+│   └── Home.vue/tsx       # [已有]
+├── system/                # [新增]
+│   ├── Users.vue/tsx
+│   ├── Roles.vue/tsx
+│   └── Settings.vue/tsx
+└── about/                 # [新增]
+    └── About.vue/tsx
+```
+
+**数据库切换预留**（Phase 4 使用）：
 
 ```csharp
 // Program.cs - 通过配置切换数据库
@@ -298,19 +448,32 @@ builder.Services.AddDbContext<AdminDbContext>(options =>
 
 > **目标**：实现完整的用户管理、角色管理、RBAC 权限控制
 
-**预计周期**：2-3 周
+**前置依赖**：Phase 1 完成
 
 #### 2.1 用户管理模块
 
-| 任务         | 后端                     | 前端            | 状态    |
-| ------------ | ------------------------ | --------------- | ------- |
-| 用户列表 API | `GET /api/users`         | 表格展示 + 分页 | 📋 待办 |
-| 用户详情 API | `GET /api/users/{id}`    | 详情弹窗/抽屉   | 📋 待办 |
-| 创建用户 API | `POST /api/users`        | 表单弹窗        | 📋 待办 |
-| 更新用户 API | `PUT /api/users/{id}`    | 编辑表单        | 📋 待办 |
-| 删除用户 API | `DELETE /api/users/{id}` | 确认弹窗        | 📋 待办 |
-| 批量操作     | 批量删除/启用/禁用       | 多选操作栏      | 📋 待办 |
-| 搜索筛选     | 查询参数支持             | 搜索框 + 筛选器 | 📋 待办 |
+**后端 API 设计**：
+
+| 端点               | 方法   | 功能     | 请求体/参数                           |
+| ------------------ | ------ | -------- | ------------------------------------- | -------- | ------------ |
+| `/api/users`       | GET    | 用户列表 | `?page=1&size=10&keyword=&enabled=`   |
+| `/api/users/{id}`  | GET    | 用户详情 | -                                     |
+| `/api/users`       | POST   | 创建用户 | `{ username, password, email?, ... }` |
+| `/api/users/{id}`  | PUT    | 更新用户 | `{ email?, avatar?, isEnabled, ... }` |
+| `/api/users/{id}`  | DELETE | 删除用户 | -                                     |
+| `/api/users/batch` | POST   | 批量操作 | `{ ids: [], action: 'delete'          | 'enable' | 'disable' }` |
+
+**前端页面功能**：
+
+| 功能     | 组件验证                  | 说明                     |
+| -------- | ------------------------- | ------------------------ |
+| 用户列表 | `Table`, `Pagination`     | 分页展示用户数据         |
+| 搜索筛选 | `Input`, `Select`         | 按用户名搜索、按状态筛选 |
+| 创建用户 | `Modal`, `Form`, `Input`  | 弹窗表单创建新用户       |
+| 编辑用户 | `Modal`, `Form`, `Switch` | 弹窗表单编辑用户信息     |
+| 删除确认 | `Popconfirm` 或 `Modal`   | 删除前二次确认           |
+| 批量操作 | `Checkbox`, `Button`      | 多选后批量删除/启用/禁用 |
+| 用户详情 | `Drawer` 或 `Modal`       | 展示用户完整信息         |
 
 **用户实体扩展**：
 
@@ -333,14 +496,17 @@ public class User
 
 #### 2.2 角色管理模块
 
-| 任务         | 后端                              | 前端         | 状态    |
-| ------------ | --------------------------------- | ------------ | ------- |
-| 角色列表 API | `GET /api/roles`                  | 表格展示     | 📋 待办 |
-| 创建角色 API | `POST /api/roles`                 | 表单弹窗     | 📋 待办 |
-| 更新角色 API | `PUT /api/roles/{id}`             | 编辑表单     | 📋 待办 |
-| 删除角色 API | `DELETE /api/roles/{id}`          | 确认弹窗     | 📋 待办 |
-| 权限配置 API | `PUT /api/roles/{id}/permissions` | 权限树选择器 | 📋 待办 |
-| 用户分配     | 角色关联用户                      | 穿梭框/多选  | 📋 待办 |
+**后端 API 设计**：
+
+| 端点                          | 方法   | 功能       | 请求体/参数                            |
+| ----------------------------- | ------ | ---------- | -------------------------------------- |
+| `/api/roles`                  | GET    | 角色列表   | `?page=1&size=10`                      |
+| `/api/roles/{id}`             | GET    | 角色详情   | -                                      |
+| `/api/roles`                  | POST   | 创建角色   | `{ name, description?, permissions }`  |
+| `/api/roles/{id}`             | PUT    | 更新角色   | `{ name?, description?, permissions }` |
+| `/api/roles/{id}`             | DELETE | 删除角色   | -                                      |
+| `/api/roles/{id}/permissions` | PUT    | 配置权限   | `{ permissions: string[] }`            |
+| `/api/roles/{id}/users`       | GET    | 角色下用户 | -                                      |
 
 **角色与权限实体**：
 
@@ -359,61 +525,135 @@ public class Permission
     public int Id { get; set; }
     public required string Code { get; set; }      // e.g., "user:create"
     public required string Name { get; set; }      // e.g., "创建用户"
-    public string? ParentCode { get; set; }        // 父级权限
+    public string? ParentCode { get; set; }        // 父级权限，用于树形展示
+}
+
+// 关联表
+public class UserRole
+{
+    public int UserId { get; set; }
+    public User User { get; set; } = null!;
+    public int RoleId { get; set; }
+    public Role Role { get; set; } = null!;
+}
+
+public class RolePermission
+{
+    public int RoleId { get; set; }
+    public Role Role { get; set; } = null!;
+    public int PermissionId { get; set; }
+    public Permission Permission { get; set; } = null!;
 }
 ```
 
 #### 2.3 权限控制集成
 
-| 任务          | 说明                                         | 状态    |
-| ------------- | -------------------------------------------- | ------- |
-| 权限中间件    | 基于角色的 API 访问控制                      | 📋 待办 |
-| 权限端点      | `GET /api/auth/permissions` 获取当前用户权限 | 📋 待办 |
-| 前端权限存储  | 登录后缓存权限列表                           | 📋 待办 |
-| 权限指令/Hook | `v-permission` / `usePermission()`           | 📋 待办 |
-| 菜单权限控制  | 根据权限动态渲染菜单                         | 📋 待办 |
-| 按钮权限控制  | 根据权限显示/隐藏操作按钮                    | 📋 待办 |
+**后端权限中间件**：
+
+```csharp
+// 权限验证过滤器
+public class PermissionFilter(string requiredPermission) : IEndpointFilter
+{
+    public async ValueTask<object?> InvokeAsync(
+        EndpointFilterInvocationContext ctx,
+        EndpointFilterDelegate next)
+    {
+        var permissions = ctx.HttpContext.Items["Permissions"] as string[];
+        if (permissions?.Contains(requiredPermission) != true)
+        {
+            return Results.Json(ApiResponse.Fail(403, "权限不足"), statusCode: 403);
+        }
+        return await next(ctx);
+    }
+}
+
+// 端点使用示例
+app.MapPost("/api/users", CreateUser)
+   .AddEndpointFilter(new PermissionFilter("user:create"));
+```
+
+**前端权限控制**：
+
+| 实现方式      | Vue                      | React                      |
+| ------------- | ------------------------ | -------------------------- |
+| 权限存储      | `usePermissionStore()`   | `PermissionContext`        |
+| 权限指令/Hook | `v-permission="code"`    | `usePermission(code)`      |
+| 菜单权限      | 根据权限过滤菜单项       | 根据权限过滤菜单项         |
+| 按钮权限      | `v-if="hasPermission()"` | `{hasPermission && <Btn>}` |
+
+**权限码设计规范**：
+
+```
+user:list      - 查看用户列表
+user:detail    - 查看用户详情
+user:create    - 创建用户
+user:update    - 更新用户
+user:delete    - 删除用户
+role:list      - 查看角色列表
+role:create    - 创建角色
+role:update    - 更新角色
+role:delete    - 删除角色
+role:assign    - 分配角色权限
+system:settings - 系统设置
+```
 
 ---
 
 ### Phase 3：数据展示模块 📊
 
-> **目标**：实现仪表板增强、数据表格、图表展示、数据导出
+> **目标**：实现仪表板增强、数据表格高级功能、图表展示、数据导出
 
-**预计周期**：2-3 周
+**前置依赖**：Phase 2 完成
 
 #### 3.1 仪表板增强
 
-| 任务     | 说明                       | 组件验证                 | 状态    |
-| -------- | -------------------------- | ------------------------ | ------- |
-| 统计卡片 | 用户数、角色数、今日登录等 | `Card`, `Badge`          | 📋 待办 |
-| 趋势图表 | 用户增长趋势、登录统计     | `LineChart`, `AreaChart` | 📋 待办 |
-| 饼图展示 | 角色分布、权限使用情况     | `PieChart`, `DonutChart` | 📋 待办 |
-| 柱状图   | 月度活跃用户对比           | `BarChart`               | 📋 待办 |
-| 数据刷新 | 手动/自动刷新机制          | `Button`, `Loading`      | 📋 待办 |
-| 时间筛选 | 日期范围选择器             | `DatePicker`             | 📋 待办 |
+**统计数据 API**：
 
-#### 3.2 数据表格功能
+| 端点                      | 功能     | 返回数据                     |
+| ------------------------- | -------- | ---------------------------- |
+| `/api/stats/overview`     | 总览统计 | 用户数、角色数、今日登录数   |
+| `/api/stats/trend`        | 趋势数据 | 近 7/30 天用户增长、登录趋势 |
+| `/api/stats/distribution` | 分布数据 | 角色分布、权限使用分布       |
 
-| 任务     | 说明             | 组件验证               | 状态    |
-| -------- | ---------------- | ---------------------- | ------- |
-| 基础表格 | 列定义、数据绑定 | `Table`                | 📋 待办 |
-| 排序功能 | 列头点击排序     | `Table`                | 📋 待办 |
-| 筛选功能 | 列筛选器         | `Table`, `Select`      | 📋 待办 |
-| 分页功能 | 分页器集成       | `Pagination`           | 📋 待办 |
-| 行选择   | 单选/多选        | `Table`, `Checkbox`    | 📋 待办 |
-| 行展开   | 展开详情区域     | `Table`                | 📋 待办 |
-| 固定列   | 左右固定列       | `Table`                | 📋 待办 |
-| 自定义列 | 列显示/隐藏切换  | `Checkbox`, `Dropdown` | 📋 待办 |
+**仪表板组件**：
+
+| 组件     | 说明                       | 组件验证                 |
+| -------- | -------------------------- | ------------------------ |
+| 统计卡片 | 用户数、角色数、今日登录等 | `Card`, `Badge`          |
+| 趋势图表 | 用户增长趋势、登录统计     | `LineChart`, `AreaChart` |
+| 饼图展示 | 角色分布、权限使用情况     | `PieChart`, `DonutChart` |
+| 柱状图   | 月度活跃用户对比           | `BarChart`               |
+| 数据刷新 | 手动/自动刷新机制          | `Button`, `Loading`      |
+| 时间筛选 | 日期范围选择器             | `DatePicker`             |
+
+#### 3.2 数据表格高级功能
+
+| 功能     | 说明             | 组件验证               |
+| -------- | ---------------- | ---------------------- |
+| 基础表格 | 列定义、数据绑定 | `Table`                |
+| 排序功能 | 列头点击排序     | `Table`                |
+| 筛选功能 | 列筛选器         | `Table`, `Select`      |
+| 分页功能 | 分页器集成       | `Pagination`           |
+| 行选择   | 单选/多选        | `Table`, `Checkbox`    |
+| 行展开   | 展开详情区域     | `Table`                |
+| 固定列   | 左右固定列       | `Table`                |
+| 自定义列 | 列显示/隐藏切换  | `Checkbox`, `Dropdown` |
 
 #### 3.3 数据导出
 
-| 任务     | 说明                               | 状态    |
-| -------- | ---------------------------------- | ------- |
-| 导出 API | `GET /api/export/users?format=csv` | 📋 待办 |
-| 前端下载 | Blob 下载处理                      | 📋 待办 |
-| 格式支持 | CSV, Excel, JSON                   | 📋 待办 |
-| 导出配置 | 选择导出字段                       | 📋 待办 |
+**导出 API 设计**：
+
+| 端点                | 功能     | 参数         |
+| ------------------- | -------- | ------------ | ---- | ---------------- |
+| `/api/export/users` | 导出用户 | `?format=csv | xlsx | json&fields=...` |
+| `/api/export/roles` | 导出角色 | `?format=csv | xlsx | json`            |
+
+**前端实现**：
+
+- 导出按钮触发 API 请求
+- 使用 Blob 处理文件下载
+- 支持选择导出字段
+- 支持 CSV、Excel、JSON 格式
 
 ---
 
@@ -421,44 +661,52 @@ public class Permission
 
 > **目标**：系统配置功能、主题切换、性能优化、数据库切换验证
 
-**预计周期**：1-2 周
+**前置依赖**：Phase 3 完成
 
 #### 4.1 系统设置页面
 
-| 任务     | 说明                 | 组件验证                    | 状态    |
-| -------- | -------------------- | --------------------------- | ------- |
-| 基础设置 | 站点名称、Logo、描述 | `Input`, `Upload`           | 📋 待办 |
-| 安全设置 | 密码策略、会话时长   | `Input`, `Switch`, `Slider` | 📋 待办 |
-| 通知设置 | 邮件、消息配置       | `Switch`, `Input`           | 📋 待办 |
-| 设置保存 | 表单提交与反馈       | `Form`, `Button`, `Message` | 📋 待办 |
+**设置项设计**：
+
+| 分类     | 设置项               | 组件验证                    |
+| -------- | -------------------- | --------------------------- |
+| 基础设置 | 站点名称、Logo、描述 | `Input`, `Upload`           |
+| 安全设置 | 密码策略、会话时长   | `Input`, `Switch`, `Slider` |
+| 通知设置 | 邮件、消息配置       | `Switch`, `Input`           |
+
+**后端 API**：
+
+| 端点            | 方法 | 功能         |
+| --------------- | ---- | ------------ |
+| `/api/settings` | GET  | 获取系统设置 |
+| `/api/settings` | PUT  | 更新系统设置 |
 
 #### 4.2 主题与个性化
 
-| 任务     | 说明                | 组件验证                   | 状态    |
-| -------- | ------------------- | -------------------------- | ------- |
-| 主题切换 | 亮色/暗色模式       | `Switch`, `ConfigProvider` | 📋 待办 |
-| 主色调   | 自定义主题色        | `ColorPicker`(如有)        | 📋 待办 |
-| 布局设置 | 侧边栏位置、宽度    | `Radio`, `Slider`          | 📋 待办 |
-| 偏好存储 | localStorage 持久化 | -                          | 📋 待办 |
+| 功能     | 说明                | 组件验证                   |
+| -------- | ------------------- | -------------------------- |
+| 主题切换 | 亮色/暗色模式       | `Switch`, `ConfigProvider` |
+| 主色调   | 自定义主题色        | `ColorPicker`（如有）      |
+| 布局设置 | 侧边栏位置、宽度    | `Radio`, `Slider`          |
+| 偏好存储 | localStorage 持久化 | -                          |
 
 #### 4.3 数据库切换验证
 
-| 任务            | 说明                   | 状态    |
-| --------------- | ---------------------- | ------- |
-| SQLite 集成     | 添加 SQLite Provider   | 📋 待办 |
-| 迁移脚本        | EF Core Migrations     | 📋 待办 |
-| 配置切换        | appsettings 多环境配置 | 📋 待办 |
-| 功能验证        | 全流程回归测试         | 📋 待办 |
-| PostgreSQL 预留 | 文档说明 + 配置示例    | 📋 待办 |
+| 任务            | 说明                                        |
+| --------------- | ------------------------------------------- |
+| SQLite 集成     | 添加 `Microsoft.EntityFrameworkCore.Sqlite` |
+| 迁移脚本        | EF Core Migrations 生成与执行               |
+| 配置切换        | `appsettings.{env}.json` 多环境配置         |
+| 功能验证        | 全流程回归测试                              |
+| PostgreSQL 预留 | 文档说明 + 配置示例                         |
 
 #### 4.4 性能优化
 
-| 任务         | 说明                 | 状态    |
-| ------------ | -------------------- | ------- |
-| 路由懒加载   | 动态 import 页面组件 | 📋 待办 |
-| 组件按需引入 | Tree-shaking 优化    | 📋 待办 |
-| API 响应缓存 | 适当的缓存策略       | 📋 待办 |
-| 虚拟滚动     | 大数据表格优化       | 📋 待办 |
+| 优化项       | 说明                         |
+| ------------ | ---------------------------- |
+| 路由懒加载   | `() => import('./Page.vue')` |
+| 组件按需引入 | Tree-shaking 优化包体积      |
+| API 响应缓存 | 适当的缓存策略（SWR 模式）   |
+| 虚拟滚动     | 大数据表格使用虚拟滚动优化   |
 
 ---
 
@@ -561,117 +809,105 @@ public class Permission
 
 ## 📋 任务看板
 
+> 详细开发计划文档见 [docs/plan/](plan/) 目录
+
 ### Phase 1 - 基础设施升级
 
-#### 📋 待办 (To Do)
+#### 1.1 前端路由升级
 
-**前端路由升级**
+- [ ] **[Vue]** 安装 vue-router@4 + 创建路由结构
+- [ ] **[Vue]** 实现路由守卫（认证检查）
+- [ ] **[Vue]** 改造 App.vue 使用 RouterView
+- [ ] **[Vue]** 页面组件适配路由导航
+- [ ] **[Vue]** 清理旧 hash 路由代码
+- [ ] **[React]** 安装 react-router-dom@6 + 创建路由结构
+- [ ] **[React]** 实现 ProtectedRoute 组件
+- [ ] **[React]** 改造 App.tsx 使用 RouterProvider
+- [ ] **[React]** 页面组件适配路由导航
+- [ ] **[React]** 清理旧 hash 路由代码
 
-- [ ] **[前端-Vue]** 安装 vue-router@4 依赖
-- [ ] **[前端-Vue]** 创建 router 目录结构
-- [ ] **[前端-Vue]** 配置路由表和守卫
-- [ ] **[前端-Vue]** 改造 App.vue 使用 RouterView
-- [ ] **[前端-Vue]** 迁移页面组件到路由
-- [ ] **[前端-React]** 安装 react-router-dom@6 依赖
-- [ ] **[前端-React]** 创建 router 目录结构
-- [ ] **[前端-React]** 配置路由表和 ProtectedRoute
-- [ ] **[前端-React]** 改造 App.tsx 使用 RouterProvider
-- [ ] **[前端-React]** 迁移页面组件到路由
-
-**后端 EF Core 集成**
+#### 1.2 后端 EF Core 集成
 
 - [ ] **[后端]** 添加 EF Core InMemory 依赖
+- [ ] **[后端]** 创建实体类（User, Session）
 - [ ] **[后端]** 创建 AdminDbContext
-- [ ] **[后端]** 定义 User, Session, OutboxEvent 实体
-- [ ] **[后端]** 改造 IUserStore 为异步接口
-- [ ] **[后端]** 改造 ISessionStore 为异步接口
-- [ ] **[后端]** 实现 EfUserStore
-- [ ] **[后端]** 实现 EfSessionStore
-- [ ] **[后端]** 改造认证端点适配异步
-- [ ] **[后端]** 配置种子数据初始化
+- [ ] **[后端]** IUserStore / ISessionStore 接口异步化
+- [ ] **[后端]** 更新 InMemory 实现为异步
+- [ ] **[后端]** 实现 EfUserStore / EfSessionStore
+- [ ] **[后端]** 改造 AuthEndpoints 适配异步
+- [ ] **[后端]** 改造 LoginFilter 适配异步
+- [ ] **[后端]** 服务注册 + 种子数据初始化
 
-**Redis 缓存与事件总线**
+#### 1.3 Redis 集成（依赖 1.2 完成）
 
-- [ ] **[后端]** 添加 StackExchange.Redis + FreeRedis 依赖
-- [ ] **[后端]** 配置 Aspire Redis 容器编排
-- [ ] **[后端]** 实现 ICacheService（StackExchange.Redis）
-- [ ] **[后端]** 定义 EventEnvelope 事件信封模型
-- [ ] **[后端]** 实现 IEventPublisher（FreeRedis XADD）
-- [ ] **[后端]** 实现 IEventConsumer（FreeRedis XREADGROUP）
-- [ ] **[后端]** 实现幂等去重机制
-- [ ] **[后端]** 实现 Pending 回收后台服务
-- [ ] **[后端]** 实现 DLQ 死信队列处理
+- [ ] **[后端]** 添加 Redis 依赖（StackExchange.Redis + FreeRedis）
+- [ ] **[Aspire]** 配置 Redis 容器编排
+- [ ] **[后端]** 实现 ICacheService
+- [ ] **[后端]** 定义 EventEnvelope 模型
+- [ ] **[后端]** 实现 IEventPublisher
+- [ ] **[后端]** 实现 IEventConsumer
+- [ ] **[后端]** 实现幂等去重 + Pending 回收
 
-#### 🚧 进行中 (In Progress)
+#### 1.4 新增页面（依赖 1.1 完成）
 
-（暂无）
+- [ ] **[双端]** 创建 UsersPage（占位）
+- [ ] **[双端]** 创建 RolesPage（占位）
+- [ ] **[双端]** 创建 SettingsPage（占位）
+- [ ] **[双端]** 创建 AboutPage
 
-#### ✅ 完成 (Done)
+#### 🔄 上游阻塞
 
-（暂无）
-
-#### 🔄 上游依赖 (Blocked)
-
-- [ ] **Menu 多级菜单支持** → 依赖上游 submenu 功能
+- [ ] **Menu 多级菜单** → 依赖上游 submenu 功能
 - [ ] **Layout 组件** → 依赖上游标准 Admin Layout
 
 ---
 
 ### Phase 2 - 用户与权限系统
 
-#### 📋 待办 (To Do)
+#### 后端
 
-- [ ] **[后端]** 扩展 User 实体（Email, Avatar, IsEnabled）
-- [ ] **[后端]** 创建 Role, Permission 实体
-- [ ] **[后端]** 实现用户 CRUD API（5个端点）
-- [ ] **[后端]** 实现角色 CRUD API（5个端点）
-- [ ] **[后端]** 实现权限中间件
-- [ ] **[后端]** 实现 `/api/auth/permissions` 端点
-- [ ] **[前端-Vue]** 创建用户列表页
-- [ ] **[前端-Vue]** 创建用户表单弹窗
-- [ ] **[前端-Vue]** 创建角色列表页
-- [ ] **[前端-Vue]** 创建角色表单弹窗
-- [ ] **[前端-Vue]** 实现权限指令 v-permission
-- [ ] **[前端-React]** 创建用户列表页
-- [ ] **[前端-React]** 创建用户表单弹窗
-- [ ] **[前端-React]** 创建角色列表页
-- [ ] **[前端-React]** 创建角色表单弹窗
-- [ ] **[前端-React]** 实现 usePermission Hook
-- [ ] **[文档]** 更新 API 文档（用户、角色端点）
+- [ ] 扩展 User 实体（Email, Avatar, IsEnabled）
+- [ ] 创建 Role, Permission, UserRole, RolePermission 实体
+- [ ] 实现用户 CRUD API（6 个端点）
+- [ ] 实现角色 CRUD API（7 个端点）
+- [ ] 实现权限验证中间件 PermissionFilter
+- [ ] 实现 `/api/auth/permissions` 端点
+
+#### 前端
+
+- [ ] **[Vue]** 用户管理页面（列表、表单、搜索）
+- [ ] **[Vue]** 角色管理页面（列表、表单、权限配置）
+- [ ] **[Vue]** 实现 `v-permission` 指令
+- [ ] **[React]** 用户管理页面
+- [ ] **[React]** 角色管理页面
+- [ ] **[React]** 实现 `usePermission` Hook
+
+#### 文档
+
+- [ ] 更新 api.md（用户、角色端点）
 
 ---
 
 ### Phase 3 - 数据展示模块
 
-#### 📋 待办 (To Do)
-
-- [ ] **[后端]** 实现统计数据 API
+- [ ] **[后端]** 实现统计数据 API（overview, trend, distribution）
 - [ ] **[后端]** 实现数据导出 API
-- [ ] **[前端-Vue]** 增强仪表板（图表集成）
-- [ ] **[前端-Vue]** 实现数据表格高级功能
-- [ ] **[前端-Vue]** 实现数据导出功能
-- [ ] **[前端-React]** 增强仪表板（图表集成）
-- [ ] **[前端-React]** 实现数据表格高级功能
-- [ ] **[前端-React]** 实现数据导出功能
+- [ ] **[双端]** 仪表板图表集成
+- [ ] **[双端]** 数据表格高级功能（排序、筛选、固定列）
+- [ ] **[双端]** 数据导出功能
 - [ ] **[验证]** 测试全部图表组件
 
 ---
 
 ### Phase 4 - 系统设置与优化
 
-#### 📋 待办 (To Do)
-
-- [ ] **[后端]** 实现系统设置 API
-- [ ] **[后端]** 集成 SQLite Provider
-- [ ] **[后端]** 创建 EF Core Migrations
-- [ ] **[前端-Vue]** 创建设置页面
-- [ ] **[前端-Vue]** 实现主题切换
-- [ ] **[前端-Vue]** 路由懒加载优化
-- [ ] **[前端-React]** 创建设置页面
-- [ ] **[前端-React]** 实现主题切换
-- [ ] **[前端-React]** 路由懒加载优化
+- [ ] **[后端]** 系统设置 CRUD API
+- [ ] **[后端]** SQLite Provider 集成 + Migrations
+- [ ] **[双端]** 设置页面实现
+- [ ] **[双端]** 主题切换功能
+- [ ] **[双端]** 路由懒加载优化
 - [ ] **[测试]** 数据库切换回归测试
-- [ ] **[验证]** 测试剩余未覆盖组件
+- [ ] **[验证]** 剩余组件覆盖验证
 
 ---
 
@@ -687,23 +923,11 @@ public class Permission
 
 ### 当前上游依赖项
 
-| 需求              | 文档位置                 | 阻塞任务       | 上游状态  |
-| ----------------- | ------------------------ | -------------- | --------- |
-| Menu submenu 支持 | upstream-requirements.md | 侧边栏多级菜单 | ⏳ 待处理 |
-| Layout 组件       | upstream-requirements.md | 主布局框架     | ⏳ 待处理 |
-| Sidebar 组件      | upstream-requirements.md | 侧边栏折叠     | ⏳ 待处理 |
-
----
-
-## 📊 进度统计
-
-| Phase    | 总任务 | 完成  | 进行中 | 阻塞  | 进度   |
-| -------- | ------ | ----- | ------ | ----- | ------ |
-| Phase 1  | 29     | 0     | 0      | 2     | 0%     |
-| Phase 2  | 16     | 0     | 0      | 0     | 0%     |
-| Phase 3  | 9      | 0     | 0      | 0     | 0%     |
-| Phase 4  | 11     | 0     | 0      | 0     | 0%     |
-| **总计** | **65** | **0** | **0**  | **2** | **0%** |
+| 需求              | 阻塞任务       | 上游状态  | 替代方案            |
+| ----------------- | -------------- | --------- | ------------------- |
+| Menu submenu 支持 | 侧边栏多级菜单 | ⏳ 待处理 | 先用单级菜单        |
+| Layout 组件       | 主布局框架     | ⏳ 待处理 | 自行实现 MainLayout |
+| Sidebar 组件      | 侧边栏折叠     | ⏳ 待处理 | 自行实现折叠逻辑    |
 
 ---
 
@@ -711,5 +935,6 @@ public class Permission
 
 | 日期       | 变更内容                                                  |
 | ---------- | --------------------------------------------------------- |
+| 2026-01-30 | 优化 ROADMAP 结构，增加详细改造说明、接口设计、代码示例   |
 | 2026-01-28 | 新增 Redis Streams 事件总线架构设计，补充基础设施组件规划 |
 | 2026-01-28 | 初始化开发路线图，规划四阶段里程碑                        |
