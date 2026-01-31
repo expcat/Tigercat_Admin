@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Button,
   Card,
@@ -7,13 +8,10 @@ import {
   Input,
   Message,
 } from '@expcat/tigercat-react';
-import { type AuthForm, debounce, useAuthForm, apiRequest } from '../utils';
+import { debounce, useAuthForm, apiRequest } from '../utils';
 
-interface RegisterPageProps {
-  onSwitch: (key: string) => void;
-}
-
-function RegisterPage({ onSwitch }: RegisterPageProps) {
+function RegisterPage() {
+  const navigate = useNavigate();
   const { form, errors, setField, validateForm } = useAuthForm({
     username: '',
     password: '',
@@ -53,7 +51,7 @@ function RegisterPage({ onSwitch }: RegisterPageProps) {
 
           clearRegisterRedirectTimer();
           registerRedirectTimerRef.current = window.setTimeout(() => {
-            onSwitch('login');
+            navigate('/login');
           }, registerNoticeDuration * 1000);
         } catch (error: any) {
           Message.error({
@@ -64,13 +62,17 @@ function RegisterPage({ onSwitch }: RegisterPageProps) {
           setLoading(false);
         }
       }, 300),
-    [form, onSwitch],
+    [form, navigate],
   );
 
   const handleRegister = () => {
     if (!validateForm()) return;
     setLoading(true);
     doRegister();
+  };
+
+  const goToLogin = () => {
+    navigate('/login');
   };
 
   return (
@@ -119,7 +121,7 @@ function RegisterPage({ onSwitch }: RegisterPageProps) {
               <button
                 type="button"
                 className="text-blue-600 hover:text-blue-700 font-medium hover:underline"
-                onClick={() => onSwitch('login')}>
+                onClick={goToLogin}>
                 立即登录
               </button>
             </div>
