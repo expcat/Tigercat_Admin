@@ -21,6 +21,10 @@ public class AuthEndpoints : IEndpointDefinition
         group.MapPost("/change-password", ChangePassword)
             .RequireLogin()
             .WithName("ChangePassword");
+
+        group.MapPost("/logout", Logout)
+            .RequireLogin()
+            .WithName("Logout");
     }
 
     private static async Task<ApiResponse<UserResponse>> Register(
@@ -85,5 +89,40 @@ public class AuthEndpoints : IEndpointDefinition
         await userStore.UpdatePasswordAsync(username, newHash, ct);
 
         return ApiResult.Ok(new MessageResponse("密码修改成功"));
+    }
+
+    private static async Task<ApiResponse<MessageResponse>> Logout(
+        HttpContext httpContext,
+        ISessionStore sessionStore,
+        CancellationToken ct)
+    {
+        var token = GetToken(httpContext);
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            await sessionStore.RevokeAsync(token, ct);
+        }
+
+        return ApiResult.Ok(new MessageResponse("退出成功"));
+    }
+
+    private static string? GetToken(HttpContext httpContext)
+    {
+        if (httpContext.Request.Headers.TryGetValue(AuthConstants.TokenHeader, out var tokenHeader) &&
+            !string.IsNullOrEmpty(tokenHeader))
+        {
+            return tokenHeader.ToString();
+        }
+
+        if (httpContext.Request.Headers.TryGetValue(AuthConstants.AuthorizationHeader, out var authHeader) &&
+            !string.IsNullOrEmpty(authHeader))
+        {
+            var value = authHeader.ToString();
+            if (value.StartsWith(AuthConstants.BearerPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+            return value[AuthConstants.BearerPrefix.Length..].Trim();
+            }
+        }
+
+        return null;
     }
 }
