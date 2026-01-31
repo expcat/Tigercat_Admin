@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Modal,
@@ -6,23 +7,48 @@ import {
   FormItem,
   Input,
 } from '@expcat/tigercat-react';
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
 import { MainLayout } from './components/MainLayout';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { GuestRoute } from './components/GuestRoute';
 import {
   SESSION_KEY,
-  PAGE_KEYS,
   safeParse,
-  getPageFromHash,
   apiRequest,
   normalizeInput,
   Session,
   Notice,
 } from './utils';
 
+// Lazy load pages
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const HomePage = lazy(() => import('./pages/HomePage'));
+
+// Loading fallback component
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[200px]">
+      <div className="text-slate-500">加载中...</div>
+    </div>
+  );
+}
+
+// Guest layout wrapper for login/register pages
+function GuestLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 p-6 flex items-center justify-center">
+      <Container className="w-full max-w-4xl" padding={false}>
+        <Suspense fallback={<PageLoader />}>
+          {children}
+        </Suspense>
+      </Container>
+    </div>
+  );
+}
+
 function App() {
-  const [page, setPage] = useState<string>('login');
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [changeForm, setChangeForm] = useState({
     oldPassword: '',
@@ -32,14 +58,9 @@ function App() {
     () => safeParse<Session>(localStorage.getItem(SESSION_KEY)) || null,
   );
   const [homeMessage, setHomeMessage] = useState('');
-  const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<Notice>({ type: '', message: '' });
   const [homeError, setHomeError] = useState('');
   const [changeOpen, setChangeOpen] = useState(false);
-  // activeMenu logic is handled in MainLayout for visual mostly,
-  // but if we had multiple pages we'd lift state here.
-
-  const isAuthed = Boolean(session?.token);
 
   const authHeaders = useMemo(() => {
     if (!session?.token) return {};
@@ -58,10 +79,10 @@ function App() {
   const onLoginSuccess = async (nextSession: Session) => {
     persistSession(nextSession);
     await loadHome(nextSession.token);
-    window.location.hash = '/home';
+    navigate('/dashboard');
   };
 
-  const loadHome = async (tokenOverride?: string) => {
+  const loadHome = useCallback(async (tokenOverride?: string) => {
     setHomeError('');
     try {
       const headers = tokenOverride
@@ -74,40 +95,24 @@ function App() {
     } catch (error: any) {
       setHomeError(error.message);
     }
-  };
+  }, [authHeaders]);
 
+  // Load home data when entering dashboard
   useEffect(() => {
-    const syncPage = () => setPage(getPageFromHash());
-    syncPage();
-    window.addEventListener('hashchange', syncPage);
-    return () => window.removeEventListener('hashchange', syncPage);
-  }, []);
-
-  useEffect(() => {
-    if (session?.token) {
+    if (location.pathname === '/dashboard' && session?.token) {
       loadHome(session.token);
-      if (page !== 'home') {
-        window.location.hash = '/home';
-      }
     }
-  }, [session?.token]);
-
-  useEffect(() => {
-    if (!isAuthed && page === 'home') {
-      window.location.hash = '/login';
-    }
-  }, [isAuthed, page]);
+  }, [location.pathname, session?.token, loadHome]);
 
   const handleLogout = () => {
     persistSession(null);
     setHomeMessage('');
     setHomeError('');
-    window.location.hash = '/login';
+    navigate('/login');
   };
 
   const handleChangePassword = async () => {
     setNotice({ type: '', message: '' });
-    setLoading(true);
     try {
       const payload = await apiRequest('/api/auth/change-password', {
         method: 'POST',
@@ -122,77 +127,98 @@ function App() {
       setChangeOpen(false);
     } catch (error: any) {
       setNotice({ type: 'error', message: error.message });
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handlePageSwitch = (target: string) => {
-    if (PAGE_KEYS.includes(target)) {
-      window.location.hash = `/${target}`;
-    }
+  const handleCloseChangeModal = () => {
+    setChangeOpen(false);
+    setNotice({ type: '', message: '' });
+    setChangeForm({ oldPassword: '', newPassword: '' });
   };
-
-  if (!isAuthed) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 p-6 flex items-center justify-center">
-        <Container className="w-full max-w-4xl" padding={false}>
-          {page === 'login' && (
-            <LoginPage onSuccess={onLoginSuccess} onSwitch={handlePageSwitch} />
-          )}
-          {page === 'register' && <RegisterPage onSwitch={handlePageSwitch} />}
-        </Container>
-      </div>
-    );
-  }
 
   return (
-    <MainLayout
-      user={session ? { username: session.username } : null}
-      onLogout={handleLogout}
-      onChangePassword={() => setChangeOpen(true)}>
-      <HomePage
-        notice={notice}
-        homeMessage={homeMessage}
-        homeError={homeError}
-        username={session?.username}
-      />
+    <Routes>
+      {/* Guest routes (login/register) */}
+      <Route element={<GuestRoute />}>
+        <Route
+          path="/login"
+          element={
+            <GuestLayout>
+              <LoginPage onSuccess={onLoginSuccess} />
+            </GuestLayout>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <GuestLayout>
+              <RegisterPage />
+            </GuestLayout>
+          }
+        />
+      </Route>
 
-      <Modal
-        open={changeOpen}
-        title="修改密码"
-        okText="确认修改"
-        cancelText="取消"
-        onOk={handleChangePassword}
-        onCancel={() => setChangeOpen(false)}>
-        <Form model={changeForm} labelWidth={88}>
-          <FormItem name="oldPassword" label="旧密码">
-            <Input
-              value={changeForm.oldPassword}
-              placeholder="请输入旧密码"
-              onChange={(value) =>
-                setChangeForm((prev) => ({
-                  ...prev,
-                  oldPassword: normalizeInput(value),
-                }))
-              }
-            />
-          </FormItem>
-          <FormItem name="newPassword" label="新密码">
-            <Input
-              value={changeForm.newPassword}
-              placeholder="请输入新密码"
-              onChange={(value) =>
-                setChangeForm((prev) => ({
-                  ...prev,
-                  newPassword: normalizeInput(value),
-                }))
-              }
-            />
-          </FormItem>
-        </Form>
-      </Modal>
-    </MainLayout>
+      {/* Protected routes (dashboard) */}
+      <Route element={<ProtectedRoute />}>
+        <Route
+          path="/dashboard"
+          element={
+            <MainLayout
+              user={session ? { username: session.username } : null}
+              onLogout={handleLogout}
+              onChangePassword={() => setChangeOpen(true)}>
+              <Suspense fallback={<PageLoader />}>
+                <HomePage
+                  notice={notice}
+                  homeMessage={homeMessage}
+                  homeError={homeError}
+                  username={session?.username}
+                />
+              </Suspense>
+
+              <Modal
+                open={changeOpen}
+                title="修改密码"
+                okText="确认修改"
+                cancelText="取消"
+                onOk={handleChangePassword}
+                onCancel={handleCloseChangeModal}>
+                <Form model={changeForm} labelWidth={88}>
+                  <FormItem name="oldPassword" label="旧密码">
+                    <Input
+                      value={changeForm.oldPassword}
+                      placeholder="请输入旧密码"
+                      onChange={(value) =>
+                        setChangeForm((prev) => ({
+                          ...prev,
+                          oldPassword: normalizeInput(value),
+                        }))
+                      }
+                    />
+                  </FormItem>
+                  <FormItem name="newPassword" label="新密码">
+                    <Input
+                      value={changeForm.newPassword}
+                      placeholder="请输入新密码"
+                      onChange={(value) =>
+                        setChangeForm((prev) => ({
+                          ...prev,
+                          newPassword: normalizeInput(value),
+                        }))
+                      }
+                    />
+                  </FormItem>
+                </Form>
+              </Modal>
+            </MainLayout>
+          }
+        />
+      </Route>
+
+      {/* Default redirect */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
   );
 }
 

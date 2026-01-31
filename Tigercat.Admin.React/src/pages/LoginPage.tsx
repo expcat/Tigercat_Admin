@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Button,
   Card,
@@ -8,7 +9,6 @@ import {
   Message,
 } from '@expcat/tigercat-react';
 import {
-  type AuthForm,
   debounce,
   useAuthForm,
   apiRequest,
@@ -17,10 +17,10 @@ import {
 
 interface LoginPageProps {
   onSuccess: (session: Session) => void;
-  onSwitch: (key: string) => void;
 }
 
-function LoginPage({ onSuccess, onSwitch }: LoginPageProps) {
+function LoginPage({ onSuccess }: LoginPageProps) {
+  const navigate = useNavigate();
   const { form, errors, setField, validateForm } = useAuthForm({
     username: '',
     password: '',
@@ -57,6 +57,10 @@ function LoginPage({ onSuccess, onSwitch }: LoginPageProps) {
     if (!validateForm()) return;
     setLoading(true);
     doLogin();
+  };
+
+  const goToRegister = () => {
+    navigate('/register');
   };
 
   return (
@@ -105,7 +109,7 @@ function LoginPage({ onSuccess, onSwitch }: LoginPageProps) {
               <button
                 type="button"
                 className="text-blue-600 hover:text-blue-700 font-medium hover:underline"
-                onClick={() => onSwitch('register')}>
+                onClick={goToRegister}>
                 立即注册
               </button>
             </div>
