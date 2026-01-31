@@ -11,47 +11,39 @@ public class InMemoryUserStore : IUserStore
         SeedDefaultUsers();
     }
 
-    public bool TryCreateUser(string username, string passwordHash)
+    public Task<bool> TryCreateUserAsync(string username, string passwordHash, CancellationToken ct = default)
     {
         var record = new UserRecord(username, passwordHash);
-        return _users.TryAdd(username, record);
+        return Task.FromResult(_users.TryAdd(username, record));
     }
 
-    public bool ValidateUser(string username, string passwordHash)
+    public Task<bool> ValidateUserAsync(string username, string passwordHash, CancellationToken ct = default)
     {
-        return _users.TryGetValue(username, out var record) && record.PasswordHash == passwordHash;
+        var result = _users.TryGetValue(username, out var record) && record.PasswordHash == passwordHash;
+        return Task.FromResult(result);
     }
 
-    public bool UpdatePassword(string username, string newPasswordHash)
+    public Task<bool> UpdatePasswordAsync(string username, string newPasswordHash, CancellationToken ct = default)
     {
         if (!_users.TryGetValue(username, out var record))
         {
-            return false;
+            return Task.FromResult(false);
         }
 
         var updated = record with { PasswordHash = newPasswordHash };
-        return _users.TryUpdate(username, updated, record);
+        return Task.FromResult(_users.TryUpdate(username, updated, record));
     }
 
-    public bool Exists(string username)
+    public Task<bool> ExistsAsync(string username, CancellationToken ct = default)
     {
-        return _users.ContainsKey(username);
+        return Task.FromResult(_users.ContainsKey(username));
     }
 
     private void SeedDefaultUsers()
     {
-        var defaults = new (string Username, string Password)[]
-        {
-            ("admin", "admin"),
-            ("Admin", "Admin"),
-            ("test", "test")
-        };
-
-        foreach (var (username, password) in defaults)
-        {
-            var hash = PasswordHasher.Hash(password);
-            TryCreateUser(username, hash);
-        }
+        // Seed default admin user as specified in ROADMAP.md
+        var hash = PasswordHasher.Hash("admin123");
+        _users.TryAdd("admin", new UserRecord("admin", hash));
     }
 
     private record UserRecord(string Username, string PasswordHash);

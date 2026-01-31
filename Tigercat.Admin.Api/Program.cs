@@ -1,6 +1,8 @@
+using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
+using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Endpoints;
 using Tigercat.Admin.Api.Serialization;
 
@@ -8,8 +10,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-builder.Services.AddSingleton<IUserStore, InMemoryUserStore>();
-builder.Services.AddSingleton<ISessionStore, InMemorySessionStore>();
+// Register EF Core DbContext with InMemory provider
+builder.Services.AddDbContext<AdminDbContext>(options =>
+    options.UseInMemoryDatabase("TigercatAdminDb"));
+
+// Register EF Core stores
+builder.Services.AddScoped<IUserStore, EfUserStore>();
+builder.Services.AddScoped<ISessionStore, EfSessionStore>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -30,6 +37,23 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Initialize database with seed data
+try
+{
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    await DbInitializer.InitializeAsync(context);
+    logger.LogInformation("Database initialized successfully");
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "An error occurred while initializing the database");
+    throw; // Re-throw to prevent app from starting with uninitialized database
+}
 
 if (app.Environment.IsDevelopment())
 {

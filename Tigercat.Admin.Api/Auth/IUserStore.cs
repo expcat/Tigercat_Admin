@@ -2,8 +2,8 @@ namespace Tigercat.Admin.Api.Auth;
 
 public interface IUserStore
 {
-    bool TryCreateUser(string username, string passwordHash);
-    bool ValidateUser(string username, string passwordHash);
-    bool UpdatePassword(string username, string newPasswordHash);
-    bool Exists(string username);
+    Task<bool> TryCreateUserAsync(string username, string passwordHash, CancellationToken ct = default);
+    Task<bool> ValidateUserAsync(string username, string passwordHash, CancellationToken ct = default);
+    Task<bool> UpdatePasswordAsync(string username, string newPasswordHash, CancellationToken ct = default);
+    Task<bool> ExistsAsync(string username, CancellationToken ct = default);
 }
