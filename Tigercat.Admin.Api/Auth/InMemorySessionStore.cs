@@ -8,34 +8,35 @@ public class InMemorySessionStore : ISessionStore
 {
     private readonly ConcurrentDictionary<string, SessionRecord> _sessions = new(StringComparer.Ordinal);
 
-    public SessionRecord CreateSession(string username, TimeSpan ttl)
+    public Task<SessionRecord> CreateSessionAsync(string username, TimeSpan ttl, CancellationToken ct = default)
     {
         var token = GenerateToken();
         var expiresAt = DateTime.UtcNow.Add(ttl);
         var record = new SessionRecord(token, username, expiresAt);
         _sessions[token] = record;
-        return record;
+        return Task.FromResult(record);
     }
 
-    public SessionRecord? ValidateSession(string token)
+    public Task<SessionRecord?> ValidateSessionAsync(string token, CancellationToken ct = default)
     {
         if (!_sessions.TryGetValue(token, out var record))
         {
-            return null;
+            return Task.FromResult<SessionRecord?>(null);
         }
 
         if (record.ExpiresAt <= DateTime.UtcNow)
         {
             _sessions.TryRemove(token, out _);
-            return null;
+            return Task.FromResult<SessionRecord?>(null);
         }
 
-        return record;
+        return Task.FromResult<SessionRecord?>(record);
     }
 
-    public void Revoke(string token)
+    public Task RevokeAsync(string token, CancellationToken ct = default)
     {
         _sessions.TryRemove(token, out _);
+        return Task.CompletedTask;
     }
 
     private static string GenerateToken()

@@ -11,31 +11,32 @@ public class InMemoryUserStore : IUserStore
         SeedDefaultUsers();
     }
 
-    public bool TryCreateUser(string username, string passwordHash)
+    public Task<bool> TryCreateUserAsync(string username, string passwordHash, CancellationToken ct = default)
     {
         var record = new UserRecord(username, passwordHash);
-        return _users.TryAdd(username, record);
+        return Task.FromResult(_users.TryAdd(username, record));
     }
 
-    public bool ValidateUser(string username, string passwordHash)
+    public Task<bool> ValidateUserAsync(string username, string passwordHash, CancellationToken ct = default)
     {
-        return _users.TryGetValue(username, out var record) && record.PasswordHash == passwordHash;
+        var result = _users.TryGetValue(username, out var record) && record.PasswordHash == passwordHash;
+        return Task.FromResult(result);
     }
 
-    public bool UpdatePassword(string username, string newPasswordHash)
+    public Task<bool> UpdatePasswordAsync(string username, string newPasswordHash, CancellationToken ct = default)
     {
         if (!_users.TryGetValue(username, out var record))
         {
-            return false;
+            return Task.FromResult(false);
         }
 
         var updated = record with { PasswordHash = newPasswordHash };
-        return _users.TryUpdate(username, updated, record);
+        return Task.FromResult(_users.TryUpdate(username, updated, record));
     }
 
-    public bool Exists(string username)
+    public Task<bool> ExistsAsync(string username, CancellationToken ct = default)
     {
-        return _users.ContainsKey(username);
+        return Task.FromResult(_users.ContainsKey(username));
     }
 
     private void SeedDefaultUsers()
@@ -50,7 +51,7 @@ public class InMemoryUserStore : IUserStore
         foreach (var (username, password) in defaults)
         {
             var hash = PasswordHasher.Hash(password);
-            TryCreateUser(username, hash);
+            _users.TryAdd(username, new UserRecord(username, hash));
         }
     }
 
