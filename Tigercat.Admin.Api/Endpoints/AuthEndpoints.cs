@@ -23,24 +23,31 @@ public class AuthEndpoints : IEndpointDefinition
             .WithName("ChangePassword");
     }
 
-    private static ApiResponse<UserResponse> Register(RegisterRequest request, IUserStore userStore)
+    private static async Task<ApiResponse<UserResponse>> Register(
+        RegisterRequest request, 
+        IUserStore userStore, 
+        CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
         {
             return ApiResult.Fail<UserResponse>("用户名或密码不能为空", 400);
         }
 
-        if (userStore.Exists(request.Username))
+        if (await userStore.ExistsAsync(request.Username, ct))
         {
             return ApiResult.Fail<UserResponse>("用户已存在", 409);
         }
 
         var passwordHash = PasswordHasher.Hash(request.Password);
-        userStore.TryCreateUser(request.Username, passwordHash);
+        await userStore.TryCreateUserAsync(request.Username, passwordHash, ct);
         return ApiResult.Ok(new UserResponse(request.Username));
     }
 
-    private static ApiResponse<LoginResponse> Login(LoginRequest request, IUserStore userStore, ISessionStore sessionStore)
+    private static async Task<ApiResponse<LoginResponse>> Login(
+        LoginRequest request, 
+        IUserStore userStore, 
+        ISessionStore sessionStore, 
+        CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
         {
@@ -48,16 +55,20 @@ public class AuthEndpoints : IEndpointDefinition
         }
 
         var passwordHash = PasswordHasher.Hash(request.Password);
-        if (!userStore.ValidateUser(request.Username, passwordHash))
+        if (!await userStore.ValidateUserAsync(request.Username, passwordHash, ct))
         {
             return ApiResult.Fail<LoginResponse>("用户名或密码错误", 401);
         }
 
-        var session = sessionStore.CreateSession(request.Username, SessionTtl);
+        var session = await sessionStore.CreateSessionAsync(request.Username, SessionTtl, ct);
         return ApiResult.Ok(new LoginResponse(session.Token, session.ExpiresAt, session.Username));
     }
 
-    private static ApiResponse<MessageResponse> ChangePassword(ChangePasswordRequest request, HttpContext httpContext, IUserStore userStore)
+    private static async Task<ApiResponse<MessageResponse>> ChangePassword(
+        ChangePasswordRequest request, 
+        HttpContext httpContext, 
+        IUserStore userStore, 
+        CancellationToken ct)
     {
         if (!httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var userObj) || userObj is not string username)
         {
@@ -65,13 +76,13 @@ public class AuthEndpoints : IEndpointDefinition
         }
 
         var oldHash = PasswordHasher.Hash(request.OldPassword);
-        if (!userStore.ValidateUser(username, oldHash))
+        if (!await userStore.ValidateUserAsync(username, oldHash, ct))
         {
             return ApiResult.Fail<MessageResponse>("旧密码错误", 401);
         }
 
         var newHash = PasswordHasher.Hash(request.NewPassword);
-        userStore.UpdatePassword(username, newHash);
+        await userStore.UpdatePasswordAsync(username, newHash, ct);
 
         return ApiResult.Ok(new MessageResponse("密码修改成功"));
     }

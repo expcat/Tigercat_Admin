@@ -102,7 +102,7 @@
   - `oldPassword`：旧密码（必填）
   - `newPassword`：新密码（必填）
 - **返回 data**：
-  - `message`：`"Password updated"`
+  - `message`：`"密码修改成功"`
 - **可能错误码**：
   - `401`：未登录或旧密码错误
 
