@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { Button, Card, Form, FormItem, Input, Message } from '@expcat/tigercat-vue'
 import { debounce, useAuthForm, apiRequest, type Session } from '../utils'
 
+const router = useRouter()
+
 const emit = defineEmits<{
   (e: 'success', session: Session): void;
-  (e: 'switch', key: string): void;
 }>()
 
 const { form, errors, setField, validateForm } = useAuthForm({ username: '', password: '' })
@@ -42,6 +44,10 @@ const handleLogin = () => {
   if (!validateForm()) return
   loading.value = true
   doLogin()
+}
+
+const goToRegister = () => {
+  router.push({ name: 'register' })
 }
 </script>
 
@@ -92,7 +98,7 @@ const handleLogin = () => {
             <button
               type="button"
               class="text-blue-600 hover:text-blue-700 font-medium hover:underline"
-              @click="$emit('switch', 'register')"
+              @click="goToRegister"
             >
               立即注册
             </button>

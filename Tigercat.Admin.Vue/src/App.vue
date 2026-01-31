@@ -1,33 +1,30 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ConfigProvider, Container, Form, FormItem, Input, Modal, Message } from '@expcat/tigercat-vue'
-import HomePage from './pages/HomePage.vue'
-import LoginPage from './pages/LoginPage.vue'
-import RegisterPage from './pages/RegisterPage.vue'
 import MainLayout from './components/MainLayout.vue'
 import {
   SESSION_KEY,
-  PAGE_KEYS,
   safeParse,
-  getPageFromHash,
   apiRequest,
   type Session,
-  type Notice,
 } from './utils'
+
+const router = useRouter()
+const route = useRoute()
 
 const changeForm = ref({ oldPassword: '', newPassword: '' })
 const session = ref<Session | null>(safeParse(localStorage.getItem(SESSION_KEY)) || null)
 
 const homeMessage = ref('')
 const loading = ref(false)
-const notice = ref<Notice>({ type: '', message: '' })
 const homeError = ref('')
 const changeOpen = ref(false)
-// activeMenu logic in MainLayout
-const page = ref('login')
 
-const isAuthed = computed(() => Boolean(session.value?.token))
 const authHeaders = computed(() => (session.value?.token ? { Authorization: `Bearer ${session.value.token}` } : {}))
+
+// Track if we're on a protected route (dashboard)
+const isProtectedRoute = computed(() => route.meta?.requiresAuth === true)
 
 const persistSession = (nextSession: Session | null) => {
   if (!nextSession) {
@@ -41,7 +38,7 @@ const persistSession = (nextSession: Session | null) => {
 const onLoginSuccess = async (nextSession: Session) => {
   persistSession(nextSession)
   await loadHome(nextSession.token)
-  window.location.hash = '/home'
+  router.push({ name: 'dashboard' })
 }
 
 const loadHome = async (tokenOverride?: string) => {
@@ -60,11 +57,10 @@ const handleLogout = () => {
   persistSession(null)
   homeMessage.value = ''
   homeError.value = ''
-  window.location.hash = '/login'
+  router.push({ name: 'login' })
 }
 
 const handleChangePassword = async () => {
-  notice.value = { type: '', message: '' }
   loading.value = true
   try {
     const payload = await apiRequest<{ message: string }>('/api/auth/change-password', {
@@ -88,93 +84,63 @@ const handleChangePassword = async () => {
   }
 }
 
-const handlePageSwitch = (target: string) => {
-  if (PAGE_KEYS.includes(target)) {
-    window.location.hash = `/${target}`
-  }
-}
-
-const ensureAuthPage = () => {
-  if (!isAuthed.value && page.value === 'home') {
-    window.location.hash = '/login'
-  }
-}
-
-const syncPage = () => {
-  page.value = getPageFromHash()
-}
-
-onMounted(() => {
-  syncPage()
-  window.addEventListener('hashchange', syncPage)
-  if (session.value?.token) {
-    loadHome(session.value.token)
-    if (page.value !== 'home') {
-      window.location.hash = '/home'
+// Load home data when entering dashboard
+watch(
+  () => route.name,
+  (routeName) => {
+    if (routeName === 'dashboard' && session.value?.token) {
+      loadHome(session.value.token)
     }
-  }
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('hashchange', syncPage)
-})
-
-watch([isAuthed, page], ensureAuthPage)
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
   <ConfigProvider>
-    <div v-if="!isAuthed" class="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 p-6 flex items-center justify-center">
+    <!-- Guest routes (login/register) -->
+    <div v-if="!isProtectedRoute" class="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 p-6 flex items-center justify-center">
       <Container width="100%" :padding="false" class="w-full max-w-4xl">
-        <LoginPage
-          v-if="page === 'login'"
-          @success="onLoginSuccess"
-          @switch="handlePageSwitch"
-        />
-
-        <RegisterPage
-          v-if="page === 'register'"
-          @switch="handlePageSwitch"
-        />
+        <RouterView @success="onLoginSuccess" />
       </Container>
     </div>
 
+    <!-- Protected routes (dashboard) -->
     <MainLayout
       v-else
       :session="session"
       @logout="handleLogout"
       @change-password="changeOpen = true"
     >
-        <HomePage
-          :notice="notice"
-          :home-message="homeMessage"
-          :home-error="homeError"
-          :username="session?.username"
-        />
+      <RouterView
+        :home-message="homeMessage"
+        :home-error="homeError"
+        :username="session?.username"
+      />
         
-        <Modal
-          v-model="changeOpen"
-          title="修改密码"
-          ok-text="确认修改"
-          cancel-text="取消"
-          @ok="handleChangePassword"
-          @cancel="changeOpen = false"
-        >
-          <Form :model="changeForm" :label-width="88">
-            <FormItem name="oldPassword" label="旧密码">
-              <Input
-                v-model="changeForm.oldPassword"
-                placeholder="请输入旧密码"
-              />
-            </FormItem>
-            <FormItem name="newPassword" label="新密码">
-              <Input
-                v-model="changeForm.newPassword"
-                placeholder="请输入新密码"
-              />
-            </FormItem>
-          </Form>
-        </Modal>
+      <Modal
+        v-model="changeOpen"
+        title="修改密码"
+        ok-text="确认修改"
+        cancel-text="取消"
+        @ok="handleChangePassword"
+        @cancel="changeOpen = false"
+      >
+        <Form :model="changeForm" :label-width="88">
+          <FormItem name="oldPassword" label="旧密码">
+            <Input
+              v-model="changeForm.oldPassword"
+              placeholder="请输入旧密码"
+            />
+          </FormItem>
+          <FormItem name="newPassword" label="新密码">
+            <Input
+              v-model="changeForm.newPassword"
+              placeholder="请输入新密码"
+            />
+          </FormItem>
+        </Form>
+      </Modal>
     </MainLayout>
   </ConfigProvider>
 </template>
