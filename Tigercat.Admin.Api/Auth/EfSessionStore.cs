@@ -17,21 +17,44 @@ public class EfSessionStore : ISessionStore
 
     public async Task<SessionRecord> CreateSessionAsync(string username, TimeSpan ttl, CancellationToken ct = default)
     {
-        var token = GenerateToken();
         var expiresAt = DateTime.UtcNow.Add(ttl);
+        const int maxRetries = 5;
 
-        var session = new SessionEntity
+        for (var attempt = 0; attempt < maxRetries; attempt++)
         {
-            Token = token,
-            Username = username,
-            ExpiresAt = expiresAt,
-            CreatedAt = DateTime.UtcNow
-        };
+            ct.ThrowIfCancellationRequested();
 
-        _context.Sessions.Add(session);
-        await _context.SaveChangesAsync(ct);
+            var token = GenerateToken();
 
-        return new SessionRecord(token, username, expiresAt);
+            var session = new SessionEntity
+            {
+                Token = token,
+                Username = username,
+                ExpiresAt = expiresAt,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Sessions.Add(session);
+
+            try
+            {
+                await _context.SaveChangesAsync(ct);
+                return new SessionRecord(token, username, expiresAt);
+            }
+            catch (DbUpdateException)
+            {
+                // Potential token collision or other transient insert issue; clean up and retry.
+                _context.Entry(session).State = EntityState.Detached;
+
+                if (attempt == maxRetries - 1)
+                {
+                    throw;
+                }
+            }
+        }
+
+        // This should be unreachable, but keeps the compiler satisfied.
+        throw new InvalidOperationException("Unable to create session after multiple attempts.");
     }
 
     public async Task<SessionRecord?> ValidateSessionAsync(string token, CancellationToken ct = default)

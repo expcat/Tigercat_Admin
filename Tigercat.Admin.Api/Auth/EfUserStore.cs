@@ -15,7 +15,9 @@ public class EfUserStore : IUserStore
 
     public async Task<bool> TryCreateUserAsync(string username, string passwordHash, CancellationToken ct = default)
     {
-        if (await _context.Users.AnyAsync(u => u.Username == username, ct))
+        var normalizedUsername = username.ToLowerInvariant();
+        
+        if (await _context.Users.AnyAsync(u => u.Username.ToLower() == normalizedUsername, ct))
         {
             return false;
         }
@@ -28,19 +30,31 @@ public class EfUserStore : IUserStore
         };
 
         _context.Users.Add(user);
-        await _context.SaveChangesAsync(ct);
-        return true;
+        
+        try
+        {
+            await _context.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            // Handle race condition where another request created the user
+            _context.Entry(user).State = EntityState.Detached;
+            return false;
+        }
     }
 
     public async Task<bool> ValidateUserAsync(string username, string passwordHash, CancellationToken ct = default)
     {
+        var normalizedUsername = username.ToLowerInvariant();
         return await _context.Users.AnyAsync(
-            u => u.Username == username && u.PasswordHash == passwordHash, ct);
+            u => u.Username.ToLower() == normalizedUsername && u.PasswordHash == passwordHash, ct);
     }
 
     public async Task<bool> UpdatePasswordAsync(string username, string newPasswordHash, CancellationToken ct = default)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username, ct);
+        var normalizedUsername = username.ToLowerInvariant();
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedUsername, ct);
         if (user is null)
         {
             return false;
@@ -53,6 +67,7 @@ public class EfUserStore : IUserStore
 
     public async Task<bool> ExistsAsync(string username, CancellationToken ct = default)
     {
-        return await _context.Users.AnyAsync(u => u.Username == username, ct);
+        var normalizedUsername = username.ToLowerInvariant();
+        return await _context.Users.AnyAsync(u => u.Username.ToLower() == normalizedUsername, ct);
     }
 }

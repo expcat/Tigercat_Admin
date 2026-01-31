@@ -6,34 +6,25 @@ namespace Tigercat.Admin.Api.Data;
 
 public static class DbInitializer
 {
-    public static async Task InitializeAsync(AdminDbContext context)
+    public static async Task InitializeAsync(AdminDbContext context, CancellationToken ct = default)
     {
-        await context.Database.EnsureCreatedAsync();
+        await context.Database.EnsureCreatedAsync(ct);
 
         // Skip seeding if users already exist
-        if (await context.Users.AnyAsync())
+        if (await context.Users.AnyAsync(ct))
         {
             return;
         }
 
-        var defaultUsers = new (string Username, string Password)[]
+        // Seed default admin user as specified in ROADMAP.md
+        var user = new UserEntity
         {
-            ("admin", "admin"),
-            ("Admin", "Admin"),
-            ("test", "test")
+            Username = "admin",
+            PasswordHash = PasswordHasher.Hash("admin123"),
+            CreatedAt = DateTime.UtcNow
         };
+        context.Users.Add(user);
 
-        foreach (var (username, password) in defaultUsers)
-        {
-            var user = new UserEntity
-            {
-                Username = username,
-                PasswordHash = PasswordHasher.Hash(password),
-                CreatedAt = DateTime.UtcNow
-            };
-            context.Users.Add(user);
-        }
-
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(ct);
     }
 }

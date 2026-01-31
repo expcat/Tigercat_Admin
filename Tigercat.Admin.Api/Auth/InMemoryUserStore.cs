@@ -41,18 +41,9 @@ public class InMemoryUserStore : IUserStore
 
     private void SeedDefaultUsers()
     {
-        var defaults = new (string Username, string Password)[]
-        {
-            ("admin", "admin"),
-            ("Admin", "Admin"),
-            ("test", "test")
-        };
-
-        foreach (var (username, password) in defaults)
-        {
-            var hash = PasswordHasher.Hash(password);
-            _users.TryAdd(username, new UserRecord(username, hash));
-        }
+        // Seed default admin user as specified in ROADMAP.md
+        var hash = PasswordHasher.Hash("admin123");
+        _users.TryAdd("admin", new UserRecord("admin", hash));
     }
 
     private record UserRecord(string Username, string PasswordHash);

@@ -39,10 +39,20 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Initialize database with seed data
-using (var scope = app.Services.CreateScope())
+try
 {
+    using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
     await DbInitializer.InitializeAsync(context);
+    logger.LogInformation("Database initialized successfully");
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "An error occurred while initializing the database");
+    throw; // Re-throw to prevent app from starting with uninitialized database
 }
 
 if (app.Environment.IsDevelopment())
