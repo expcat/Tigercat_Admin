@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 import { Button, Card, Form, FormItem, Input, Message } from '@expcat/tigercat-vue'
 import { type AuthForm, debounce, useAuthForm, apiRequest } from '../utils'
 
@@ -7,9 +8,7 @@ interface RegisterResult {
   username: string;
 }
 
-const emit = defineEmits<{
-  (e: 'switch', key: string): void;
-}>()
+const router = useRouter()
 
 const { form, errors, setField, validateForm } = useAuthForm({ username: '', password: '' })
 const loading = ref(false)
@@ -42,7 +41,7 @@ const doRegister = debounce(async () => {
     })
 
     registerRedirectTimer.value = window.setTimeout(() => {
-      emit('switch', 'login')
+      router.push({ name: 'login' })
     }, registerNoticeDuration * 1000)
   } catch (error: any) {
     clearRegisterRedirectTimer()
@@ -59,6 +58,10 @@ const handleRegister = () => {
   if (!validateForm()) return
   loading.value = true
   doRegister()
+}
+
+const goToLogin = () => {
+  router.push({ name: 'login' })
 }
 </script>
 
@@ -101,7 +104,7 @@ const handleRegister = () => {
             <button
               type="button"
               class="text-blue-600 hover:text-blue-700 font-medium hover:underline"
-              @click="emit('switch', 'login')"
+              @click="goToLogin"
             >
               立即登录
             </button>
