@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
@@ -82,7 +82,7 @@ function App() {
     navigate('/dashboard');
   };
 
-  const loadHome = async (tokenOverride?: string) => {
+  const loadHome = useCallback(async (tokenOverride?: string) => {
     setHomeError('');
     try {
       const headers = tokenOverride
@@ -95,14 +95,14 @@ function App() {
     } catch (error: any) {
       setHomeError(error.message);
     }
-  };
+  }, [authHeaders]);
 
   // Load home data when entering dashboard
   useEffect(() => {
     if (location.pathname === '/dashboard' && session?.token) {
       loadHome(session.token);
     }
-  }, [location.pathname, session?.token]);
+  }, [location.pathname, session?.token, loadHome]);
 
   const handleLogout = () => {
     persistSession(null);
@@ -128,6 +128,12 @@ function App() {
     } catch (error: any) {
       setNotice({ type: 'error', message: error.message });
     }
+  };
+
+  const handleCloseChangeModal = () => {
+    setChangeOpen(false);
+    setNotice({ type: '', message: '' });
+    setChangeForm({ oldPassword: '', newPassword: '' });
   };
 
   return (
@@ -176,7 +182,7 @@ function App() {
                 okText="确认修改"
                 cancelText="取消"
                 onOk={handleChangePassword}
-                onCancel={() => setChangeOpen(false)}>
+                onCancel={handleCloseChangeModal}>
                 <Form model={changeForm} labelWidth={88}>
                   <FormItem name="oldPassword" label="旧密码">
                     <Input
