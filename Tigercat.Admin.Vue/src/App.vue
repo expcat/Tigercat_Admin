@@ -21,7 +21,6 @@ const loading = ref(false)
 const homeError = ref('')
 const changeOpen = ref(false)
 
-const isAuthed = computed(() => Boolean(session.value?.token))
 const authHeaders = computed(() => (session.value?.token ? { Authorization: `Bearer ${session.value.token}` } : {}))
 
 // Track if we're on a protected route (dashboard)
