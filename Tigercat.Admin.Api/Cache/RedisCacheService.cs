@@ -117,9 +117,13 @@ public class RedisCacheService : ICacheService
                 : TimeSpan.FromSeconds(30);
 
             var deadline = DateTime.UtcNow.AddSeconds(LockAcquisitionTimeoutSeconds);
-            while (DateTime.UtcNow < deadline)
+            while (true)
             {
                 ct.ThrowIfCancellationRequested();
+                if (DateTime.UtcNow >= deadline)
+                {
+                    break;
+                }
 
                 var acquired = await database
                     .StringSetAsync(lockKey, lockValue, lockExpiry, When.NotExists)
@@ -173,11 +177,7 @@ public class RedisCacheService : ICacheService
             await SetAsync(key, fallbackValue, ttl, ct);
             return fallbackValue;
         }
-        catch (RedisConnectionException)
-        {
-            return await factory(ct);
-        }
-        catch (RedisTimeoutException)
+        catch (Exception ex) when (ex is RedisConnectionException or RedisTimeoutException)
         {
             return await factory(ct);
         }
