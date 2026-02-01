@@ -1,5 +1,6 @@
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
+using Tigercat.Admin.Api.Serialization;
 
 namespace Tigercat.Admin.Api.Endpoints;
 
@@ -27,27 +28,27 @@ public class AuthEndpoints : IEndpointDefinition
             .WithName("Logout");
     }
 
-    private static async Task<ApiResponse<UserResponse>> Register(
+    private static async Task<IResult> Register(
         RegisterRequest request, 
         IUserStore userStore, 
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return ApiResult.Fail<UserResponse>("用户名或密码不能为空", 400);
+            return Results.Json(ApiResult.Fail<UserResponse>("用户名或密码不能为空", 400), AppJsonContext.Default.ApiResponseUserResponse);
         }
 
         if (await userStore.ExistsAsync(request.Username, ct))
         {
-            return ApiResult.Fail<UserResponse>("用户已存在", 409);
+            return Results.Json(ApiResult.Fail<UserResponse>("用户已存在", 409), AppJsonContext.Default.ApiResponseUserResponse);
         }
 
         var passwordHash = PasswordHasher.Hash(request.Password);
         await userStore.TryCreateUserAsync(request.Username, passwordHash, ct);
-        return ApiResult.Ok(new UserResponse(request.Username));
+        return Results.Json(ApiResult.Ok(new UserResponse(request.Username)), AppJsonContext.Default.ApiResponseUserResponse);
     }
 
-    private static async Task<ApiResponse<LoginResponse>> Login(
+    private static async Task<IResult> Login(
         LoginRequest request, 
         IUserStore userStore, 
         ISessionStore sessionStore, 
@@ -55,20 +56,20 @@ public class AuthEndpoints : IEndpointDefinition
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return ApiResult.Fail<LoginResponse>("用户名或密码不能为空", 401);
+            return Results.Json(ApiResult.Fail<LoginResponse>("用户名或密码不能为空", 401), AppJsonContext.Default.ApiResponseLoginResponse);
         }
 
         var passwordHash = PasswordHasher.Hash(request.Password);
         if (!await userStore.ValidateUserAsync(request.Username, passwordHash, ct))
         {
-            return ApiResult.Fail<LoginResponse>("用户名或密码错误", 401);
+            return Results.Json(ApiResult.Fail<LoginResponse>("用户名或密码错误", 401), AppJsonContext.Default.ApiResponseLoginResponse);
         }
 
         var session = await sessionStore.CreateSessionAsync(request.Username, SessionTtl, ct);
-        return ApiResult.Ok(new LoginResponse(session.Token, session.ExpiresAt, session.Username));
+        return Results.Json(ApiResult.Ok(new LoginResponse(session.Token, session.ExpiresAt, session.Username)), AppJsonContext.Default.ApiResponseLoginResponse);
     }
 
-    private static async Task<ApiResponse<MessageResponse>> ChangePassword(
+    private static async Task<IResult> ChangePassword(
         ChangePasswordRequest request, 
         HttpContext httpContext, 
         IUserStore userStore, 
@@ -76,22 +77,22 @@ public class AuthEndpoints : IEndpointDefinition
     {
         if (!httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var userObj) || userObj is not string username)
         {
-            return ApiResult.Fail<MessageResponse>("未授权", 401);
+            return Results.Json(ApiResult.Fail<MessageResponse>("未授权", 401), AppJsonContext.Default.ApiResponseMessageResponse);
         }
 
         var oldHash = PasswordHasher.Hash(request.OldPassword);
         if (!await userStore.ValidateUserAsync(username, oldHash, ct))
         {
-            return ApiResult.Fail<MessageResponse>("旧密码错误", 401);
+            return Results.Json(ApiResult.Fail<MessageResponse>("旧密码错误", 401), AppJsonContext.Default.ApiResponseMessageResponse);
         }
 
         var newHash = PasswordHasher.Hash(request.NewPassword);
         await userStore.UpdatePasswordAsync(username, newHash, ct);
 
-        return ApiResult.Ok(new MessageResponse("密码修改成功"));
+        return Results.Json(ApiResult.Ok(new MessageResponse("密码修改成功")), AppJsonContext.Default.ApiResponseMessageResponse);
     }
 
-    private static async Task<ApiResponse<MessageResponse>> Logout(
+    private static async Task<IResult> Logout(
         HttpContext httpContext,
         ISessionStore sessionStore,
         CancellationToken ct)
@@ -101,6 +102,6 @@ public class AuthEndpoints : IEndpointDefinition
             await sessionStore.RevokeAsync(token, ct);
         }
 
-        return ApiResult.Ok(new MessageResponse("退出成功"));
+        return Results.Json(ApiResult.Ok(new MessageResponse("退出成功")), AppJsonContext.Default.ApiResponseMessageResponse);
     }
 }

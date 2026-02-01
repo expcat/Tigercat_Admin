@@ -68,17 +68,33 @@ app.MapDefaultEndpoints();
 app.MapEndpoint<AuthEndpoints>();
 app.MapEndpoint<HomeEndpoints>();
 
-app.MapGet("/api/health", () => ApiResult.Ok(new HealthResponse("healthy", DateTime.UtcNow)))
+app.MapGet("/api/health", GetHealth)
     .WithName("HealthCheck");
 
-app.MapGet("/api/info", () => ApiResult.Ok(new InfoResponse(
-    "Tigercat Admin API",
-    "1.0.0",
-    "Tigercat Admin Backend API"
-)))
+app.MapGet("/api/info", GetInfo)
     .WithName("GetInfo");
 
 app.Run();
+
+static async Task<IResult> GetHealth(CancellationToken ct)
+{
+    ct.ThrowIfCancellationRequested();
+    return await Task.FromResult<IResult>(Results.Json(
+        ApiResult.Ok(new HealthResponse("healthy", DateTime.UtcNow)),
+        AppJsonContext.Default.ApiResponseHealthResponse));
+}
+
+static async Task<IResult> GetInfo(CancellationToken ct)
+{
+    ct.ThrowIfCancellationRequested();
+    return await Task.FromResult<IResult>(Results.Json(
+        ApiResult.Ok(new InfoResponse(
+            "Tigercat Admin API",
+            "1.0.0",
+            "Tigercat Admin Backend API"
+        )),
+        AppJsonContext.Default.ApiResponseInfoResponse));
+}
 
 public record HealthResponse(string Status, DateTime Timestamp);
 public record InfoResponse(string Name, string Version, string Description);
