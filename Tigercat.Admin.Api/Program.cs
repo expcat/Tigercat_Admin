@@ -19,7 +19,7 @@ var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
 builder.Services.AddDbContext<AdminDbContext>(options =>
     options.UseInMemoryDatabase("TigercatAdminDb"));
 
-// Redis clients: StackExchange.Redis for cache operations, FreeRedis for streams.
+// Redis clients: StackExchange.Redis for general cache operations, FreeRedis for advanced commands.
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
     var options = ConfigurationOptions.Parse(redisConnectionString);
@@ -106,10 +106,24 @@ static async Task<IResult> GetRedisHealth(IConnectionMultiplexer multiplexer, Ca
 {
     ct.ThrowIfCancellationRequested();
     var database = multiplexer.GetDatabase();
-    await database.PingAsync();
-    return Results.Json(
-        ApiResult.Ok(new HealthResponse("healthy", DateTime.UtcNow)),
-        AppJsonContext.Default.ApiResponseHealthResponse);
+    try
+    {
+        await database.PingAsync();
+        return Results.Json(
+            ApiResult.Ok(new HealthResponse("healthy", DateTime.UtcNow)),
+            AppJsonContext.Default.ApiResponseHealthResponse);
+    }
+    catch
+    {
+        return Results.Json(
+            new ApiResponse<HealthResponse>(
+                new HealthResponse("unhealthy", DateTime.UtcNow),
+                "Redis unavailable",
+                503,
+                false),
+            AppJsonContext.Default.ApiResponseHealthResponse,
+            statusCode: 503);
+    }
 }
 
 static Task<IResult> GetInfo(CancellationToken ct)
