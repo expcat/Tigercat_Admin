@@ -10,6 +10,7 @@ public class RedisCacheService : ICacheService
     private const int LockAcquisitionTimeoutSeconds = 5;
     private const int LockRetryDelayMilliseconds = 100;
     private const int MaxLockExpirySeconds = 30;
+    private const int MinLockExpirySeconds = 1;
     private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
 
     private readonly IConnectionMultiplexer _multiplexer;
@@ -113,9 +114,10 @@ public class RedisCacheService : ICacheService
             var database = _multiplexer.GetDatabase();
             var lockKey = $"{key}:lock";
             var lockValue = Guid.NewGuid().ToString("N");
-            var lockExpiry = ttl is { } cacheTtl
-                ? TimeSpan.FromSeconds(Math.Min(cacheTtl.TotalSeconds, MaxLockExpirySeconds))
-                : TimeSpan.FromSeconds(MaxLockExpirySeconds);
+            var lockExpirySeconds = ttl is { } cacheTtl
+                ? Math.Clamp(cacheTtl.TotalSeconds, MinLockExpirySeconds, MaxLockExpirySeconds)
+                : MaxLockExpirySeconds;
+            var lockExpiry = TimeSpan.FromSeconds(lockExpirySeconds);
 
             var startTicks = Environment.TickCount64;
             while (true)
@@ -148,11 +150,12 @@ public class RedisCacheService : ICacheService
                     {
                         try
                         {
-                            var currentValue = await database.StringGetAsync(lockKey).WaitAsync(ct);
-                            if (currentValue.HasValue && currentValue.ToString() == lockValue)
-                            {
-                                await database.KeyDeleteAsync(lockKey).WaitAsync(ct);
-                            }
+                            var result = await database.ScriptEvaluateAsync(
+                                    "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+                                    new RedisKey[] { lockKey },
+                                    new RedisValue[] { lockValue })
+                                .WaitAsync(ct);
+                            _ = result;
                         }
                         catch (RedisConnectionException ex)
                         {
@@ -176,10 +179,7 @@ public class RedisCacheService : ICacheService
 
             var fallbackValue = await factory(ct);
             _logger.LogWarning("Redis cache lock timeout for key {CacheKey}; returning uncached value.", key);
-            if (fallbackValue is not null)
-            {
-                await SetAsync(key, fallbackValue, ttl, ct);
-            }
+            await SetAsync(key, fallbackValue, ttl, ct);
             return fallbackValue;
         }
         catch (RedisConnectionException ex)
