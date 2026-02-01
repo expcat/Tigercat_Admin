@@ -57,6 +57,73 @@ function GuestLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+interface ProtectedLayoutProps {
+  children: React.ReactNode;
+  user: { username: string } | null;
+  activeMenu: string;
+  onLogout: () => void;
+  onChangePassword: () => void;
+  onNavigate: (key: string) => void;
+  changeOpen: boolean;
+  changeForm: { oldPassword: string; newPassword: string };
+  onChangeForm: (form: { oldPassword: string; newPassword: string }) => void;
+  onChangePasswordSubmit: () => void;
+  onCloseChangeModal: () => void;
+}
+
+function ProtectedLayout({
+  children,
+  user,
+  activeMenu,
+  onLogout,
+  onChangePassword,
+  onNavigate,
+  changeOpen,
+  changeForm,
+  onChangeForm,
+  onChangePasswordSubmit,
+  onCloseChangeModal,
+}: ProtectedLayoutProps) {
+  return (
+    <MainLayout
+      user={user}
+      onLogout={onLogout}
+      onChangePassword={onChangePassword}
+      activeMenu={activeMenu}
+      onNavigate={onNavigate}>
+      {children}
+      <Modal
+        open={changeOpen}
+        title="修改密码"
+        okText="确认修改"
+        cancelText="取消"
+        onOk={onChangePasswordSubmit}
+        onCancel={onCloseChangeModal}>
+        <Form model={changeForm} labelWidth={88}>
+          <FormItem name="oldPassword" label="旧密码">
+            <Input
+              value={changeForm.oldPassword}
+              placeholder="请输入旧密码"
+              onChange={(value) =>
+                onChangeForm({ ...changeForm, oldPassword: normalizeInput(value) })
+              }
+            />
+          </FormItem>
+          <FormItem name="newPassword" label="新密码">
+            <Input
+              value={changeForm.newPassword}
+              placeholder="请输入新密码"
+              onChange={(value) =>
+                onChangeForm({ ...changeForm, newPassword: normalizeInput(value) })
+              }
+            />
+          </FormItem>
+        </Form>
+      </Modal>
+    </MainLayout>
+  );
+}
+
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -161,51 +228,6 @@ function App() {
     [navigate],
   );
 
-  const ProtectedLayout = ({ children }: { children: React.ReactNode }) => (
-    <MainLayout
-      user={session ? { username: session.username } : null}
-      onLogout={handleLogout}
-      onChangePassword={() => setChangeOpen(true)}
-      activeMenu={activeMenu}
-      onNavigate={handleNavigate}>
-      {children}
-      <Modal
-        open={changeOpen}
-        title="修改密码"
-        okText="确认修改"
-        cancelText="取消"
-        onOk={handleChangePassword}
-        onCancel={handleCloseChangeModal}>
-        <Form model={changeForm} labelWidth={88}>
-          <FormItem name="oldPassword" label="旧密码">
-            <Input
-              value={changeForm.oldPassword}
-              placeholder="请输入旧密码"
-              onChange={(value) =>
-                setChangeForm((prev) => ({
-                  ...prev,
-                  oldPassword: normalizeInput(value),
-                }))
-              }
-            />
-          </FormItem>
-          <FormItem name="newPassword" label="新密码">
-            <Input
-              value={changeForm.newPassword}
-              placeholder="请输入新密码"
-              onChange={(value) =>
-                setChangeForm((prev) => ({
-                  ...prev,
-                  newPassword: normalizeInput(value),
-                }))
-              }
-            />
-          </FormItem>
-        </Form>
-      </Modal>
-    </MainLayout>
-  );
-
   return (
     <Routes>
       {/* Guest routes (login/register) */}
@@ -233,7 +255,17 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedLayout>
+            <ProtectedLayout
+              user={session ? { username: session.username } : null}
+              activeMenu={activeMenu}
+              onLogout={handleLogout}
+              onChangePassword={() => setChangeOpen(true)}
+              onNavigate={handleNavigate}
+              changeOpen={changeOpen}
+              changeForm={changeForm}
+              onChangeForm={setChangeForm}
+              onChangePasswordSubmit={handleChangePassword}
+              onCloseChangeModal={handleCloseChangeModal}>
               <Suspense fallback={<PageLoader />}>
                 <HomePage
                   notice={notice}
@@ -248,7 +280,17 @@ function App() {
         <Route
           path="/users"
           element={
-            <ProtectedLayout>
+            <ProtectedLayout
+              user={session ? { username: session.username } : null}
+              activeMenu={activeMenu}
+              onLogout={handleLogout}
+              onChangePassword={() => setChangeOpen(true)}
+              onNavigate={handleNavigate}
+              changeOpen={changeOpen}
+              changeForm={changeForm}
+              onChangeForm={setChangeForm}
+              onChangePasswordSubmit={handleChangePassword}
+              onCloseChangeModal={handleCloseChangeModal}>
               <Suspense fallback={<PageLoader />}>
                 <UsersPage />
               </Suspense>
