@@ -167,6 +167,7 @@ public sealed class RedisStreamConsumer : BackgroundService
                 return;
             }
 
+            // Idempotency lock is acquired before processing; TTL should exceed reclaim windows.
             var acquired = await _idempotency.TryAcquireAsync(envelope.EventId, IdempotencyTtl, ct);
             if (!acquired)
             {
@@ -187,7 +188,6 @@ public sealed class RedisStreamConsumer : BackgroundService
     private Task ProcessEventAsync(EventEnvelope envelope, string stream, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        _logger.LogInformation("Processing event {EventType} from stream {Stream}.", envelope.EventType, stream);
         return Task.CompletedTask;
     }
 
