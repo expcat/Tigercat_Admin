@@ -227,9 +227,7 @@ function App() {
   const handleNavigate = useCallback(
     (key: MenuKey) => {
       const nextPath = MENU_ROUTES[key];
-      if (nextPath) {
-        navigate(nextPath);
-      }
+      navigate(nextPath);
     },
     [navigate],
   );
