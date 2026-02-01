@@ -177,7 +177,7 @@ public sealed class RedisStreamConsumer : BackgroundService
 
             await ProcessEventAsync(envelope, stream, ct);
             _redis.XAck(stream, _groupName, new[] { entry.id });
-            _logger.LogInformation("Event {EventType} handled for stream {Stream}.", envelope.EventType, stream);
+            _logger.LogInformation("Event {EventType} acknowledged for stream {Stream}.", envelope.EventType, stream);
         }
         catch (Exception ex)
         {
@@ -188,6 +188,10 @@ public sealed class RedisStreamConsumer : BackgroundService
     private Task ProcessEventAsync(EventEnvelope envelope, string stream, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
+        _logger.LogInformation(
+            "Event processing is not implemented; acknowledging {EventType} from stream {Stream}.",
+            envelope.EventType,
+            stream);
         return Task.CompletedTask;
     }
 
