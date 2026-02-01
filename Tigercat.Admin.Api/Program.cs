@@ -27,10 +27,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     return ConnectionMultiplexer.Connect(options);
 });
 
-builder.Services.AddSingleton(sp =>
-{
-    return new RedisClient(redisConnectionString);
-});
+builder.Services.AddSingleton<IRedisClient>(_ => new RedisClient(redisConnectionString));
 
 // Register EF Core stores
 builder.Services.AddScoped<IUserStore, EfUserStore>();
