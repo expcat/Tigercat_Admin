@@ -58,8 +58,7 @@ public class RedisCacheService : ICacheService
         ct.ThrowIfCancellationRequested();
         if (value is null)
         {
-            await RemoveAsync(key, ct);
-            return;
+            throw new ArgumentNullException(nameof(value));
         }
         try
         {
@@ -175,7 +174,7 @@ public class RedisCacheService : ICacheService
             }
 
             var fallbackValue = await factory(ct);
-            await SetAsync(key, fallbackValue, ttl, ct);
+            _logger.LogWarning("Redis cache lock timeout for key {CacheKey}; returning uncached value.", key);
             return fallbackValue;
         }
         catch (RedisConnectionException ex)
