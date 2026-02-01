@@ -10,7 +10,7 @@ public class RedisCacheService : ICacheService
     private const int LockAcquisitionTimeoutSeconds = 5;
     private const int LockRetryDelayMilliseconds = 100;
     private const int MaxLockExpirySeconds = 30;
-    private const int MinLockExpirySeconds = 1;
+    private const double MinLockExpirySeconds = 0.1;
     private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
 
     private readonly IConnectionMultiplexer _multiplexer;
@@ -150,12 +150,11 @@ public class RedisCacheService : ICacheService
                     {
                         try
                         {
-                            var result = await database.ScriptEvaluateAsync(
+                            await database.ScriptEvaluateAsync(
                                     "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
                                     new RedisKey[] { lockKey },
                                     new RedisValue[] { lockValue })
                                 .WaitAsync(ct);
-                            _ = result;
                         }
                         catch (RedisConnectionException ex)
                         {
