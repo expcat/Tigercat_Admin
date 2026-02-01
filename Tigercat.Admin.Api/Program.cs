@@ -19,7 +19,7 @@ var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
 builder.Services.AddDbContext<AdminDbContext>(options =>
     options.UseInMemoryDatabase("TigercatAdminDb"));
 
-// Redis clients: StackExchange.Redis for general cache operations, FreeRedis for advanced commands.
+// Redis clients: StackExchange.Redis for general cache operations, FreeRedis for stream-style workloads and blocking commands.
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
     var options = ConfigurationOptions.Parse(redisConnectionString);
