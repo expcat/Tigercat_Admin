@@ -30,17 +30,16 @@ const MENU_ROUTES = {
   users: '/users',
 } as const;
 
-const PATH_TO_MENU = {
-  '/dashboard': 'home',
-  '/users': 'users',
-} as const;
-
 type MenuKey = keyof typeof MENU_ROUTES;
-type RoutePath = keyof typeof PATH_TO_MENU;
 type ChangePasswordForm = { oldPassword: string; newPassword: string };
 type ChangePasswordField = keyof ChangePasswordForm;
 
 const DEFAULT_MENU: MenuKey = 'home';
+
+const PATH_TO_MENU: Record<string, MenuKey> = {
+  '/dashboard': 'home',
+  '/users': 'users',
+};
 
 // Loading fallback component
 function PageLoader() {
@@ -221,10 +220,10 @@ function App() {
     setChangeForm({ oldPassword: '', newPassword: '' });
   };
 
-  const activeMenu = useMemo(() => {
-    const path = location.pathname as RoutePath;
-    return PATH_TO_MENU[path] ?? DEFAULT_MENU;
-  }, [location.pathname]);
+  const activeMenu = useMemo(
+    () => PATH_TO_MENU[location.pathname] ?? DEFAULT_MENU,
+    [location.pathname],
+  );
   const handleNavigate = useCallback(
     (key: MenuKey) => {
       const nextPath = MENU_ROUTES[key];
