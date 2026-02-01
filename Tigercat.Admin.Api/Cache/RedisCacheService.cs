@@ -7,6 +7,8 @@ namespace Tigercat.Admin.Api.Cache;
 
 public class RedisCacheService : ICacheService
 {
+    private const int LockAcquisitionTimeoutSeconds = 5;
+    private const int LockRetryDelayMilliseconds = 100;
     private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
 
     private readonly IConnectionMultiplexer _multiplexer;
@@ -38,12 +40,14 @@ public class RedisCacheService : ICacheService
 
             return (true, JsonSerializer.Deserialize<T>(value.ToString(), SerializerOptions));
         }
-        catch (RedisConnectionException)
+        catch (RedisConnectionException ex)
         {
+            _logger.LogWarning(ex, "Redis cache get failed for key {CacheKey}.", key);
             return (false, default);
         }
-        catch (RedisTimeoutException)
+        catch (RedisTimeoutException ex)
         {
+            _logger.LogWarning(ex, "Redis cache get timed out for key {CacheKey}.", key);
             return (false, default);
         }
     }
@@ -112,7 +116,7 @@ public class RedisCacheService : ICacheService
                 ? TimeSpan.FromSeconds(Math.Min(cacheTtl.TotalSeconds, 30))
                 : TimeSpan.FromSeconds(30);
 
-            var deadline = DateTime.UtcNow.AddSeconds(5);
+            var deadline = DateTime.UtcNow.AddSeconds(LockAcquisitionTimeoutSeconds);
             while (DateTime.UtcNow < deadline)
             {
                 ct.ThrowIfCancellationRequested();
@@ -145,11 +149,13 @@ public class RedisCacheService : ICacheService
                                 await database.KeyDeleteAsync(lockKey).WaitAsync(ct);
                             }
                         }
-                        catch (RedisConnectionException)
+                        catch (RedisConnectionException ex)
                         {
+                            _logger.LogDebug(ex, "Redis cache lock release failed for key {CacheKey}.", key);
                         }
-                        catch (RedisTimeoutException)
+                        catch (RedisTimeoutException ex)
                         {
+                            _logger.LogDebug(ex, "Redis cache lock release timed out for key {CacheKey}.", key);
                         }
                     }
                 }
@@ -160,7 +166,7 @@ public class RedisCacheService : ICacheService
                     return cachedWhileWaiting;
                 }
 
-                await Task.Delay(TimeSpan.FromMilliseconds(100), ct);
+                await Task.Delay(TimeSpan.FromMilliseconds(LockRetryDelayMilliseconds), ct);
             }
 
             var fallbackValue = await factory(ct);
