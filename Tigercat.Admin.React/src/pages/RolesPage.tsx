@@ -1,27 +1,27 @@
 import { Card, Tag, Text } from '@expcat/tigercat-react';
 
 const quickActions = [
-  { label: '新增用户', icon: '➕', description: '创建新用户账号' },
-  { label: '导入用户', icon: '📥', description: '批量导入用户数据' },
-  { label: '权限配置', icon: '🛡️', description: '管理用户权限与角色' },
-  { label: '安全审计', icon: '🔍', description: '查看登录与操作记录' },
+  { label: '新增角色', icon: '➕', description: '创建新的角色与权限' },
+  { label: '成员分配', icon: '👤', description: '为角色分配成员' },
+  { label: '权限模板', icon: '📋', description: '管理权限模板' },
+  { label: '审计日志', icon: '🔍', description: '查看角色变更记录' },
 ];
 
 const statusOverview = [
-  { label: '活跃用户', value: '1,024', trend: '+8%', trendUp: true },
-  { label: '待审核', value: '12', trend: '+3', trendUp: true },
-  { label: '已禁用', value: '5', trend: '-1', trendUp: false },
-  { label: '今日新增', value: '18', trend: '+4', trendUp: true },
+  { label: '系统角色', value: '8', trend: '+1', trendUp: true },
+  { label: '自定义角色', value: '14', trend: '+2', trendUp: true },
+  { label: '待审核', value: '3', trend: '+1', trendUp: true },
+  { label: '已禁用', value: '1', trend: '0', trendUp: false },
 ];
 
 const recentUpdates = [
-  { id: 'user-apply', title: '新用户申请', detail: 'marketing_lead 申请加入', time: '5 分钟前' },
-  { id: 'permission-update', title: '权限调整', detail: 'admin 更新了角色权限', time: '20 分钟前' },
-  { id: 'account-freeze', title: '账号冻结', detail: '禁用用户 demo_user', time: '1 小时前' },
-  { id: 'batch-import', title: '批量导入', detail: '导入 35 条用户数据', time: '2 小时前' },
+  { id: 'role-create', title: '新增角色', detail: '创建“运营主管”角色', time: '10 分钟前' },
+  { id: 'role-update', title: '权限更新', detail: '更新“客服专员”权限', time: '35 分钟前' },
+  { id: 'member-adjust', title: '成员调整', detail: '将 user_lee 加入“审核员”', time: '1 小时前' },
+  { id: 'role-disable', title: '角色停用', detail: '停用“临时访客”角色', time: '2 小时前' },
 ];
 
-function UsersPage() {
+function RolesPage() {
   return (
     <div className="space-y-6">
       <Card className="overflow-hidden">
@@ -31,24 +31,24 @@ function UsersPage() {
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                  <span className="text-xl text-white">👥</span>
+                  <span className="text-xl text-white">🛡️</span>
                 </div>
                 <div>
                   <Text size="lg" weight="bold" className="text-slate-800">
-                    用户管理
+                    角色管理
                   </Text>
                   <Text size="sm" color="secondary">
-                    管理平台用户账号、角色与权限
+                    维护平台角色与权限配置
                   </Text>
                 </div>
               </div>
             </div>
             <div className="hidden sm:flex items-center gap-2">
               <Tag color="blue" size="sm">
-                核心模块
+                权限中心
               </Tag>
               <Tag color="green" size="sm">
-                运行中
+                已启用
               </Tag>
             </div>
           </div>
@@ -87,7 +87,7 @@ function UsersPage() {
                         ? 'bg-orange-100'
                         : 'bg-green-100'
                 }`}>
-                {index === 0 ? '👤' : index === 1 ? '⏳' : index === 2 ? '🚫' : '✨'}
+                {index === 0 ? '🛡️' : index === 1 ? '✨' : index === 2 ? '⏳' : '🚫'}
               </div>
             </div>
           </Card>
@@ -152,4 +152,4 @@ function UsersPage() {
   );
 }
 
-export default UsersPage;
+export default RolesPage;

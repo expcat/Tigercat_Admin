@@ -32,6 +32,9 @@ const handleMenuSelect = (key: string) => {
     case 'users':
       router.push({ name: 'users' })
       break
+    case 'roles':
+      router.push({ name: 'roles' })
+      break
     default:
       break
   }
@@ -44,6 +47,9 @@ const handleRouteChange = (path: string) => {
       break
     case '/users':
       activeMenu.value = 'users'
+      break
+    case '/roles':
+      activeMenu.value = 'roles'
       break
     default:
       activeMenu.value = 'home'
