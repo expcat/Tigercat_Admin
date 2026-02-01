@@ -119,7 +119,7 @@ public sealed class RedisStreamConsumer : BackgroundService
 
                 var minIdleMs = (long)PendingIdle.TotalMilliseconds;
                 var stalePendings = pendings
-                    .Where(p => p.idle >= minIdleMs)
+                    .Where(p => p.idle > minIdleMs)
                     .ToArray();
                 if (stalePendings.Length == 0)
                 {
@@ -171,8 +171,8 @@ public sealed class RedisStreamConsumer : BackgroundService
                 return;
             }
 
-            _logger.LogInformation("Event {EventType} handled for stream {Stream}.", envelope.EventType, stream);
             _redis.XAck(stream, _groupName, new[] { entry.id });
+            _logger.LogInformation("Event {EventType} handled for stream {Stream}.", envelope.EventType, stream);
         }
         catch (Exception ex)
         {
