@@ -113,7 +113,18 @@ static async Task<IResult> GetRedisHealth(IConnectionMultiplexer multiplexer, Ca
             ApiResult.Ok(new HealthResponse("healthy", DateTime.UtcNow)),
             AppJsonContext.Default.ApiResponseHealthResponse);
     }
-    catch
+    catch (RedisConnectionException)
+    {
+        return Results.Json(
+            new ApiResponse<HealthResponse>(
+                new HealthResponse("unhealthy", DateTime.UtcNow),
+                "Redis unavailable",
+                503,
+                false),
+            AppJsonContext.Default.ApiResponseHealthResponse,
+            statusCode: 503);
+    }
+    catch (RedisTimeoutException)
     {
         return Results.Json(
             new ApiResponse<HealthResponse>(
