@@ -34,10 +34,9 @@ type MenuKey = keyof typeof MENU_ROUTES;
 
 const DEFAULT_MENU: MenuKey = 'home';
 
-const PATH_TO_MENU: Record<string, MenuKey> = {
-  '/dashboard': 'home',
-  '/users': 'users',
-};
+const PATH_TO_MENU = Object.fromEntries(
+  Object.entries(MENU_ROUTES).map(([key, value]) => [value, key as MenuKey]),
+) as Record<string, MenuKey>;
 
 type ChangePasswordForm = { oldPassword: string; newPassword: string };
 type ChangePasswordField = keyof ChangePasswordForm;
