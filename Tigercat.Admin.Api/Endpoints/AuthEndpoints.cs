@@ -35,16 +35,29 @@ public class AuthEndpoints : IEndpointDefinition
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return Results.Json(ApiResult.Fail<UserResponse>("用户名或密码不能为空", 400), AppJsonContext.Default.ApiResponseUserResponse);
+            return Results.Json(
+                ApiResult.Fail<UserResponse>("用户名或密码不能为空", 400),
+                AppJsonContext.Default.ApiResponseUserResponse,
+                statusCode: 400);
         }
 
         if (await userStore.ExistsAsync(request.Username, ct))
         {
-            return Results.Json(ApiResult.Fail<UserResponse>("用户已存在", 409), AppJsonContext.Default.ApiResponseUserResponse);
+            return Results.Json(
+                ApiResult.Fail<UserResponse>("用户已存在", 409),
+                AppJsonContext.Default.ApiResponseUserResponse,
+                statusCode: 409);
         }
 
         var passwordHash = PasswordHasher.Hash(request.Password);
-        await userStore.TryCreateUserAsync(request.Username, passwordHash, ct);
+        var created = await userStore.TryCreateUserAsync(request.Username, passwordHash, ct);
+        if (!created)
+        {
+            return Results.Json(
+                ApiResult.Fail<UserResponse>("用户已存在", 409),
+                AppJsonContext.Default.ApiResponseUserResponse,
+                statusCode: 409);
+        }
         return Results.Json(ApiResult.Ok(new UserResponse(request.Username)), AppJsonContext.Default.ApiResponseUserResponse);
     }
 
@@ -56,13 +69,19 @@ public class AuthEndpoints : IEndpointDefinition
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return Results.Json(ApiResult.Fail<LoginResponse>("用户名或密码不能为空", 401), AppJsonContext.Default.ApiResponseLoginResponse);
+            return Results.Json(
+                ApiResult.Fail<LoginResponse>("用户名或密码不能为空", 401),
+                AppJsonContext.Default.ApiResponseLoginResponse,
+                statusCode: 401);
         }
 
         var passwordHash = PasswordHasher.Hash(request.Password);
         if (!await userStore.ValidateUserAsync(request.Username, passwordHash, ct))
         {
-            return Results.Json(ApiResult.Fail<LoginResponse>("用户名或密码错误", 401), AppJsonContext.Default.ApiResponseLoginResponse);
+            return Results.Json(
+                ApiResult.Fail<LoginResponse>("用户名或密码错误", 401),
+                AppJsonContext.Default.ApiResponseLoginResponse,
+                statusCode: 401);
         }
 
         var session = await sessionStore.CreateSessionAsync(request.Username, SessionTtl, ct);
@@ -77,17 +96,30 @@ public class AuthEndpoints : IEndpointDefinition
     {
         if (!httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var userObj) || userObj is not string username)
         {
-            return Results.Json(ApiResult.Fail<MessageResponse>("未授权", 401), AppJsonContext.Default.ApiResponseMessageResponse);
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>("未授权", 401),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 401);
         }
 
         var oldHash = PasswordHasher.Hash(request.OldPassword);
         if (!await userStore.ValidateUserAsync(username, oldHash, ct))
         {
-            return Results.Json(ApiResult.Fail<MessageResponse>("旧密码错误", 401), AppJsonContext.Default.ApiResponseMessageResponse);
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>("旧密码错误", 401),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 401);
         }
 
         var newHash = PasswordHasher.Hash(request.NewPassword);
-        await userStore.UpdatePasswordAsync(username, newHash, ct);
+        var updated = await userStore.UpdatePasswordAsync(username, newHash, ct);
+        if (!updated)
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>("密码修改失败", 500),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 500);
+        }
 
         return Results.Json(ApiResult.Ok(new MessageResponse("密码修改成功")), AppJsonContext.Default.ApiResponseMessageResponse);
     }
