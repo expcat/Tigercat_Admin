@@ -10,6 +10,10 @@
 
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.2" />
 
+    <PackageReference Include="StackExchange.Redis" Version="2.8.16" />
+
+    <PackageReference Include="FreeRedis" Version="0.6.5" />
+
     <PackageReference Include="Scalar.AspNetCore" Version="2.12.18" />
   </ItemGroup>
 
