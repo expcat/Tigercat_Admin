@@ -1,5 +1,7 @@
+using FreeRedis;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
+using StackExchange.Redis;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
@@ -10,9 +12,22 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
+    ?? throw new InvalidOperationException("Redis connection string is not configured.");
+
 // Register EF Core DbContext with InMemory provider
 builder.Services.AddDbContext<AdminDbContext>(options =>
     options.UseInMemoryDatabase("TigercatAdminDb"));
+
+// Redis clients: StackExchange.Redis for general cache operations, FreeRedis for stream-style workloads and blocking commands.
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var options = ConfigurationOptions.Parse(redisConnectionString);
+    options.AbortOnConnectFail = false;
+    return ConnectionMultiplexer.Connect(options);
+});
+
+builder.Services.AddSingleton<IRedisClient>(_ => new RedisClient(redisConnectionString));
 
 // Register EF Core stores
 builder.Services.AddScoped<IUserStore, EfUserStore>();
@@ -74,6 +89,9 @@ app.MapGet("/api/health", GetHealth)
 app.MapGet("/api/info", GetInfo)
     .WithName("GetInfo");
 
+app.MapGet("/api/health/redis", GetRedisHealth)
+    .WithName("RedisHealthCheck");
+
 app.Run();
 
 static Task<IResult> GetHealth(CancellationToken ct)
@@ -82,6 +100,30 @@ static Task<IResult> GetHealth(CancellationToken ct)
     return Task.FromResult<IResult>(Results.Json(
         ApiResult.Ok(new HealthResponse("healthy", DateTime.UtcNow)),
         AppJsonContext.Default.ApiResponseHealthResponse));
+}
+
+static async Task<IResult> GetRedisHealth(IConnectionMultiplexer multiplexer, CancellationToken ct)
+{
+    ct.ThrowIfCancellationRequested();
+    var database = multiplexer.GetDatabase();
+    try
+    {
+        await database.PingAsync().WaitAsync(ct);
+        return Results.Json(
+            ApiResult.Ok(new HealthResponse("healthy", DateTime.UtcNow)),
+            AppJsonContext.Default.ApiResponseHealthResponse);
+    }
+    catch (Exception ex) when (ex is RedisConnectionException or RedisTimeoutException)
+    {
+        return Results.Json(
+            new ApiResponse<HealthResponse>(
+                new HealthResponse("unhealthy", DateTime.UtcNow),
+                "Redis unavailable",
+                503,
+                false),
+            AppJsonContext.Default.ApiResponseHealthResponse,
+            statusCode: 503);
+    }
 }
 
 static Task<IResult> GetInfo(CancellationToken ct)
