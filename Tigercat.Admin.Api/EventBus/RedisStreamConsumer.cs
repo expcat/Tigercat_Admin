@@ -1,7 +1,4 @@
-using System.Collections.Concurrent;
 using System.Text.Json;
-using System.Linq;
-using System.Collections.Generic;
 using FreeRedis;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,12 +8,16 @@ namespace Tigercat.Admin.Api.EventBus;
 
 public sealed class RedisStreamConsumer : BackgroundService
 {
-    private static readonly TimeSpan IdempotencyTtl = TimeSpan.FromHours(6);
+    // Default window matches typical retry/backlog horizon for at-least-once delivery.
+    private static readonly TimeSpan IdempotencyTtl = EventBusConstants.DefaultIdempotencyTtl;
+    // Minimum idle time before reclaiming pending messages.
     private static readonly TimeSpan PendingIdle = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan ErrorRetryDelay = TimeSpan.FromSeconds(2);
+    private const int ReadBatchSize = 10;
+    private const int ReadBlockMilliseconds = 1000;
+    private const int PendingBatchSize = 10;
     private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
-    private static readonly string[] StreamNames = { "stream:auth", "stream:admin", "stream:system" };
-    private static readonly ConcurrentDictionary<string, string> StreamOffsets = new();
-
+    private static readonly string[] StreamNames = EventBusConstants.Streams;
     private readonly IRedisClient _redis;
     private readonly IIdempotencyService _idempotency;
     private readonly ILogger<RedisStreamConsumer> _logger;
@@ -45,18 +46,17 @@ public sealed class RedisStreamConsumer : BackgroundService
         {
             try
             {
-                ReclaimPending(stoppingToken);
+                await ReclaimPendingAsync(stoppingToken);
 
                 foreach (var stream in StreamNames)
                 {
-                    var lastId = StreamOffsets.TryGetValue(stream, out var offset) ? offset : ">";
                     var entries = _redis.XReadGroup(
                         _groupName,
                         _consumerName,
-                        10,
-                        1000,
+                        ReadBatchSize,
+                        ReadBlockMilliseconds,
                         false,
-                        new Dictionary<string, string> { [stream] = lastId });
+                        new Dictionary<string, string> { [stream] = ">" });
                     if (entries is null || entries.Length == 0)
                     {
                         continue;
@@ -72,7 +72,6 @@ public sealed class RedisStreamConsumer : BackgroundService
                         foreach (var entry in result.entries)
                         {
                             await HandleEntryAsync(result.key, entry, stoppingToken);
-                            StreamOffsets[result.key] = entry.id;
                         }
                     }
                 }
@@ -80,7 +79,7 @@ public sealed class RedisStreamConsumer : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Redis stream consumer loop failed.");
-                await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+                await Task.Delay(ErrorRetryDelay, stoppingToken);
             }
         }
     }
@@ -100,25 +99,29 @@ public sealed class RedisStreamConsumer : BackgroundService
         }
     }
 
-    private void ReclaimPending(CancellationToken ct)
+    private async Task ReclaimPendingAsync(CancellationToken ct)
     {
         foreach (var stream in StreamNames)
         {
             try
             {
-                var pendings = _redis.XPending(stream, _groupName, "-", "+", 10, _consumerName);
+                var pendings = _redis.XPending(stream, _groupName, "-", "+", PendingBatchSize, null);
                 if (pendings is null || pendings.Length == 0)
                 {
                     continue;
                 }
 
                 var ids = pendings.Select(p => p.id).ToArray();
-                if (ids.Length == 0)
+                var claimed = _redis.XClaim(stream, _groupName, _consumerName, (long)PendingIdle.TotalMilliseconds, ids);
+                if (claimed is null || claimed.Length == 0)
                 {
                     continue;
                 }
 
-                _redis.XClaim(stream, _groupName, _consumerName, (long)PendingIdle.TotalMilliseconds, ids);
+                foreach (var entry in claimed)
+                {
+                    await HandleEntryAsync(stream, entry, ct);
+                }
             }
             catch (Exception ex)
             {
@@ -152,7 +155,6 @@ public sealed class RedisStreamConsumer : BackgroundService
                 return;
             }
 
-            _logger.LogInformation("Event {EventType} received from {Stream}.", envelope.EventType, stream);
             _redis.XAck(stream, _groupName, new[] { entry.id });
         }
         catch (Exception ex)

@@ -69,7 +69,7 @@ public class AuthEndpoints : IEndpointDefinition
             },
             httpContext.TraceIdentifier);
 
-        await eventPublisher.PublishAsync(envelope, "stream:auth", ct);
+        await eventPublisher.PublishAsync(envelope, EventBusConstants.AuthStream, ct);
 
         return Results.Json(ApiResult.Ok(new UserResponse(request.Username)), AppJsonContext.Default.ApiResponseUserResponse);
     }
@@ -105,11 +105,10 @@ public class AuthEndpoints : IEndpointDefinition
             new Dictionary<string, object?>
             {
                 ["username"] = session.Username,
-                ["sessionToken"] = session.Token,
-                ["expiresAtUtc"] = session.ExpiresAt.ToString("O")
+                ["expiresAt"] = session.ExpiresAt.ToString("O")
             },
             httpContext.TraceIdentifier);
-        await eventPublisher.PublishAsync(envelope, "stream:auth", ct);
+        await eventPublisher.PublishAsync(envelope, EventBusConstants.AuthStream, ct);
         return Results.Json(ApiResult.Ok(new LoginResponse(session.Token, session.ExpiresAt, session.Username)), AppJsonContext.Default.ApiResponseLoginResponse);
     }
 
@@ -154,7 +153,7 @@ public class AuthEndpoints : IEndpointDefinition
                 ["username"] = username
             },
             httpContext.TraceIdentifier);
-        await eventPublisher.PublishAsync(envelope, "stream:auth", ct);
+        await eventPublisher.PublishAsync(envelope, EventBusConstants.AuthStream, ct);
 
         return Results.Json(ApiResult.Ok(new MessageResponse("密码修改成功")), AppJsonContext.Default.ApiResponseMessageResponse);
     }
@@ -179,7 +178,7 @@ public class AuthEndpoints : IEndpointDefinition
                     ["username"] = username
                 },
                 httpContext.TraceIdentifier);
-            await eventPublisher.PublishAsync(envelope, "stream:auth", ct);
+            await eventPublisher.PublishAsync(envelope, EventBusConstants.AuthStream, ct);
         }
 
         return Results.Json(ApiResult.Ok(new MessageResponse("退出成功")), AppJsonContext.Default.ApiResponseMessageResponse);

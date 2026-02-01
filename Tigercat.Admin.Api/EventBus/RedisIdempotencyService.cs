@@ -5,6 +5,8 @@ namespace Tigercat.Admin.Api.EventBus;
 
 public sealed class RedisIdempotencyService : IIdempotencyService
 {
+    // Cap TTL to avoid excessively long locks while still covering retry windows.
+    private const int MaxTtlSeconds = EventBusConstants.MaxIdempotencyTtlSeconds;
     private readonly IRedisClient _redis;
     private readonly ILogger<RedisIdempotencyService> _logger;
 
@@ -20,7 +22,8 @@ public sealed class RedisIdempotencyService : IIdempotencyService
         try
         {
             var key = $"eventbus:dedup:{eventId}";
-            var acquired = _redis.SetNx(key, "1", ttl);
+            var seconds = (int)Math.Clamp(ttl.TotalSeconds, 1, MaxTtlSeconds);
+            var acquired = _redis.SetNx(key, "1", seconds);
             return Task.FromResult(acquired);
         }
         catch (Exception ex)

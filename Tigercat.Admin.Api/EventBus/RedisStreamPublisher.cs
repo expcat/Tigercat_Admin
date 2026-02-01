@@ -35,7 +35,7 @@ public sealed class RedisStreamPublisher : IEventPublisher
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to publish event {EventId} to stream {StreamName}.", envelope.EventId, streamName);
+            _logger.LogWarning(ex, "Failed to publish event {EventId} to stream {StreamName}; fire-and-forget publish not retried.", envelope.EventId, streamName);
         }
 
         return Task.CompletedTask;
