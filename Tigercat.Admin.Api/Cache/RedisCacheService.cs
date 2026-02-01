@@ -155,11 +155,11 @@ public class RedisCacheService : ICacheService
                         }
                         catch (RedisConnectionException ex)
                         {
-                            _logger.LogDebug(ex, "Redis cache lock release failed for key {CacheKey}.", key);
+                            _logger.LogWarning(ex, "Redis cache lock release failed for key {CacheKey}.", key);
                         }
                         catch (RedisTimeoutException ex)
                         {
-                            _logger.LogDebug(ex, "Redis cache lock release timed out for key {CacheKey}.", key);
+                            _logger.LogWarning(ex, "Redis cache lock release timed out for key {CacheKey}.", key);
                         }
                     }
                 }
@@ -177,7 +177,11 @@ public class RedisCacheService : ICacheService
             await SetAsync(key, fallbackValue, ttl, ct);
             return fallbackValue;
         }
-        catch (Exception ex) when (ex is RedisConnectionException or RedisTimeoutException)
+        catch (RedisConnectionException)
+        {
+            return await factory(ct);
+        }
+        catch (RedisTimeoutException)
         {
             return await factory(ct);
         }
