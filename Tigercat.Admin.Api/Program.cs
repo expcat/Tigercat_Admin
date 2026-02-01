@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
 using Tigercat.Admin.Api.Auth;
+using Tigercat.Admin.Api.Caching;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Endpoints;
@@ -28,6 +29,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 });
 
 builder.Services.AddSingleton<IRedisClient>(_ => new RedisClient(redisConnectionString));
+builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 
 // Register EF Core stores
 builder.Services.AddScoped<IUserStore, EfUserStore>();
