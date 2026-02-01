@@ -1,5 +1,7 @@
+using FreeRedis;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
+using StackExchange.Redis;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
@@ -13,6 +15,24 @@ builder.AddServiceDefaults();
 // Register EF Core DbContext with InMemory provider
 builder.Services.AddDbContext<AdminDbContext>(options =>
     options.UseInMemoryDatabase("TigercatAdminDb"));
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("Redis")
+        ?? throw new InvalidOperationException("Redis connection string is not configured.");
+    var options = ConfigurationOptions.Parse(connectionString);
+    options.AbortOnConnectFail = false;
+    return ConnectionMultiplexer.Connect(options);
+});
+
+builder.Services.AddSingleton(sp =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("Redis")
+        ?? throw new InvalidOperationException("Redis connection string is not configured.");
+    return new RedisClient(connectionString);
+});
 
 // Register EF Core stores
 builder.Services.AddScoped<IUserStore, EfUserStore>();
@@ -74,6 +94,9 @@ app.MapGet("/api/health", GetHealth)
 app.MapGet("/api/info", GetInfo)
     .WithName("GetInfo");
 
+app.MapGet("/api/health/redis", GetRedisHealth)
+    .WithName("RedisHealthCheck");
+
 app.Run();
 
 static Task<IResult> GetHealth(CancellationToken ct)
@@ -82,6 +105,16 @@ static Task<IResult> GetHealth(CancellationToken ct)
     return Task.FromResult<IResult>(Results.Json(
         ApiResult.Ok(new HealthResponse("healthy", DateTime.UtcNow)),
         AppJsonContext.Default.ApiResponseHealthResponse));
+}
+
+static async Task<IResult> GetRedisHealth(IConnectionMultiplexer multiplexer, CancellationToken ct)
+{
+    ct.ThrowIfCancellationRequested();
+    var database = multiplexer.GetDatabase();
+    await database.PingAsync();
+    return Results.Json(
+        ApiResult.Ok(new HealthResponse("healthy", DateTime.UtcNow)),
+        AppJsonContext.Default.ApiResponseHealthResponse);
 }
 
 static Task<IResult> GetInfo(CancellationToken ct)

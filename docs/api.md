@@ -53,6 +53,30 @@
 }
 ```
 
+### 1.1 Redis 健康检查
+
+- **方法**：GET
+- **路径**：`/api/health/redis`
+- **认证**：否
+- **参数**：无
+- **返回 data**：
+  - `status`：健康状态字符串
+  - `timestamp`：UTC 时间
+
+示例：
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "success": true,
+  "data": {
+    "status": "healthy",
+    "timestamp": "2026-01-21T00:00:00Z"
+  }
+}
+```
+
 ### 2. 应用信息
 
 - **方法**：GET

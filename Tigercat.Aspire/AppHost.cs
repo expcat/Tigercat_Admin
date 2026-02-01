@@ -1,7 +1,10 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
+var redis = builder.AddRedis("redis");
+
 var api = builder.AddProject<Projects.Tigercat_Admin_Api>("tigercat-admin-api")
-    .WithExternalHttpEndpoints();
+    .WithExternalHttpEndpoints()
+    .WithReference(redis);
 
 api.WithUrlForEndpoint("http", url =>
 {
