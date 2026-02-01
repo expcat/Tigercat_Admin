@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using Tigercat.Admin.Api.Serialization;
 
@@ -9,10 +10,12 @@ public class RedisCacheService : ICacheService
     private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
 
     private readonly IConnectionMultiplexer _multiplexer;
+    private readonly ILogger<RedisCacheService> _logger;
 
-    public RedisCacheService(IConnectionMultiplexer multiplexer)
+    public RedisCacheService(IConnectionMultiplexer multiplexer, ILogger<RedisCacheService> logger)
     {
         _multiplexer = multiplexer;
+        _logger = logger;
     }
 
     public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
@@ -59,11 +62,13 @@ public class RedisCacheService : ICacheService
             var payload = JsonSerializer.Serialize(value, SerializerOptions);
             await database.StringSetAsync(key, payload, ttl).WaitAsync(ct);
         }
-        catch (RedisConnectionException)
+        catch (RedisConnectionException ex)
         {
+            _logger.LogWarning(ex, "Redis cache set failed for key {CacheKey}.", key);
         }
-        catch (RedisTimeoutException)
+        catch (RedisTimeoutException ex)
         {
+            _logger.LogWarning(ex, "Redis cache set timed out for key {CacheKey}.", key);
         }
     }
 
@@ -75,11 +80,13 @@ public class RedisCacheService : ICacheService
             var database = _multiplexer.GetDatabase();
             await database.KeyDeleteAsync(key).WaitAsync(ct);
         }
-        catch (RedisConnectionException)
+        catch (RedisConnectionException ex)
         {
+            _logger.LogWarning(ex, "Redis cache remove failed for key {CacheKey}.", key);
         }
-        catch (RedisTimeoutException)
+        catch (RedisTimeoutException ex)
         {
+            _logger.LogWarning(ex, "Redis cache remove timed out for key {CacheKey}.", key);
         }
     }
 
@@ -105,7 +112,8 @@ public class RedisCacheService : ICacheService
                 ? TimeSpan.FromSeconds(Math.Min(cacheTtl.TotalSeconds, 30))
                 : TimeSpan.FromSeconds(30);
 
-            while (true)
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (DateTime.UtcNow < deadline)
             {
                 ct.ThrowIfCancellationRequested();
 
@@ -154,6 +162,10 @@ public class RedisCacheService : ICacheService
 
                 await Task.Delay(TimeSpan.FromMilliseconds(100), ct);
             }
+
+            var fallbackValue = await factory(ct);
+            await SetAsync(key, fallbackValue, ttl, ct);
+            return fallbackValue;
         }
         catch (RedisConnectionException)
         {
