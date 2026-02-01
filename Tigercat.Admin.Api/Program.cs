@@ -12,26 +12,24 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
+    ?? throw new InvalidOperationException("Redis connection string is not configured.");
+
 // Register EF Core DbContext with InMemory provider
 builder.Services.AddDbContext<AdminDbContext>(options =>
     options.UseInMemoryDatabase("TigercatAdminDb"));
 
+// Redis clients: StackExchange.Redis for cache operations, FreeRedis for streams.
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
-    var configuration = sp.GetRequiredService<IConfiguration>();
-    var connectionString = configuration.GetConnectionString("Redis")
-        ?? throw new InvalidOperationException("Redis connection string is not configured.");
-    var options = ConfigurationOptions.Parse(connectionString);
+    var options = ConfigurationOptions.Parse(redisConnectionString);
     options.AbortOnConnectFail = false;
     return ConnectionMultiplexer.Connect(options);
 });
 
 builder.Services.AddSingleton(sp =>
 {
-    var configuration = sp.GetRequiredService<IConfiguration>();
-    var connectionString = configuration.GetConnectionString("Redis")
-        ?? throw new InvalidOperationException("Redis connection string is not configured.");
-    return new RedisClient(connectionString);
+    return new RedisClient(redisConnectionString);
 });
 
 // Register EF Core stores
