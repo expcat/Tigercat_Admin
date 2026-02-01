@@ -31,8 +31,6 @@ const MENU_ROUTES = {
 } as const;
 
 type MenuKey = keyof typeof MENU_ROUTES;
-type ChangePasswordForm = { oldPassword: string; newPassword: string };
-type ChangePasswordField = keyof ChangePasswordForm;
 
 const DEFAULT_MENU: MenuKey = 'home';
 
@@ -40,6 +38,9 @@ const PATH_TO_MENU: Record<string, MenuKey> = {
   '/dashboard': 'home',
   '/users': 'users',
 };
+
+type ChangePasswordForm = { oldPassword: string; newPassword: string };
+type ChangePasswordField = keyof ChangePasswordForm;
 
 // Loading fallback component
 function PageLoader() {
