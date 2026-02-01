@@ -37,6 +37,10 @@ const PATH_TO_MENU = {
 
 type MenuKey = keyof typeof MENU_ROUTES;
 type RoutePath = keyof typeof PATH_TO_MENU;
+type ChangePasswordForm = { oldPassword: string; newPassword: string };
+type ChangePasswordField = keyof ChangePasswordForm;
+
+const DEFAULT_MENU: MenuKey = 'home';
 
 // Loading fallback component
 function PageLoader() {
@@ -63,13 +67,13 @@ function GuestLayout({ children }: { children: React.ReactNode }) {
 interface ProtectedLayoutProps {
   children: React.ReactNode;
   user: { username: string } | null;
-  activeMenu: string;
+  activeMenu: MenuKey;
   onLogout: () => void;
   onChangePassword: () => void;
   onNavigate: (key: MenuKey) => void;
   changeOpen: boolean;
-  changeForm: { oldPassword: string; newPassword: string };
-  onChangeForm: (form: { oldPassword: string; newPassword: string }) => void;
+  changeForm: ChangePasswordForm;
+  onChangeField: (field: ChangePasswordField, value: string) => void;
   onChangePasswordSubmit: () => void;
   onCloseChangeModal: () => void;
 }
@@ -83,7 +87,7 @@ function ProtectedLayout({
   onNavigate,
   changeOpen,
   changeForm,
-  onChangeForm,
+  onChangeField,
   onChangePasswordSubmit,
   onCloseChangeModal,
 }: ProtectedLayoutProps) {
@@ -108,7 +112,7 @@ function ProtectedLayout({
               value={changeForm.oldPassword}
               placeholder="请输入旧密码"
               onChange={(value) =>
-                onChangeForm({ ...changeForm, oldPassword: normalizeInput(value) })
+                onChangeField('oldPassword', normalizeInput(value))
               }
             />
           </FormItem>
@@ -117,7 +121,7 @@ function ProtectedLayout({
               value={changeForm.newPassword}
               placeholder="请输入新密码"
               onChange={(value) =>
-                onChangeForm({ ...changeForm, newPassword: normalizeInput(value) })
+                onChangeField('newPassword', normalizeInput(value))
               }
             />
           </FormItem>
@@ -131,7 +135,7 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [changeForm, setChangeForm] = useState({
+  const [changeForm, setChangeForm] = useState<ChangePasswordForm>({
     oldPassword: '',
     newPassword: '',
   });
@@ -219,7 +223,7 @@ function App() {
 
   const activeMenu = useMemo(() => {
     const path = location.pathname as RoutePath;
-    return PATH_TO_MENU[path] ?? 'home';
+    return PATH_TO_MENU[path] ?? DEFAULT_MENU;
   }, [location.pathname]);
   const handleNavigate = useCallback(
     (key: MenuKey) => {
@@ -229,6 +233,12 @@ function App() {
       }
     },
     [navigate],
+  );
+  const handleChangeField = useCallback(
+    (field: ChangePasswordField, value: string) => {
+      setChangeForm((prev) => ({ ...prev, [field]: value }));
+    },
+    [],
   );
 
   return (
@@ -266,7 +276,7 @@ function App() {
               onNavigate={handleNavigate}
               changeOpen={changeOpen}
               changeForm={changeForm}
-              onChangeForm={setChangeForm}
+              onChangeField={handleChangeField}
               onChangePasswordSubmit={handleChangePassword}
               onCloseChangeModal={handleCloseChangeModal}>
               <Suspense fallback={<PageLoader />}>
@@ -291,7 +301,7 @@ function App() {
               onNavigate={handleNavigate}
               changeOpen={changeOpen}
               changeForm={changeForm}
-              onChangeForm={setChangeForm}
+              onChangeField={handleChangeField}
               onChangePasswordSubmit={handleChangePassword}
               onCloseChangeModal={handleCloseChangeModal}>
               <Suspense fallback={<PageLoader />}>
