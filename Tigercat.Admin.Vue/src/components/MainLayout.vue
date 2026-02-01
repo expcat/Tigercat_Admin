@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import MainHeader from './MainHeader.vue'
 import MainSidebar from './MainSidebar.vue'
 
@@ -16,12 +17,47 @@ const emit = defineEmits<{
   (e: 'change-password'): void
 }>()
 
+const route = useRoute()
+const router = useRouter()
+
 const collapsed = ref(false)
 const activeMenu = ref('home')
 
 const handleMenuSelect = (key: string) => {
   activeMenu.value = key
+  switch (key) {
+    case 'home':
+      router.push({ name: 'dashboard' })
+      break
+    case 'users':
+      router.push({ name: 'users' })
+      break
+    default:
+      break
+  }
 }
+
+const handleRouteChange = (path: string) => {
+  switch (path) {
+    case '/dashboard':
+      activeMenu.value = 'home'
+      break
+    case '/users':
+      activeMenu.value = 'users'
+      break
+    default:
+      activeMenu.value = 'home'
+      break
+  }
+}
+
+watch(
+  () => route.path,
+  (path) => {
+    handleRouteChange(path)
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
