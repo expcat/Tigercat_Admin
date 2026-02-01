@@ -56,7 +56,7 @@ public class RedisCacheService : ICacheService
         await database.KeyDeleteAsync(key).WaitAsync(ct);
     }
 
-    public async Task<T> GetOrSetAsync<T>(
+    public async Task<T?> GetOrSetAsync<T>(
         string key,
         Func<CancellationToken, Task<T>> factory,
         TimeSpan? ttl = null,
@@ -65,7 +65,7 @@ public class RedisCacheService : ICacheService
         var (found, cached) = await TryGetAsync<T>(key, ct);
         if (found)
         {
-            return cached!;
+            return cached;
         }
 
         var value = await factory(ct);
