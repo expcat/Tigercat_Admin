@@ -28,7 +28,7 @@ public class RedisCacheService : ICacheService
         return JsonSerializer.Deserialize<T>(value.ToString(), SerializerOptions);
     }
 
-    public async Task<(bool found, T? value)> TryGetAsync<T>(string key, CancellationToken ct = default)
+    private async Task<(bool found, T? value)> TryGetAsync<T>(string key, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
         var database = _multiplexer.GetDatabase();
