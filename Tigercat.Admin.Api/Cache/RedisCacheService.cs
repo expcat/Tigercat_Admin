@@ -117,11 +117,11 @@ public class RedisCacheService : ICacheService
                 ? TimeSpan.FromSeconds(Math.Min(cacheTtl.TotalSeconds, MaxLockExpirySeconds))
                 : TimeSpan.FromSeconds(MaxLockExpirySeconds);
 
-            var deadline = Environment.TickCount64 + LockAcquisitionTimeoutSeconds * 1000L;
+            var startTicks = Environment.TickCount64;
             while (true)
             {
                 ct.ThrowIfCancellationRequested();
-                if (Environment.TickCount64 >= deadline)
+                if (Environment.TickCount64 - startTicks >= LockAcquisitionTimeoutSeconds * 1000L)
                 {
                     break;
                 }
@@ -141,10 +141,7 @@ public class RedisCacheService : ICacheService
                         }
 
                         var value = await factory(ct);
-                        if (value is not null)
-                        {
-                            await SetAsync(key, value, ttl, ct);
-                        }
+                        await SetAsync(key, value, ttl, ct);
                         return value;
                     }
                     finally
