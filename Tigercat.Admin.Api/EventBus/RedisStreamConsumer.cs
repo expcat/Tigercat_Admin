@@ -50,13 +50,15 @@ public sealed class RedisStreamConsumer : BackgroundService
 
                 foreach (var stream in StreamNames)
                 {
-                    var entries = _redis.XReadGroup(
-                        _groupName,
-                        _consumerName,
-                        ReadBatchSize,
-                        ReadBlockMilliseconds,
-                        false,
-                        new Dictionary<string, string> { [stream] = ">" });
+                    var entries = await Task.Run(
+                        () => _redis.XReadGroup(
+                            _groupName,
+                            _consumerName,
+                            ReadBatchSize,
+                            ReadBlockMilliseconds,
+                            false,
+                            new Dictionary<string, string> { [stream] = ">" }),
+                        stoppingToken);
                     if (entries is null || entries.Length == 0)
                     {
                         continue;
@@ -92,9 +94,14 @@ public sealed class RedisStreamConsumer : BackgroundService
             {
                 _redis.XGroupCreate(stream, _groupName, "0", true);
             }
-            catch (Exception ex)
+            catch (RedisServerException ex) when (ex.Message.Contains("BUSYGROUP", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogDebug(ex, "Stream group already exists for {Stream}.", stream);
+            }
+            catch (RedisServerException ex)
+            {
+                _logger.LogError(ex, "Failed to ensure stream group for {Stream}.", stream);
+                throw;
             }
         }
     }
@@ -111,8 +118,17 @@ public sealed class RedisStreamConsumer : BackgroundService
                     continue;
                 }
 
-                var ids = pendings.Select(p => p.id).ToArray();
-                var claimed = _redis.XClaim(stream, _groupName, _consumerName, (long)PendingIdle.TotalMilliseconds, ids);
+                var minIdleMs = (long)PendingIdle.TotalMilliseconds;
+                var stalePendings = pendings
+                    .Where(p => p.idle >= minIdleMs)
+                    .ToArray();
+                if (stalePendings.Length == 0)
+                {
+                    continue;
+                }
+
+                var ids = stalePendings.Select(p => p.id).ToArray();
+                var claimed = _redis.XClaim(stream, _groupName, _consumerName, minIdleMs, ids);
                 if (claimed is null || claimed.Length == 0)
                 {
                     continue;
@@ -144,6 +160,7 @@ public sealed class RedisStreamConsumer : BackgroundService
             var envelope = JsonSerializer.Deserialize<EventEnvelope>(payload, SerializerOptions);
             if (envelope is null)
             {
+                _logger.LogWarning("Failed to deserialize event payload for stream {Stream}.", stream);
                 _redis.XAck(stream, _groupName, new[] { entry.id });
                 return;
             }
@@ -155,6 +172,7 @@ public sealed class RedisStreamConsumer : BackgroundService
                 return;
             }
 
+            _logger.LogInformation("Event {EventType} handled for stream {Stream}.", envelope.EventType, stream);
             _redis.XAck(stream, _groupName, new[] { entry.id });
         }
         catch (Exception ex)

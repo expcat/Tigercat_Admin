@@ -147,7 +147,7 @@ public class AuthEndpoints : IEndpointDefinition
         }
 
         var envelope = EventEnvelope.Create(
-            "auth.user.password_changed",
+            "auth.user.password.changed",
             new Dictionary<string, object?>
             {
                 ["username"] = username

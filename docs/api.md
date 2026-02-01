@@ -116,6 +116,9 @@
   - `400`：用户名或密码为空
   - `409`：用户已存在
 
+- **事件**：
+  - 成功注册后发布 `auth.user.registered` 到 Redis Stream `stream:auth`（异步审计事件）。
+
 ### 4. 登录
 
 - **方法**：POST
@@ -131,6 +134,9 @@
 - **可能错误码**：
   - `401`：账号或密码错误
 
+- **事件**：
+  - 成功登录后发布 `auth.user.login` 到 Redis Stream `stream:auth`（异步审计事件）。
+
 ### 5. 修改密码
 
 - **方法**：POST
@@ -144,6 +150,9 @@
 - **可能错误码**：
   - `401`：未登录或旧密码错误
 
+- **事件**：
+  - 成功修改后发布 `auth.user.password.changed` 到 Redis Stream `stream:auth`（异步审计事件）。
+
 ### 6. 退出登录
 
 - **方法**：POST
@@ -152,6 +161,9 @@
 - **参数**：无
 - **返回 data**：
   - `message`：`"退出成功"`
+
+- **事件**：
+  - 成功退出后发布 `auth.user.logout` 到 Redis Stream `stream:auth`（异步审计事件）。
 
 ### 7. 示例受保护接口
 
