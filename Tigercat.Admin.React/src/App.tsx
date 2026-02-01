@@ -24,10 +24,12 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
+const RolesPage = lazy(() => import('./pages/RolesPage'));
 
 const MENU_ROUTES = {
   home: '/dashboard',
   users: '/users',
+  roles: '/roles',
 } as const;
 
 type MenuKey = keyof typeof MENU_ROUTES;
@@ -303,6 +305,26 @@ function App() {
               onCloseChangeModal={handleCloseChangeModal}>
               <Suspense fallback={<PageLoader />}>
                 <UsersPage />
+              </Suspense>
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/roles"
+          element={
+            <ProtectedLayout
+              user={session ? { username: session.username } : null}
+              activeMenu={activeMenu}
+              onLogout={handleLogout}
+              onChangePassword={() => setChangeOpen(true)}
+              onNavigate={handleNavigate}
+              changeOpen={changeOpen}
+              changeForm={changeForm}
+              onChangeField={handleChangeField}
+              onChangePasswordSubmit={handleChangePassword}
+              onCloseChangeModal={handleCloseChangeModal}>
+              <Suspense fallback={<PageLoader />}>
+                <RolesPage />
               </Suspense>
             </ProtectedLayout>
           }
