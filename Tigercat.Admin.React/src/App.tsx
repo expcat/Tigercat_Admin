@@ -30,10 +30,13 @@ const MENU_ROUTES = {
   users: '/users',
 } as const;
 
-const PATH_TO_MENU: Record<string, keyof typeof MENU_ROUTES> = {
+const PATH_TO_MENU = {
   '/dashboard': 'home',
   '/users': 'users',
-};
+} as const;
+
+type MenuKey = keyof typeof MENU_ROUTES;
+type RoutePath = keyof typeof PATH_TO_MENU;
 
 // Loading fallback component
 function PageLoader() {
@@ -63,7 +66,7 @@ interface ProtectedLayoutProps {
   activeMenu: string;
   onLogout: () => void;
   onChangePassword: () => void;
-  onNavigate: (key: string) => void;
+  onNavigate: (key: MenuKey) => void;
   changeOpen: boolean;
   changeForm: { oldPassword: string; newPassword: string };
   onChangeForm: (form: { oldPassword: string; newPassword: string }) => void;
@@ -214,13 +217,13 @@ function App() {
     setChangeForm({ oldPassword: '', newPassword: '' });
   };
 
-  const activeMenu = useMemo(
-    () => PATH_TO_MENU[location.pathname] ?? 'home',
-    [location.pathname],
-  );
+  const activeMenu = useMemo(() => {
+    const path = location.pathname as RoutePath;
+    return PATH_TO_MENU[path] ?? 'home';
+  }, [location.pathname]);
   const handleNavigate = useCallback(
-    (key: string) => {
-      const nextPath = MENU_ROUTES[key as keyof typeof MENU_ROUTES];
+    (key: MenuKey) => {
+      const nextPath = MENU_ROUTES[key];
       if (nextPath) {
         navigate(nextPath);
       }
