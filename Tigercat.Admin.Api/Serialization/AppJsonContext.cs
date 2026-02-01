@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
+using Tigercat.Admin.Api.EventBus;
 
 namespace Tigercat.Admin.Api.Serialization;
 
@@ -16,6 +17,7 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(ApiResponse<HealthResponse>))]
 [JsonSerializable(typeof(ApiResponse<InfoResponse>))]
 [JsonSerializable(typeof(UserResponse))]
+[JsonSerializable(typeof(EventEnvelope))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }
