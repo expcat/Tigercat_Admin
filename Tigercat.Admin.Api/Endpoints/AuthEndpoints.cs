@@ -21,6 +21,10 @@ public class AuthEndpoints : IEndpointDefinition
         group.MapPost("/change-password", ChangePassword)
             .RequireLogin()
             .WithName("ChangePassword");
+
+        group.MapPost("/logout", Logout)
+            .RequireLogin()
+            .WithName("Logout");
     }
 
     private static async Task<ApiResponse<UserResponse>> Register(
@@ -85,5 +89,18 @@ public class AuthEndpoints : IEndpointDefinition
         await userStore.UpdatePasswordAsync(username, newHash, ct);
 
         return ApiResult.Ok(new MessageResponse("密码修改成功"));
+    }
+
+    private static async Task<ApiResponse<MessageResponse>> Logout(
+        HttpContext httpContext,
+        ISessionStore sessionStore,
+        CancellationToken ct)
+    {
+        if (httpContext.Items.TryGetValue(AuthConstants.TokenItemKey, out var tokenObj) && tokenObj is string token)
+        {
+            await sessionStore.RevokeAsync(token, ct);
+        }
+
+        return ApiResult.Ok(new MessageResponse("退出成功"));
     }
 }
