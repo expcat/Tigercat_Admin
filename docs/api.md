@@ -77,6 +77,20 @@
 }
 ```
 
+失败示例（Redis 不可用时）：
+
+```json
+{
+  "code": 503,
+  "message": "Redis unavailable",
+  "success": false,
+  "data": {
+    "status": "unhealthy",
+    "timestamp": "2026-01-21T00:00:00Z"
+  }
+}
+```
+
 ### 2. 应用信息
 
 - **方法**：GET

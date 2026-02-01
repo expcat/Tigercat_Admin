@@ -108,7 +108,7 @@ static async Task<IResult> GetRedisHealth(IConnectionMultiplexer multiplexer, Ca
     var database = multiplexer.GetDatabase();
     try
     {
-        await database.PingAsync();
+        await database.PingAsync().WaitAsync(ct);
         return Results.Json(
             ApiResult.Ok(new HealthResponse("healthy", DateTime.UtcNow)),
             AppJsonContext.Default.ApiResponseHealthResponse);
