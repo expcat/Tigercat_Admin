@@ -50,15 +50,14 @@ public sealed class RedisStreamConsumer : BackgroundService
 
                 foreach (var stream in StreamNames)
                 {
-                    var entries = await Task.Run(
-                        () => _redis.XReadGroup(
-                            _groupName,
-                            _consumerName,
-                            ReadBatchSize,
-                            ReadBlockMilliseconds,
-                            false,
-                            new Dictionary<string, string> { [stream] = ">" }),
-                        stoppingToken);
+                    // XReadGroup is synchronous; blocking is bounded by ReadBlockMilliseconds.
+                    var entries = _redis.XReadGroup(
+                        _groupName,
+                        _consumerName,
+                        ReadBatchSize,
+                        ReadBlockMilliseconds,
+                        false,
+                        new Dictionary<string, string> { [stream] = ">" });
                     if (entries is null || entries.Length == 0)
                     {
                         continue;
