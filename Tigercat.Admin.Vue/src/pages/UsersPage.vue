@@ -16,10 +16,10 @@ const statusOverview = [
 ]
 
 const recentUpdates = [
-  { title: '新用户申请', detail: 'marketing_lead 申请加入', time: '5 分钟前' },
-  { title: '权限调整', detail: 'admin 更新了角色权限', time: '20 分钟前' },
-  { title: '账号冻结', detail: '禁用用户 demo_user', time: '1 小时前' },
-  { title: '批量导入', detail: '导入 35 条用户数据', time: '2 小时前' },
+  { id: 'user-apply', title: '新用户申请', detail: 'marketing_lead 申请加入', time: '5 分钟前' },
+  { id: 'permission-update', title: '权限调整', detail: 'admin 更新了角色权限', time: '20 分钟前' },
+  { id: 'account-freeze', title: '账号冻结', detail: '禁用用户 demo_user', time: '1 小时前' },
+  { id: 'batch-import', title: '批量导入', detail: '导入 35 条用户数据', time: '2 小时前' },
 ]
 </script>
 
@@ -116,8 +116,8 @@ const recentUpdates = [
       <Card title="近期动态" class="lg:col-span-2">
         <div class="space-y-4">
           <div
-            v-for="(item, index) in recentUpdates"
-            :key="index"
+            v-for="item in recentUpdates"
+            :key="item.id"
             class="flex items-start gap-3 pb-4 border-b border-slate-100 last:border-0 last:pb-0"
           >
             <div class="w-2 h-2 rounded-full mt-2 flex-shrink-0 bg-blue-500"></div>

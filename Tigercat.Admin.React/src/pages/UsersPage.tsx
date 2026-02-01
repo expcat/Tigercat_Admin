@@ -15,10 +15,10 @@ const statusOverview = [
 ];
 
 const recentUpdates = [
-  { title: '新用户申请', detail: 'marketing_lead 申请加入', time: '5 分钟前' },
-  { title: '权限调整', detail: 'admin 更新了角色权限', time: '20 分钟前' },
-  { title: '账号冻结', detail: '禁用用户 demo_user', time: '1 小时前' },
-  { title: '批量导入', detail: '导入 35 条用户数据', time: '2 小时前' },
+  { id: 'user-apply', title: '新用户申请', detail: 'marketing_lead 申请加入', time: '5 分钟前' },
+  { id: 'permission-update', title: '权限调整', detail: 'admin 更新了角色权限', time: '20 分钟前' },
+  { id: 'account-freeze', title: '账号冻结', detail: '禁用用户 demo_user', time: '1 小时前' },
+  { id: 'batch-import', title: '批量导入', detail: '导入 35 条用户数据', time: '2 小时前' },
 ];
 
 function UsersPage() {
@@ -127,9 +127,9 @@ function UsersPage() {
 
         <Card title="近期动态" className="lg:col-span-2">
           <div className="space-y-4">
-            {recentUpdates.map((item, index) => (
+            {recentUpdates.map((item) => (
               <div
-                key={index}
+                key={item.id}
                 className="flex items-start gap-3 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
                 <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0 bg-blue-500" />
                 <div className="flex-1 min-w-0">
