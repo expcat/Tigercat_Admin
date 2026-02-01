@@ -2,7 +2,7 @@ using System.Text.Json;
 using StackExchange.Redis;
 using Tigercat.Admin.Api.Serialization;
 
-namespace Tigercat.Admin.Api.Caching;
+namespace Tigercat.Admin.Api.Cache;
 
 public class RedisCacheService : ICacheService
 {

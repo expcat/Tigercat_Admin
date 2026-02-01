@@ -1,4 +1,4 @@
-namespace Tigercat.Admin.Api.Caching;
+namespace Tigercat.Admin.Api.Cache;
 
 public static class CacheKeys
 {
