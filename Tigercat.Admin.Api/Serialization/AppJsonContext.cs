@@ -15,6 +15,7 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(ApiResponse<MessageResponse>))]
 [JsonSerializable(typeof(ApiResponse<HealthResponse>))]
 [JsonSerializable(typeof(ApiResponse<InfoResponse>))]
+[JsonSerializable(typeof(UserResponse))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }
