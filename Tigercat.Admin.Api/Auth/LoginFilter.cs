@@ -23,6 +23,7 @@ public class LoginFilter : IEndpointFilter
         }
 
         httpContext.Items[AuthConstants.UsernameItemKey] = session.Username;
+        httpContext.Items[AuthConstants.TokenItemKey] = token;
         return await next(context);
     }
 
@@ -62,4 +63,5 @@ public static class AuthConstants
     public const string AuthorizationHeader = "Authorization";
     public const string BearerPrefix = "Bearer ";
     public const string UsernameItemKey = "auth.username";
+    public const string TokenItemKey = "auth.token";
 }

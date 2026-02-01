@@ -96,33 +96,11 @@ public class AuthEndpoints : IEndpointDefinition
         ISessionStore sessionStore,
         CancellationToken ct)
     {
-        var token = GetToken(httpContext);
-        if (!string.IsNullOrWhiteSpace(token))
+        if (httpContext.Items.TryGetValue(AuthConstants.TokenItemKey, out var tokenObj) && tokenObj is string token)
         {
             await sessionStore.RevokeAsync(token, ct);
         }
 
         return ApiResult.Ok(new MessageResponse("退出成功"));
-    }
-
-    private static string? GetToken(HttpContext httpContext)
-    {
-        if (httpContext.Request.Headers.TryGetValue(AuthConstants.TokenHeader, out var tokenHeader) &&
-            !string.IsNullOrEmpty(tokenHeader))
-        {
-            return tokenHeader.ToString();
-        }
-
-        if (httpContext.Request.Headers.TryGetValue(AuthConstants.AuthorizationHeader, out var authHeader) &&
-            !string.IsNullOrEmpty(authHeader))
-        {
-            var value = authHeader.ToString();
-            if (value.StartsWith(AuthConstants.BearerPrefix, StringComparison.OrdinalIgnoreCase))
-            {
-            return value[AuthConstants.BearerPrefix.Length..].Trim();
-            }
-        }
-
-        return null;
     }
 }
