@@ -58,7 +58,8 @@ public class RedisCacheService : ICacheService
         ct.ThrowIfCancellationRequested();
         if (value is null)
         {
-            throw new ArgumentNullException(nameof(value));
+            await RemoveAsync(key, ct);
+            return;
         }
         try
         {
@@ -116,11 +117,11 @@ public class RedisCacheService : ICacheService
                 ? TimeSpan.FromSeconds(Math.Min(cacheTtl.TotalSeconds, MaxLockExpirySeconds))
                 : TimeSpan.FromSeconds(MaxLockExpirySeconds);
 
-            var deadline = DateTime.UtcNow.AddSeconds(LockAcquisitionTimeoutSeconds);
+            var deadline = Environment.TickCount64 + LockAcquisitionTimeoutSeconds * 1000L;
             while (true)
             {
                 ct.ThrowIfCancellationRequested();
-                if (DateTime.UtcNow >= deadline)
+                if (Environment.TickCount64 >= deadline)
                 {
                     break;
                 }
@@ -139,9 +140,12 @@ public class RedisCacheService : ICacheService
                             return cachedAfterLock;
                         }
 
-                        var value = await factory(ct);
+                    var value = await factory(ct);
+                    if (value is not null)
+                    {
                         await SetAsync(key, value, ttl, ct);
-                        return value;
+                    }
+                    return value;
                     }
                     finally
                     {
@@ -175,6 +179,10 @@ public class RedisCacheService : ICacheService
 
             var fallbackValue = await factory(ct);
             _logger.LogWarning("Redis cache lock timeout for key {CacheKey}; returning uncached value.", key);
+            if (fallbackValue is not null)
+            {
+                await SetAsync(key, fallbackValue, ttl, ct);
+            }
             return fallbackValue;
         }
         catch (RedisConnectionException ex)
