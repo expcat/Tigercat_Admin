@@ -76,18 +76,18 @@ app.MapGet("/api/info", GetInfo)
 
 app.Run();
 
-static async Task<IResult> GetHealth(CancellationToken ct)
+static Task<IResult> GetHealth(CancellationToken ct)
 {
     ct.ThrowIfCancellationRequested();
-    return await Task.FromResult<IResult>(Results.Json(
+    return Task.FromResult<IResult>(Results.Json(
         ApiResult.Ok(new HealthResponse("healthy", DateTime.UtcNow)),
         AppJsonContext.Default.ApiResponseHealthResponse));
 }
 
-static async Task<IResult> GetInfo(CancellationToken ct)
+static Task<IResult> GetInfo(CancellationToken ct)
 {
     ct.ThrowIfCancellationRequested();
-    return await Task.FromResult<IResult>(Results.Json(
+    return Task.FromResult<IResult>(Results.Json(
         ApiResult.Ok(new InfoResponse(
             "Tigercat Admin API",
             "1.0.0",

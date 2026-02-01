@@ -16,9 +16,9 @@ public class HomeEndpoints : IEndpointDefinition
             .WithName("Home");
     }
 
-    private static async Task<IResult> GetHome(CancellationToken ct)
+    private static Task<IResult> GetHome(CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        return await Task.FromResult<IResult>(Results.Json(ApiResult.Ok("Hello world"), AppJsonContext.Default.ApiResponseString));
+        return Task.FromResult<IResult>(Results.Json(ApiResult.Ok("Hello world"), AppJsonContext.Default.ApiResponseString));
     }
 }
