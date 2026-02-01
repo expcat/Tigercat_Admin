@@ -15,10 +15,10 @@ const statusOverview = [
 ];
 
 const recentUpdates = [
-  { title: '新增角色', detail: '创建“运营主管”角色', time: '10 分钟前' },
-  { title: '权限更新', detail: '更新“客服专员”权限', time: '35 分钟前' },
-  { title: '成员调整', detail: '将 user_lee 加入“审核员”', time: '1 小时前' },
-  { title: '角色停用', detail: '停用“临时访客”角色', time: '2 小时前' },
+  { id: 'role-create', title: '新增角色', detail: '创建“运营主管”角色', time: '10 分钟前' },
+  { id: 'role-update', title: '权限更新', detail: '更新“客服专员”权限', time: '35 分钟前' },
+  { id: 'member-adjust', title: '成员调整', detail: '将 user_lee 加入“审核员”', time: '1 小时前' },
+  { id: 'role-disable', title: '角色停用', detail: '停用“临时访客”角色', time: '2 小时前' },
 ];
 
 function RolesPage() {
@@ -127,9 +127,9 @@ function RolesPage() {
 
         <Card title="近期动态" className="lg:col-span-2">
           <div className="space-y-4">
-            {recentUpdates.map((item, index) => (
+            {recentUpdates.map((item) => (
               <div
-                key={index}
+                key={item.id}
                 className="flex items-start gap-3 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
                 <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0 bg-blue-500" />
                 <div className="flex-1 min-w-0">
