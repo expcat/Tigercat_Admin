@@ -7,6 +7,7 @@ using Tigercat.Admin.Api.Cache;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Endpoints;
+using Tigercat.Admin.Api.EventBus;
 using Tigercat.Admin.Api.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +31,9 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 
 builder.Services.AddSingleton<IRedisClient>(_ => new RedisClient(redisConnectionString));
 builder.Services.AddSingleton<ICacheService, RedisCacheService>();
+builder.Services.AddSingleton<IEventPublisher, RedisStreamPublisher>();
+builder.Services.AddSingleton<IIdempotencyService, RedisIdempotencyService>();
+builder.Services.AddHostedService<RedisStreamConsumer>();
 
 // Register EF Core stores
 builder.Services.AddScoped<IUserStore, EfUserStore>();
