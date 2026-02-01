@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MainHeader } from './MainHeader';
 import { MainSidebar } from './MainSidebar';
 
@@ -7,6 +7,8 @@ interface MainLayoutProps {
   user: { username: string } | null;
   onLogout: () => void;
   onChangePassword: () => void;
+  activeMenu?: string;
+  onNavigate?: (key: string) => void;
 }
 
 export function MainLayout({
@@ -14,18 +16,34 @@ export function MainLayout({
   user,
   onLogout,
   onChangePassword,
+  activeMenu,
+  onNavigate,
 }: MainLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const [activeMenu, setActiveMenu] = useState('home');
+  const [internalActiveMenu, setInternalActiveMenu] = useState(
+    activeMenu ?? 'home',
+  );
+  const currentActiveMenu = activeMenu ?? internalActiveMenu;
+
+  useEffect(() => {
+    if (activeMenu) {
+      setInternalActiveMenu(activeMenu);
+    }
+  }, [activeMenu]);
+
+  const handleMenuSelect = (key: string) => {
+    setInternalActiveMenu(key);
+    onNavigate?.(key);
+  };
 
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden">
       {/* Sidebar */}
       <MainSidebar
         collapsed={collapsed}
-        activeMenu={activeMenu}
+        activeMenu={currentActiveMenu}
         onCollapsedChange={setCollapsed}
-        onMenuSelect={setActiveMenu}
+        onMenuSelect={handleMenuSelect}
       />
 
       {/* Main Content Area */}

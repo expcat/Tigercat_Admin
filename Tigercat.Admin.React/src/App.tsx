@@ -23,6 +23,7 @@ import {
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
+const UsersPage = lazy(() => import('./pages/UsersPage'));
 
 // Loading fallback component
 function PageLoader() {
@@ -136,6 +137,17 @@ function App() {
     setChangeForm({ oldPassword: '', newPassword: '' });
   };
 
+  const resolveActiveMenu = useCallback((pathname: string) => {
+    switch (pathname) {
+      case '/users':
+        return 'users';
+      case '/dashboard':
+        return 'home';
+      default:
+        return 'home';
+    }
+  }, []);
+
   return (
     <Routes>
       {/* Guest routes (login/register) */}
@@ -166,7 +178,17 @@ function App() {
             <MainLayout
               user={session ? { username: session.username } : null}
               onLogout={handleLogout}
-              onChangePassword={() => setChangeOpen(true)}>
+              onChangePassword={() => setChangeOpen(true)}
+              activeMenu={resolveActiveMenu(location.pathname)}
+              onNavigate={(key) => {
+                if (key === 'home') {
+                  navigate('/dashboard');
+                  return;
+                }
+                if (key === 'users') {
+                  navigate('/users');
+                }
+              }}>
               <Suspense fallback={<PageLoader />}>
                 <HomePage
                   notice={notice}
@@ -174,6 +196,64 @@ function App() {
                   homeError={homeError}
                   username={session?.username}
                 />
+              </Suspense>
+
+              <Modal
+                open={changeOpen}
+                title="修改密码"
+                okText="确认修改"
+                cancelText="取消"
+                onOk={handleChangePassword}
+                onCancel={handleCloseChangeModal}>
+                <Form model={changeForm} labelWidth={88}>
+                  <FormItem name="oldPassword" label="旧密码">
+                    <Input
+                      value={changeForm.oldPassword}
+                      placeholder="请输入旧密码"
+                      onChange={(value) =>
+                        setChangeForm((prev) => ({
+                          ...prev,
+                          oldPassword: normalizeInput(value),
+                        }))
+                      }
+                    />
+                  </FormItem>
+                  <FormItem name="newPassword" label="新密码">
+                    <Input
+                      value={changeForm.newPassword}
+                      placeholder="请输入新密码"
+                      onChange={(value) =>
+                        setChangeForm((prev) => ({
+                          ...prev,
+                          newPassword: normalizeInput(value),
+                        }))
+                      }
+                    />
+                  </FormItem>
+                </Form>
+              </Modal>
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <MainLayout
+              user={session ? { username: session.username } : null}
+              onLogout={handleLogout}
+              onChangePassword={() => setChangeOpen(true)}
+              activeMenu={resolveActiveMenu(location.pathname)}
+              onNavigate={(key) => {
+                if (key === 'home') {
+                  navigate('/dashboard');
+                  return;
+                }
+                if (key === 'users') {
+                  navigate('/users');
+                }
+              }}>
+              <Suspense fallback={<PageLoader />}>
+                <UsersPage />
               </Suspense>
 
               <Modal
