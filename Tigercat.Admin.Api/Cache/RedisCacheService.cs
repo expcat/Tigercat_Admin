@@ -140,12 +140,12 @@ public class RedisCacheService : ICacheService
                             return cachedAfterLock;
                         }
 
-                    var value = await factory(ct);
-                    if (value is not null)
-                    {
-                        await SetAsync(key, value, ttl, ct);
-                    }
-                    return value;
+                        var value = await factory(ct);
+                        if (value is not null)
+                        {
+                            await SetAsync(key, value, ttl, ct);
+                        }
+                        return value;
                     }
                     finally
                     {
