@@ -119,7 +119,7 @@ public sealed class RedisStreamConsumer : BackgroundService
 
                 var minIdleMs = (long)PendingIdle.TotalMilliseconds;
                 var stalePendings = pendings
-                    .Where(p => p.idle > minIdleMs)
+                    .Where(p => p.idle >= minIdleMs)
                     .ToArray();
                 if (stalePendings.Length == 0)
                 {
@@ -159,7 +159,10 @@ public sealed class RedisStreamConsumer : BackgroundService
             var envelope = JsonSerializer.Deserialize<EventEnvelope>(payload, SerializerOptions);
             if (envelope is null)
             {
-                _logger.LogWarning("Failed to deserialize event payload for stream {Stream}.", stream);
+                _logger.LogWarning(
+                    "Failed to deserialize event payload for stream {Stream}, entry {EntryId}.",
+                    stream,
+                    entry.id);
                 _redis.XAck(stream, _groupName, new[] { entry.id });
                 return;
             }
@@ -171,6 +174,7 @@ public sealed class RedisStreamConsumer : BackgroundService
                 return;
             }
 
+            await ProcessEventAsync(envelope, stream, ct);
             _redis.XAck(stream, _groupName, new[] { entry.id });
             _logger.LogInformation("Event {EventType} handled for stream {Stream}.", envelope.EventType, stream);
         }
@@ -178,6 +182,13 @@ public sealed class RedisStreamConsumer : BackgroundService
         {
             _logger.LogWarning(ex, "Event handling failed for stream {Stream}.", stream);
         }
+    }
+
+    private Task ProcessEventAsync(EventEnvelope envelope, string stream, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        _logger.LogInformation("Processing event {EventType} from stream {Stream}.", envelope.EventType, stream);
+        return Task.CompletedTask;
     }
 
     private static string? GetField(StreamsEntry entry, string fieldName)
