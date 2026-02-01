@@ -28,6 +28,19 @@ public class RedisCacheService : ICacheService
         return JsonSerializer.Deserialize<T>(value.ToString(), SerializerOptions);
     }
 
+    public async Task<(bool found, T? value)> TryGetAsync<T>(string key, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        var database = _multiplexer.GetDatabase();
+        var value = await database.StringGetAsync(key).WaitAsync(ct);
+        if (!value.HasValue)
+        {
+            return (false, default);
+        }
+
+        return (true, JsonSerializer.Deserialize<T>(value.ToString(), SerializerOptions));
+    }
+
     public async Task SetAsync<T>(string key, T value, TimeSpan? ttl = null, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
@@ -49,10 +62,10 @@ public class RedisCacheService : ICacheService
         TimeSpan? ttl = null,
         CancellationToken ct = default)
     {
-        var cached = await GetAsync<T>(key, ct);
-        if (cached is not null)
+        var (found, cached) = await TryGetAsync<T>(key, ct);
+        if (found)
         {
-            return cached;
+            return cached!;
         }
 
         var value = await factory(ct);
