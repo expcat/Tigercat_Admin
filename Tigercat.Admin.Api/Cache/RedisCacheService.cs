@@ -9,6 +9,7 @@ public class RedisCacheService : ICacheService
 {
     private const int LockAcquisitionTimeoutSeconds = 5;
     private const int LockRetryDelayMilliseconds = 100;
+    private const int MaxLockExpirySeconds = 30;
     private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
 
     private readonly IConnectionMultiplexer _multiplexer;
@@ -113,8 +114,8 @@ public class RedisCacheService : ICacheService
             var lockKey = $"{key}:lock";
             var lockValue = Guid.NewGuid().ToString("N");
             var lockExpiry = ttl is { } cacheTtl
-                ? TimeSpan.FromSeconds(Math.Min(cacheTtl.TotalSeconds, 30))
-                : TimeSpan.FromSeconds(30);
+                ? TimeSpan.FromSeconds(Math.Min(cacheTtl.TotalSeconds, MaxLockExpirySeconds))
+                : TimeSpan.FromSeconds(MaxLockExpirySeconds);
 
             var deadline = DateTime.UtcNow.AddSeconds(LockAcquisitionTimeoutSeconds);
             while (true)
@@ -177,12 +178,14 @@ public class RedisCacheService : ICacheService
             await SetAsync(key, fallbackValue, ttl, ct);
             return fallbackValue;
         }
-        catch (RedisConnectionException)
+        catch (RedisConnectionException ex)
         {
+            _logger.LogWarning(ex, "Redis cache get-or-set failed for key {CacheKey}.", key);
             return await factory(ct);
         }
-        catch (RedisTimeoutException)
+        catch (RedisTimeoutException ex)
         {
+            _logger.LogWarning(ex, "Redis cache get-or-set timed out for key {CacheKey}.", key);
             return await factory(ct);
         }
     }
