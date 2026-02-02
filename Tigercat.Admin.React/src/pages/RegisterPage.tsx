@@ -9,6 +9,7 @@ import {
   Message,
 } from '@expcat/tigercat-react';
 import { debounce, useAuthForm, apiRequest } from '../utils';
+import { LogoIcon } from '../components/Icons';
 
 function RegisterPage() {
   const navigate = useNavigate();
@@ -42,7 +43,7 @@ function RegisterPage() {
             method: 'POST',
             body: JSON.stringify(form),
           });
-          const message = `用户 ${payload?.data?.username || form.username} 注册成功`;
+          const message = `用户 ${payload?.data?.username || form.username} 注册成功，${registerNoticeDuration} 秒后跳转登录`;
 
           Message.success({
             content: message,
@@ -54,6 +55,7 @@ function RegisterPage() {
             navigate('/login');
           }, registerNoticeDuration * 1000);
         } catch (error: any) {
+          clearRegisterRedirectTimer();
           Message.error({
             content: error.message,
             duration: registerNoticeDuration * 1000,
@@ -79,8 +81,8 @@ function RegisterPage() {
     <div className="w-full max-w-md mx-auto">
       {/* Logo & Welcome */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg mb-4">
-          <span className="text-2xl font-bold text-white">T</span>
+        <div className="inline-flex mb-4">
+          <LogoIcon size={64} />
         </div>
         <h1 className="text-2xl font-semibold text-gray-800">创建账号</h1>
         <p className="text-gray-500 mt-1">注册 Tigercat Admin 账号</p>

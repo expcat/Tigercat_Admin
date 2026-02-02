@@ -1,11 +1,22 @@
 import { Alert, Card, Text, Tag } from '@expcat/tigercat-react';
+import { useOutletContext } from 'react-router-dom';
+import {
+  UsersIcon,
+  LinkIcon,
+  TrendingUpIcon,
+  CheckCircleIcon,
+  ShieldIcon,
+  SettingsIcon,
+  FileTextIcon,
+  LogoIcon,
+} from '../components/Icons';
 
 interface Notice {
   type: 'success' | 'error' | '';
   message: string;
 }
 
-interface HomePageProps {
+interface HomePageContext {
   notice: Notice;
   homeMessage: string;
   homeError: string;
@@ -19,19 +30,36 @@ const stats = [
     value: '1,234',
     trend: '+12%',
     trendUp: true,
-    icon: '👥',
+    icon: <UsersIcon size={24} className="text-blue-500" />,
   },
-  { label: '活跃会话', value: '56', trend: '+5', trendUp: true, icon: '🔗' },
-  { label: '今日登录', value: '128', trend: '-3%', trendUp: false, icon: '📈' },
-  { label: '系统状态', value: '正常', status: 'success' as const, icon: '✅' },
+  {
+    label: '活跃会话',
+    value: '56',
+    trend: '+5',
+    trendUp: true,
+    icon: <LinkIcon size={24} className="text-indigo-500" />,
+  },
+  {
+    label: '今日登录',
+    value: '128',
+    trend: '-3%',
+    trendUp: false,
+    icon: <TrendingUpIcon size={24} className="text-pink-500" />,
+  },
+  {
+    label: '系统状态',
+    value: '正常',
+    status: 'success' as const,
+    icon: <CheckCircleIcon size={24} className="text-green-500" />,
+  },
 ];
 
 // 快捷操作
 const quickActions = [
-  { label: '用户管理', icon: '👥', key: 'users' },
-  { label: '角色配置', icon: '🛡️', key: 'roles' },
-  { label: '系统设置', icon: '⚙️', key: 'settings' },
-  { label: '查看日志', icon: '📋', key: 'logs' },
+  { label: '用户管理', icon: <UsersIcon size={20} />, key: 'users' },
+  { label: '角色配置', icon: <ShieldIcon size={20} />, key: 'roles' },
+  { label: '系统设置', icon: <SettingsIcon size={20} />, key: 'settings' },
+  { label: '查看日志', icon: <FileTextIcon size={20} />, key: 'logs' },
 ];
 
 // 最近活动
@@ -46,7 +74,9 @@ const recentActivities = [
   { time: '2 小时前', action: '用户 demo 修改密码', type: 'info' as const },
 ];
 
-function HomePage({ notice, homeMessage, homeError, username }: HomePageProps) {
+function HomePage() {
+  const { notice, homeMessage, homeError, username } =
+    useOutletContext<HomePageContext>();
   return (
     <div className="space-y-6">
       {/* 通知提示 */}
@@ -62,12 +92,12 @@ function HomePage({ notice, homeMessage, homeError, username }: HomePageProps) {
       {/* 欢迎区域 */}
       <Card className="overflow-hidden">
         <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4" />
+          <div className="absolute inset-0 bg-linear-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4" />
           <div className="relative flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                  <span className="text-xl text-white">🐯</span>
+                <div className="flex items-center justify-center shrink-0">
+                  <LogoIcon size={48} />
                 </div>
                 <div>
                   <Text size="lg" weight="bold" className="text-slate-800">
@@ -158,7 +188,7 @@ function HomePage({ notice, homeMessage, homeError, username }: HomePageProps) {
             {quickActions.map((action, index) => (
               <button
                 key={action.key}
-                className={`group flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br transition-all duration-300 cursor-pointer border border-slate-200 hover:border-transparent hover:shadow-md ${
+                className={`group flex flex-col items-center justify-center p-4 rounded-xl bg-linear-to-br transition-all duration-300 cursor-pointer border border-slate-200 hover:border-transparent hover:shadow-md ${
                   index === 0
                     ? 'from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200'
                     : index === 1
@@ -186,7 +216,7 @@ function HomePage({ notice, homeMessage, homeError, username }: HomePageProps) {
                 key={index}
                 className="flex items-start gap-3 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
                 <div
-                  className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                  className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
                     activity.type === 'info'
                       ? 'bg-blue-500'
                       : activity.type === 'success'

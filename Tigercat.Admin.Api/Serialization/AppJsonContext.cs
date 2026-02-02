@@ -5,6 +5,7 @@ using Tigercat.Admin.Api.EventBus;
 
 namespace Tigercat.Admin.Api.Serialization;
 
+[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(ApiContracts))]
 [JsonSerializable(typeof(RegisterRequest))]
 [JsonSerializable(typeof(LoginRequest))]

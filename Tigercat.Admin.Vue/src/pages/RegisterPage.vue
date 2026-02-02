@@ -3,6 +3,7 @@ import { ref, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, Card, Form, FormItem, Input, Message } from '@expcat/tigercat-vue'
 import { type AuthForm, debounce, useAuthForm, apiRequest } from '../utils'
+import AppLogo from '../components/AppLogo.vue'
 
 interface RegisterResult {
   username: string;
@@ -32,7 +33,7 @@ const doRegister = debounce(async () => {
       method: 'POST',
       body: JSON.stringify(form.value),
     })
-    const message = `用户 ${payload?.data?.username || form.value.username} 注册成功`
+    const message = `用户 ${payload?.data?.username || form.value.username} 注册成功，${registerNoticeDuration} 秒后跳转登录`
     clearRegisterRedirectTimer()
     
     Message.success({
@@ -69,8 +70,8 @@ const goToLogin = () => {
   <div class="w-full max-w-md mx-auto">
     <!-- Logo & Welcome -->
     <div class="text-center mb-8">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg mb-4">
-        <span class="text-2xl font-bold text-white">T</span>
+      <div class="inline-flex mb-4">
+        <AppLogo :size="64" />
       </div>
       <h1 class="text-2xl font-semibold text-gray-800">创建账号</h1>
       <p class="text-gray-500 mt-1">注册 Tigercat Admin 账号</p>

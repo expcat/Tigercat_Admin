@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Card, Text, Tag } from '@expcat/tigercat-vue'
+import Icon from '../components/Icon.vue'
 
 const basicSettings = [
   { label: '系统名称', value: 'Tigercat Admin', description: '后台管理系统展示名称', tag: '默认', tagColor: 'blue' },
@@ -29,7 +30,9 @@ const notificationSettings = [
           <div>
             <div class="flex items-center gap-3 mb-2">
               <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                <span class="text-xl text-white">⚙️</span>
+                <span class="text-xl text-white">
+                  <Icon name="settings" class="text-white" />
+                </span>
               </div>
               <div>
                 <Text size="lg" weight="bold" class="text-slate-800">

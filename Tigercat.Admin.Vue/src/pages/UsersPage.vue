@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import { Card, Text, Tag } from '@expcat/tigercat-vue'
+import Icon from '../components/Icon.vue'
 
 const quickActions = [
-  { label: '新增用户', icon: '➕', description: '创建新用户账号' },
-  { label: '导入用户', icon: '📥', description: '批量导入用户数据' },
-  { label: '权限配置', icon: '🛡️', description: '管理用户权限与角色' },
-  { label: '安全审计', icon: '🔍', description: '查看登录与操作记录' },
+  { label: '新增用户', icon: 'userPlus', description: '创建新用户账号', iconClass: 'text-blue-600' },
+  { label: '导入用户', icon: 'upload', description: '批量导入用户数据', iconClass: 'text-purple-600' },
+  { label: '权限配置', icon: 'shield', description: '管理用户权限与角色', iconClass: 'text-orange-600' },
+  { label: '安全审计', icon: 'search', description: '查看登录与操作记录', iconClass: 'text-green-600' },
 ]
 
 const statusOverview = [
-  { label: '活跃用户', value: '1,024', trend: '+8%', trendUp: true },
-  { label: '待审核', value: '12', trend: '+3', trendUp: true },
-  { label: '已禁用', value: '5', trend: '-1', trendUp: false },
-  { label: '今日新增', value: '18', trend: '+4', trendUp: true },
+  { label: '活跃用户', value: '1,024', trend: '+8%', trendUp: true, icon: 'users', iconClass: 'text-blue-600' },
+  { label: '待审核', value: '12', trend: '+3', trendUp: true, icon: 'clock', iconClass: 'text-purple-600' },
+  { label: '已禁用', value: '5', trend: '-1', trendUp: false, icon: 'ban', iconClass: 'text-orange-600' },
+  { label: '今日新增', value: '18', trend: '+4', trendUp: true, icon: 'sparkles', iconClass: 'text-green-600' },
 ]
 
 const recentUpdates = [
@@ -31,8 +32,8 @@ const recentUpdates = [
         <div class="relative flex items-center justify-between">
           <div>
             <div class="flex items-center gap-3 mb-2">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                <span class="text-xl text-white">👥</span>
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg text-white">
+                <Icon name="users" :size="24" />
               </div>
               <div>
                 <Text size="lg" weight="bold" class="text-slate-800">
@@ -70,7 +71,7 @@ const recentUpdates = [
             </div>
           </div>
           <div
-            class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110"
+            class="w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
             :class="[
               index === 0 ? 'bg-blue-100' : '',
               index === 1 ? 'bg-purple-100' : '',
@@ -78,7 +79,7 @@ const recentUpdates = [
               index === 3 ? 'bg-green-100' : '',
             ]"
           >
-            {{ index === 0 ? '👤' : index === 1 ? '⏳' : index === 2 ? '🚫' : '✨' }}
+            <Icon :name="stat.icon" :size="20" :class="stat.iconClass" />
           </div>
         </div>
       </Card>
@@ -98,8 +99,8 @@ const recentUpdates = [
               index === 3 ? 'from-green-50 to-green-100 hover:from-green-100 hover:to-green-200' : '',
             ]"
           >
-            <div class="w-10 h-10 rounded-lg bg-white/70 flex items-center justify-center text-xl">
-              {{ action.icon }}
+            <div class="w-10 h-10 rounded-lg bg-white/70 flex items-center justify-center transition-transform group-hover:scale-110">
+              <Icon :name="action.icon" :size="20" :class="action.iconClass" />
             </div>
             <div class="flex-1">
               <Text size="sm" weight="medium" class="text-slate-800">

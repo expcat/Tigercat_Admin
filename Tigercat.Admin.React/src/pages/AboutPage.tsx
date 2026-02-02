@@ -1,6 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Alert, Card, Text, Tag } from '@expcat/tigercat-react';
 import { apiRequest } from '../utils';
+import {
+  PackageIcon,
+  TagIcon,
+  MegaphoneIcon,
+  CompassIcon,
+  LockIcon,
+  ZapIcon,
+  PaletteIcon,
+  InfoIcon,
+  SettingsIcon,
+  GlobeIcon,
+  CodeIcon,
+} from '../components/Icons';
 
 interface InfoResponse {
   name: string;
@@ -12,19 +25,19 @@ const getInfoCards = (info: InfoResponse | null) => [
   {
     label: '服务名称',
     value: info?.name || 'Tigercat Admin API',
-    icon: '📦',
+    icon: <PackageIcon size={20} />,
     iconClassName: 'bg-blue-100 text-blue-600',
   },
   {
     label: '当前版本',
     value: info?.version || 'v1.0.0',
-    icon: '🏷️',
+    icon: <TagIcon size={20} />,
     iconClassName: 'bg-purple-100 text-purple-600',
   },
   {
     label: '服务描述',
     value: info?.description || 'Tigercat Admin Backend API',
-    icon: '📣',
+    icon: <MegaphoneIcon size={20} />,
     iconClassName: 'bg-green-100 text-green-600',
   },
 ];
@@ -33,25 +46,25 @@ const highlights = [
   {
     title: '清晰导航体验',
     description: '统一的侧边栏布局，快速定位关键模块。',
-    icon: '🧭',
+    icon: <CompassIcon size={24} className="text-blue-600" />,
     className: 'from-blue-50 to-blue-100',
   },
   {
     title: '安全认证体系',
     description: '基于令牌的认证机制，保障后台安全。',
-    icon: '🔒',
+    icon: <LockIcon size={24} className="text-purple-600" />,
     className: 'from-purple-50 to-purple-100',
   },
   {
     title: '快速响应接口',
     description: '轻量化 API 提供稳定的管理体验。',
-    icon: '⚡',
+    icon: <ZapIcon size={24} className="text-orange-600" />,
     className: 'from-orange-50 to-orange-100',
   },
   {
     title: '一致视觉语言',
     description: '保持与首页一致的风格与组件呈现。',
-    icon: '🎨',
+    icon: <PaletteIcon size={24} className="text-green-600" />,
     className: 'from-green-50 to-green-100',
   },
 ];
@@ -99,6 +112,55 @@ function AboutPage() {
     setErrorMessage('');
   };
 
+  const techStack = [
+    {
+      label: '前端框架',
+      value: 'React 18',
+      icon: <PackageIcon size={20} />,
+      iconClassName: 'bg-green-100 text-green-600',
+    },
+    {
+      label: '构建工具',
+      value: 'Vite',
+      icon: <ZapIcon size={20} />,
+      iconClassName: 'bg-orange-100 text-orange-600',
+    },
+    {
+      label: '开发语言',
+      value: 'TypeScript',
+      icon: <CodeIcon size={20} />,
+      iconClassName: 'bg-blue-100 text-blue-600',
+    },
+    {
+      label: 'UI 组件',
+      value: 'Tigercat UI',
+      icon: <PaletteIcon size={20} />,
+      iconClassName: 'bg-purple-100 text-purple-600',
+    },
+  ];
+
+  const systemInfo = [
+    {
+      label: '运行环境',
+      value: '.NET 10 + React',
+      icon: <SettingsIcon size={20} />,
+      iconClassName: 'bg-indigo-100 text-indigo-600',
+    },
+    {
+      label: '包管理器',
+      value: 'PNPM',
+      icon: <PackageIcon size={20} />,
+      iconClassName: 'bg-blue-100 text-blue-600',
+    },
+    {
+      label: 'API 状态',
+      value: connectionStatus.label,
+      icon: <GlobeIcon size={20} />,
+      iconClassName: 'bg-green-100 text-green-600',
+      tagColor: connectionStatus.color,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <Card className="overflow-hidden">
@@ -108,7 +170,9 @@ function AboutPage() {
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                  <span className="text-xl text-white">ℹ️</span>
+                  <span className="text-xl text-white">
+                    <InfoIcon size={24} className="text-white" />
+                  </span>
                 </div>
                 <div>
                   <Text size="lg" weight="bold" className="text-slate-800">
@@ -189,6 +253,60 @@ function AboutPage() {
                 <Text size="xs" color="secondary" className="mt-1">
                   {item.description}
                 </Text>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card title="技术栈">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {techStack.map((item) => (
+            <div
+              key={item.label}
+              className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70">
+              <div
+                className={`w-10 h-10 rounded-lg flex items-center justify-center ${item.iconClassName}`}>
+                {item.icon}
+              </div>
+              <div>
+                <Text size="xs" color="secondary">
+                  {item.label}
+                </Text>
+                <Text size="sm" weight="medium" className="text-slate-800">
+                  {item.value}
+                </Text>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card title="系统信息">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {systemInfo.map((item) => (
+            <div
+              key={item.label}
+              className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70">
+              <div
+                className={`w-10 h-10 rounded-lg flex items-center justify-center ${item.iconClassName}`}>
+                {item.icon}
+              </div>
+              <div>
+                <Text size="xs" color="secondary">
+                  {item.label}
+                </Text>
+                {'tagColor' in item ? (
+                  <Tag
+                    color={item.tagColor as 'blue' | 'red' | 'green'}
+                    size="sm">
+                    ● {item.value}
+                  </Tag>
+                ) : (
+                  <Text size="sm" weight="medium" className="text-slate-800">
+                    {item.value}
+                  </Text>
+                )}
               </div>
             </div>
           ))}

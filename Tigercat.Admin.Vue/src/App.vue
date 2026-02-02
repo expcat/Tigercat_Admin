@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ConfigProvider, Container, Form, FormItem, Input, Modal, Message } from '@expcat/tigercat-vue'
-import MainLayout from './components/MainLayout.vue'
+import { ConfigProvider, Message } from '@expcat/tigercat-vue'
 import {
   SESSION_KEY,
   safeParse,
@@ -22,9 +21,6 @@ const homeError = ref('')
 const changeOpen = ref(false)
 
 const authHeaders = computed(() => (session.value?.token ? { Authorization: `Bearer ${session.value.token}` } : {}))
-
-// Track if we're on a protected route (dashboard)
-const isProtectedRoute = computed(() => route.meta?.requiresAuth === true)
 
 const persistSession = (nextSession: Session | null) => {
   if (!nextSession) {
@@ -94,53 +90,20 @@ watch(
   },
   { immediate: true }
 )
+
+provide('session', session)
+provide('changeForm', changeForm)
+provide('changeOpen', changeOpen)
+provide('handleLogout', handleLogout)
+provide('handleChangePassword', handleChangePassword)
+provide('homeMessage', homeMessage)
+provide('homeError', homeError)
 </script>
 
 <template>
   <ConfigProvider>
-    <!-- Guest routes (login/register) -->
-    <div v-if="!isProtectedRoute" class="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 p-6 flex items-center justify-center">
-      <Container width="100%" :padding="false" class="w-full max-w-4xl">
-        <RouterView @success="onLoginSuccess" />
-      </Container>
-    </div>
-
-    <!-- Protected routes (dashboard) -->
-    <MainLayout
-      v-else
-      :session="session"
-      @logout="handleLogout"
-      @change-password="changeOpen = true"
-    >
-      <RouterView
-        :home-message="homeMessage"
-        :home-error="homeError"
-        :username="session?.username"
-      />
-        
-      <Modal
-        v-model="changeOpen"
-        title="修改密码"
-        ok-text="确认修改"
-        cancel-text="取消"
-        @ok="handleChangePassword"
-        @cancel="changeOpen = false"
-      >
-        <Form :model="changeForm" :label-width="88">
-          <FormItem name="oldPassword" label="旧密码">
-            <Input
-              v-model="changeForm.oldPassword"
-              placeholder="请输入旧密码"
-            />
-          </FormItem>
-          <FormItem name="newPassword" label="新密码">
-            <Input
-              v-model="changeForm.newPassword"
-              placeholder="请输入新密码"
-            />
-          </FormItem>
-        </Form>
-      </Modal>
-    </MainLayout>
+    <RouterView v-slot="{ Component }">
+      <component :is="Component" @success="onLoginSuccess" />
+    </RouterView>
   </ConfigProvider>
 </template>

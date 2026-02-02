@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { Alert, Card, Text, Tag } from '@expcat/tigercat-vue'
 import { apiRequest } from '../utils'
+import Icon from '../components/Icon.vue'
 
 interface InfoResponse {
   name: string
@@ -38,19 +39,19 @@ const infoCards = computed(() => [
   {
     label: '服务名称',
     value: info.value?.name || 'Tigercat Admin API',
-    icon: '📦',
+    icon: 'package',
     iconClass: 'bg-blue-100 text-blue-600'
   },
   {
     label: '当前版本',
     value: info.value?.version || 'v1.0.0',
-    icon: '🏷️',
+    icon: 'tag',
     iconClass: 'bg-purple-100 text-purple-600'
   },
   {
     label: '服务描述',
     value: info.value?.description || 'Tigercat Admin Backend API',
-    icon: '📣',
+    icon: 'megaphone',
     iconClass: 'bg-green-100 text-green-600'
   }
 ])
@@ -59,26 +60,30 @@ const highlights = [
   {
     title: '清晰导航体验',
     description: '统一的侧边栏布局，快速定位关键模块。',
-    icon: '🧭',
-    className: 'from-blue-50 to-blue-100'
+    icon: 'compass',
+    className: 'from-blue-50 to-blue-100',
+    iconClass: 'text-blue-600'
   },
   {
     title: '安全认证体系',
     description: '基于令牌的认证机制，保障后台安全。',
-    icon: '🔒',
-    className: 'from-purple-50 to-purple-100'
+    icon: 'lock',
+    className: 'from-purple-50 to-purple-100',
+    iconClass: 'text-purple-600'
   },
   {
     title: '快速响应接口',
     description: '轻量化 API 提供稳定的管理体验。',
-    icon: '⚡',
-    className: 'from-orange-50 to-orange-100'
+    icon: 'zap',
+    className: 'from-orange-50 to-orange-100',
+    iconClass: 'text-orange-600'
   },
   {
     title: '一致视觉语言',
     description: '保持与首页一致的风格与组件呈现。',
-    icon: '🎨',
-    className: 'from-green-50 to-green-100'
+    icon: 'palette',
+    className: 'from-green-50 to-green-100',
+    iconClass: 'text-green-600'
   }
 ]
 
@@ -86,25 +91,25 @@ const techStack = [
   {
     label: '前端框架',
     value: 'Vue 3',
-    icon: '🧩',
+    icon: 'package',
     iconClass: 'bg-green-100 text-green-600'
   },
   {
     label: '构建工具',
     value: 'Vite',
-    icon: '⚡',
+    icon: 'zap',
     iconClass: 'bg-orange-100 text-orange-600'
   },
   {
     label: '开发语言',
     value: 'TypeScript',
-    icon: '📝',
+    icon: 'code',
     iconClass: 'bg-blue-100 text-blue-600'
   },
   {
     label: 'UI 组件',
     value: 'Tigercat UI',
-    icon: '🎨',
+    icon: 'palette',
     iconClass: 'bg-purple-100 text-purple-600'
   }
 ]
@@ -113,19 +118,19 @@ const systemInfo = computed(() => [
   {
     label: '运行环境',
     value: '.NET 10 + Vue 3',
-    icon: '⚙️',
+    icon: 'settings',
     iconClass: 'bg-indigo-100 text-indigo-600'
   },
   {
     label: '包管理器',
     value: 'PNPM',
-    icon: '📦',
+    icon: 'package',
     iconClass: 'bg-blue-100 text-blue-600'
   },
   {
     label: 'API 状态',
     value: connectionStatus.value.label,
-    icon: '🌐',
+    icon: 'globe',
     iconClass: 'bg-green-100 text-green-600',
     tagColor: connectionStatus.value.color as 'blue' | 'red' | 'green'
   }
@@ -162,7 +167,9 @@ onMounted(() => {
           <div>
             <div class="flex items-center gap-3 mb-2">
               <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                <span class="text-xl text-white">ℹ️</span>
+                <span class="text-xl text-white">
+                  <Icon name="info" class="text-white" />
+                </span>
               </div>
               <div>
                 <Text size="lg" weight="bold" class="text-slate-800">关于 Tigercat</Text>
@@ -198,7 +205,7 @@ onMounted(() => {
           class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70"
         >
           <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="item.iconClass">
-            {{ item.icon }}
+            <Icon :name="item.icon" :size="20" />
           </div>
           <div>
             <Text size="xs" color="secondary">{{ item.label }}</Text>
@@ -217,7 +224,7 @@ onMounted(() => {
           :class="item.className"
         >
           <div class="w-10 h-10 rounded-lg bg-white/70 flex items-center justify-center text-xl">
-            {{ item.icon }}
+            <Icon :name="item.icon" :size="20" :class="item.iconClass" />
           </div>
           <div>
             <Text size="sm" weight="medium" class="text-slate-800">{{ item.title }}</Text>
@@ -235,7 +242,7 @@ onMounted(() => {
           class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70"
         >
           <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="item.iconClass">
-            {{ item.icon }}
+            <Icon :name="item.icon" :size="20" />
           </div>
           <div>
             <Text size="xs" color="secondary">{{ item.label }}</Text>
@@ -253,7 +260,7 @@ onMounted(() => {
           class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70"
         >
           <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="item.iconClass">
-            {{ item.icon }}
+            <Icon :name="item.icon" :size="20" />
           </div>
           <div>
             <Text size="xs" color="secondary">{{ item.label }}</Text>

@@ -41,6 +41,8 @@ builder.Services.AddScoped<ISessionStore, EfSessionStore>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
+    options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    options.SerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonContext.Default);
 });
 
@@ -65,7 +67,7 @@ try
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    
+
     await DbInitializer.InitializeAsync(context);
     logger.LogInformation("Database initialized successfully");
 }

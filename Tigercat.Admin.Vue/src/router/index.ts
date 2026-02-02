@@ -1,77 +1,90 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import { SESSION_KEY, safeParse } from '../utils'
-import type { Session } from '../utils'
+import { createRouter, createWebHistory } from 'vue-router';
+import { SESSION_KEY, safeParse } from '../utils';
+import type { Session } from '../utils';
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
-      path: '/',
-      redirect: '/login'
-    },
-    {
       path: '/login',
-      name: 'login',
-      component: () => import('../pages/LoginPage.vue'),
-      meta: { requiresGuest: true }
+      component: () => import('../components/GuestShell.vue'),
+      meta: { requiresGuest: true },
+      children: [
+        {
+          path: '',
+          name: 'login',
+          component: () => import('../pages/LoginPage.vue'),
+        },
+      ],
     },
     {
       path: '/register',
-      name: 'register',
-      component: () => import('../pages/RegisterPage.vue'),
-      meta: { requiresGuest: true }
+      component: () => import('../components/GuestShell.vue'),
+      meta: { requiresGuest: true },
+      children: [
+        {
+          path: '',
+          name: 'register',
+          component: () => import('../pages/RegisterPage.vue'),
+        },
+      ],
     },
     {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: () => import('../pages/HomePage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/users',
-      name: 'users',
-      component: () => import('../pages/UsersPage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/roles',
-      name: 'roles',
-      component: () => import('../pages/RolesPage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/settings',
-      name: 'settings',
-      component: () => import('../pages/SettingsPage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/about',
-      name: 'about',
-      component: () => import('../pages/AboutPage.vue'),
-      meta: { requiresAuth: true }
+      path: '/',
+      component: () => import('../components/ProtectedShell.vue'),
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: '',
+          redirect: '/dashboard',
+        },
+        {
+          path: 'dashboard',
+          name: 'dashboard',
+          component: () => import('../pages/HomePage.vue'),
+        },
+        {
+          path: 'users',
+          name: 'users',
+          component: () => import('../pages/UsersPage.vue'),
+        },
+        {
+          path: 'roles',
+          name: 'roles',
+          component: () => import('../pages/RolesPage.vue'),
+        },
+        {
+          path: 'settings',
+          name: 'settings',
+          component: () => import('../pages/SettingsPage.vue'),
+        },
+        {
+          path: 'about',
+          name: 'about',
+          component: () => import('../pages/AboutPage.vue'),
+        },
+      ],
     },
     {
       path: '/:pathMatch(.*)*',
-      redirect: '/login'
-    }
-  ]
-})
+      redirect: '/login',
+    },
+  ],
+});
 
-// Navigation guard for authentication
 router.beforeEach((to, _from, next) => {
-  const session = safeParse<Session>(localStorage.getItem(SESSION_KEY))
-  const isAuthed = Boolean(session?.token)
+  const session = safeParse<Session>(localStorage.getItem(SESSION_KEY));
+  const isAuthed = Boolean(session?.token);
+  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
+  const requiresGuest = to.matched.some((record) => record.meta.requiresGuest);
 
-  if (to.meta.requiresAuth && !isAuthed) {
-    // Redirect to login if accessing protected route without auth
-    next({ name: 'login' })
-  } else if (to.meta.requiresGuest && isAuthed) {
-    // Redirect to dashboard if accessing guest-only route while authenticated
-    next({ name: 'dashboard' })
+  if (requiresAuth && !isAuthed) {
+    next({ name: 'login' });
+  } else if (requiresGuest && isAuthed) {
+    next({ name: 'dashboard' });
   } else {
-    next()
+    next();
   }
-})
+});
 
-export default router
+export default router;

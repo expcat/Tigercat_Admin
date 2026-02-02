@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, Card, Form, FormItem, Input, Message } from '@expcat/tigercat-vue'
 import { debounce, useAuthForm, apiRequest, type Session } from '../utils'
+import AppLogo from '../components/AppLogo.vue'
 
 const router = useRouter()
 
@@ -55,8 +56,8 @@ const goToRegister = () => {
   <div class="w-full max-w-md mx-auto">
     <!-- Logo & Welcome -->
     <div class="text-center mb-8">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg mb-4">
-        <span class="text-2xl font-bold text-white">T</span>
+      <div class="inline-flex mb-4">
+        <AppLogo :size="64" />
       </div>
       <h1 class="text-2xl font-semibold text-gray-800">欢迎回来</h1>
       <p class="text-gray-500 mt-1">登录到 Tigercat Admin</p>

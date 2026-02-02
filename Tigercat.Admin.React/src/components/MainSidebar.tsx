@@ -1,9 +1,21 @@
 import React, { useState } from 'react';
+import {
+  DashboardIcon,
+  ServerIcon,
+  UsersIcon,
+  ShieldIcon,
+  SettingsIcon,
+  InfoIcon,
+  LogoIcon,
+  ChevronRightIcon,
+  ChevronLeftIcon,
+  ChevronDownIcon,
+} from './Icons';
 
 interface MenuItem {
   key: string;
   label: string;
-  icon: string;
+  icon: React.ReactNode;
   children?: MenuItem[];
 }
 
@@ -18,16 +30,16 @@ const MENU_ITEMS: MenuItem[] = [
   {
     key: 'home',
     label: '仪表盘',
-    icon: '📊',
+    icon: <DashboardIcon size={20} />,
   },
   {
     key: 'system',
     label: '系统管理',
-    icon: '⚙️',
+    icon: <ServerIcon size={20} />,
     children: [
-      { key: 'users', label: '用户管理', icon: '👥' },
-      { key: 'roles', label: '角色管理', icon: '🛡️' },
-      { key: 'settings', label: '系统设置', icon: '🔧' },
+      { key: 'users', label: '用户管理', icon: <UsersIcon size={18} /> },
+      { key: 'roles', label: '角色管理', icon: <ShieldIcon size={18} /> },
+      { key: 'settings', label: '系统设置', icon: <SettingsIcon size={18} /> },
     ],
   },
 ];
@@ -36,7 +48,7 @@ const BOTTOM_MENU_ITEMS: MenuItem[] = [
   {
     key: 'about',
     label: '关于',
-    icon: 'ℹ️',
+    icon: <InfoIcon size={20} />,
   },
 ];
 
@@ -65,9 +77,7 @@ export function MainSidebar({
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b border-slate-100">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shrink-0">
-            <span className="text-lg text-white">🐯</span>
-          </div>
+          <LogoIcon />
           {!collapsed && (
             <span className="font-bold text-lg text-slate-800 tracking-wide whitespace-nowrap">
               Tigercat
@@ -92,7 +102,9 @@ export function MainSidebar({
                           ? 'bg-slate-100 text-slate-900'
                           : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                       }`}>
-                      <span className="text-base shrink-0">{item.icon}</span>
+                      <span className="shrink-0 text-slate-500">
+                        {item.icon}
+                      </span>
                       {!collapsed && (
                         <span className="flex-1 text-left whitespace-nowrap">
                           {item.label}
@@ -100,10 +112,10 @@ export function MainSidebar({
                       )}
                       {!collapsed && (
                         <span
-                          className={`text-xs transition-transform duration-200 ${
-                            isExpanded(item.key) ? 'rotate-90' : ''
+                          className={`text-slate-400 transition-transform duration-200 ${
+                            isExpanded(item.key) ? 'rotate-180' : ''
                           }`}>
-                          ▶
+                          <ChevronDownIcon size={16} />
                         </span>
                       )}
                     </button>
@@ -116,10 +128,11 @@ export function MainSidebar({
                               onClick={() => onMenuSelect(child.key)}
                               className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
                                 isActive(child.key)
-                                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium shadow-md'
+                                  ? 'text-blue-600 font-medium bg-blue-50'
                                   : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                               }`}>
-                              <span className="text-sm shrink-0">
+                              <span
+                                className={`shrink-0 ${isActive(child.key) ? 'text-blue-600' : 'text-slate-400'}`}>
                                 {child.icon}
                               </span>
                               <span className="whitespace-nowrap">
@@ -140,7 +153,10 @@ export function MainSidebar({
                         ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}>
-                    <span className="text-base shrink-0">{item.icon}</span>
+                    <span
+                      className={`shrink-0 ${isActive(item.key) ? 'text-white' : 'text-slate-500'}`}>
+                      {item.icon}
+                    </span>
                     {!collapsed && (
                       <span className="whitespace-nowrap">{item.label}</span>
                     )}
@@ -159,7 +175,10 @@ export function MainSidebar({
                       ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md'
                       : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}>
-                  <span className="text-base shrink-0">{item.icon}</span>
+                  <span
+                    className={`shrink-0 ${isActive(item.key) ? 'text-white' : 'text-slate-500'}`}>
+                    {item.icon}
+                  </span>
                   {!collapsed && (
                     <span className="whitespace-nowrap">{item.label}</span>
                   )}
@@ -175,9 +194,12 @@ export function MainSidebar({
         <button
           onClick={() => onCollapsedChange(!collapsed)}
           className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all duration-200">
-          <span
-            className={`transition-transform duration-200 shrink-0 ${collapsed ? '' : 'rotate-180'}`}>
-            ▶
+          <span className="shrink-0">
+            {collapsed ? (
+              <ChevronRightIcon size={18} />
+            ) : (
+              <ChevronLeftIcon size={18} />
+            )}
           </span>
           {!collapsed && <span className="whitespace-nowrap">收起菜单</span>}
         </button>

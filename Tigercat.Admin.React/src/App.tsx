@@ -1,5 +1,19 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import {
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+  Outlet,
+} from 'react-router-dom';
 import {
   Container,
   Modal,
@@ -19,7 +33,6 @@ import {
   Notice,
 } from './utils';
 
-// Lazy load pages
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -47,30 +60,32 @@ const PATH_TO_MENU = Object.fromEntries(
 type ChangePasswordForm = { oldPassword: string; newPassword: string };
 type ChangePasswordField = keyof ChangePasswordForm;
 
-// Loading fallback component
 function PageLoader() {
   return (
-    <div className="flex items-center justify-center h-full min-h-[200px]">
+    <div className="flex items-center justify-center h-full min-h-50">
       <div className="text-slate-500">加载中...</div>
     </div>
   );
 }
 
-// Guest layout wrapper for login/register pages
 function GuestLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 p-6 flex items-center justify-center">
+    <div className="min-h-screen bg-linear-to-br from-slate-100 via-blue-50 to-indigo-100 p-6 flex items-center justify-center">
       <Container className="w-full max-w-4xl" padding={false}>
-        <Suspense fallback={<PageLoader />}>
-          {children}
-        </Suspense>
+        <Suspense fallback={<PageLoader />}>{children}</Suspense>
       </Container>
     </div>
   );
 }
 
+interface HomeContext {
+  notice: Notice;
+  homeMessage: string;
+  homeError: string;
+  username?: string;
+}
+
 interface ProtectedLayoutProps {
-  children: React.ReactNode;
   user: { username: string } | null;
   activeMenu: MenuKey;
   onLogout: () => void;
@@ -81,10 +96,10 @@ interface ProtectedLayoutProps {
   onChangeField: (field: ChangePasswordField, value: string) => void;
   onChangePasswordSubmit: () => void;
   onCloseChangeModal: () => void;
+  homeContext: HomeContext;
 }
 
 function ProtectedLayout({
-  children,
   user,
   activeMenu,
   onLogout,
@@ -95,6 +110,7 @@ function ProtectedLayout({
   onChangeField,
   onChangePasswordSubmit,
   onCloseChangeModal,
+  homeContext,
 }: ProtectedLayoutProps) {
   return (
     <MainLayout
@@ -103,7 +119,9 @@ function ProtectedLayout({
       onChangePassword={onChangePassword}
       activeMenu={activeMenu}
       onNavigate={onNavigate}>
-      {children}
+      <Suspense fallback={<PageLoader />}>
+        <Outlet context={homeContext} />
+      </Suspense>
       <Modal
         open={changeOpen}
         title="修改密码"
@@ -172,20 +190,23 @@ function App() {
     navigate('/dashboard');
   };
 
-  const loadHome = useCallback(async (tokenOverride?: string) => {
-    setHomeError('');
-    try {
-      const headers = tokenOverride
-        ? { Authorization: `Bearer ${tokenOverride}` }
-        : authHeaders;
-      const payload = await apiRequest<string>('/api/home', {
-        headers: headers as HeadersInit,
-      });
-      setHomeMessage(payload?.data || '');
-    } catch (error: any) {
-      setHomeError(error.message);
-    }
-  }, [authHeaders]);
+  const loadHome = useCallback(
+    async (tokenOverride?: string) => {
+      setHomeError('');
+      try {
+        const headers = tokenOverride
+          ? { Authorization: `Bearer ${tokenOverride}` }
+          : authHeaders;
+        const payload = await apiRequest<string>('/api/home', {
+          headers: headers as HeadersInit,
+        });
+        setHomeMessage(payload?.data || '');
+      } catch (error: any) {
+        setHomeError(error.message);
+      }
+    },
+    [authHeaders],
+  );
 
   // Load home data when entering dashboard
   useEffect(() => {
@@ -230,6 +251,15 @@ function App() {
     () => PATH_TO_MENU[location.pathname] ?? DEFAULT_MENU,
     [location.pathname],
   );
+  const homeContext = useMemo(
+    () => ({
+      notice,
+      homeMessage,
+      homeError,
+      username: session?.username,
+    }),
+    [notice, homeMessage, homeError, session?.username],
+  );
   const handleNavigate = useCallback(
     (key: MenuKey) => {
       const nextPath = MENU_ROUTES[key];
@@ -246,7 +276,6 @@ function App() {
 
   return (
     <Routes>
-      {/* Guest routes (login/register) */}
       <Route element={<GuestRoute />}>
         <Route
           path="/login"
@@ -266,10 +295,8 @@ function App() {
         />
       </Route>
 
-      {/* Protected routes (dashboard) */}
       <Route element={<ProtectedRoute />}>
         <Route
-          path="/dashboard"
           element={
             <ProtectedLayout
               user={session ? { username: session.username } : null}
@@ -281,101 +308,18 @@ function App() {
               changeForm={changeForm}
               onChangeField={handleChangeField}
               onChangePasswordSubmit={handleChangePassword}
-              onCloseChangeModal={handleCloseChangeModal}>
-              <Suspense fallback={<PageLoader />}>
-                <HomePage
-                  notice={notice}
-                  homeMessage={homeMessage}
-                  homeError={homeError}
-                  username={session?.username}
-                />
-              </Suspense>
-            </ProtectedLayout>
-          }
-        />
-        <Route
-          path="/users"
-          element={
-            <ProtectedLayout
-              user={session ? { username: session.username } : null}
-              activeMenu={activeMenu}
-              onLogout={handleLogout}
-              onChangePassword={() => setChangeOpen(true)}
-              onNavigate={handleNavigate}
-              changeOpen={changeOpen}
-              changeForm={changeForm}
-              onChangeField={handleChangeField}
-              onChangePasswordSubmit={handleChangePassword}
-              onCloseChangeModal={handleCloseChangeModal}>
-              <Suspense fallback={<PageLoader />}>
-                <UsersPage />
-              </Suspense>
-            </ProtectedLayout>
-          }
-        />
-        <Route
-          path="/roles"
-          element={
-            <ProtectedLayout
-              user={session ? { username: session.username } : null}
-              activeMenu={activeMenu}
-              onLogout={handleLogout}
-              onChangePassword={() => setChangeOpen(true)}
-              onNavigate={handleNavigate}
-              changeOpen={changeOpen}
-              changeForm={changeForm}
-              onChangeField={handleChangeField}
-              onChangePasswordSubmit={handleChangePassword}
-              onCloseChangeModal={handleCloseChangeModal}>
-              <Suspense fallback={<PageLoader />}>
-                <RolesPage />
-              </Suspense>
-            </ProtectedLayout>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedLayout
-              user={session ? { username: session.username } : null}
-              activeMenu={activeMenu}
-              onLogout={handleLogout}
-              onChangePassword={() => setChangeOpen(true)}
-              onNavigate={handleNavigate}
-              changeOpen={changeOpen}
-              changeForm={changeForm}
-              onChangeField={handleChangeField}
-              onChangePasswordSubmit={handleChangePassword}
-              onCloseChangeModal={handleCloseChangeModal}>
-              <Suspense fallback={<PageLoader />}>
-                <SettingsPage />
-              </Suspense>
-            </ProtectedLayout>
-          }
-        />
-        <Route
-          path="/about"
-          element={
-            <ProtectedLayout
-              user={session ? { username: session.username } : null}
-              activeMenu={activeMenu}
-              onLogout={handleLogout}
-              onChangePassword={() => setChangeOpen(true)}
-              onNavigate={handleNavigate}
-              changeOpen={changeOpen}
-              changeForm={changeForm}
-              onChangeField={handleChangeField}
-              onChangePasswordSubmit={handleChangePassword}
-              onCloseChangeModal={handleCloseChangeModal}>
-              <Suspense fallback={<PageLoader />}>
-                <AboutPage />
-              </Suspense>
-            </ProtectedLayout>
-          }
-        />
+              onCloseChangeModal={handleCloseChangeModal}
+              homeContext={homeContext}
+            />
+          }>
+          <Route path="/dashboard" element={<HomePage />} />
+          <Route path="/users" element={<UsersPage />} />
+          <Route path="/roles" element={<RolesPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/about" element={<AboutPage />} />
+        </Route>
       </Route>
 
-      {/* Default redirect */}
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

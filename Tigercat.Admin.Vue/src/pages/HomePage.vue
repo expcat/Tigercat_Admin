@@ -1,32 +1,28 @@
 <script setup lang="ts">
-import { Alert, Card, Text, Badge, Button, Space, Tag } from '@expcat/tigercat-vue'
+import { inject, ref } from 'vue'
+import { Alert, Card, Text, Tag } from '@expcat/tigercat-vue'
+import type { Session } from '../utils'
+import Icon from '../components/Icon.vue'
+import AppLogo from '../components/AppLogo.vue'
 
-interface Notice {
-  type: 'success' | 'error' | '';
-  message: string;
-}
-
-defineProps<{
-  notice?: Notice;
-  homeMessage?: string;
-  homeError?: string;
-  username?: string;
-}>()
+const homeMessage = inject<import('vue').Ref<string>>('homeMessage', ref(''))
+const homeError = inject<import('vue').Ref<string>>('homeError', ref(''))
+const session = inject<import('vue').Ref<Session | null>>('session', ref(null))
 
 // 模拟统计数据
 const stats = [
-  { label: '总用户数', value: '1,234', trend: '+12%', trendUp: true, icon: '👥' },
-  { label: '活跃会话', value: '56', trend: '+5', trendUp: true, icon: '🔗' },
-  { label: '今日登录', value: '128', trend: '-3%', trendUp: false, icon: '📈' },
-  { label: '系统状态', value: '正常', status: 'success', icon: '✅' },
+  { label: '总用户数', value: '1,234', trend: '+12%', trendUp: true, icon: 'users', iconClass: 'text-blue-600' },
+  { label: '活跃会话', value: '56', trend: '+5', trendUp: true, icon: 'activity', iconClass: 'text-purple-600' },
+  { label: '今日登录', value: '128', trend: '-3%', trendUp: false, icon: 'barChart', iconClass: 'text-orange-600' },
+  { label: '系统状态', value: '正常', status: 'success', icon: 'shieldCheck', iconClass: 'text-green-600' },
 ]
 
 // 快捷操作
 const quickActions = [
-  { label: '用户管理', icon: '👥', key: 'users' },
-  { label: '角色配置', icon: '🛡️', key: 'roles' },
-  { label: '系统设置', icon: '⚙️', key: 'settings' },
-  { label: '查看日志', icon: '📋', key: 'logs' },
+  { label: '用户管理', icon: 'users', key: 'users' },
+  { label: '角色配置', icon: 'shield', key: 'roles' },
+  { label: '系统设置', icon: 'settings', key: 'settings' },
+  { label: '查看日志', icon: 'fileText', key: 'logs' },
 ]
 
 // 最近活动
@@ -40,28 +36,17 @@ const recentActivities = [
 
 <template>
   <div class="space-y-6">
-    <!-- 通知提示 -->
-    <Alert
-      v-if="notice?.message"
-      :type="notice.type || 'info'"
-      :title="notice.type === 'error' ? '操作失败' : '操作成功'"
-      :description="notice.message"
-      closable
-    />
-
     <!-- 欢迎区域 -->
     <Card class="overflow-hidden">
       <div class="relative">
-        <div class="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4"></div>
+        <div class="absolute inset-0 bg-linear-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4"></div>
         <div class="relative flex items-center justify-between">
           <div>
             <div class="flex items-center gap-3 mb-2">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                <span class="text-xl text-white">🐯</span>
-              </div>
+              <AppLogo class="drop-shadow-sm" />
               <div>
                 <Text size="lg" weight="bold" class="text-slate-800">
-                  欢迎回来，{{ username || 'Admin' }}！
+                  欢迎回来，{{ session?.username || 'Admin' }}！
                 </Text>
                 <Text size="sm" color="secondary">
                   {{ homeMessage || '今天是个好日子，让我们开始工作吧！' }}
@@ -111,15 +96,15 @@ const recentActivities = [
             </div>
           </div>
           <div 
-            class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110"
+            class="w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
             :class="[
-              index === 0 ? 'bg-blue-100' : '',
-              index === 1 ? 'bg-purple-100' : '',
-              index === 2 ? 'bg-orange-100' : '',
-              index === 3 ? 'bg-green-100' : '',
+              index === 0 ? 'bg-blue-100 dark:bg-blue-900/30' : '',
+              index === 1 ? 'bg-purple-100 dark:bg-purple-900/30' : '',
+              index === 2 ? 'bg-orange-100 dark:bg-orange-900/30' : '',
+              index === 3 ? 'bg-green-100 dark:bg-green-900/30' : '',
             ]"
           >
-            {{ stat.icon }}
+            <Icon :name="stat.icon" :size="20" :class="stat.iconClass" />
           </div>
         </div>
       </Card>
@@ -133,7 +118,7 @@ const recentActivities = [
           <button
             v-for="(action, index) in quickActions"
             :key="action.key"
-            class="group flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br transition-all duration-300 cursor-pointer border border-slate-200 hover:border-transparent hover:shadow-md"
+            class="group flex flex-col items-center justify-center p-4 rounded-xl bg-linear-to-br transition-all duration-300 cursor-pointer border border-slate-200 hover:border-transparent hover:shadow-md"
             :class="[
               index === 0 ? 'from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200' : '',
               index === 1 ? 'from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200' : '',
@@ -141,7 +126,14 @@ const recentActivities = [
               index === 3 ? 'from-green-50 to-green-100 hover:from-green-100 hover:to-green-200' : '',
             ]"
           >
-            <span class="text-2xl mb-2 transition-transform group-hover:scale-110">{{ action.icon }}</span>
+            <div class="mb-2 transition-transform group-hover:scale-110">
+              <Icon :name="action.icon" :size="24" :class="[
+                index === 0 ? 'text-blue-600' : '',
+                index === 1 ? 'text-purple-600' : '',
+                index === 2 ? 'text-orange-600' : '',
+                index === 3 ? 'text-green-600' : '',
+              ]" />
+            </div>
             <Text size="sm" weight="medium">{{ action.label }}</Text>
           </button>
         </div>
@@ -156,7 +148,7 @@ const recentActivities = [
             class="flex items-start gap-3 pb-4 border-b border-slate-100 last:border-0 last:pb-0"
           >
             <div 
-              class="w-2 h-2 rounded-full mt-2 flex-shrink-0"
+              class="w-2 h-2 rounded-full mt-2 shrink-0"
               :class="{
                 'bg-blue-500': activity.type === 'info',
                 'bg-green-500': activity.type === 'success',
@@ -177,28 +169,36 @@ const recentActivities = [
     <Card title="系统信息">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">📦</div>
+          <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+            <Icon name="package" :size="20" />
+          </div>
           <div>
             <Text size="xs" color="secondary">系统版本</Text>
             <Text size="sm" weight="medium">v1.0.0</Text>
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">⚡</div>
+          <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
+            <Icon name="zap" :size="20" />
+          </div>
           <div>
             <Text size="xs" color="secondary">运行环境</Text>
             <Text size="sm" weight="medium">.NET 10 + Vue 3</Text>
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">📅</div>
+          <div class="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">
+            <Icon name="calendar" :size="20" />
+          </div>
           <div>
             <Text size="xs" color="secondary">最后更新</Text>
             <Text size="sm" weight="medium">2026-01-28</Text>
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600">🌐</div>
+          <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+            <Icon name="globe" :size="20" />
+          </div>
           <div>
             <Text size="xs" color="secondary">API 状态</Text>
             <Tag color="green" size="sm">● 在线</Tag>

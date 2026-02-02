@@ -1,5 +1,6 @@
 import React from 'react';
 import { Text, Avatar } from '@expcat/tigercat-react';
+import { HomeIcon, LockIcon, LogOutIcon } from './Icons';
 
 interface MainHeaderProps {
   session: { username: string } | null;
@@ -17,7 +18,9 @@ export function MainHeader({
       {/* 左侧标题 */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-xl">🏠</span>
+          <span className="text-slate-600">
+            <HomeIcon size={24} />
+          </span>
           <Text size="lg" weight="bold" className="text-slate-800">
             管理中心
           </Text>
@@ -43,13 +46,13 @@ export function MainHeader({
           <button
             onClick={onChangePassword}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors">
-            <span>🔒</span>
+            <LockIcon size={16} />
             <span>修改密码</span>
           </button>
           <button
             onClick={onLogout}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 hover:text-red-700 font-medium transition-colors">
-            <span>🚪</span>
+            <LogOutIcon size={16} />
             <span>退出</span>
           </button>
         </div>

@@ -21,58 +21,36 @@ const route = useRoute()
 const router = useRouter()
 
 const collapsed = ref(false)
-const activeMenu = ref('home')
 
-const handleMenuSelect = (key: string) => {
+const MENU_ROUTES = {
+  home: 'dashboard',
+  users: 'users',
+  roles: 'roles',
+  settings: 'settings',
+  about: 'about'
+} as const
+
+type MenuKey = keyof typeof MENU_ROUTES
+
+const activeMenu = ref<MenuKey>('home')
+
+const ROUTE_TO_MENU = Object.fromEntries(
+  Object.entries(MENU_ROUTES).map(([key, value]) => [value, key as MenuKey])
+) as Record<string, MenuKey | undefined>
+
+const handleMenuSelect = (key: MenuKey) => {
   activeMenu.value = key
-  switch (key) {
-    case 'home':
-      router.push({ name: 'dashboard' })
-      break
-    case 'users':
-      router.push({ name: 'users' })
-      break
-    case 'roles':
-      router.push({ name: 'roles' })
-      break
-    case 'settings':
-      router.push({ name: 'settings' })
-      break
-    case 'about':
-      router.push({ name: 'about' })
-      break
-    default:
-      break
-  }
-}
-
-const handleRouteChange = (path: string) => {
-  switch (path) {
-    case '/dashboard':
-      activeMenu.value = 'home'
-      break
-    case '/users':
-      activeMenu.value = 'users'
-      break
-    case '/roles':
-      activeMenu.value = 'roles'
-      break
-    case '/settings':
-      activeMenu.value = 'settings'
-      break
-    case '/about':
-      activeMenu.value = 'about'
-      break
-    default:
-      activeMenu.value = 'home'
-      break
-  }
+  router.push({ name: MENU_ROUTES[key] })
 }
 
 watch(
-  () => route.path,
-  (path) => {
-    handleRouteChange(path)
+  () => route.name,
+  (name) => {
+    if (typeof name === 'string') {
+      activeMenu.value = ROUTE_TO_MENU[name] ?? 'home'
+    } else {
+      activeMenu.value = 'home'
+    }
   },
   { immediate: true }
 )

@@ -8,12 +8,8 @@ import {
   Input,
   Message,
 } from '@expcat/tigercat-react';
-import {
-  debounce,
-  useAuthForm,
-  apiRequest,
-  type Session,
-} from '../utils';
+import { debounce, useAuthForm, apiRequest, type Session } from '../utils';
+import { LogoIcon } from '../components/Icons';
 
 interface LoginPageProps {
   onSuccess: (session: Session) => void;
@@ -67,8 +63,8 @@ function LoginPage({ onSuccess }: LoginPageProps) {
     <div className="w-full max-w-md mx-auto">
       {/* Logo & Welcome */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg mb-4">
-          <span className="text-2xl font-bold text-white">T</span>
+        <div className="inline-flex mb-4">
+          <LogoIcon size={64} />
         </div>
         <h1 className="text-2xl font-semibold text-gray-800">欢迎回来</h1>
         <p className="text-gray-500 mt-1">登录到 Tigercat Admin</p>

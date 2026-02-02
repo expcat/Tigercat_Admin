@@ -1,4 +1,5 @@
 import { Card, Tag, Text } from '@expcat/tigercat-react';
+import { SettingsIcon } from '../components/Icons';
 
 type TagColor = 'blue' | 'green' | 'purple' | 'orange';
 
@@ -104,8 +105,8 @@ function SettingsPage() {
           <div className="relative flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                  <span className="text-xl text-white">⚙️</span>
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg text-white">
+                  <SettingsIcon size={24} />
                 </div>
                 <div>
                   <Text size="lg" weight="bold" className="text-slate-800">

@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import { Card, Text, Tag } from '@expcat/tigercat-vue'
+import Icon from '../components/Icon.vue'
 
 const quickActions = [
-  { label: '新增角色', icon: '➕', description: '创建新的角色与权限' },
-  { label: '成员分配', icon: '👤', description: '为角色分配成员' },
-  { label: '权限模板', icon: '📋', description: '管理权限模板' },
-  { label: '审计日志', icon: '🔍', description: '查看角色变更记录' },
+  { label: '新增角色', icon: 'userPlus', description: '创建新的角色与权限', iconClass: 'text-blue-600' },
+  { label: '成员分配', icon: 'users', description: '为角色分配成员', iconClass: 'text-purple-600' },
+  { label: '权限模板', icon: 'clipboard', description: '管理权限模板', iconClass: 'text-orange-600' },
+  { label: '审计日志', icon: 'search', description: '查看角色变更记录', iconClass: 'text-green-600' },
 ]
 
 const statusOverview = [
-  { label: '系统角色', value: '8', trend: '+1', trendUp: true },
-  { label: '自定义角色', value: '14', trend: '+2', trendUp: true },
-  { label: '待审核', value: '3', trend: '+1', trendUp: true },
-  { label: '已禁用', value: '1', trend: '0', trendUp: false },
+  { label: '系统角色', value: '8', trend: '+1', trendUp: true, icon: 'shield' },
+  { label: '自定义角色', value: '14', trend: '+2', trendUp: true, icon: 'sparkles' },
+  { label: '待审核', value: '3', trend: '+1', trendUp: true, icon: 'clock' },
+  { label: '已禁用', value: '1', trend: '0', trendUp: false, icon: 'ban' },
 ]
 
 const recentUpdates = [
@@ -32,7 +33,9 @@ const recentUpdates = [
           <div>
             <div class="flex items-center gap-3 mb-2">
               <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                <span class="text-xl text-white">🛡️</span>
+                <span class="text-xl text-white">
+                  <Icon name="shield" class="text-white" />
+                </span>
               </div>
               <div>
                 <Text size="lg" weight="bold" class="text-slate-800">
@@ -72,13 +75,13 @@ const recentUpdates = [
           <div
             class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110"
             :class="[
-              index === 0 ? 'bg-blue-100' : '',
-              index === 1 ? 'bg-purple-100' : '',
-              index === 2 ? 'bg-orange-100' : '',
-              index === 3 ? 'bg-green-100' : '',
+              index === 0 ? 'bg-blue-100 text-blue-600' : '',
+              index === 1 ? 'bg-purple-100 text-purple-600' : '',
+              index === 2 ? 'bg-orange-100 text-orange-600' : '',
+              index === 3 ? 'bg-green-100 text-green-600' : '',
             ]"
           >
-            {{ index === 0 ? '🛡️' : index === 1 ? '✨' : index === 2 ? '⏳' : '🚫' }}
+            <Icon :name="stat.icon" :size="20" />
           </div>
         </div>
       </Card>
@@ -99,7 +102,7 @@ const recentUpdates = [
             ]"
           >
             <div class="w-10 h-10 rounded-lg bg-white/70 flex items-center justify-center text-xl">
-              {{ action.icon }}
+              <Icon :name="action.icon" :size="20" :class="action.iconClass" />
             </div>
             <div class="flex-1">
               <Text size="sm" weight="medium" class="text-slate-800">
