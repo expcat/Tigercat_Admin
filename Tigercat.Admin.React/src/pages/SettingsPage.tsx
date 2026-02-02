@@ -1,11 +1,14 @@
 import { Card, Tag, Text } from '@expcat/tigercat-react';
 
+type TagColor = 'blue' | 'green' | 'purple' | 'orange';
+
 type SettingItem = {
+  id: string;
   label: string;
   value: string;
   description: string;
   tag: string;
-  tagColor: string;
+  tagColor: TagColor;
 };
 
 const itemCardClassName =
@@ -13,6 +16,7 @@ const itemCardClassName =
 
 const basicSettings: SettingItem[] = [
   {
+    id: 'basic-name',
     label: '系统名称',
     value: 'Tigercat Admin',
     description: '后台管理系统展示名称',
@@ -20,6 +24,7 @@ const basicSettings: SettingItem[] = [
     tagColor: 'blue',
   },
   {
+    id: 'basic-language',
     label: '默认语言',
     value: '中文（简体）',
     description: '界面默认显示语言',
@@ -27,6 +32,7 @@ const basicSettings: SettingItem[] = [
     tagColor: 'green',
   },
   {
+    id: 'basic-timezone',
     label: '时区',
     value: 'GMT+8',
     description: '日志与任务调度时区',
@@ -37,6 +43,7 @@ const basicSettings: SettingItem[] = [
 
 const securitySettings: SettingItem[] = [
   {
+    id: 'security-password',
     label: '密码策略',
     value: '至少 8 位',
     description: '包含数字与大小写',
@@ -44,6 +51,7 @@ const securitySettings: SettingItem[] = [
     tagColor: 'green',
   },
   {
+    id: 'security-mfa',
     label: '多因素认证',
     value: '可选',
     description: '支持短信与邮箱验证',
@@ -51,6 +59,7 @@ const securitySettings: SettingItem[] = [
     tagColor: 'blue',
   },
   {
+    id: 'security-session',
     label: '会话超时',
     value: '30 分钟',
     description: '超时后需重新登录',
@@ -61,6 +70,7 @@ const securitySettings: SettingItem[] = [
 
 const notificationSettings: SettingItem[] = [
   {
+    id: 'notify-system',
     label: '系统通知',
     value: '站内消息',
     description: '关键事件实时提醒',
@@ -68,6 +78,7 @@ const notificationSettings: SettingItem[] = [
     tagColor: 'green',
   },
   {
+    id: 'notify-email',
     label: '邮件通知',
     value: 'admin@tigercat.io',
     description: '告警发送邮箱',
@@ -75,6 +86,7 @@ const notificationSettings: SettingItem[] = [
     tagColor: 'blue',
   },
   {
+    id: 'notify-webhook',
     label: 'Webhook',
     value: '未配置',
     description: '对接外部系统',
@@ -121,7 +133,7 @@ function SettingsPage() {
         <Card title="基础">
           <div className="space-y-3">
             {basicSettings.map((item) => (
-              <div key={item.label} className={itemCardClassName}>
+              <div key={item.id} className={itemCardClassName}>
                 <div className="flex-1 min-w-0">
                   <Text size="sm" weight="medium" className="text-slate-800">
                     {item.label}
@@ -146,7 +158,7 @@ function SettingsPage() {
         <Card title="安全">
           <div className="space-y-3">
             {securitySettings.map((item) => (
-              <div key={item.label} className={itemCardClassName}>
+              <div key={item.id} className={itemCardClassName}>
                 <div className="flex-1 min-w-0">
                   <Text size="sm" weight="medium" className="text-slate-800">
                     {item.label}
@@ -171,7 +183,7 @@ function SettingsPage() {
         <Card title="通知">
           <div className="space-y-3">
             {notificationSettings.map((item) => (
-              <div key={item.label} className={itemCardClassName}>
+              <div key={item.id} className={itemCardClassName}>
                 <div className="flex-1 min-w-0">
                   <Text size="sm" weight="medium" className="text-slate-800">
                     {item.label}
