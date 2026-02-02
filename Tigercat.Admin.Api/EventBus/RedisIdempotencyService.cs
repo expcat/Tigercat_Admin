@@ -5,7 +5,6 @@ namespace Tigercat.Admin.Api.EventBus;
 
 public sealed class RedisIdempotencyService : IIdempotencyService
 {
-    // Cap TTL to avoid excessively long locks while still covering retry windows.
     private const int MaxTtlSeconds = EventBusConstants.MaxIdempotencyTtlSeconds;
     private readonly IRedisClient _redis;
     private readonly ILogger<RedisIdempotencyService> _logger;

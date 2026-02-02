@@ -8,9 +8,7 @@ namespace Tigercat.Admin.Api.EventBus;
 
 public sealed class RedisStreamConsumer : BackgroundService
 {
-    // Default window matches typical retry/backlog horizon for at-least-once delivery.
     private static readonly TimeSpan IdempotencyTtl = EventBusConstants.DefaultIdempotencyTtl;
-    // Minimum idle time before reclaiming pending messages.
     private static readonly TimeSpan PendingIdle = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan ErrorRetryDelay = TimeSpan.FromSeconds(2);
     private const int ReadBatchSize = 10;
@@ -50,7 +48,6 @@ public sealed class RedisStreamConsumer : BackgroundService
 
                 foreach (var stream in StreamNames)
                 {
-                    // XReadGroup is synchronous; blocking is bounded by ReadBlockMilliseconds.
                     var entries = _redis.XReadGroup(
                         _groupName,
                         _consumerName,
@@ -167,7 +164,6 @@ public sealed class RedisStreamConsumer : BackgroundService
                 return;
             }
 
-            // Idempotency lock is acquired before processing; TTL should exceed reclaim windows.
             var acquired = await _idempotency.TryAcquireAsync(envelope.EventId, IdempotencyTtl, ct);
             if (!acquired)
             {

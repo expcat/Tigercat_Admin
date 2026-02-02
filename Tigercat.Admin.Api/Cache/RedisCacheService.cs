@@ -7,7 +7,6 @@ namespace Tigercat.Admin.Api.Cache;
 
 public class RedisCacheService : ICacheService
 {
-    private const int LockAcquisitionTimeoutSeconds = 5;
     private const int LockRetryDelayMilliseconds = 100;
     private const int MaxLockExpirySeconds = 30;
     private const double MinLockExpirySeconds = 0.1;
@@ -42,14 +41,9 @@ public class RedisCacheService : ICacheService
 
             return (true, JsonSerializer.Deserialize<T>(value.ToString(), SerializerOptions));
         }
-        catch (RedisConnectionException ex)
+        catch (Exception ex) when (ex is RedisConnectionException or RedisTimeoutException)
         {
             _logger.LogWarning(ex, "Redis cache get failed for key {CacheKey}.", key);
-            return (false, default);
-        }
-        catch (RedisTimeoutException ex)
-        {
-            _logger.LogWarning(ex, "Redis cache get timed out for key {CacheKey}.", key);
             return (false, default);
         }
     }
@@ -68,13 +62,9 @@ public class RedisCacheService : ICacheService
             var payload = JsonSerializer.Serialize(value, SerializerOptions);
             await database.StringSetAsync(key, payload, ttl).WaitAsync(ct);
         }
-        catch (RedisConnectionException ex)
+        catch (Exception ex) when (ex is RedisConnectionException or RedisTimeoutException)
         {
             _logger.LogWarning(ex, "Redis cache set failed for key {CacheKey}.", key);
-        }
-        catch (RedisTimeoutException ex)
-        {
-            _logger.LogWarning(ex, "Redis cache set timed out for key {CacheKey}.", key);
         }
     }
 
@@ -86,13 +76,9 @@ public class RedisCacheService : ICacheService
             var database = _multiplexer.GetDatabase();
             await database.KeyDeleteAsync(key).WaitAsync(ct);
         }
-        catch (RedisConnectionException ex)
+        catch (Exception ex) when (ex is RedisConnectionException or RedisTimeoutException)
         {
             _logger.LogWarning(ex, "Redis cache remove failed for key {CacheKey}.", key);
-        }
-        catch (RedisTimeoutException ex)
-        {
-            _logger.LogWarning(ex, "Redis cache remove timed out for key {CacheKey}.", key);
         }
     }
 
@@ -119,15 +105,9 @@ public class RedisCacheService : ICacheService
                 : MaxLockExpirySeconds;
             var lockExpiry = TimeSpan.FromSeconds(lockExpirySeconds);
 
-            var startTicks = Environment.TickCount64;
-            while (true)
+            for (var attempt = 0; attempt < 2; attempt++)
             {
                 ct.ThrowIfCancellationRequested();
-                if (Environment.TickCount64 - startTicks >= LockAcquisitionTimeoutSeconds * 1000L)
-                {
-                    break;
-                }
-
                 var acquired = await database
                     .StringSetAsync(lockKey, lockValue, lockExpiry, When.NotExists)
                     .WaitAsync(ct);
@@ -156,13 +136,9 @@ public class RedisCacheService : ICacheService
                                     new RedisValue[] { lockValue })
                                 .WaitAsync(ct);
                         }
-                        catch (RedisConnectionException ex)
+                        catch (Exception ex) when (ex is RedisConnectionException or RedisTimeoutException)
                         {
                             _logger.LogWarning(ex, "Redis cache lock release failed for key {CacheKey}.", key);
-                        }
-                        catch (RedisTimeoutException ex)
-                        {
-                            _logger.LogWarning(ex, "Redis cache lock release timed out for key {CacheKey}.", key);
                         }
                     }
                 }
@@ -177,18 +153,13 @@ public class RedisCacheService : ICacheService
             }
 
             var fallbackValue = await factory(ct);
-            _logger.LogWarning("Redis cache lock timeout for key {CacheKey}; returning uncached value.", key);
+            _logger.LogWarning("Redis cache lock not acquired for key {CacheKey}; returning uncached value.", key);
             await SetAsync(key, fallbackValue, ttl, ct);
             return fallbackValue;
         }
-        catch (RedisConnectionException ex)
+        catch (Exception ex) when (ex is RedisConnectionException or RedisTimeoutException)
         {
             _logger.LogWarning(ex, "Redis cache get-or-set failed for key {CacheKey}.", key);
-            return await factory(ct);
-        }
-        catch (RedisTimeoutException ex)
-        {
-            _logger.LogWarning(ex, "Redis cache get-or-set timed out for key {CacheKey}.", key);
             return await factory(ct);
         }
     }
