@@ -34,7 +34,10 @@ const menuItems: MenuItem[] = [
       { key: 'roles', label: '角色管理', icon: '🛡️' },
       { key: 'settings', label: '系统设置', icon: '🔧' }
     ]
-  },
+  }
+]
+
+const bottomMenuItems: MenuItem[] = [
   {
     key: 'about',
     label: '关于',
@@ -84,7 +87,8 @@ const isActive = (key: string) => props.activeMenu === key
 
     <!-- Menu -->
     <nav class="flex-1 overflow-y-auto py-4 px-3">
-      <ul class="space-y-1">
+      <div class="flex flex-col min-h-full">
+        <ul class="space-y-1">
         <template v-for="item in menuItems" :key="item.key">
           <!-- 有子菜单 -->
           <li v-if="item.children && item.children.length > 0">
@@ -138,7 +142,24 @@ const isActive = (key: string) => props.activeMenu === key
             </button>
           </li>
         </template>
-      </ul>
+        </ul>
+        <ul class="mt-auto space-y-1 pt-4">
+          <li v-for="item in bottomMenuItems" :key="item.key">
+            <button
+              @click="handleMenuSelect(item.key)"
+              class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="[
+                isActive(item.key) 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md' 
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              ]"
+            >
+              <span class="text-base shrink-0">{{ item.icon }}</span>
+              <span v-if="!collapsed" class="whitespace-nowrap">{{ item.label }}</span>
+            </button>
+          </li>
+        </ul>
+      </div>
     </nav>
     
     <!-- 折叠按钮 -->
