@@ -1,6 +1,17 @@
 import { Card, Tag, Text } from '@expcat/tigercat-react';
 
-const basicSettings = [
+type SettingItem = {
+  label: string;
+  value: string;
+  description: string;
+  tag: string;
+  tagColor: string;
+};
+
+const itemCardClassName =
+  'flex items-start justify-between gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70';
+
+const basicSettings: SettingItem[] = [
   {
     label: '系统名称',
     value: 'Tigercat Admin',
@@ -24,7 +35,7 @@ const basicSettings = [
   },
 ];
 
-const securitySettings = [
+const securitySettings: SettingItem[] = [
   {
     label: '密码策略',
     value: '至少 8 位',
@@ -48,7 +59,7 @@ const securitySettings = [
   },
 ];
 
-const notificationSettings = [
+const notificationSettings: SettingItem[] = [
   {
     label: '系统通知',
     value: '站内消息',
@@ -110,9 +121,7 @@ function SettingsPage() {
         <Card title="基础">
           <div className="space-y-3">
             {basicSettings.map((item) => (
-              <div
-                key={item.label}
-                className="flex items-start justify-between gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70">
+              <div key={item.label} className={itemCardClassName}>
                 <div className="flex-1 min-w-0">
                   <Text size="sm" weight="medium" className="text-slate-800">
                     {item.label}
@@ -137,9 +146,7 @@ function SettingsPage() {
         <Card title="安全">
           <div className="space-y-3">
             {securitySettings.map((item) => (
-              <div
-                key={item.label}
-                className="flex items-start justify-between gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70">
+              <div key={item.label} className={itemCardClassName}>
                 <div className="flex-1 min-w-0">
                   <Text size="sm" weight="medium" className="text-slate-800">
                     {item.label}
@@ -164,9 +171,7 @@ function SettingsPage() {
         <Card title="通知">
           <div className="space-y-3">
             {notificationSettings.map((item) => (
-              <div
-                key={item.label}
-                className="flex items-start justify-between gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70">
+              <div key={item.label} className={itemCardClassName}>
                 <div className="flex-1 min-w-0">
                   <Text size="sm" weight="medium" className="text-slate-800">
                     {item.label}
