@@ -1,5 +1,77 @@
 import { Card, Tag, Text } from '@expcat/tigercat-react';
 
+const basicSettings = [
+  {
+    label: '系统名称',
+    value: 'Tigercat Admin',
+    description: '后台管理系统展示名称',
+    tag: '默认',
+    tagColor: 'blue',
+  },
+  {
+    label: '默认语言',
+    value: '中文（简体）',
+    description: '界面默认显示语言',
+    tag: '已启用',
+    tagColor: 'green',
+  },
+  {
+    label: '时区',
+    value: 'GMT+8',
+    description: '日志与任务调度时区',
+    tag: '同步',
+    tagColor: 'purple',
+  },
+];
+
+const securitySettings = [
+  {
+    label: '密码策略',
+    value: '至少 8 位',
+    description: '包含数字与大小写',
+    tag: '强',
+    tagColor: 'green',
+  },
+  {
+    label: '多因素认证',
+    value: '可选',
+    description: '支持短信与邮箱验证',
+    tag: '推荐',
+    tagColor: 'blue',
+  },
+  {
+    label: '会话超时',
+    value: '30 分钟',
+    description: '超时后需重新登录',
+    tag: '生效中',
+    tagColor: 'orange',
+  },
+];
+
+const notificationSettings = [
+  {
+    label: '系统通知',
+    value: '站内消息',
+    description: '关键事件实时提醒',
+    tag: '开启',
+    tagColor: 'green',
+  },
+  {
+    label: '邮件通知',
+    value: 'admin@tigercat.io',
+    description: '告警发送邮箱',
+    tag: '启用',
+    tagColor: 'blue',
+  },
+  {
+    label: 'Webhook',
+    value: '未配置',
+    description: '对接外部系统',
+    tag: '待配置',
+    tagColor: 'orange',
+  },
+];
+
 function SettingsPage() {
   return (
     <div className="space-y-6">
@@ -17,7 +89,7 @@ function SettingsPage() {
                     系统设置
                   </Text>
                   <Text size="sm" color="secondary">
-                    管理基础配置、安全策略与通知规则
+                    统一管理基础、安全与通知配置
                   </Text>
                 </div>
               </div>
@@ -27,32 +99,92 @@ function SettingsPage() {
                 配置中心
               </Tag>
               <Tag color="green" size="sm">
-                同步完成
+                已同步
               </Tag>
             </div>
           </div>
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card title="配置中心">
-          <div className="space-y-2">
-            <Text size="sm" color="secondary">
-              设置数据将由后端配置中心实时同步。
-            </Text>
-            <Tag color="blue" size="sm">
-              等待同步
-            </Tag>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card title="基础">
+          <div className="space-y-3">
+            {basicSettings.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-start justify-between gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70">
+                <div className="flex-1 min-w-0">
+                  <Text size="sm" weight="medium" className="text-slate-800">
+                    {item.label}
+                  </Text>
+                  <Text size="xs" color="secondary" className="mt-1">
+                    {item.description}
+                  </Text>
+                </div>
+                <div className="text-right">
+                  <Text size="sm" className="text-slate-700">
+                    {item.value}
+                  </Text>
+                  <Tag color={item.tagColor} size="sm" className="mt-2">
+                    {item.tag}
+                  </Tag>
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
-        <Card title="安全提示">
-          <div className="space-y-2">
-            <Text size="sm" color="secondary">
-              如需调整安全策略，请联系系统管理员或在配置中心更新。
-            </Text>
-            <Tag color="green" size="sm">
-              保护中
-            </Tag>
+
+        <Card title="安全">
+          <div className="space-y-3">
+            {securitySettings.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-start justify-between gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70">
+                <div className="flex-1 min-w-0">
+                  <Text size="sm" weight="medium" className="text-slate-800">
+                    {item.label}
+                  </Text>
+                  <Text size="xs" color="secondary" className="mt-1">
+                    {item.description}
+                  </Text>
+                </div>
+                <div className="text-right">
+                  <Text size="sm" className="text-slate-700">
+                    {item.value}
+                  </Text>
+                  <Tag color={item.tagColor} size="sm" className="mt-2">
+                    {item.tag}
+                  </Tag>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card title="通知">
+          <div className="space-y-3">
+            {notificationSettings.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-start justify-between gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70">
+                <div className="flex-1 min-w-0">
+                  <Text size="sm" weight="medium" className="text-slate-800">
+                    {item.label}
+                  </Text>
+                  <Text size="xs" color="secondary" className="mt-1">
+                    {item.description}
+                  </Text>
+                </div>
+                <div className="text-right">
+                  <Text size="sm" className="text-slate-700">
+                    {item.value}
+                  </Text>
+                  <Tag color={item.tagColor} size="sm" className="mt-2">
+                    {item.tag}
+                  </Tag>
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
       </div>
