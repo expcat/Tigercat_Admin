@@ -83,7 +83,7 @@ function AboutPage() {
       setLoading(true);
       setErrorMessage('');
       try {
-        const payload: { data: InfoResponse } = await apiRequest('/api/info');
+        const payload = await apiRequest<InfoResponse>('/api/info');
         setInfo(payload.data);
       } catch (error: unknown) {
         setErrorMessage(getFriendlyErrorMessage(error));

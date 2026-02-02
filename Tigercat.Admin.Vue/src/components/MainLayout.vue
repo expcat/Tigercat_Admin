@@ -38,6 +38,9 @@ const handleMenuSelect = (key: string) => {
     case 'settings':
       router.push({ name: 'settings' })
       break
+    case 'about':
+      router.push({ name: 'about' })
+      break
     default:
       break
   }
@@ -56,6 +59,9 @@ const handleRouteChange = (path: string) => {
       break
     case '/settings':
       activeMenu.value = 'settings'
+      break
+    case '/about':
+      activeMenu.value = 'about'
       break
     default:
       activeMenu.value = 'home'
