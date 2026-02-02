@@ -1,11 +1,9 @@
 using FreeRedis;
-using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Cache;
 using Tigercat.Admin.Api.Common;
-using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Endpoints;
 using Tigercat.Admin.Api.EventBus;
 using Tigercat.Admin.Api.Serialization;
@@ -16,10 +14,6 @@ builder.AddServiceDefaults();
 
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
     ?? throw new InvalidOperationException("Redis connection string is not configured.");
-
-// Register EF Core DbContext with InMemory provider
-builder.Services.AddDbContext<AdminDbContext>(options =>
-    options.UseInMemoryDatabase("TigercatAdminDb"));
 
 // Redis clients: StackExchange.Redis for general cache operations, FreeRedis for stream-style workloads and blocking commands.
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
@@ -35,9 +29,9 @@ builder.Services.AddSingleton<IEventPublisher, RedisStreamPublisher>();
 builder.Services.AddSingleton<IIdempotencyService, RedisIdempotencyService>();
 builder.Services.AddHostedService<RedisStreamConsumer>();
 
-// Register EF Core stores
-builder.Services.AddScoped<IUserStore, EfUserStore>();
-builder.Services.AddScoped<ISessionStore, EfSessionStore>();
+// Register in-memory stores by default
+builder.Services.AddSingleton<IUserStore, InMemoryUserStore>();
+builder.Services.AddSingleton<ISessionStore, InMemorySessionStore>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -60,23 +54,6 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-
-// Initialize database with seed data
-try
-{
-    using var scope = app.Services.CreateScope();
-    var context = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-
-    await DbInitializer.InitializeAsync(context);
-    logger.LogInformation("Database initialized successfully");
-}
-catch (Exception ex)
-{
-    var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogError(ex, "An error occurred while initializing the database");
-    throw; // Re-throw to prevent app from starting with uninitialized database
-}
 
 if (app.Environment.IsDevelopment())
 {

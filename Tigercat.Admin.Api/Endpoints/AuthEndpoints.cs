@@ -30,8 +30,8 @@ public class AuthEndpoints : IEndpointDefinition
     }
 
     private static async Task<IResult> Register(
-        RegisterRequest request, 
-        IUserStore userStore, 
+        RegisterRequest request,
+        IUserStore userStore,
         IEventPublisher eventPublisher,
         HttpContext httpContext,
         CancellationToken ct)
@@ -44,7 +44,9 @@ public class AuthEndpoints : IEndpointDefinition
                 statusCode: 400);
         }
 
-        if (await userStore.ExistsAsync(request.Username, ct))
+        var username = NormalizeUsername(request.Username);
+
+        if (await userStore.ExistsAsync(username, ct))
         {
             return Results.Json(
                 ApiResult.Fail<UserResponse>("用户已存在", 409),
@@ -53,7 +55,7 @@ public class AuthEndpoints : IEndpointDefinition
         }
 
         var passwordHash = PasswordHasher.Hash(request.Password);
-        var created = await userStore.TryCreateUserAsync(request.Username, passwordHash, ct);
+        var created = await userStore.TryCreateUserAsync(username, passwordHash, ct);
         if (!created)
         {
             return Results.Json(
@@ -65,19 +67,19 @@ public class AuthEndpoints : IEndpointDefinition
             "auth.user.registered",
             new Dictionary<string, object?>
             {
-                ["username"] = request.Username
+                ["username"] = username
             },
             httpContext.TraceIdentifier);
 
         await eventPublisher.PublishAsync(envelope, EventBusConstants.AuthStream, ct);
 
-        return Results.Json(ApiResult.Ok(new UserResponse(request.Username)), AppJsonContext.Default.ApiResponseUserResponse);
+        return Results.Json(ApiResult.Ok(new UserResponse(username)), AppJsonContext.Default.ApiResponseUserResponse);
     }
 
     private static async Task<IResult> Login(
-        LoginRequest request, 
-        IUserStore userStore, 
-        ISessionStore sessionStore, 
+        LoginRequest request,
+        IUserStore userStore,
+        ISessionStore sessionStore,
         IEventPublisher eventPublisher,
         HttpContext httpContext,
         CancellationToken ct)
@@ -90,8 +92,9 @@ public class AuthEndpoints : IEndpointDefinition
                 statusCode: 401);
         }
 
+        var username = NormalizeUsername(request.Username);
         var passwordHash = PasswordHasher.Hash(request.Password);
-        if (!await userStore.ValidateUserAsync(request.Username, passwordHash, ct))
+        if (!await userStore.ValidateUserAsync(username, passwordHash, ct))
         {
             return Results.Json(
                 ApiResult.Fail<LoginResponse>("用户名或密码错误", 401),
@@ -99,7 +102,7 @@ public class AuthEndpoints : IEndpointDefinition
                 statusCode: 401);
         }
 
-        var session = await sessionStore.CreateSessionAsync(request.Username, SessionTtl, ct);
+        var session = await sessionStore.CreateSessionAsync(username, SessionTtl, ct);
         var envelope = EventEnvelope.Create(
             "auth.user.login",
             new Dictionary<string, object?>
@@ -113,9 +116,9 @@ public class AuthEndpoints : IEndpointDefinition
     }
 
     private static async Task<IResult> ChangePassword(
-        ChangePasswordRequest request, 
-        HttpContext httpContext, 
-        IUserStore userStore, 
+        ChangePasswordRequest request,
+        HttpContext httpContext,
+        IUserStore userStore,
         IEventPublisher eventPublisher,
         CancellationToken ct)
     {
@@ -182,5 +185,10 @@ public class AuthEndpoints : IEndpointDefinition
         }
 
         return Results.Json(ApiResult.Ok(new MessageResponse("退出成功")), AppJsonContext.Default.ApiResponseMessageResponse);
+    }
+
+    private static string NormalizeUsername(string username)
+    {
+        return username.Trim().ToLowerInvariant();
     }
 }

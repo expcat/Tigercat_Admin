@@ -4,7 +4,7 @@ namespace Tigercat.Admin.Api.Auth;
 
 public class InMemoryUserStore : IUserStore
 {
-    private readonly ConcurrentDictionary<string, UserRecord> _users = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, UserRecord> _users = new(StringComparer.Ordinal);
 
     public InMemoryUserStore()
     {
@@ -41,7 +41,6 @@ public class InMemoryUserStore : IUserStore
 
     private void SeedDefaultUsers()
     {
-        // Seed default admin user as specified in ROADMAP.md
         var hash = PasswordHasher.Hash("admin123");
         _users.TryAdd("admin", new UserRecord("admin", hash));
     }

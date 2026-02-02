@@ -16,7 +16,6 @@ public class AdminDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // User entity configuration
         modelBuilder.Entity<UserEntity>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -25,7 +24,6 @@ public class AdminDbContext : DbContext
             entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(128);
         });
 
-        // Session entity configuration
         modelBuilder.Entity<SessionEntity>(entity =>
         {
             entity.HasKey(e => e.Id);

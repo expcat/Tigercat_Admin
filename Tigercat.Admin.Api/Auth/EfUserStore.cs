@@ -15,9 +15,7 @@ public class EfUserStore : IUserStore
 
     public async Task<bool> TryCreateUserAsync(string username, string passwordHash, CancellationToken ct = default)
     {
-        var normalizedUsername = username.ToLowerInvariant();
-        
-        if (await _context.Users.AnyAsync(u => u.Username.ToLower() == normalizedUsername, ct))
+        if (await _context.Users.AnyAsync(u => u.Username == username, ct))
         {
             return false;
         }
@@ -30,7 +28,7 @@ public class EfUserStore : IUserStore
         };
 
         _context.Users.Add(user);
-        
+
         try
         {
             await _context.SaveChangesAsync(ct);
@@ -46,15 +44,13 @@ public class EfUserStore : IUserStore
 
     public async Task<bool> ValidateUserAsync(string username, string passwordHash, CancellationToken ct = default)
     {
-        var normalizedUsername = username.ToLowerInvariant();
         return await _context.Users.AnyAsync(
-            u => u.Username.ToLower() == normalizedUsername && u.PasswordHash == passwordHash, ct);
+            u => u.Username == username && u.PasswordHash == passwordHash, ct);
     }
 
     public async Task<bool> UpdatePasswordAsync(string username, string newPasswordHash, CancellationToken ct = default)
     {
-        var normalizedUsername = username.ToLowerInvariant();
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedUsername, ct);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username, ct);
         if (user is null)
         {
             return false;
@@ -67,7 +63,6 @@ public class EfUserStore : IUserStore
 
     public async Task<bool> ExistsAsync(string username, CancellationToken ct = default)
     {
-        var normalizedUsername = username.ToLowerInvariant();
-        return await _context.Users.AnyAsync(u => u.Username.ToLower() == normalizedUsername, ct);
+        return await _context.Users.AnyAsync(u => u.Username == username, ct);
     }
 }
