@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { Alert, Card, Text, Tag } from '@expcat/tigercat-vue'
 import { apiRequest } from '../utils'
 import Icon from '../components/Icon.vue'
+import PageHeader from '../components/PageHeader.vue'
 
 interface InfoResponse {
   name: string
@@ -160,30 +161,15 @@ onMounted(() => {
 
 <template>
   <div class="space-y-6">
-    <Card class="overflow-hidden">
-      <div class="relative">
-        <div class="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4"></div>
-        <div class="relative flex items-center justify-between">
-          <div>
-            <div class="flex items-center gap-3 mb-2">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                <span class="text-xl text-white">
-                  <Icon name="info" class="text-white" />
-                </span>
-              </div>
-              <div>
-                <Text size="lg" weight="bold" class="text-slate-800">关于 Tigercat</Text>
-                <Text size="sm" color="secondary">了解平台版本与服务信息</Text>
-              </div>
-            </div>
-          </div>
-          <div class="hidden sm:flex items-center gap-2">
-            <Tag color="blue" size="sm">系统信息</Tag>
-            <Tag :color="connectionStatus.color" size="sm">{{ connectionStatus.label }}</Tag>
-          </div>
-        </div>
-      </div>
-    </Card>
+    <PageHeader
+      title="关于 Tigercat"
+      subtitle="了解平台版本与服务信息"
+      icon="info"
+      :tags="[
+        { label: '系统信息', color: 'blue' },
+        { label: connectionStatus.label, color: connectionStatus.color }
+      ]"
+    />
 
     <Alert
       v-if="errorMessage"

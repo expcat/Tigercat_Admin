@@ -14,6 +14,7 @@ import {
   GlobeIcon,
   CodeIcon,
 } from '../components/Icons';
+import { PageHeader } from '../components/PageHeader';
 
 interface InfoResponse {
   name: string;
@@ -163,38 +164,15 @@ function AboutPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="overflow-hidden">
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4" />
-          <div className="relative flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                  <span className="text-xl text-white">
-                    <InfoIcon size={24} className="text-white" />
-                  </span>
-                </div>
-                <div>
-                  <Text size="lg" weight="bold" className="text-slate-800">
-                    关于 Tigercat
-                  </Text>
-                  <Text size="sm" color="secondary">
-                    了解平台版本与服务信息
-                  </Text>
-                </div>
-              </div>
-            </div>
-            <div className="hidden sm:flex items-center gap-2">
-              <Tag color="blue" size="sm">
-                系统信息
-              </Tag>
-              <Tag color={connectionStatus.color} size="sm">
-                {connectionStatus.label}
-              </Tag>
-            </div>
-          </div>
-        </div>
-      </Card>
+      <PageHeader
+        title="关于 Tigercat"
+        subtitle="了解平台版本与服务信息"
+        icon={<InfoIcon size={24} className="text-white" />}
+        tags={[
+          { label: '系统信息', color: 'blue' },
+          { label: connectionStatus.label, color: connectionStatus.color },
+        ]}
+      />
 
       {errorMessage && (
         <Alert

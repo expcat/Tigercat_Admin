@@ -9,6 +9,7 @@ import {
   ClockIcon,
   BanIcon,
 } from '../components/Icons';
+import { PageHeader } from '../components/PageHeader';
 
 const quickActions = [
   {
@@ -109,36 +110,15 @@ const recentUpdates = [
 function RolesPage() {
   return (
     <div className="space-y-6">
-      <Card className="overflow-hidden">
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4" />
-          <div className="relative flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg text-white">
-                  <ShieldIcon size={24} />
-                </div>
-                <div>
-                  <Text size="lg" weight="bold" className="text-slate-800">
-                    角色管理
-                  </Text>
-                  <Text size="sm" color="secondary">
-                    维护平台角色与权限配置
-                  </Text>
-                </div>
-              </div>
-            </div>
-            <div className="hidden sm:flex items-center gap-2">
-              <Tag color="blue" size="sm">
-                权限中心
-              </Tag>
-              <Tag color="green" size="sm">
-                已启用
-              </Tag>
-            </div>
-          </div>
-        </div>
-      </Card>
+      <PageHeader
+        title="角色管理"
+        subtitle="维护平台角色与权限配置"
+        icon={<ShieldIcon size={24} />}
+        tags={[
+          { label: '权限中心', color: 'blue' },
+          { label: '已启用', color: 'green' },
+        ]}
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statusOverview.map((stat, index) => (

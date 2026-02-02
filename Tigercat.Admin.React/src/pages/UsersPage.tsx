@@ -9,6 +9,7 @@ import {
   BanIcon,
   SparklesIcon,
 } from '../components/Icons';
+import { PageHeader } from '../components/PageHeader';
 
 const quickActions = [
   {
@@ -109,36 +110,15 @@ const recentUpdates = [
 function UsersPage() {
   return (
     <div className="space-y-6">
-      <Card className="overflow-hidden">
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4" />
-          <div className="relative flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg text-white">
-                  <UsersIcon size={24} />
-                </div>
-                <div>
-                  <Text size="lg" weight="bold" className="text-slate-800">
-                    用户管理
-                  </Text>
-                  <Text size="sm" color="secondary">
-                    管理平台用户账号、角色与权限
-                  </Text>
-                </div>
-              </div>
-            </div>
-            <div className="hidden sm:flex items-center gap-2">
-              <Tag color="blue" size="sm">
-                核心模块
-              </Tag>
-              <Tag color="green" size="sm">
-                运行中
-              </Tag>
-            </div>
-          </div>
-        </div>
-      </Card>
+      <PageHeader
+        title="用户管理"
+        subtitle="管理平台用户账号、角色与权限"
+        icon={<UsersIcon size={24} />}
+        tags={[
+          { label: '核心模块', color: 'blue' },
+          { label: '运行中', color: 'green' },
+        ]}
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statusOverview.map((stat, index) => (

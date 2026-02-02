@@ -1,5 +1,6 @@
 import { Card, Tag, Text } from '@expcat/tigercat-react';
 import { SettingsIcon } from '../components/Icons';
+import { PageHeader } from '../components/PageHeader';
 
 type TagColor = 'blue' | 'green' | 'purple' | 'orange';
 
@@ -96,115 +97,52 @@ const notificationSettings: SettingItem[] = [
   },
 ];
 
+const settingGroups = [
+  { title: '基础', items: basicSettings },
+  { title: '安全', items: securitySettings },
+  { title: '通知', items: notificationSettings },
+];
+
 function SettingsPage() {
   return (
     <div className="space-y-6">
-      <Card className="overflow-hidden">
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4" />
-          <div className="relative flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg text-white">
-                  <SettingsIcon size={24} />
-                </div>
-                <div>
-                  <Text size="lg" weight="bold" className="text-slate-800">
-                    系统设置
-                  </Text>
-                  <Text size="sm" color="secondary">
-                    统一管理基础、安全与通知配置
-                  </Text>
-                </div>
-              </div>
-            </div>
-            <div className="hidden sm:flex items-center gap-2">
-              <Tag color="blue" size="sm">
-                配置中心
-              </Tag>
-              <Tag color="green" size="sm">
-                已同步
-              </Tag>
-            </div>
-          </div>
-        </div>
-      </Card>
+      <PageHeader
+        title="系统设置"
+        subtitle="统一管理基础、安全与通知配置"
+        icon={<SettingsIcon size={24} />}
+        tags={[
+          { label: '配置中心', color: 'blue' },
+          { label: '已同步', color: 'green' },
+        ]}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card title="基础">
-          <div className="space-y-3">
-            {basicSettings.map((item) => (
-              <div key={item.id} className={itemCardClassName}>
-                <div className="flex-1 min-w-0">
-                  <Text size="sm" weight="medium" className="text-slate-800">
-                    {item.label}
-                  </Text>
-                  <Text size="xs" color="secondary" className="mt-1">
-                    {item.description}
-                  </Text>
+        {settingGroups.map((group) => (
+          <Card key={group.title} title={group.title}>
+            <div className="space-y-3">
+              {group.items.map((item) => (
+                <div key={item.id} className={itemCardClassName}>
+                  <div className="flex-1 min-w-0">
+                    <Text size="sm" weight="medium" className="text-slate-800">
+                      {item.label}
+                    </Text>
+                    <Text size="xs" color="secondary" className="mt-1">
+                      {item.description}
+                    </Text>
+                  </div>
+                  <div className="text-right">
+                    <Text size="sm" className="text-slate-700">
+                      {item.value}
+                    </Text>
+                    <Tag color={item.tagColor} size="sm" className="mt-2">
+                      {item.tag}
+                    </Tag>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <Text size="sm" className="text-slate-700">
-                    {item.value}
-                  </Text>
-                  <Tag color={item.tagColor} size="sm" className="mt-2">
-                    {item.tag}
-                  </Tag>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card title="安全">
-          <div className="space-y-3">
-            {securitySettings.map((item) => (
-              <div key={item.id} className={itemCardClassName}>
-                <div className="flex-1 min-w-0">
-                  <Text size="sm" weight="medium" className="text-slate-800">
-                    {item.label}
-                  </Text>
-                  <Text size="xs" color="secondary" className="mt-1">
-                    {item.description}
-                  </Text>
-                </div>
-                <div className="text-right">
-                  <Text size="sm" className="text-slate-700">
-                    {item.value}
-                  </Text>
-                  <Tag color={item.tagColor} size="sm" className="mt-2">
-                    {item.tag}
-                  </Tag>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card title="通知">
-          <div className="space-y-3">
-            {notificationSettings.map((item) => (
-              <div key={item.id} className={itemCardClassName}>
-                <div className="flex-1 min-w-0">
-                  <Text size="sm" weight="medium" className="text-slate-800">
-                    {item.label}
-                  </Text>
-                  <Text size="xs" color="secondary" className="mt-1">
-                    {item.description}
-                  </Text>
-                </div>
-                <div className="text-right">
-                  <Text size="sm" className="text-slate-700">
-                    {item.value}
-                  </Text>
-                  <Tag color={item.tagColor} size="sm" className="mt-2">
-                    {item.tag}
-                  </Tag>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
+              ))}
+            </div>
+          </Card>
+        ))}
       </div>
     </div>
   );
