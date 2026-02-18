@@ -31,7 +31,8 @@ builder.Services.AddSingleton<IEventPublisher, RedisStreamPublisher>();
 builder.Services.AddSingleton<IIdempotencyService, RedisIdempotencyService>();
 builder.Services.AddHostedService<RedisStreamConsumer>();
 
-// EF Core InMemory database
+// EF Core InMemory database (development only; does not enforce SQL constraints such as
+// string length limits — use a real database provider for production environments).
 builder.Services.AddDbContext<AdminDbContext>(options =>
     options.UseInMemoryDatabase("TigercatAdmin"));
 
@@ -70,11 +71,17 @@ if (app.Environment.IsDevelopment())
 app.UseCors();
 app.MapDefaultEndpoints();
 
-// Seed database
-using (var scope = app.Services.CreateScope())
+// Seed database with default roles, permissions, and admin user
+try
 {
+    using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
     await DbInitializer.InitializeAsync(dbContext);
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "Database initialization failed");
+    throw;
 }
 
 // Map Endpoints Explicitly (AOT compatible)
