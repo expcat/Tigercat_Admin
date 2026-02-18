@@ -174,6 +174,36 @@
 - **返回 data**：
   - 字符串：`"Hello world"`
 
+### 7.1 获取当前用户权限
+
+- **方法**：GET
+- **路径**：`/api/auth/permissions`
+- **认证**：是
+- **参数**：无
+- **返回 data**：
+  - `username`：当前用户名
+  - `permissions`：权限数组，每个元素包含 `id`、`code`、`description`
+- **可能错误码**：
+  - `401`：未登录
+
+示例：
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "success": true,
+  "data": {
+    "username": "admin",
+    "permissions": [
+      { "id": 1, "code": "dashboard:view", "description": "查看仪表盘" },
+      { "id": 2, "code": "user:view", "description": "查看用户列表" },
+      { "id": 3, "code": "user:create", "description": "创建用户" }
+    ]
+  }
+}
+```
+
 ---
 
 ## 用户管理接口 (`/api/users`)

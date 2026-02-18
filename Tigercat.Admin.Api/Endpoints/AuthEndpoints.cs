@@ -1,5 +1,8 @@
+using Microsoft.EntityFrameworkCore;
 using Tigercat.Admin.Api.Auth;
+using Tigercat.Admin.Api.Cache;
 using Tigercat.Admin.Api.Common;
+using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.EventBus;
 using Tigercat.Admin.Api.Serialization;
 
@@ -8,6 +11,7 @@ namespace Tigercat.Admin.Api.Endpoints;
 public class AuthEndpoints : IEndpointDefinition
 {
     private static readonly TimeSpan SessionTtl = TimeSpan.FromHours(2);
+    private static readonly TimeSpan PermissionCacheTtl = TimeSpan.FromMinutes(5);
 
     public void DefineEndpoints(IEndpointRouteBuilder app)
     {
@@ -27,6 +31,10 @@ public class AuthEndpoints : IEndpointDefinition
         group.MapPost("/logout", Logout)
             .RequireLogin()
             .WithName("Logout");
+
+        group.MapGet("/permissions", GetPermissions)
+            .RequireLogin()
+            .WithName("GetMyPermissions");
     }
 
     private static async Task<IResult> Register(
@@ -185,6 +193,55 @@ public class AuthEndpoints : IEndpointDefinition
         }
 
         return Results.Json(ApiResult.Ok(new MessageResponse("退出成功")), AppJsonContext.Default.ApiResponseMessageResponse);
+    }
+
+    // GET /api/auth/permissions
+    private static async Task<IResult> GetPermissions(
+        HttpContext httpContext,
+        AdminDbContext db,
+        ICacheService cacheService,
+        CancellationToken ct)
+    {
+        if (!httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var userObj) ||
+            userObj is not string username)
+        {
+            return Results.Json(
+                ApiResult.Fail<UserPermissionsResponse>("未授权", 401),
+                AppJsonContext.Default.ApiResponseUserPermissionsResponse,
+                statusCode: 401);
+        }
+
+        var cacheKey = CacheKeys.UserPermissions(username);
+
+        // Try cached permission codes first
+        var cachedCodes = await cacheService.GetOrSetAsync(
+            cacheKey,
+            async token =>
+            {
+                return await db.Users
+                    .Where(u => u.Username == username)
+                    .SelectMany(u => u.UserRoles)
+                    .SelectMany(ur => ur.Role.RolePermissions)
+                    .Select(rp => rp.Permission.Code)
+                    .Distinct()
+                    .ToArrayAsync(token);
+            },
+            PermissionCacheTtl,
+            ct);
+
+        // Load full permission details by the resolved codes
+        var permissions = cachedCodes is { Length: > 0 }
+            ? await db.Permissions
+                .Where(p => cachedCodes.Contains(p.Code))
+                .OrderBy(p => p.Id)
+                .Select(p => new PermissionInfoResponse(p.Id, p.Code, p.Description))
+                .ToArrayAsync(ct)
+            : [];
+
+        var response = new UserPermissionsResponse(username, permissions);
+        return Results.Json(
+            ApiResult.Ok(response),
+            AppJsonContext.Default.ApiResponseUserPermissionsResponse);
     }
 
     private static string NormalizeUsername(string username)

@@ -28,6 +28,9 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(PagedResponse<UserItemResponse>))]
 [JsonSerializable(typeof(ApiResponse<UserItemResponse>))]
 [JsonSerializable(typeof(ApiResponse<PagedResponse<UserItemResponse>>))]
+// Auth permissions
+[JsonSerializable(typeof(UserPermissionsResponse))]
+[JsonSerializable(typeof(ApiResponse<UserPermissionsResponse>))]
 // Roles CRUD types
 [JsonSerializable(typeof(CreateRoleRequest))]
 [JsonSerializable(typeof(UpdateRoleRequest))]

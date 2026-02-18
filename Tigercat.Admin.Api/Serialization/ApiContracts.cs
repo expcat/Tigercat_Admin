@@ -20,6 +20,9 @@ internal record ApiContracts(
     ApiResponse<MessageResponse>? ApiResponseMessageResponse,
     ApiResponse<HealthResponse>? ApiResponseHealthResponse,
     ApiResponse<InfoResponse>? ApiResponseInfoResponse,
+    // Auth permissions
+    UserPermissionsResponse? UserPermissionsResponse,
+    ApiResponse<UserPermissionsResponse>? ApiResponseUserPermissionsResponse,
     // Users CRUD
     CreateUserRequest? CreateUserRequest,
     UpdateUserRequest? UpdateUserRequest,
