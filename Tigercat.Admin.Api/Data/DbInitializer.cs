@@ -6,81 +6,142 @@ namespace Tigercat.Admin.Api.Data;
 
 public static class DbInitializer
 {
+    /// <summary>
+    /// Seed permission definitions. Each entry: (Code, Description).
+    /// </summary>
+    private static readonly (string Code, string Description)[] SeedPermissions =
+    [
+        ("dashboard:view", "查看仪表盘"),
+        ("user:view",      "查看用户列表"),
+        ("user:create",    "创建用户"),
+        ("user:edit",      "编辑用户"),
+        ("user:delete",    "删除用户"),
+        ("role:view",      "查看角色列表"),
+        ("role:create",    "创建角色"),
+        ("role:edit",      "编辑角色"),
+        ("role:delete",    "删除角色"),
+    ];
+
+    /// <summary>
+    /// Seed role definitions. Each entry: (Name, Description, PermissionCodes).
+    /// </summary>
+    private static readonly (string Name, string Description, string[] PermissionCodes)[] SeedRoles =
+    [
+        ("Admin",  "超级管理员，拥有所有权限", SeedPermissions.Select(p => p.Code).ToArray()),
+        ("Editor", "编辑员，可查看和编辑",
+            ["dashboard:view", "user:view", "user:edit", "role:view", "role:edit"]),
+        ("Viewer", "只读用户，仅可查看",
+            ["dashboard:view", "user:view", "role:view"]),
+    ];
+
+    /// <summary>
+    /// Idempotent seed: each table is checked independently — safe to re-run after partial
+    /// failures and also works with the InMemory provider (which lacks transaction support).
+    /// </summary>
     public static async Task InitializeAsync(AdminDbContext context, CancellationToken ct = default)
     {
         await context.Database.EnsureCreatedAsync(ct);
 
-        // Skip seeding if users already exist
-        if (await context.Users.AnyAsync(ct))
+        // --- Seed permissions (idempotent: skip existing by Code) ---
+        var existingPermCodes = await context.Permissions
+            .Select(p => p.Code)
+            .ToHashSetAsync(ct);
+
+        var newPermissions = SeedPermissions
+            .Where(p => !existingPermCodes.Contains(p.Code))
+            .Select(p => new PermissionEntity { Code = p.Code, Description = p.Description })
+            .ToList();
+
+        if (newPermissions.Count > 0)
         {
-            return;
+            context.Permissions.AddRange(newPermissions);
+            await context.SaveChangesAsync(ct);
         }
 
-        // --- Seed permissions ---
-        var permDashboardView = new PermissionEntity { Code = "dashboard:view", Description = "查看仪表盘" };
-        var permUserView = new PermissionEntity { Code = "user:view", Description = "查看用户列表" };
-        var permUserCreate = new PermissionEntity { Code = "user:create", Description = "创建用户" };
-        var permUserEdit = new PermissionEntity { Code = "user:edit", Description = "编辑用户" };
-        var permUserDelete = new PermissionEntity { Code = "user:delete", Description = "删除用户" };
-        var permRoleView = new PermissionEntity { Code = "role:view", Description = "查看角色列表" };
-        var permRoleCreate = new PermissionEntity { Code = "role:create", Description = "创建角色" };
-        var permRoleEdit = new PermissionEntity { Code = "role:edit", Description = "编辑角色" };
-        var permRoleDelete = new PermissionEntity { Code = "role:delete", Description = "删除角色" };
+        // Build a lookup of all permissions by Code (including pre-existing ones)
+        var permLookup = await context.Permissions
+            .ToDictionaryAsync(p => p.Code, p => p.Id, ct);
 
-        var allPermissions = new[]
+        // --- Seed roles (idempotent: skip existing by Name) ---
+        var existingRoleNames = await context.Roles
+            .Select(r => r.Name)
+            .ToHashSetAsync(ct);
+
+        var newRoles = SeedRoles
+            .Where(r => !existingRoleNames.Contains(r.Name))
+            .Select(r => new RoleEntity { Name = r.Name, Description = r.Description })
+            .ToList();
+
+        if (newRoles.Count > 0)
         {
-            permDashboardView,
-            permUserView, permUserCreate, permUserEdit, permUserDelete,
-            permRoleView, permRoleCreate, permRoleEdit, permRoleDelete
-        };
-        context.Permissions.AddRange(allPermissions);
-
-        // --- Seed roles ---
-        var adminRole = new RoleEntity { Name = "Admin", Description = "超级管理员，拥有所有权限" };
-        var editorRole = new RoleEntity { Name = "Editor", Description = "编辑员，可查看和编辑" };
-        var viewerRole = new RoleEntity { Name = "Viewer", Description = "只读用户，仅可查看" };
-
-        context.Roles.AddRange(adminRole, editorRole, viewerRole);
-
-        // Flush to generate IDs
-        await context.SaveChangesAsync(ct);
-
-        // --- Seed role-permission mappings ---
-        // Admin gets all permissions
-        foreach (var perm in allPermissions)
-        {
-            context.RolePermissions.Add(new RolePermissionEntity { RoleId = adminRole.Id, PermissionId = perm.Id });
+            context.Roles.AddRange(newRoles);
+            await context.SaveChangesAsync(ct);
         }
 
-        // Editor gets view + edit permissions
-        var editorPermissions = new[] { permDashboardView, permUserView, permUserEdit, permRoleView };
-        foreach (var perm in editorPermissions)
+        // Build a lookup of all roles by Name
+        var roleLookup = await context.Roles
+            .ToDictionaryAsync(r => r.Name, r => r.Id, ct);
+
+        // --- Seed role-permission mappings (idempotent: skip existing pairs) ---
+        var existingRolePermSet = (await context.RolePermissions
+            .Select(rp => new { rp.RoleId, rp.PermissionId })
+            .ToListAsync(ct))
+            .Select(rp => (rp.RoleId, rp.PermissionId))
+            .ToHashSet();
+
+        var newRolePermissions = new List<RolePermissionEntity>();
+
+        foreach (var (name, _, permCodes) in SeedRoles)
         {
-            context.RolePermissions.Add(new RolePermissionEntity { RoleId = editorRole.Id, PermissionId = perm.Id });
+            if (!roleLookup.TryGetValue(name, out var roleId))
+                continue;
+
+            foreach (var code in permCodes)
+            {
+                if (!permLookup.TryGetValue(code, out var permId))
+                    continue;
+
+                if (!existingRolePermSet.Contains((roleId, permId)))
+                {
+                    newRolePermissions.Add(new RolePermissionEntity { RoleId = roleId, PermissionId = permId });
+                }
+            }
         }
 
-        // Viewer gets view-only permissions
-        var viewerPermissions = new[] { permDashboardView, permUserView, permRoleView };
-        foreach (var perm in viewerPermissions)
+        if (newRolePermissions.Count > 0)
         {
-            context.RolePermissions.Add(new RolePermissionEntity { RoleId = viewerRole.Id, PermissionId = perm.Id });
+            context.RolePermissions.AddRange(newRolePermissions);
+            await context.SaveChangesAsync(ct);
         }
 
-        // --- Seed default admin user ---
-        var user = new UserEntity
+        // --- Seed default admin user (idempotent: skip if username exists) ---
+        var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "admin", ct);
+
+        if (adminUser is null)
         {
-            Username = "admin",
-            PasswordHash = PasswordHasher.Hash("admin123"),
-            DisplayName = "管理员",
-            Status = UserStatus.Active,
-            CreatedAt = DateTime.UtcNow
-        };
-        context.Users.Add(user);
-        await context.SaveChangesAsync(ct);
+            adminUser = new UserEntity
+            {
+                Username = "admin",
+                PasswordHash = PasswordHasher.Hash("admin123"),
+                DisplayName = "管理员",
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.Users.Add(adminUser);
+            await context.SaveChangesAsync(ct);
+        }
 
-        // Assign admin role to the default user
-        context.UserRoles.Add(new UserRoleEntity { UserId = user.Id, RoleId = adminRole.Id });
+        // Assign Admin role to the default user if not already assigned
+        if (roleLookup.TryGetValue("Admin", out var adminRoleId))
+        {
+            var alreadyAssigned = await context.UserRoles
+                .AnyAsync(ur => ur.UserId == adminUser.Id && ur.RoleId == adminRoleId, ct);
 
-        await context.SaveChangesAsync(ct);
+            if (!alreadyAssigned)
+            {
+                context.UserRoles.Add(new UserRoleEntity { UserId = adminUser.Id, RoleId = adminRoleId });
+                await context.SaveChangesAsync(ct);
+            }
+        }
     }
 }
