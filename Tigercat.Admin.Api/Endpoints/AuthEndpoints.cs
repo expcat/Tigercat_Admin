@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Tigercat.Admin.Api.Auth;
-using Tigercat.Admin.Api.Cache;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.EventBus;
@@ -11,7 +10,6 @@ namespace Tigercat.Admin.Api.Endpoints;
 public class AuthEndpoints : IEndpointDefinition
 {
     private static readonly TimeSpan SessionTtl = TimeSpan.FromHours(2);
-    private static readonly TimeSpan PermissionCacheTtl = TimeSpan.FromMinutes(5);
 
     public void DefineEndpoints(IEndpointRouteBuilder app)
     {
@@ -199,9 +197,11 @@ public class AuthEndpoints : IEndpointDefinition
     private static async Task<IResult> GetPermissions(
         HttpContext httpContext,
         AdminDbContext db,
-        ICacheService cacheService,
+        IPermissionService permissionService,
         CancellationToken ct)
     {
+        // Defensive check: RequireLogin() guarantees auth.username is set,
+        // but we guard against possible future misconfiguration.
         if (!httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var userObj) ||
             userObj is not string username)
         {
@@ -211,23 +211,7 @@ public class AuthEndpoints : IEndpointDefinition
                 statusCode: 401);
         }
 
-        var cacheKey = CacheKeys.UserPermissions(username);
-
-        // Try cached permission codes first
-        var cachedCodes = await cacheService.GetOrSetAsync(
-            cacheKey,
-            async token =>
-            {
-                return await db.Users
-                    .Where(u => u.Username == username)
-                    .SelectMany(u => u.UserRoles)
-                    .SelectMany(ur => ur.Role.RolePermissions)
-                    .Select(rp => rp.Permission.Code)
-                    .Distinct()
-                    .ToArrayAsync(token);
-            },
-            PermissionCacheTtl,
-            ct);
+        var cachedCodes = await permissionService.GetUserPermissionCodesAsync(username, ct);
 
         // Load full permission details by the resolved codes
         var permissions = cachedCodes is { Length: > 0 }

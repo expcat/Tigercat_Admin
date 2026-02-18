@@ -3,6 +3,7 @@ using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Endpoints;
 using Tigercat.Admin.Api.EventBus;
+// PermissionInfoResponse is now in Tigercat.Admin.Api.Common
 
 namespace Tigercat.Admin.Api.Serialization;
 

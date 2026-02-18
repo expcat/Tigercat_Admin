@@ -182,7 +182,7 @@
 - **参数**：无
 - **返回 data**：
   - `username`：当前用户名
-  - `permissions`：权限数组，每个元素包含 `id`、`code`、`description`
+  - `permissions`：权限数组，每个元素包含 `id`、`code`、`description`（其中 `description` 可能为 `null`）
 - **可能错误码**：
   - `401`：未登录
 
@@ -228,15 +228,15 @@
 
 **用户对象结构**：
 
-| 字段          | 类型           | 说明                          |
-| ------------- | -------------- | ----------------------------- |
-| `id`          | number         | 用户 ID                       |
-| `username`    | string         | 用户名                        |
-| `displayName` | string \| null | 显示名称                      |
+| 字段          | 类型           | 说明                                   |
+| ------------- | -------------- | -------------------------------------- |
+| `id`          | number         | 用户 ID                                |
+| `username`    | string         | 用户名                                 |
+| `displayName` | string \| null | 显示名称                               |
 | `status`      | number         | 状态（0=Active 活跃，1=Disabled 禁用） |
-| `createdAt`   | string         | 创建时间（UTC）               |
-| `updatedAt`   | string \| null | 更新时间（UTC）               |
-| `roles`       | array          | 角色列表，包含 `id` 和 `name` |
+| `createdAt`   | string         | 创建时间（UTC）                        |
+| `updatedAt`   | string \| null | 更新时间（UTC）                        |
+| `roles`       | array          | 角色列表，包含 `id` 和 `name`          |
 
 示例：
 
@@ -353,30 +353,30 @@
 
 **角色对象结构**：
 
-| 字段          | 类型           | 说明              |
-| ------------- | -------------- | ----------------- |
-| `id`          | number         | 角色 ID           |
-| `name`        | string         | 角色名称          |
-| `description` | string \| null | 描述              |
-| `createdAt`   | string         | 创建时间（UTC）   |
-| `permissions` | array          | 权限列表          |
-| `users`       | array          | 关联用户列表      |
+| 字段          | 类型           | 说明            |
+| ------------- | -------------- | --------------- |
+| `id`          | number         | 角色 ID         |
+| `name`        | string         | 角色名称        |
+| `description` | string \| null | 描述            |
+| `createdAt`   | string         | 创建时间（UTC） |
+| `permissions` | array          | 权限列表        |
+| `users`       | array          | 关联用户列表    |
 
 **权限对象结构**（`permissions` 数组元素）：
 
-| 字段          | 类型           | 说明       |
-| ------------- | -------------- | ---------- |
-| `id`          | number         | 权限 ID    |
-| `code`        | string         | 权限编码   |
-| `description` | string \| null | 权限描述   |
+| 字段          | 类型           | 说明     |
+| ------------- | -------------- | -------- |
+| `id`          | number         | 权限 ID  |
+| `code`        | string         | 权限编码 |
+| `description` | string \| null | 权限描述 |
 
 **角色用户对象结构**（`users` 数组元素）：
 
-| 字段          | 类型           | 说明       |
-| ------------- | -------------- | ---------- |
-| `id`          | number         | 用户 ID    |
-| `username`    | string         | 用户名     |
-| `displayName` | string \| null | 显示名称   |
+| 字段          | 类型           | 说明     |
+| ------------- | -------------- | -------- |
+| `id`          | number         | 用户 ID  |
+| `username`    | string         | 用户名   |
+| `displayName` | string \| null | 显示名称 |
 
 ### 13. 获取角色列表（分页 + 搜索）
 
@@ -411,9 +411,7 @@
         "permissions": [
           { "id": 1, "code": "dashboard:view", "description": "查看仪表盘" }
         ],
-        "users": [
-          { "id": 1, "username": "admin", "displayName": "管理员" }
-        ]
+        "users": [{ "id": 1, "username": "admin", "displayName": "管理员" }]
       }
     ],
     "total": 1,
