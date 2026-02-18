@@ -28,6 +28,17 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(PagedResponse<UserItemResponse>))]
 [JsonSerializable(typeof(ApiResponse<UserItemResponse>))]
 [JsonSerializable(typeof(ApiResponse<PagedResponse<UserItemResponse>>))]
+// Roles CRUD types
+[JsonSerializable(typeof(CreateRoleRequest))]
+[JsonSerializable(typeof(UpdateRoleRequest))]
+[JsonSerializable(typeof(SetRolePermissionsRequest))]
+[JsonSerializable(typeof(SetRoleUsersRequest))]
+[JsonSerializable(typeof(RoleDetailResponse))]
+[JsonSerializable(typeof(PermissionInfoResponse))]
+[JsonSerializable(typeof(RoleUserInfoResponse))]
+[JsonSerializable(typeof(PagedResponse<RoleDetailResponse>))]
+[JsonSerializable(typeof(ApiResponse<RoleDetailResponse>))]
+[JsonSerializable(typeof(ApiResponse<PagedResponse<RoleDetailResponse>>))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }
