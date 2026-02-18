@@ -3,6 +3,7 @@ using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Endpoints;
 using Tigercat.Admin.Api.EventBus;
+// PermissionInfoResponse is now in Tigercat.Admin.Api.Common
 
 namespace Tigercat.Admin.Api.Serialization;
 
@@ -28,6 +29,9 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(PagedResponse<UserItemResponse>))]
 [JsonSerializable(typeof(ApiResponse<UserItemResponse>))]
 [JsonSerializable(typeof(ApiResponse<PagedResponse<UserItemResponse>>))]
+// Auth permissions
+[JsonSerializable(typeof(UserPermissionsResponse))]
+[JsonSerializable(typeof(ApiResponse<UserPermissionsResponse>))]
 // Roles CRUD types
 [JsonSerializable(typeof(CreateRoleRequest))]
 [JsonSerializable(typeof(UpdateRoleRequest))]

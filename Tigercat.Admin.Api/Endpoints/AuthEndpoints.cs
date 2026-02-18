@@ -1,5 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
+using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.EventBus;
 using Tigercat.Admin.Api.Serialization;
 
@@ -27,6 +29,10 @@ public class AuthEndpoints : IEndpointDefinition
         group.MapPost("/logout", Logout)
             .RequireLogin()
             .WithName("Logout");
+
+        group.MapGet("/permissions", GetPermissions)
+            .RequireLogin()
+            .WithName("GetMyPermissions");
     }
 
     private static async Task<IResult> Register(
@@ -185,6 +191,41 @@ public class AuthEndpoints : IEndpointDefinition
         }
 
         return Results.Json(ApiResult.Ok(new MessageResponse("退出成功")), AppJsonContext.Default.ApiResponseMessageResponse);
+    }
+
+    // GET /api/auth/permissions
+    private static async Task<IResult> GetPermissions(
+        HttpContext httpContext,
+        AdminDbContext db,
+        IPermissionService permissionService,
+        CancellationToken ct)
+    {
+        // Defensive check: RequireLogin() guarantees auth.username is set,
+        // but we guard against possible future misconfiguration.
+        if (!httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var userObj) ||
+            userObj is not string username)
+        {
+            return Results.Json(
+                ApiResult.Fail<UserPermissionsResponse>("未授权", 401),
+                AppJsonContext.Default.ApiResponseUserPermissionsResponse,
+                statusCode: 401);
+        }
+
+        var cachedCodes = await permissionService.GetUserPermissionCodesAsync(username, ct);
+
+        // Load full permission details by the resolved codes
+        var permissions = cachedCodes is { Length: > 0 }
+            ? await db.Permissions
+                .Where(p => cachedCodes.Contains(p.Code))
+                .OrderBy(p => p.Id)
+                .Select(p => new PermissionInfoResponse(p.Id, p.Code, p.Description))
+                .ToArrayAsync(ct)
+            : [];
+
+        var response = new UserPermissionsResponse(username, permissions);
+        return Results.Json(
+            ApiResult.Ok(response),
+            AppJsonContext.Default.ApiResponseUserPermissionsResponse);
     }
 
     private static string NormalizeUsername(string username)

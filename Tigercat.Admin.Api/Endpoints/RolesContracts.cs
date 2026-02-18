@@ -1,3 +1,5 @@
+using Tigercat.Admin.Api.Common;
+
 namespace Tigercat.Admin.Api.Endpoints;
 
 // --- Request DTOs ---
@@ -19,7 +21,5 @@ public record RoleDetailResponse(
     DateTime CreatedAt,
     PermissionInfoResponse[] Permissions,
     RoleUserInfoResponse[] Users);
-
-public record PermissionInfoResponse(int Id, string Code, string? Description);
 
 public record RoleUserInfoResponse(int Id, string Username, string? DisplayName);

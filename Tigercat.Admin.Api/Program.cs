@@ -39,6 +39,7 @@ builder.Services.AddDbContext<AdminDbContext>(options =>
 // Register in-memory stores by default
 builder.Services.AddSingleton<IUserStore, InMemoryUserStore>();
 builder.Services.AddSingleton<ISessionStore, InMemorySessionStore>();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
