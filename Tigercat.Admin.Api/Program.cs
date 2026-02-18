@@ -88,6 +88,7 @@ catch (Exception ex)
 app.MapEndpoint<AuthEndpoints>();
 app.MapEndpoint<HomeEndpoints>();
 app.MapEndpoint<UsersEndpoints>();
+app.MapEndpoint<RolesEndpoints>();
 
 app.MapGet("/api/health", GetHealth)
     .WithName("HealthCheck");

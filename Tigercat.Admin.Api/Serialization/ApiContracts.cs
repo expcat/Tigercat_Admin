@@ -27,5 +27,16 @@ internal record ApiContracts(
     RoleInfoResponse? RoleInfoResponse,
     PagedResponse<UserItemResponse>? PagedResponseUserItemResponse,
     ApiResponse<UserItemResponse>? ApiResponseUserItemResponse,
-    ApiResponse<PagedResponse<UserItemResponse>>? ApiResponsePagedResponseUserItemResponse
+    ApiResponse<PagedResponse<UserItemResponse>>? ApiResponsePagedResponseUserItemResponse,
+    // Roles CRUD
+    CreateRoleRequest? CreateRoleRequest,
+    UpdateRoleRequest? UpdateRoleRequest,
+    SetRolePermissionsRequest? SetRolePermissionsRequest,
+    SetRoleUsersRequest? SetRoleUsersRequest,
+    RoleDetailResponse? RoleDetailResponse,
+    PermissionInfoResponse? PermissionInfoResponse,
+    RoleUserInfoResponse? RoleUserInfoResponse,
+    PagedResponse<RoleDetailResponse>? PagedResponseRoleDetailResponse,
+    ApiResponse<RoleDetailResponse>? ApiResponseRoleDetailResponse,
+    ApiResponse<PagedResponse<RoleDetailResponse>>? ApiResponsePagedResponseRoleDetailResponse
 );
