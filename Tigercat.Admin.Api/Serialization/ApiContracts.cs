@@ -1,5 +1,6 @@
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
+using Tigercat.Admin.Api.Endpoints;
 
 namespace Tigercat.Admin.Api.Serialization;
 
@@ -18,5 +19,13 @@ internal record ApiContracts(
     ApiResponse<LoginResponse>? ApiResponseLoginResponse,
     ApiResponse<MessageResponse>? ApiResponseMessageResponse,
     ApiResponse<HealthResponse>? ApiResponseHealthResponse,
-    ApiResponse<InfoResponse>? ApiResponseInfoResponse
+    ApiResponse<InfoResponse>? ApiResponseInfoResponse,
+    // Users CRUD
+    CreateUserRequest? CreateUserRequest,
+    UpdateUserRequest? UpdateUserRequest,
+    UserItemResponse? UserItemResponse,
+    RoleInfoResponse? RoleInfoResponse,
+    PagedResponse<UserItemResponse>? PagedResponseUserItemResponse,
+    ApiResponse<UserItemResponse>? ApiResponseUserItemResponse,
+    ApiResponse<PagedResponse<UserItemResponse>>? ApiResponsePagedResponseUserItemResponse
 );

@@ -1,9 +1,11 @@
 using FreeRedis;
+using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Cache;
 using Tigercat.Admin.Api.Common;
+using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Endpoints;
 using Tigercat.Admin.Api.EventBus;
 using Tigercat.Admin.Api.Serialization;
@@ -28,6 +30,10 @@ builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 builder.Services.AddSingleton<IEventPublisher, RedisStreamPublisher>();
 builder.Services.AddSingleton<IIdempotencyService, RedisIdempotencyService>();
 builder.Services.AddHostedService<RedisStreamConsumer>();
+
+// EF Core InMemory database
+builder.Services.AddDbContext<AdminDbContext>(options =>
+    options.UseInMemoryDatabase("TigercatAdmin"));
 
 // Register in-memory stores by default
 builder.Services.AddSingleton<IUserStore, InMemoryUserStore>();
@@ -64,9 +70,17 @@ if (app.Environment.IsDevelopment())
 app.UseCors();
 app.MapDefaultEndpoints();
 
+// Seed database
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
+    await DbInitializer.InitializeAsync(dbContext);
+}
+
 // Map Endpoints Explicitly (AOT compatible)
 app.MapEndpoint<AuthEndpoints>();
 app.MapEndpoint<HomeEndpoints>();
+app.MapEndpoint<UsersEndpoints>();
 
 app.MapGet("/api/health", GetHealth)
     .WithName("HealthCheck");
@@ -77,7 +91,7 @@ app.MapGet("/api/info", GetInfo)
 app.MapGet("/api/health/redis", GetRedisHealth)
     .WithName("RedisHealthCheck");
 
-app.Run();
+await app.RunAsync();
 
 static Task<IResult> GetHealth(CancellationToken ct)
 {

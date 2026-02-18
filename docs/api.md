@@ -173,3 +173,143 @@
 - **参数**：无
 - **返回 data**：
   - 字符串：`"Hello world"`
+
+---
+
+## 用户管理接口 (`/api/users`)
+
+> 以下接口均需登录且需要对应权限。未登录返回 `401`，权限不足返回 `403`。
+
+### 8. 获取用户列表（分页 + 搜索）
+
+- **方法**：GET
+- **路径**：`/api/users`
+- **认证**：是
+- **权限**：`user:view`
+- **查询参数**：
+  - `page`：页码（默认 `1`，最小 `1`）
+  - `pageSize`：每页数量（默认 `10`，范围 `1-100`）
+  - `keyword`：搜索关键词（按用户名或显示名模糊匹配，可选）
+- **返回 data**：
+  - `items`：用户数组（见下方用户对象结构）
+  - `total`：总数
+  - `page`：当前页
+  - `pageSize`：每页数量
+
+**用户对象结构**：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `id` | number | 用户 ID |
+| `username` | string | 用户名 |
+| `displayName` | string \| null | 显示名称 |
+| `status` | number | 状态（0=启用，1=禁用） |
+| `createdAt` | string | 创建时间（UTC） |
+| `updatedAt` | string \| null | 更新时间（UTC） |
+| `roles` | array | 角色列表，包含 `id` 和 `name` |
+
+示例：
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "username": "admin",
+        "displayName": "管理员",
+        "status": 0,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": null,
+        "roles": [{ "id": 1, "name": "Admin" }]
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "pageSize": 10
+  }
+}
+```
+
+### 9. 获取用户详情
+
+- **方法**：GET
+- **路径**：`/api/users/{id}`
+- **认证**：是
+- **权限**：`user:view`
+- **路径参数**：
+  - `id`：用户 ID
+- **返回 data**：用户对象（同上）
+- **可能错误码**：
+  - `404`：用户不存在
+
+### 10. 创建用户
+
+- **方法**：POST
+- **路径**：`/api/users`
+- **认证**：是
+- **权限**：`user:create`
+- **请求体**：
+  - `username`：用户名（必填）
+  - `password`：密码（必填）
+  - `displayName`：显示名称（可选）
+  - `roleIds`：角色 ID 数组（可选）
+- **返回 data**：创建后的用户对象
+- **可能错误码**：
+  - `400`：用户名或密码为空
+  - `409`：用户已存在
+
+示例请求体：
+
+```json
+{
+  "username": "editor",
+  "password": "editor123",
+  "displayName": "编辑员",
+  "roleIds": [2]
+}
+```
+
+### 11. 更新用户
+
+- **方法**：PUT
+- **路径**：`/api/users/{id}`
+- **认证**：是
+- **权限**：`user:edit`
+- **路径参数**：
+  - `id`：用户 ID
+- **请求体**（所有字段均为可选，仅提供的字段会被更新）：
+  - `displayName`：显示名称
+  - `status`：状态（`0`=启用，`1`=禁用）
+  - `password`：新密码（如需重置密码）
+  - `roleIds`：角色 ID 数组（提供时会替换现有角色）
+- **返回 data**：更新后的用户对象
+- **可能错误码**：
+  - `404`：用户不存在
+
+示例请求体：
+
+```json
+{
+  "displayName": "新名称",
+  "status": 0,
+  "roleIds": [1, 2]
+}
+```
+
+### 12. 删除用户
+
+- **方法**：DELETE
+- **路径**：`/api/users/{id}`
+- **认证**：是
+- **权限**：`user:delete`
+- **路径参数**：
+  - `id`：用户 ID
+- **返回 data**：
+  - `message`：`"删除成功"`
+- **可能错误码**：
+  - `400`：不能删除自己
+  - `404`：用户不存在

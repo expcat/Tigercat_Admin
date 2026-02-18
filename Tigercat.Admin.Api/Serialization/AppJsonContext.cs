@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
+using Tigercat.Admin.Api.Endpoints;
 using Tigercat.Admin.Api.EventBus;
 
 namespace Tigercat.Admin.Api.Serialization;
@@ -19,6 +20,14 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(ApiResponse<InfoResponse>))]
 [JsonSerializable(typeof(UserResponse))]
 [JsonSerializable(typeof(EventEnvelope))]
+// Users CRUD types
+[JsonSerializable(typeof(CreateUserRequest))]
+[JsonSerializable(typeof(UpdateUserRequest))]
+[JsonSerializable(typeof(UserItemResponse))]
+[JsonSerializable(typeof(RoleInfoResponse))]
+[JsonSerializable(typeof(PagedResponse<UserItemResponse>))]
+[JsonSerializable(typeof(ApiResponse<UserItemResponse>))]
+[JsonSerializable(typeof(ApiResponse<PagedResponse<UserItemResponse>>))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }
