@@ -137,6 +137,14 @@ public class RolesEndpoints : IEndpointDefinition
                 statusCode: 400);
         }
 
+        if (string.Equals(name, AdminRoleName, StringComparison.OrdinalIgnoreCase))
+        {
+            return Results.Json(
+                ApiResult.Fail<RoleDetailResponse>("角色名称为系统保留，不能使用 Admin", 400),
+                AppJsonContext.Default.ApiResponseRoleDetailResponse,
+                statusCode: 400);
+        }
+
         if (request.Description is { Length: > DescriptionMaxLength })
         {
             return Results.Json(
@@ -156,14 +164,16 @@ public class RolesEndpoints : IEndpointDefinition
 
         if (request.PermissionIds is { Length: > 0 })
         {
+            var distinctPermIds = request.PermissionIds.Distinct().ToArray();
+
             var validPermIds = await db.Permissions
-                .Where(p => request.PermissionIds.Contains(p.Id))
+                .Where(p => distinctPermIds.Contains(p.Id))
                 .Select(p => p.Id)
                 .ToListAsync(ct);
 
-            if (validPermIds.Count != request.PermissionIds.Length)
+            if (validPermIds.Count != distinctPermIds.Length)
             {
-                var invalidIds = request.PermissionIds.Except(validPermIds);
+                var invalidIds = distinctPermIds.Except(validPermIds);
                 return Results.Json(
                     ApiResult.Fail<RoleDetailResponse>($"以下权限 ID 不存在: {string.Join(", ", invalidIds)}", 400),
                     AppJsonContext.Default.ApiResponseRoleDetailResponse,
@@ -255,14 +265,16 @@ public class RolesEndpoints : IEndpointDefinition
 
         if (request.PermissionIds is not null)
         {
+            var distinctPermissionIds = request.PermissionIds.Distinct().ToArray();
+
             var validPermIds = await db.Permissions
-                .Where(p => request.PermissionIds.Contains(p.Id))
+                .Where(p => distinctPermissionIds.Contains(p.Id))
                 .Select(p => p.Id)
                 .ToListAsync(ct);
 
-            if (validPermIds.Count != request.PermissionIds.Length)
+            if (validPermIds.Count != distinctPermissionIds.Length)
             {
-                var invalidIds = request.PermissionIds.Except(validPermIds);
+                var invalidIds = distinctPermissionIds.Except(validPermIds);
                 return Results.Json(
                     ApiResult.Fail<RoleDetailResponse>($"以下权限 ID 不存在: {string.Join(", ", invalidIds)}", 400),
                     AppJsonContext.Default.ApiResponseRoleDetailResponse,
@@ -352,14 +364,25 @@ public class RolesEndpoints : IEndpointDefinition
                 statusCode: 404);
         }
 
+        // 禁止修改 Admin 角色的权限，Admin 始终拥有所有权限
+        if (string.Equals(role.Name, AdminRoleName, StringComparison.OrdinalIgnoreCase))
+        {
+            return Results.Json(
+                ApiResult.Fail<RoleDetailResponse>("不能修改管理员角色的权限", 400),
+                AppJsonContext.Default.ApiResponseRoleDetailResponse,
+                statusCode: 400);
+        }
+
+        var distinctPermIds = request.PermissionIds.Distinct().ToArray();
+
         var validPermIds = await db.Permissions
-            .Where(p => request.PermissionIds.Contains(p.Id))
+            .Where(p => distinctPermIds.Contains(p.Id))
             .Select(p => p.Id)
             .ToListAsync(ct);
 
-        if (validPermIds.Count != request.PermissionIds.Length)
+        if (validPermIds.Count != distinctPermIds.Length)
         {
-            var invalidIds = request.PermissionIds.Except(validPermIds);
+            var invalidIds = distinctPermIds.Except(validPermIds);
             return Results.Json(
                 ApiResult.Fail<RoleDetailResponse>($"以下权限 ID 不存在: {string.Join(", ", invalidIds)}", 400),
                 AppJsonContext.Default.ApiResponseRoleDetailResponse,
@@ -401,14 +424,26 @@ public class RolesEndpoints : IEndpointDefinition
                 statusCode: 404);
         }
 
+        var distinctUserIds = request.UserIds.Distinct().ToArray();
+
+        // 如果是 Admin 角色，不允许将用户清空（防止系统锁死）
+        if (string.Equals(role.Name, AdminRoleName, StringComparison.OrdinalIgnoreCase) &&
+            distinctUserIds.Length == 0)
+        {
+            return Results.Json(
+                ApiResult.Fail<RoleDetailResponse>("管理员角色必须至少有一个用户", 400),
+                AppJsonContext.Default.ApiResponseRoleDetailResponse,
+                statusCode: 400);
+        }
+
         var validUserIds = await db.Users
-            .Where(u => request.UserIds.Contains(u.Id))
+            .Where(u => distinctUserIds.Contains(u.Id))
             .Select(u => u.Id)
             .ToListAsync(ct);
 
-        if (validUserIds.Count != request.UserIds.Length)
+        if (validUserIds.Count != distinctUserIds.Length)
         {
-            var invalidIds = request.UserIds.Except(validUserIds);
+            var invalidIds = distinctUserIds.Except(validUserIds);
             return Results.Json(
                 ApiResult.Fail<RoleDetailResponse>($"以下用户 ID 不存在: {string.Join(", ", invalidIds)}", 400),
                 AppJsonContext.Default.ApiResponseRoleDetailResponse,
