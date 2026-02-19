@@ -5,3 +5,4 @@ export * from './common';
 export * from './validation';
 export * from './composables';
 export * from './types';
+export * from './permission';

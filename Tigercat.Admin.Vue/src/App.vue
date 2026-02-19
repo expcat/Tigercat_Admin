@@ -6,8 +6,12 @@ import {
   SESSION_KEY,
   safeParse,
   apiRequest,
+  createPermissionContext,
+  PERMISSION_KEY,
   type Session,
 } from './utils'
+
+const permission = createPermissionContext()
 
 const router = useRouter()
 const route = useRoute()
@@ -33,7 +37,10 @@ const persistSession = (nextSession: Session | null) => {
 
 const onLoginSuccess = async (nextSession: Session) => {
   persistSession(nextSession)
-  await loadHome(nextSession.token)
+  await Promise.all([
+    loadHome(nextSession.token),
+    permission.load(nextSession.token),
+  ])
   router.push({ name: 'dashboard' })
 }
 
@@ -51,6 +58,7 @@ const loadHome = async (tokenOverride?: string) => {
 
 const handleLogout = () => {
   persistSession(null)
+  permission.clear()
   homeMessage.value = ''
   homeError.value = ''
   router.push({ name: 'login' })
@@ -80,7 +88,7 @@ const handleChangePassword = async () => {
   }
 }
 
-// Load home data when entering dashboard
+// Load home data when entering dashboard & load permissions on page refresh
 watch(
   () => route.name,
   (routeName) => {
@@ -91,6 +99,11 @@ watch(
   { immediate: true }
 )
 
+// Load permissions when session exists but permissions haven't been loaded yet (e.g. page refresh)
+if (session.value?.token && !permission.loaded.value) {
+  permission.load(session.value.token)
+}
+
 provide('session', session)
 provide('changeForm', changeForm)
 provide('changeOpen', changeOpen)
@@ -98,6 +111,7 @@ provide('handleLogout', handleLogout)
 provide('handleChangePassword', handleChangePassword)
 provide('homeMessage', homeMessage)
 provide('homeError', homeError)
+provide(PERMISSION_KEY, permission)
 </script>
 
 <template>
