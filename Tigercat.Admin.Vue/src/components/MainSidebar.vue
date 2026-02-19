@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import Icon from './Icon.vue'
 import AppLogo from './AppLogo.vue'
+import { usePermission } from '../utils/permission'
 
 interface MenuItem {
   key: string
   label: string
   icon: string
+  /** Permission code(s) required to see this menu item. */
+  permission?: string | string[]
   children?: MenuItem[]
 }
 
@@ -25,15 +28,16 @@ const menuItems: MenuItem[] = [
   { 
     key: 'home', 
     label: '仪表盘', 
-    icon: 'dashboard' 
+    icon: 'dashboard',
+    permission: 'dashboard:view',
   },
   { 
     key: 'system', 
     label: '系统管理', 
     icon: 'server',
     children: [
-      { key: 'users', label: '用户管理', icon: 'users' },
-      { key: 'roles', label: '角色管理', icon: 'shield' },
+      { key: 'users', label: '用户管理', icon: 'users', permission: 'user:view' },
+      { key: 'roles', label: '角色管理', icon: 'shield', permission: 'role:view' },
       { key: 'settings', label: '系统设置', icon: 'settings' }
     ]
   }
@@ -70,6 +74,30 @@ const toggleCollapsed = () => {
 
 const isExpanded = (key: string) => expandedKeys.value.includes(key)
 const isActive = (key: string) => props.activeMenu === key
+
+// ---- Permission-based menu filtering ----
+const { has: hasPerm } = usePermission()
+
+function isPermitted(item: MenuItem): boolean {
+  if (!item.permission) return true
+  const codes = Array.isArray(item.permission) ? item.permission : [item.permission]
+  // Need ANY of the listed permissions to see the item
+  return codes.some((c) => hasPerm(c))
+}
+
+/** Top-level menu items filtered by permission (groups kept only if they have visible children). */
+const filteredMenuItems = computed(() =>
+  menuItems
+    .map((item) => {
+      if (item.children) {
+        const visibleChildren = item.children.filter(isPermitted)
+        if (visibleChildren.length === 0) return null
+        return { ...item, children: visibleChildren }
+      }
+      return isPermitted(item) ? item : null
+    })
+    .filter(Boolean) as MenuItem[]
+)
 </script>
 
 <template>
@@ -89,7 +117,7 @@ const isActive = (key: string) => props.activeMenu === key
     <nav class="flex-1 overflow-y-auto py-4 px-3">
       <div class="flex flex-col min-h-full">
         <ul class="space-y-1">
-        <template v-for="item in menuItems" :key="item.key">
+        <template v-for="item in filteredMenuItems" :key="item.key">
           <!-- 有子菜单 -->
           <li v-if="item.children && item.children.length > 0">
             <button

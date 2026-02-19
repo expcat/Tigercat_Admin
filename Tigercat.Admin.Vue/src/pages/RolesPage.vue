@@ -9,28 +9,31 @@ const quickActions = [
     icon: 'userPlus',
     description: '创建新的角色与权限',
     iconClass: 'text-blue-600',
-    bgClass: 'from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200'
+    bgClass: 'from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200',
+    permission: 'role:create',
   },
   {
     label: '成员分配',
     icon: 'users',
     description: '为角色分配成员',
     iconClass: 'text-purple-600',
-    bgClass: 'from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200'
+    bgClass: 'from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200',
+    permission: 'role:edit',
   },
   {
     label: '权限模板',
     icon: 'clipboard',
     description: '管理权限模板',
     iconClass: 'text-orange-600',
-    bgClass: 'from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200'
+    bgClass: 'from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200',
+    permission: 'role:edit',
   },
   {
     label: '审计日志',
     icon: 'search',
     description: '查看角色变更记录',
     iconClass: 'text-green-600',
-    bgClass: 'from-green-50 to-green-100 hover:from-green-100 hover:to-green-200'
+    bgClass: 'from-green-50 to-green-100 hover:from-green-100 hover:to-green-200',
   }
 ]
 
@@ -118,6 +121,7 @@ const recentUpdates = [
           <div
             v-for="action in quickActions"
             :key="action.label"
+            v-permission="action.permission"
             class="flex items-start gap-3 p-4 rounded-xl border border-slate-200 bg-gradient-to-br transition-all duration-300 hover:shadow-md"
             :class="action.bgClass"
           >
