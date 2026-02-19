@@ -1,11 +1,15 @@
 import type { Directive, DirectiveBinding } from 'vue';
-import { hasPermission, hasAnyPermission } from '../utils/permission';
+import { watchEffect, type WatchStopHandle } from 'vue';
+import { hasPermission, hasAnyPermission, permissionCodes } from '../utils/permission';
 
 /**
  * v-permission directive — controls element visibility based on permission codes.
  *
  * Uses `display: none` to hide elements, keeping them in the DOM so Vue's
  * lifecycle stays consistent and no orphaned nodes are left on unmount.
+ *
+ * Reactively watches `permissionCodes` so that visibility updates automatically
+ * when permissions are loaded asynchronously (e.g. after page refresh).
  *
  * Usage:
  *   v-permission="'user:create'"            — single code (must have)
@@ -16,6 +20,7 @@ import { hasPermission, hasAnyPermission } from '../utils/permission';
  */
 
 const ORIGINAL_DISPLAY = Symbol('v-permission-display');
+const STOP_WATCHER = Symbol('v-permission-stop');
 
 function applyPermission(el: HTMLElement, binding: DirectiveBinding): void {
   const value = binding.value;
@@ -23,16 +28,16 @@ function applyPermission(el: HTMLElement, binding: DirectiveBinding): void {
 
   const codes: string[] = Array.isArray(value) ? value : [value];
   const useAny = binding.modifiers?.any === true;
+
+  // Access permissionCodes.value so watchEffect tracks it as a dependency.
   const permitted = useAny ? hasAnyPermission(...codes) : hasPermission(...codes);
 
   if (!permitted) {
-    // Preserve the original display value so we can restore it later.
     if (!(ORIGINAL_DISPLAY in (el as any))) {
       (el as any)[ORIGINAL_DISPLAY] = el.style.display;
     }
     el.style.display = 'none';
   } else {
-    // Restore original display value if it was previously hidden.
     if (ORIGINAL_DISPLAY in (el as any)) {
       el.style.display = (el as any)[ORIGINAL_DISPLAY] ?? '';
       delete (el as any)[ORIGINAL_DISPLAY];
@@ -40,15 +45,38 @@ function applyPermission(el: HTMLElement, binding: DirectiveBinding): void {
   }
 }
 
+function setupWatcher(el: HTMLElement, binding: DirectiveBinding): void {
+  // Clean up any existing watcher first.
+  teardownWatcher(el);
+
+  const stop = watchEffect(() => {
+    // This creates a reactive dependency on permissionCodes.
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    permissionCodes.value;
+    applyPermission(el, binding);
+  });
+
+  (el as any)[STOP_WATCHER] = stop;
+}
+
+function teardownWatcher(el: HTMLElement): void {
+  const stop = (el as any)[STOP_WATCHER] as WatchStopHandle | undefined;
+  if (stop) {
+    stop();
+    delete (el as any)[STOP_WATCHER];
+  }
+}
+
 export const vPermission: Directive = {
   mounted(el: HTMLElement, binding: DirectiveBinding) {
-    applyPermission(el, binding);
+    setupWatcher(el, binding);
   },
   updated(el: HTMLElement, binding: DirectiveBinding) {
-    applyPermission(el, binding);
+    // Re-create watcher when binding value changes (e.g. dynamic permission codes).
+    setupWatcher(el, binding);
   },
   unmounted(el: HTMLElement) {
-    // Clean up stored display value.
+    teardownWatcher(el);
     if (ORIGINAL_DISPLAY in (el as any)) {
       delete (el as any)[ORIGINAL_DISPLAY];
     }

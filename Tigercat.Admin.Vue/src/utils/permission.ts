@@ -3,7 +3,7 @@ import { apiRequest } from './request';
 import type { UserPermissions } from './types';
 
 /** Reactive set of permission codes owned by the current user. */
-const permissionCodes = ref<Set<string>>(new Set());
+export const permissionCodes = ref<Set<string>>(new Set());
 
 /** Whether permissions have been loaded at least once. */
 const loaded = ref(false);
