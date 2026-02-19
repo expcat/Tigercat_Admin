@@ -11,30 +11,50 @@ const loaded = ref(false);
 /** Whether a load request is currently in flight. */
 const loading = ref(false);
 
+/** Monotonically increasing id for permission load requests. */
+let currentRequestId = 0;
+
+/** Number of active permission load requests. */
+let activeRequests = 0;
+
 /**
  * Fetch the current user's permissions from the API and store them.
  * Requires an Authorization header (Bearer token).
+ *
+ * Concurrent / overlapping calls are safe: only the result of the
+ * latest request is applied; stale responses are discarded.
  */
 export async function loadPermissions(token: string): Promise<void> {
-  if (loading.value) return;
+  const requestId = ++currentRequestId;
+  activeRequests += 1;
   loading.value = true;
   try {
     const res = await apiRequest<UserPermissions>('/api/auth/permissions', {
       headers: { Authorization: `Bearer ${token}` },
     });
+    // Only apply the result if this is still the latest request.
+    if (requestId !== currentRequestId) return;
     const codes = res.data?.permissions?.map((p) => p.code) ?? [];
     permissionCodes.value = new Set(codes);
     loaded.value = true;
   } catch {
-    permissionCodes.value = new Set();
-    loaded.value = false;
+    if (requestId === currentRequestId) {
+      permissionCodes.value = new Set();
+      loaded.value = false;
+    }
   } finally {
-    loading.value = false;
+    activeRequests -= 1;
+    if (activeRequests < 0) activeRequests = 0;
+    loading.value = activeRequests > 0;
   }
 }
 
 /** Clear cached permissions (e.g. on logout). */
 export function clearPermissions(): void {
+  // Invalidate any in-flight requests so their results are ignored.
+  currentRequestId += 1;
+  activeRequests = 0;
+  loading.value = false;
   permissionCodes.value = new Set();
   loaded.value = false;
 }

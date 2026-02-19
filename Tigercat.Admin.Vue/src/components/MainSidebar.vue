@@ -8,7 +8,11 @@ interface MenuItem {
   key: string
   label: string
   icon: string
-  /** Permission code(s) required to see this menu item. */
+  /**
+   * Permission code required to see this menu item.
+   * - `string` — must have this single permission
+   * - `string[]` — must have **ALL** listed permissions (same semantics as v-permission)
+   */
   permission?: string | string[]
   children?: MenuItem[]
 }
@@ -81,8 +85,8 @@ const { has: hasPerm } = usePermission()
 function isPermitted(item: MenuItem): boolean {
   if (!item.permission) return true
   const codes = Array.isArray(item.permission) ? item.permission : [item.permission]
-  // Need ANY of the listed permissions to see the item
-  return codes.some((c) => hasPerm(c))
+  // Require ALL listed permissions — consistent with v-permission default semantics
+  return codes.every((c) => hasPerm(c))
 }
 
 /** Top-level menu items filtered by permission (groups kept only if they have visible children). */

@@ -4,48 +4,53 @@ import { hasPermission, hasAnyPermission } from '../utils/permission';
 /**
  * v-permission directive — controls element visibility based on permission codes.
  *
+ * Uses `display: none` to hide elements, keeping them in the DOM so Vue's
+ * lifecycle stays consistent and no orphaned nodes are left on unmount.
+ *
  * Usage:
  *   v-permission="'user:create'"            — single code (must have)
  *   v-permission="['user:view','role:view']" — must have ALL listed codes
  *
  * Modifiers:
  *   v-permission.any="['user:edit','role:edit']" — must have ANY of the listed codes
- *
- * When the check fails the element is removed from the DOM.
  */
 
-function check(el: HTMLElement, binding: DirectiveBinding): void {
+const ORIGINAL_DISPLAY = Symbol('v-permission-display');
+
+function applyPermission(el: HTMLElement, binding: DirectiveBinding): void {
   const value = binding.value;
   if (!value) return;
 
   const codes: string[] = Array.isArray(value) ? value : [value];
   const useAny = binding.modifiers?.any === true;
-
   const permitted = useAny ? hasAnyPermission(...codes) : hasPermission(...codes);
 
   if (!permitted) {
-    // Store a comment placeholder so we can track the position
-    const comment = document.createComment('v-permission');
-    (el as any).__v_permission_anchor__ = comment;
-    el.parentNode?.replaceChild(comment, el);
-  }
-}
-
-function tryRestore(el: HTMLElement): void {
-  const anchor = (el as any).__v_permission_anchor__ as Comment | undefined;
-  if (anchor?.parentNode) {
-    anchor.parentNode.replaceChild(el, anchor);
-    delete (el as any).__v_permission_anchor__;
+    // Preserve the original display value so we can restore it later.
+    if (!(ORIGINAL_DISPLAY in (el as any))) {
+      (el as any)[ORIGINAL_DISPLAY] = el.style.display;
+    }
+    el.style.display = 'none';
+  } else {
+    // Restore original display value if it was previously hidden.
+    if (ORIGINAL_DISPLAY in (el as any)) {
+      el.style.display = (el as any)[ORIGINAL_DISPLAY] ?? '';
+      delete (el as any)[ORIGINAL_DISPLAY];
+    }
   }
 }
 
 export const vPermission: Directive = {
   mounted(el: HTMLElement, binding: DirectiveBinding) {
-    check(el, binding);
+    applyPermission(el, binding);
   },
   updated(el: HTMLElement, binding: DirectiveBinding) {
-    // Restore element first in case permissions changed and it should now be visible
-    tryRestore(el);
-    check(el, binding);
+    applyPermission(el, binding);
+  },
+  unmounted(el: HTMLElement) {
+    // Clean up stored display value.
+    if (ORIGINAL_DISPLAY in (el as any)) {
+      delete (el as any)[ORIGINAL_DISPLAY];
+    }
   },
 };
