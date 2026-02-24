@@ -90,6 +90,7 @@ app.MapEndpoint<AuthEndpoints>();
 app.MapEndpoint<HomeEndpoints>();
 app.MapEndpoint<UsersEndpoints>();
 app.MapEndpoint<RolesEndpoints>();
+app.MapEndpoint<StatsEndpoints>();
 
 app.MapGet("/api/health", GetHealth)
     .WithName("HealthCheck");
