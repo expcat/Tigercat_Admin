@@ -46,6 +46,25 @@ public class RolesEndpoints : IEndpointDefinition
         group.MapPut("/{id:int}/users", SetRoleUsers)
             .RequirePermission("role:edit")
             .WithName("SetRoleUsers");
+
+        group.MapGet("/permissions", GetAllPermissions)
+            .RequirePermission("role:view")
+            .WithName("GetAllPermissions");
+    }
+
+    // GET /api/roles/permissions
+    private static async Task<IResult> GetAllPermissions(
+        AdminDbContext db,
+        CancellationToken ct)
+    {
+        var permissions = await db.Permissions
+            .OrderBy(p => p.Id)
+            .Select(p => new PermissionInfoResponse(p.Id, p.Code, p.Description))
+            .ToListAsync(ct);
+
+        return Results.Json(
+            ApiResult.Ok(permissions.ToArray()),
+            AppJsonContext.Default.ApiResponsePermissionInfoResponseArray);
     }
 
     // GET /api/roles?page=1&pageSize=10&keyword=xxx

@@ -44,6 +44,8 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(PagedResponse<RoleDetailResponse>))]
 [JsonSerializable(typeof(ApiResponse<RoleDetailResponse>))]
 [JsonSerializable(typeof(ApiResponse<PagedResponse<RoleDetailResponse>>))]
+[JsonSerializable(typeof(PermissionInfoResponse[]))]
+[JsonSerializable(typeof(ApiResponse<PermissionInfoResponse[]>))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }

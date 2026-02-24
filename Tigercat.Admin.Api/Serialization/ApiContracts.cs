@@ -42,5 +42,8 @@ internal record ApiContracts(
     RoleUserInfoResponse? RoleUserInfoResponse,
     PagedResponse<RoleDetailResponse>? PagedResponseRoleDetailResponse,
     ApiResponse<RoleDetailResponse>? ApiResponseRoleDetailResponse,
-    ApiResponse<PagedResponse<RoleDetailResponse>>? ApiResponsePagedResponseRoleDetailResponse
+    ApiResponse<PagedResponse<RoleDetailResponse>>? ApiResponsePagedResponseRoleDetailResponse,
+    // All permissions list
+    PermissionInfoResponse[]? PermissionInfoResponseArray,
+    ApiResponse<PermissionInfoResponse[]>? ApiResponsePermissionInfoResponseArray
 );
