@@ -31,6 +31,7 @@ import {
   normalizeInput,
   Session,
   Notice,
+  usePermission,
 } from './utils';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -157,6 +158,7 @@ function ProtectedLayout({
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  const permission = usePermission();
 
   const [changeForm, setChangeForm] = useState<ChangePasswordForm>({
     oldPassword: '',
@@ -186,7 +188,10 @@ function App() {
 
   const onLoginSuccess = async (nextSession: Session) => {
     persistSession(nextSession);
-    await loadHome(nextSession.token);
+    await Promise.all([
+      loadHome(nextSession.token),
+      permission.load(nextSession.token),
+    ]);
     navigate('/dashboard');
   };
 
@@ -215,8 +220,18 @@ function App() {
     }
   }, [location.pathname, session?.token, loadHome]);
 
+  // Load permissions on page refresh when session exists but permissions haven't been loaded yet
+  useEffect(() => {
+    if (session?.token && !permission.loaded) {
+      permission.load(session.token);
+    }
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleLogout = () => {
     persistSession(null);
+    permission.clear();
     setHomeMessage('');
     setHomeError('');
     navigate('/login');

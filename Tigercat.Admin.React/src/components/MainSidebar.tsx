@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   DashboardIcon,
   ServerIcon,
@@ -11,11 +11,18 @@ import {
   ChevronLeftIcon,
   ChevronDownIcon,
 } from './Icons';
+import { usePermission } from '../utils/permission';
 
 interface MenuItem {
   key: string;
   label: string;
   icon: React.ReactNode;
+  /**
+   * Permission code required to see this menu item.
+   * - `string` — must have this single permission
+   * - `string[]` — must have **ALL** listed permissions
+   */
+  permission?: string | string[];
   children?: MenuItem[];
 }
 
@@ -31,14 +38,15 @@ const MENU_ITEMS: MenuItem[] = [
     key: 'home',
     label: '仪表盘',
     icon: <DashboardIcon size={20} />,
+    permission: 'dashboard:view',
   },
   {
     key: 'system',
     label: '系统管理',
     icon: <ServerIcon size={20} />,
     children: [
-      { key: 'users', label: '用户管理', icon: <UsersIcon size={18} /> },
-      { key: 'roles', label: '角色管理', icon: <ShieldIcon size={18} /> },
+      { key: 'users', label: '用户管理', icon: <UsersIcon size={18} />, permission: 'user:view' },
+      { key: 'roles', label: '角色管理', icon: <ShieldIcon size={18} />, permission: 'role:view' },
       { key: 'settings', label: '系统设置', icon: <SettingsIcon size={18} /> },
     ],
   },
@@ -59,6 +67,29 @@ export function MainSidebar({
   onMenuSelect,
 }: MainSidebarProps) {
   const [expandedKeys, setExpandedKeys] = useState<string[]>(['system']);
+  const { has: hasPerm } = usePermission();
+
+  // ---- Permission-based menu filtering ----
+  function isPermitted(item: MenuItem): boolean {
+    if (!item.permission) return true;
+    const codes = Array.isArray(item.permission) ? item.permission : [item.permission];
+    return codes.every((c) => hasPerm(c));
+  }
+
+  const filteredMenuItems = useMemo(
+    () =>
+      MENU_ITEMS.map((item) => {
+        if (item.children) {
+          const visibleChildren = item.children.filter(isPermitted);
+          if (visibleChildren.length === 0) return null;
+          return { ...item, children: visibleChildren };
+        }
+        return isPermitted(item) ? item : null;
+      }).filter(Boolean) as MenuItem[],
+    // hasPerm identity changes when codes change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hasPerm],
+  );
 
   const toggleExpand = (key: string) => {
     setExpandedKeys((prev) =>
@@ -90,7 +121,7 @@ export function MainSidebar({
       <nav className="flex-1 overflow-y-auto py-4 px-3">
         <div className="flex flex-col min-h-full">
           <ul className="space-y-1">
-            {MENU_ITEMS.map((item) => (
+            {filteredMenuItems.map((item) => (
               <li key={item.key}>
                 {item.children && item.children.length > 0 ? (
                   // 有子菜单
