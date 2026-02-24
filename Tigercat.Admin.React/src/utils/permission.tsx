@@ -49,13 +49,11 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
     activeRef.current += 1;
     setLoading(true);
     try {
-      const res = await apiRequest<UserPermissions>(
-        '/api/auth/permissions',
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const res = await apiRequest<UserPermissions>('/api/auth/permissions', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (requestId !== requestIdRef.current) return;
-      const permCodes =
-        res.data?.permissions?.map((p) => p.code) ?? [];
+      const permCodes = res.data?.permissions?.map((p) => p.code) ?? [];
       setCodes(new Set(permCodes));
       setLoaded(true);
     } catch {
@@ -110,9 +108,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
 export function usePermission(): PermissionContextValue {
   const ctx = useContext(PermissionContext);
   if (!ctx) {
-    throw new Error(
-      'usePermission must be used within a <PermissionProvider>',
-    );
+    throw new Error('usePermission must be used within a <PermissionProvider>');
   }
   return ctx;
 }

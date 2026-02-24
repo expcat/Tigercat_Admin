@@ -45,8 +45,18 @@ const MENU_ITEMS: MenuItem[] = [
     label: '系统管理',
     icon: <ServerIcon size={20} />,
     children: [
-      { key: 'users', label: '用户管理', icon: <UsersIcon size={18} />, permission: 'user:view' },
-      { key: 'roles', label: '角色管理', icon: <ShieldIcon size={18} />, permission: 'role:view' },
+      {
+        key: 'users',
+        label: '用户管理',
+        icon: <UsersIcon size={18} />,
+        permission: 'user:view',
+      },
+      {
+        key: 'roles',
+        label: '角色管理',
+        icon: <ShieldIcon size={18} />,
+        permission: 'role:view',
+      },
       { key: 'settings', label: '系统设置', icon: <SettingsIcon size={18} /> },
     ],
   },
@@ -70,26 +80,24 @@ export function MainSidebar({
   const { has: hasPerm } = usePermission();
 
   // ---- Permission-based menu filtering ----
-  function isPermitted(item: MenuItem): boolean {
-    if (!item.permission) return true;
-    const codes = Array.isArray(item.permission) ? item.permission : [item.permission];
-    return codes.every((c) => hasPerm(c));
-  }
+  const filteredMenuItems = useMemo(() => {
+    function isPermitted(item: MenuItem): boolean {
+      if (!item.permission) return true;
+      const codes = Array.isArray(item.permission)
+        ? item.permission
+        : [item.permission];
+      return codes.every((c) => hasPerm(c));
+    }
 
-  const filteredMenuItems = useMemo(
-    () =>
-      MENU_ITEMS.map((item) => {
-        if (item.children) {
-          const visibleChildren = item.children.filter(isPermitted);
-          if (visibleChildren.length === 0) return null;
-          return { ...item, children: visibleChildren };
-        }
-        return isPermitted(item) ? item : null;
-      }).filter(Boolean) as MenuItem[],
-    // hasPerm identity changes when codes change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [hasPerm],
-  );
+    return MENU_ITEMS.map((item) => {
+      if (item.children) {
+        const visibleChildren = item.children.filter(isPermitted);
+        if (visibleChildren.length === 0) return null;
+        return { ...item, children: visibleChildren };
+      }
+      return isPermitted(item) ? item : null;
+    }).filter(Boolean) as MenuItem[];
+  }, [hasPerm]);
 
   const toggleExpand = (key: string) => {
     setExpandedKeys((prev) =>
