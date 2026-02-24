@@ -1,3 +1,6 @@
+using System.Collections.Concurrent;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +22,9 @@ public class ExportEndpoints : IEndpointDefinition
         ["id", "name", "description", "createdAt", "permissions", "userCount"];
 
     private static readonly string[] SupportedFormats = ["csv", "json", "xlsx"];
+
+    /// <summary>Maximum number of rows allowed per export to prevent OOM on large tables.</summary>
+    private const int MaxExportRows = 10_000;
 
     public void DefineEndpoints(IEndpointRouteBuilder app)
     {
@@ -56,6 +62,7 @@ public class ExportEndpoints : IEndpointDefinition
             .Include(u => u.UserRoles)
             .ThenInclude(ur => ur.Role)
             .OrderBy(u => u.Id)
+            .Take(MaxExportRows)
             .ToListAsync(ct);
 
         var rows = users.Select(u => new ExportUserRow(
@@ -68,7 +75,7 @@ public class ExportEndpoints : IEndpointDefinition
             string.Join("; ", u.UserRoles.Select(ur => ur.Role.Name))
         )).ToList();
 
-        return BuildExportResult(rows, selectedFields, ValidUserFields, fmt, "users");
+        return BuildExportResult(rows, selectedFields, fmt, "users");
     }
 
     // GET /api/export/roles?format=csv|json|xlsx&fields=id,name,...
@@ -94,6 +101,7 @@ public class ExportEndpoints : IEndpointDefinition
             .ThenInclude(rp => rp.Permission)
             .Include(r => r.UserRoles)
             .OrderBy(r => r.Id)
+            .Take(MaxExportRows)
             .ToListAsync(ct);
 
         var rows = roles.Select(r => new ExportRoleRow(
@@ -105,7 +113,7 @@ public class ExportEndpoints : IEndpointDefinition
             r.UserRoles.Count
         )).ToList();
 
-        return BuildExportResult(rows, selectedFields, ValidRoleFields, fmt, "roles");
+        return BuildExportResult(rows, selectedFields, fmt, "roles");
     }
 
     // --- Helpers ---
@@ -132,39 +140,36 @@ public class ExportEndpoints : IEndpointDefinition
     private static IResult BuildExportResult<T>(
         List<T> rows,
         HashSet<string> selectedFields,
-        HashSet<string> allFields,
         string format,
         string entityName) where T : class
     {
-        var properties = typeof(T).GetProperties()
-            .Where(p => selectedFields.Contains(p.Name, StringComparer.OrdinalIgnoreCase))
-            .ToArray();
+        var accessors = PropertyAccessorCache<T>.GetAccessors(selectedFields);
 
         return format switch
         {
-            "csv" => BuildCsvResult(rows, properties, entityName),
-            "json" => BuildJsonResult(rows, properties, entityName),
-            "xlsx" => BuildXlsxResult(rows, properties, entityName),
+            "csv" => BuildCsvResult(rows, accessors, entityName),
+            "json" => BuildJsonResult(rows, accessors, entityName),
+            "xlsx" => BuildXlsxResult(rows, accessors, entityName),
             _ => Results.BadRequest()
         };
     }
 
     private static IResult BuildCsvResult<T>(
         List<T> rows,
-        System.Reflection.PropertyInfo[] properties,
+        PropertyAccessor[] accessors,
         string entityName) where T : class
     {
         var sb = new StringBuilder();
 
         // Header
-        sb.AppendLine(string.Join(",", properties.Select(p => p.Name)));
+        sb.AppendLine(string.Join(",", accessors.Select(a => a.Name)));
 
         // Rows
         foreach (var row in rows)
         {
-            var values = properties.Select(p =>
+            var values = accessors.Select(a =>
             {
-                var val = p.GetValue(row)?.ToString() ?? "";
+                var val = a.GetValue(row)?.ToString() ?? "";
                 // Escape CSV fields that contain commas, quotes, or newlines
                 if (val.Contains(',') || val.Contains('"') || val.Contains('\n'))
                     return $"\"{val.Replace("\"", "\"\"")}\"";
@@ -188,18 +193,16 @@ public class ExportEndpoints : IEndpointDefinition
 
     private static IResult BuildJsonResult<T>(
         List<T> rows,
-        System.Reflection.PropertyInfo[] properties,
+        PropertyAccessor[] accessors,
         string entityName) where T : class
     {
         // Build filtered objects as dictionaries
         var filtered = rows.Select(row =>
         {
             var dict = new Dictionary<string, object?>();
-            foreach (var prop in properties)
+            foreach (var accessor in accessors)
             {
-                // Use camelCase key names
-                var key = char.ToLowerInvariant(prop.Name[0]) + prop.Name[1..];
-                dict[key] = prop.GetValue(row);
+                dict[accessor.CamelCaseName] = accessor.GetValue(row);
             }
             return dict;
         }).ToList();
@@ -218,27 +221,59 @@ public class ExportEndpoints : IEndpointDefinition
 
     private static IResult BuildXlsxResult<T>(
         List<T> rows,
-        System.Reflection.PropertyInfo[] properties,
+        PropertyAccessor[] accessors,
         string entityName) where T : class
     {
         // Build data as list of dictionaries for MiniExcel
         var data = rows.Select(row =>
         {
             var dict = new Dictionary<string, object?>();
-            foreach (var prop in properties)
+            foreach (var accessor in accessors)
             {
-                dict[prop.Name] = prop.GetValue(row);
+                dict[accessor.Name] = accessor.GetValue(row);
             }
             return dict;
         }).ToList();
 
-        var stream = new MemoryStream();
+        using var stream = new MemoryStream();
         stream.SaveAs(data);
-        stream.Position = 0;
+        var bytes = stream.ToArray();
 
         return Results.File(
-            stream,
+            bytes,
             contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             fileDownloadName: $"{entityName}.xlsx");
+    }
+
+    // --- Cached compiled property accessors to avoid per-row reflection ---
+
+    private sealed record PropertyAccessor(string Name, string CamelCaseName, Func<object, object?> GetValue);
+
+    private static class PropertyAccessorCache<T> where T : class
+    {
+        private static readonly ConcurrentDictionary<string, PropertyAccessor> Cache = new(StringComparer.OrdinalIgnoreCase);
+
+        static PropertyAccessorCache()
+        {
+            foreach (var prop in typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                var param = Expression.Parameter(typeof(object), "obj");
+                var cast = Expression.Convert(param, typeof(T));
+                var access = Expression.Property(cast, prop);
+                var boxed = Expression.Convert(access, typeof(object));
+                var lambda = Expression.Lambda<Func<object, object?>>(boxed, param).Compile();
+
+                var camelCase = JsonNamingPolicy.CamelCase.ConvertName(prop.Name);
+                Cache[prop.Name] = new PropertyAccessor(prop.Name, camelCase, lambda);
+            }
+        }
+
+        public static PropertyAccessor[] GetAccessors(HashSet<string> selectedFields)
+        {
+            return typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => selectedFields.Contains(p.Name, StringComparer.OrdinalIgnoreCase))
+                .Select(p => Cache[p.Name])
+                .ToArray();
+        }
     }
 }

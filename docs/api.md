@@ -827,17 +827,17 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 
 下表列出所有接口可能返回的业务状态码，供前端统一处理。
 
-| 状态码 | 含义               | 说明                                                                 |
-| ------ | ------------------ | -------------------------------------------------------------------- |
-| `200`  | 成功               | 请求成功                                                             |
-| `201`  | 创建成功           | 资源创建成功（POST 创建用户/角色等）                                 |
-| `400`  | 请求参数错误       | 参数缺失、格式不合法、违反业务规则（如不能删除自己、保留角色名等）   |
-| `401`  | 未授权             | 未登录或 Token 无效/过期                                             |
-| `403`  | 权限不足           | 已登录但没有对应操作权限                                             |
-| `404`  | 资源不存在         | 请求的用户、角色等不存在                                             |
-| `409`  | 冲突               | 资源已存在（用户名/角色名重复）                                      |
-| `500`  | 服务器内部错误     | 服务端异常                                                           |
-| `503`  | 服务不可用         | 依赖服务不可用（如 Redis 故障）                                      |
+| 状态码 | 含义           | 说明                                                               |
+| ------ | -------------- | ------------------------------------------------------------------ |
+| `200`  | 成功           | 请求成功                                                           |
+| `201`  | 创建成功       | 资源创建成功（POST 创建用户/角色等）                               |
+| `400`  | 请求参数错误   | 参数缺失、格式不合法、违反业务规则（如不能删除自己、保留角色名等） |
+| `401`  | 未授权         | 未登录或 Token 无效/过期                                           |
+| `403`  | 权限不足       | 已登录但没有对应操作权限                                           |
+| `404`  | 资源不存在     | 请求的用户、角色等不存在                                           |
+| `409`  | 冲突           | 资源已存在（用户名/角色名重复）                                    |
+| `500`  | 服务器内部错误 | 服务端异常                                                         |
+| `503`  | 服务不可用     | 依赖服务不可用（如 Redis 故障）                                    |
 
 ### 通用错误返回示例
 
@@ -869,10 +869,10 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 
 以下 API 操作在成功后会发布异步审计事件至 Redis Stream（`stream:auth`）：
 
-| 事件类型                      | 触发操作                       | 载荷字段                                               |
-| ----------------------------- | ------------------------------ | ------------------------------------------------------ |
-| `auth.user.registered`        | POST `/api/auth/register`      | `username`                                             |
-| `auth.user.login`             | POST `/api/auth/login`         | `username`、`expiresAt`                                |
-| `auth.user.password.changed`  | POST `/api/auth/change-password` | `username`                                           |
-| `auth.user.logout`            | POST `/api/auth/logout`        | `username`                                             |
-| `admin.user.password.reset`   | PUT `/api/users/{id}`（修改密码时） | `targetUserId`、`targetUsername`、`operator`        |
+| 事件类型                     | 触发操作                            | 载荷字段                                     |
+| ---------------------------- | ----------------------------------- | -------------------------------------------- |
+| `auth.user.registered`       | POST `/api/auth/register`           | `username`                                   |
+| `auth.user.login`            | POST `/api/auth/login`              | `username`、`expiresAt`                      |
+| `auth.user.password.changed` | POST `/api/auth/change-password`    | `username`                                   |
+| `auth.user.logout`           | POST `/api/auth/logout`             | `username`                                   |
+| `admin.user.password.reset`  | PUT `/api/users/{id}`（修改密码时） | `targetUserId`、`targetUsername`、`operator` |
