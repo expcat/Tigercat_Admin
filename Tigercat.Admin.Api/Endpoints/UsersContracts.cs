@@ -6,6 +6,8 @@ public record CreateUserRequest(string Username, string Password, string? Displa
 
 public record UpdateUserRequest(string? DisplayName, int? Status, string? Password, int[]? RoleIds);
 
+public record BatchDeleteUsersRequest(int[] Ids);
+
 // --- Response DTOs ---
 
 public record UserItemResponse(

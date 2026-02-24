@@ -40,6 +40,10 @@ public class UsersEndpoints : IEndpointDefinition
         group.MapDelete("/{id:int}", DeleteUser)
             .RequirePermission("user:delete")
             .WithName("DeleteUser");
+
+        group.MapPost("/batch-delete", BatchDeleteUsers)
+            .RequirePermission("user:delete")
+            .WithName("BatchDeleteUsers");
     }
 
     // GET /api/users?page=1&pageSize=10&keyword=xxx
@@ -377,6 +381,74 @@ public class UsersEndpoints : IEndpointDefinition
 
         return Results.Json(
             ApiResult.Ok(new MessageResponse("删除成功")),
+            AppJsonContext.Default.ApiResponseMessageResponse);
+    }
+
+    // POST /api/users/batch-delete
+    private static async Task<IResult> BatchDeleteUsers(
+        BatchDeleteUsersRequest request,
+        AdminDbContext db,
+        HttpContext httpContext,
+        CancellationToken ct)
+    {
+        if (request.Ids is not { Length: > 0 })
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>("请选择要删除的用户", 400),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 400);
+        }
+
+        var currentUsername = httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var usernameObj) && usernameObj is string un
+            ? un : null;
+
+        var users = await db.Users
+            .Include(u => u.UserRoles)
+            .Where(u => request.Ids.Contains(u.Id))
+            .ToListAsync(ct);
+
+        if (users.Count == 0)
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>("未找到任何要删除的用户", 404),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 404);
+        }
+
+        // Prevent self-deletion
+        if (currentUsername is not null && users.Any(u =>
+            string.Equals(u.Username, currentUsername, StringComparison.OrdinalIgnoreCase)))
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>("不能删除当前登录用户", 400),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 400);
+        }
+
+        // Prevent deleting the last admin
+        var adminRoleUserIds = await db.Users
+            .Where(u => u.UserRoles.Any(ur => ur.Role.Name == AdminRoleName))
+            .Select(u => u.Id)
+            .ToListAsync(ct);
+
+        var remainingAdmins = adminRoleUserIds.Except(request.Ids).Count();
+        if (remainingAdmins < 1 && adminRoleUserIds.Intersect(request.Ids).Any())
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>("不能删除最后一个管理员用户", 400),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 400);
+        }
+
+        foreach (var u in users)
+        {
+            db.UserRoles.RemoveRange(u.UserRoles);
+        }
+        db.Users.RemoveRange(users);
+        await db.SaveChangesAsync(ct);
+
+        return Results.Json(
+            ApiResult.Ok(new MessageResponse($"成功删除 {users.Count} 个用户")),
             AppJsonContext.Default.ApiResponseMessageResponse);
     }
 

@@ -26,6 +26,7 @@ internal record ApiContracts(
     // Users CRUD
     CreateUserRequest? CreateUserRequest,
     UpdateUserRequest? UpdateUserRequest,
+    BatchDeleteUsersRequest? BatchDeleteUsersRequest,
     UserItemResponse? UserItemResponse,
     RoleInfoResponse? RoleInfoResponse,
     PagedResponse<UserItemResponse>? PagedResponseUserItemResponse,
