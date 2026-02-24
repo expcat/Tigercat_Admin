@@ -35,13 +35,26 @@ Tigercat_Admin/
   - Vue 项目使用 `<script setup lang="ts">`。
 - **工具函数**：逻辑代码拆分至 `src/utils/` 目录，按功能模块化：
   - `request.ts`：统一 API 请求封装 (`apiRequest`)，包含类型定义 (`ApiResponse<T>`)。
-  - `auth.ts`：认证逻辑 (Session 解析) 与简单的 Hash 路由处理。
+  - `auth.ts`：认证逻辑 (Session 解析、`getAuthHeaders()`)。
+  - `types.ts`：共享业务类型定义 (`RoleInfo`, `UserItem`, `RoleItem`, `PagedResult<T>` 等)。
+  - `permission-helpers.ts`：权限分组工具 (`buildPermissionGroups`, `toggleGroupPerms` 等)。
   - `validation.ts`：表单验证逻辑 (`validate`) 与类型定义 (`AuthForm`)。
   - `common.ts`：通用工具函数 (如 `debounce`)。
   - `constants.ts`：全局常量定义 (`SESSION_KEY` 等)。
+  - `permission.ts(x)`：权限控制 (Vue: `v-permission` 指令; React: `PermissionGuard` 组件 + Context)。
+  - `index.ts`：barrel 导出，统一对外入口。
 
 - **常用公共组件**：
   - `components/MainLayout`：后台管理主布局（包含 Sidebar 与 Header），用于所有需认证页面。
+
+### 代码复用与一致性
+
+- **类型集中**：页面内业务类型必须定义在 `utils/types.ts`，禁止在页面文件中重复定义。
+- **公共逻辑提取**：如 `getAuthHeaders()`、权限分组等逻辑提取到 `utils/` 对应模块，双端保持相同代码。
+- **命名对齐**：React 与 Vue 的状态变量、函数名必须保持一致（如统一用 `permConfigRole` 而非一端叫 `permEditingRole`）。
+- **使用工具函数**：Vue 端使用 `common.ts` 的 `debounce()` 函数，禁止手写 `setTimeout` 防抖。
+- **Ref 合并**：React 多个相关 `useRef` 合并为单个 ref 对象（如 `queryRef = useRef({ page, pageSize, keyword })`）。
+- **泛型优先**：使用 `PagedResult<T>` 而非 `PagedResult` + `any`，提升类型安全。
 
 ### 代码与改动范围
 
