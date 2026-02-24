@@ -24,6 +24,7 @@ namespace Tigercat.Admin.Api.Serialization;
 // Users CRUD types
 [JsonSerializable(typeof(CreateUserRequest))]
 [JsonSerializable(typeof(UpdateUserRequest))]
+[JsonSerializable(typeof(BatchDeleteUsersRequest))]
 [JsonSerializable(typeof(UserItemResponse))]
 [JsonSerializable(typeof(RoleInfoResponse))]
 [JsonSerializable(typeof(PagedResponse<UserItemResponse>))]
