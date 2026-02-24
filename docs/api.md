@@ -703,6 +703,104 @@
 | `500`  | 服务器内部错误     | 服务端异常                                                           |
 | `503`  | 服务不可用         | 依赖服务不可用（如 Redis 故障）                                      |
 
+---
+
+## 统计聚合 API
+
+以下接口均需登录（`X-Token` / `Authorization: Bearer`），无额外权限要求。
+
+### 9. 统计概览
+
+- **方法**：GET
+- **路径**：`/api/stats/overview`
+- **认证**：是
+- **参数**：无
+- **返回 data**：
+  - `totalUsers`：用户总数
+  - `activeUsers`：启用用户数
+  - `disabledUsers`：禁用用户数
+  - `totalRoles`：角色总数
+  - `totalPermissions`：权限总数
+
+示例：
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "success": true,
+  "data": {
+    "totalUsers": 10,
+    "activeUsers": 8,
+    "disabledUsers": 2,
+    "totalRoles": 3,
+    "totalPermissions": 12
+  }
+}
+```
+
+### 10. 用户创建趋势
+
+- **方法**：GET
+- **路径**：`/api/stats/trend`
+- **认证**：是
+- **参数**：
+  - `days`（可选，默认 `7`，最大 `90`）：统计天数
+- **返回 data**：
+  - `points`：按日期排列的数组
+    - `date`：日期字符串（`yyyy-MM-dd`）
+    - `count`：当日新增用户数
+
+示例：
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "success": true,
+  "data": {
+    "points": [
+      { "date": "2026-02-19", "count": 0 },
+      { "date": "2026-02-20", "count": 2 },
+      { "date": "2026-02-21", "count": 1 },
+      { "date": "2026-02-22", "count": 0 },
+      { "date": "2026-02-23", "count": 3 },
+      { "date": "2026-02-24", "count": 0 },
+      { "date": "2026-02-25", "count": 1 }
+    ]
+  }
+}
+```
+
+### 11. 用户状态分布
+
+- **方法**：GET
+- **路径**：`/api/stats/distribution`
+- **认证**：是
+- **参数**：无
+- **返回 data**：
+  - `items`：分布数组
+    - `label`：状态标签（`Active` / `Disabled`）
+    - `value`：对应数量
+
+示例：
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "success": true,
+  "data": {
+    "items": [
+      { "label": "Active", "value": 8 },
+      { "label": "Disabled", "value": 2 }
+    ]
+  }
+}
+```
+
+---
+
 ### 通用错误返回示例
 
 未登录（`401`）：

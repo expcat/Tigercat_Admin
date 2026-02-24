@@ -45,5 +45,14 @@ internal record ApiContracts(
     ApiResponse<PagedResponse<RoleDetailResponse>>? ApiResponsePagedResponseRoleDetailResponse,
     // All permissions list
     PermissionInfoResponse[]? PermissionInfoResponseArray,
-    ApiResponse<PermissionInfoResponse[]>? ApiResponsePermissionInfoResponseArray
+    ApiResponse<PermissionInfoResponse[]>? ApiResponsePermissionInfoResponseArray,
+    // Stats
+    StatsOverviewResponse? StatsOverviewResponse,
+    ApiResponse<StatsOverviewResponse>? ApiResponseStatsOverviewResponse,
+    TrendPointResponse? TrendPointResponse,
+    StatsTrendResponse? StatsTrendResponse,
+    ApiResponse<StatsTrendResponse>? ApiResponseStatsTrendResponse,
+    DistributionItemResponse? DistributionItemResponse,
+    StatsDistributionResponse? StatsDistributionResponse,
+    ApiResponse<StatsDistributionResponse>? ApiResponseStatsDistributionResponse
 );

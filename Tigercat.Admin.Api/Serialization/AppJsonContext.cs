@@ -46,6 +46,15 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(ApiResponse<PagedResponse<RoleDetailResponse>>))]
 [JsonSerializable(typeof(PermissionInfoResponse[]))]
 [JsonSerializable(typeof(ApiResponse<PermissionInfoResponse[]>))]
+// Stats types
+[JsonSerializable(typeof(StatsOverviewResponse))]
+[JsonSerializable(typeof(ApiResponse<StatsOverviewResponse>))]
+[JsonSerializable(typeof(TrendPointResponse))]
+[JsonSerializable(typeof(StatsTrendResponse))]
+[JsonSerializable(typeof(ApiResponse<StatsTrendResponse>))]
+[JsonSerializable(typeof(DistributionItemResponse))]
+[JsonSerializable(typeof(StatsDistributionResponse))]
+[JsonSerializable(typeof(ApiResponse<StatsDistributionResponse>))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }
