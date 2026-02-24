@@ -15,7 +15,7 @@ import type { TableColumn } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { PermissionGuard } from '../components/PermissionGuard';
 import { UsersIcon, UserPlusIcon } from '../components/Icons';
-import { apiRequest, SESSION_KEY, safeParse } from '../utils';
+import { apiRequest, SESSION_KEY, safeParse, normalizeInput, debounce } from '../utils';
 import { usePermission } from '../utils/permission';
 import type { Session } from '../utils/types';
 
@@ -92,44 +92,40 @@ function UsersPage() {
   // All roles for select
   const [allRoles, setAllRoles] = useState<RoleInfo[]>([]);
 
-  // Debounce timer
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Refs to track current query state (avoids stale closures)
+  const currentPageRef = useRef(currentPage);
+  const pageSizeRef = useRef(pageSize);
+  const keywordRef = useRef(keyword);
 
   // ---- Permission checks ----
   const canEdit = hasPerm('user:edit');
   const canDelete = hasPerm('user:delete');
 
   // ---- API calls ----
-  const loadUsers = useCallback(
-    async (page?: number, size?: number, kw?: string) => {
-      setLoading(true);
-      try {
-        const p = page ?? currentPage;
-        const s = size ?? pageSize;
-        const k = kw ?? keyword;
-        const params = new URLSearchParams({
-          page: String(p),
-          pageSize: String(s),
-        });
-        if (k.trim()) {
-          params.set('keyword', k.trim());
-        }
-        const res = await apiRequest<PagedResult>(`/api/users?${params}`, {
-          headers: getAuthHeaders(),
-        });
-        setUsers(res.data.items);
-        setTotal(res.data.total);
-      } catch (e: any) {
-        Message.error({
-          content: e.message || '加载用户列表失败',
-          duration: 3000,
-        });
-      } finally {
-        setLoading(false);
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: String(currentPageRef.current),
+        pageSize: String(pageSizeRef.current),
+      });
+      if (keywordRef.current.trim()) {
+        params.set('keyword', keywordRef.current.trim());
       }
-    },
-    [currentPage, pageSize, keyword],
-  );
+      const res = await apiRequest<PagedResult>(`/api/users?${params}`, {
+        headers: getAuthHeaders(),
+      });
+      setUsers(res.data.items);
+      setTotal(res.data.total);
+    } catch (e: any) {
+      Message.error({
+        content: e.message || '加载用户列表失败',
+        duration: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const loadRoles = useCallback(async () => {
     try {
@@ -281,13 +277,21 @@ function UsersPage() {
   };
 
   // ---- Search with debounce ----
+  const debouncedLoad = useMemo(
+    () =>
+      debounce(() => {
+        currentPageRef.current = 1;
+        setCurrentPage(1);
+        loadUsers();
+      }, 300),
+    [loadUsers],
+  );
+
   const handleSearch = (val: string) => {
-    setKeyword(val);
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => {
-      setCurrentPage(1);
-      loadUsers(1, pageSize, val);
-    }, 300);
+    const normalized = normalizeInput(val);
+    keywordRef.current = normalized;
+    setKeyword(normalized);
+    debouncedLoad();
   };
 
   // ---- Table columns ----
@@ -386,14 +390,16 @@ function UsersPage() {
   );
 
   const handlePageChange = (page: { current: number; pageSize: number }) => {
-    if (page.pageSize !== pageSize) {
+    if (page.pageSize !== pageSizeRef.current) {
+      pageSizeRef.current = page.pageSize;
+      currentPageRef.current = 1;
       setPageSize(page.pageSize);
       setCurrentPage(1);
-      loadUsers(1, page.pageSize);
     } else {
+      currentPageRef.current = page.current;
       setCurrentPage(page.current);
-      loadUsers(page.current);
     }
+    loadUsers();
   };
 
   // ---- Selection ----
@@ -434,13 +440,7 @@ function UsersPage() {
             <Input
               value={keyword}
               placeholder="搜索用户名或显示名..."
-              onChange={(val) =>
-                handleSearch(
-                  typeof val === 'string'
-                    ? val
-                    : ((val as any)?.target?.value ?? ''),
-                )
-              }
+              onChange={(val) => handleSearch(normalizeInput(val))}
               className="w-64"
             />
           </div>
@@ -472,7 +472,7 @@ function UsersPage() {
       <Card>
         <Table
           columns={columns}
-          dataSource={users as any}
+          dataSource={users}
           loading={loading}
           pagination={paginationConfig}
           rowSelection={{
@@ -501,9 +501,7 @@ function UsersPage() {
               value={formData.username}
               placeholder="请输入用户名"
               disabled={!!editingId}
-              onChange={(val) =>
-                setField('username', typeof val === 'string' ? val : '')
-              }
+              onChange={(val) => setField('username', normalizeInput(val))}
             />
           </FormItem>
           <FormItem label="密码" name="password">
@@ -511,18 +509,14 @@ function UsersPage() {
               value={formData.password}
               type="password"
               placeholder={editingId ? '留空则不修改密码' : '请输入密码'}
-              onChange={(val) =>
-                setField('password', typeof val === 'string' ? val : '')
-              }
+              onChange={(val) => setField('password', normalizeInput(val))}
             />
           </FormItem>
           <FormItem label="显示名称" name="displayName">
             <Input
               value={formData.displayName}
               placeholder="请输入显示名称（选填）"
-              onChange={(val) =>
-                setField('displayName', typeof val === 'string' ? val : '')
-              }
+              onChange={(val) => setField('displayName', normalizeInput(val))}
             />
           </FormItem>
           {editingId && (
@@ -557,7 +551,9 @@ function UsersPage() {
         okText="确认删除"
         cancelText="取消"
         onOk={confirmDelete}
-        onCancel={() => setDeleteConfirmVisible(false)}>
+        onCancel={() => setDeleteConfirmVisible(false)}
+        role="alertdialog"
+        aria-label={`确认删除用户 ${deletingUser?.username ?? ''}`}>
         <p className="text-slate-600">
           确定要删除用户
           <span className="font-semibold text-slate-800">
@@ -575,7 +571,9 @@ function UsersPage() {
         okText="确认删除"
         cancelText="取消"
         onOk={confirmBatchDelete}
-        onCancel={() => setBatchDeleteConfirmVisible(false)}>
+        onCancel={() => setBatchDeleteConfirmVisible(false)}
+        role="alertdialog"
+        aria-label={`确认批量删除 ${selectedRowKeys.length} 个用户`}>
         <p className="text-slate-600">
           确定要删除选中的
           <span className="font-semibold text-slate-800">
