@@ -817,7 +817,7 @@ system:settings - 系统设置
 | `Pagination` | ✅ 通过 Table pagination prop | ✅ 通过 Table pagination prop | 分页切换、每页条数切换，非独立组件 |
 | `Tag` | ✅ UsersPage, RolesPage | ✅ UsersPage, RolesPage | 用户状态标签、角色标签、权限数/关联用户数展示 |
 | `Select` | ✅ UsersPage, RolesPage | ✅ UsersPage, RolesPage | 状态筛选、角色多选、权限多选 |
-| `Checkbox` | ✅ RolesPage | ❌ 未使用（使用 Select 多选替代） | Vue 端权限配置弹窗使用分组 Checkbox |
+| `Checkbox` | ✅ RolesPage | ✅ RolesPage | 权限配置弹窗使用分组 Checkbox（含全选/半选） |
 | `Modal` | ✅ UsersPage, RolesPage | ✅ UsersPage, RolesPage | 创建/编辑表单弹窗、删除确认弹窗 |
 | `Alert` | ✅ HomePage, AboutPage | ✅ HomePage, AboutPage | 信息提示展示 |
 | `Avatar` | ✅ MainHeader | ✅ MainHeader | 用户头像展示 |
@@ -836,8 +836,8 @@ system:settings - 系统设置
 
 **双端一致性说明**：
 
-- Vue 与 React 在核心组件（Table, Tag, Select, Modal, Form）的使用上保持一致
-- 唯一差异：Vue 端 RolesPage 权限配置使用 `Checkbox` 分组勾选，React 端使用 `Select` 多选；两种方式均可正常工作，交互逻辑略有不同
+- Vue 与 React 在核心组件（Table, Tag, Select, Modal, Form, Checkbox）的使用上保持一致
+- 权限配置弹窗双端均使用分组 `Checkbox` 实现，支持组级全选/半选状态
 
 ---
 

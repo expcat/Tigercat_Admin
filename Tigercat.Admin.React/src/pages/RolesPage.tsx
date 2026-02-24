@@ -8,6 +8,7 @@ import {
   Form,
   FormItem,
   Select,
+  Checkbox,
   Tag,
   Message,
 } from '@expcat/tigercat-react';
@@ -80,6 +81,55 @@ function buildPermissionOptions(
     label: p.description ? `${p.code}(${p.description})` : p.code,
     value: p.id,
   }));
+}
+
+/** Group labels for permission code prefixes. */
+const GROUP_LABELS: Record<string, string> = {
+  dashboard: '仪表盘',
+  user: '用户管理',
+  role: '角色管理',
+};
+
+/** Group a flat permission list by the prefix before ':'. */
+function buildPermissionGroups(
+  permissions: PermissionInfo[],
+): Record<string, PermissionInfo[]> {
+  const groups: Record<string, PermissionInfo[]> = {};
+  for (const p of permissions) {
+    const prefix = p.code.split(':')[0] || 'other';
+    if (!groups[prefix]) groups[prefix] = [];
+    groups[prefix].push(p);
+  }
+  return groups;
+}
+
+function toggleGroupPerms(
+  groupPerms: PermissionInfo[],
+  target: number[],
+): number[] {
+  const ids = groupPerms.map((p) => p.id);
+  const allChecked = ids.every((id) => target.includes(id));
+  if (allChecked) {
+    return target.filter((id) => !ids.includes(id));
+  }
+  const set = new Set(target);
+  ids.forEach((id) => set.add(id));
+  return [...set];
+}
+
+function isGroupAllChecked(
+  groupPerms: PermissionInfo[],
+  target: number[],
+): boolean {
+  return groupPerms.every((p) => target.includes(p.id));
+}
+
+function isGroupPartialChecked(
+  groupPerms: PermissionInfo[],
+  target: number[],
+): boolean {
+  const count = groupPerms.filter((p) => target.includes(p.id)).length;
+  return count > 0 && count < groupPerms.length;
 }
 
 function RolesPage() {
@@ -528,27 +578,63 @@ function RolesPage() {
         cancelText="取消"
         onOk={handlePermSubmit}
         onCancel={() => setPermModalVisible(false)}>
-        <div className="space-y-4">
-          <p className="text-sm text-slate-500">
-            为角色 <span className="font-semibold text-slate-700">{permEditingRole?.name}</span> 配置权限，勾选的权限将在保存后立即生效。
-          </p>
-          <Select
-            value={permSelectedIds}
-            options={permissionOptions}
-            placeholder="请选择权限（可多选）"
-            multiple
-            onChange={(val) => setPermSelectedIds((val as number[]) ?? [])}
-          />
-          {permSelectedIds.length > 0 && (
-            <div className="flex flex-wrap gap-1 pt-2">
-              {permSelectedIds.map((pid) => {
-                const perm = allPermissions.find((p) => p.id === pid);
-                return perm ? (
-                  <Tag key={perm.id} color="blue" size="sm">
-                    {perm.code}
+        <div className="space-y-4 max-h-96 overflow-y-auto">
+          {Object.entries(buildPermissionGroups(allPermissions)).map(
+            ([group, perms]) => (
+              <div
+                key={group}
+                className="border border-slate-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Checkbox
+                    checked={isGroupAllChecked(perms, permSelectedIds)}
+                    indeterminate={isGroupPartialChecked(
+                      perms,
+                      permSelectedIds,
+                    )}
+                    onChange={() =>
+                      setPermSelectedIds(
+                        toggleGroupPerms(perms, permSelectedIds),
+                      )
+                    }
+                  />
+                  <span className="font-medium text-slate-700 text-sm">
+                    {GROUP_LABELS[group] || group}
+                  </span>
+                  <Tag color="blue" size="sm">
+                    {perms.filter((p) => permSelectedIds.includes(p.id)).length}{' '}
+                    / {perms.length}
                   </Tag>
-                ) : null;
-              })}
+                </div>
+                <div className="grid grid-cols-2 gap-2 ml-6">
+                  {perms.map((perm) => (
+                    <label
+                      key={perm.id}
+                      className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
+                      <Checkbox
+                        checked={permSelectedIds.includes(perm.id)}
+                        onChange={(checked) => {
+                          if (checked) {
+                            setPermSelectedIds([...permSelectedIds, perm.id]);
+                          } else {
+                            setPermSelectedIds(
+                              permSelectedIds.filter((id) => id !== perm.id),
+                            );
+                          }
+                        }}
+                      />
+                      <span>{perm.description || perm.code}</span>
+                      <span className="text-xs text-slate-400">
+                        ({perm.code})
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ),
+          )}
+          {allPermissions.length === 0 && (
+            <div className="text-center text-slate-400 py-4">
+              暂无可配置的权限
             </div>
           )}
         </div>
