@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, inject, onMounted, h, watch } from 'vue'
+import { ref, computed, inject, onMounted, h } from 'vue'
 import { Card, Table, Button, Input, Modal, Form, FormItem, Select, Tag, Message } from '@expcat/tigercat-vue'
 import type { TableColumn } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
@@ -19,10 +19,10 @@ interface UserItem {
   roles: RoleInfo[]
 }
 interface PagedResult { items: UserItem[]; total: number; page: number; pageSize: number }
+interface MessageResult { message?: string }
 
 // ---- Permission ----
 const { has: hasPerm } = usePermission()
-const canCreate = computed(() => hasPerm('user:create'))
 const canEdit = computed(() => hasPerm('user:edit'))
 const canDelete = computed(() => hasPerm('user:delete'))
 
@@ -52,7 +52,6 @@ const formData = ref({
   status: 0,
   roleIds: [] as number[],
 })
-const submitting = ref(false)
 
 // Delete state
 const deleteConfirmVisible = ref(false)
@@ -98,6 +97,10 @@ async function loadRoles() {
 }
 
 async function handleSubmit() {
+  if (modalVisible.value === false) {
+    return
+  }
+
   // Validation
   if (!editingId.value) {
     if (!formData.value.username.trim()) {
@@ -114,7 +117,6 @@ async function handleSubmit() {
     }
   }
 
-  submitting.value = true
   try {
     if (editingId.value) {
       // Update
@@ -150,8 +152,6 @@ async function handleSubmit() {
     await loadUsers()
   } catch (e: any) {
     Message.error({ content: e.message || '操作失败', duration: 3000 })
-  } finally {
-    submitting.value = false
   }
 }
 
@@ -162,15 +162,17 @@ async function handleDelete(user: UserItem) {
 
 async function confirmDelete() {
   if (!deletingUser.value) return
+  const userId = deletingUser.value.id
+
   try {
-    await apiRequest(`/api/users/${deletingUser.value.id}`, {
+    await apiRequest(`/api/users/${userId}`, {
       method: 'DELETE',
       headers: authHeaders.value,
     })
     Message.success({ content: '删除成功', duration: 3000 })
     deleteConfirmVisible.value = false
     deletingUser.value = null
-    selectedRowKeys.value = selectedRowKeys.value.filter(k => k !== deletingUser.value?.id)
+    selectedRowKeys.value = selectedRowKeys.value.filter(k => k !== userId)
     await loadUsers()
   } catch (e: any) {
     Message.error({ content: e.message || '删除失败', duration: 3000 })
@@ -187,12 +189,12 @@ async function handleBatchDelete() {
 
 async function confirmBatchDelete() {
   try {
-    await apiRequest('/api/users/batch-delete', {
+    const res = await apiRequest<MessageResult>('/api/users/batch-delete', {
       method: 'POST',
       headers: authHeaders.value,
       body: JSON.stringify({ ids: selectedRowKeys.value }),
     })
-    Message.success({ content: `成功删除 ${selectedRowKeys.value.length} 个用户`, duration: 3000 })
+    Message.success({ content: res.data.message || '批量删除成功', duration: 3000 })
     batchDeleteConfirmVisible.value = false
     selectedRowKeys.value = []
     await loadUsers()
@@ -335,10 +337,6 @@ function handleSearch(val: string) {
 const roleOptions = computed(() =>
   allRoles.value.map(r => ({ label: r.name, value: r.id }))
 )
-
-// Status stats from actual data
-const activeCount = computed(() => users.value.filter(u => u.status === 0).length)
-const disabledCount = computed(() => users.value.filter(u => u.status === 1).length)
 
 // ---- Lifecycle ----
 onMounted(() => {
