@@ -2,7 +2,7 @@
 
 > **项目定位**：演示 & 验证项目，以模拟全功能后台管理系统为载体，磨合 .NET 10 + Tigercat UI 组件库，持续优化并反馈上游组件需求。
 
-**最后更新**：2026-01-30
+**最后更新**：2026-02-25
 
 ---
 
@@ -723,9 +723,9 @@ system:settings - 系统设置
 | `Text`    | 全局：文本展示           | 1     | ✅ 已使用 |
 | `Code`    | 关于页：版本信息展示     | 4     | 📋 待验证 |
 | `Link`    | 全局：链接跳转           | 1     | 📋 待验证 |
-| `Tag`     | 用户列表：状态标签       | 2     | 📋 待验证 |
+| `Tag`     | 用户列表：状态标签       | 2     | ✅ 已使用 |
 | `Badge`   | 仪表板：统计数字         | 3     | 📋 待验证 |
-| `Avatar`  | 用户头像展示             | 2     | 📋 待验证 |
+| `Avatar`  | 用户头像展示             | 2     | ✅ 已使用 |
 | `Divider` | 表单分隔、内容分隔       | 2     | 📋 待验证 |
 
 ### 布局组件 (Layout)
@@ -738,7 +738,7 @@ system:settings - 系统设置
 | `Card`         | 仪表板统计卡片     | 3     | ✅ 已使用     |
 | `Collapse`     | 设置页分组折叠     | 4     | 📋 待验证     |
 | `List`         | 操作日志列表       | 3     | 📋 待验证     |
-| `Descriptions` | 用户详情展示       | 2     | 📋 待验证     |
+| `Descriptions` | 用户详情展示       | 2     | ⏭️ 跳过（Phase 2 使用 Modal 展示详情） |
 | `Skeleton`     | 加载占位           | 2     | 📋 待验证     |
 
 ### 表单组件 (Form)
@@ -749,12 +749,12 @@ system:settings - 系统设置
 | `Input`         | 全局：文本输入     | 1     | ✅ 已使用 |
 | `InputNumber`   | 设置页：数值配置   | 4     | 📋 待验证 |
 | `Textarea`      | 角色描述、备注     | 2     | 📋 待验证 |
-| `Select`        | 用户角色选择、筛选 | 2     | 📋 待验证 |
-| `Checkbox`      | 权限多选           | 2     | 📋 待验证 |
-| `CheckboxGroup` | 批量权限配置       | 2     | 📋 待验证 |
+| `Select`        | 用户角色选择、筛选 | 2     | ✅ 已使用 |
+| `Checkbox`      | 权限多选           | 2     | ✅ 已使用 |
+| `CheckboxGroup` | 批量权限配置       | 2     | ⏭️ 跳过（使用独立 Checkbox 实现） |
 | `Radio`         | 单选配置项         | 4     | 📋 待验证 |
 | `RadioGroup`    | 布局选择           | 4     | 📋 待验证 |
-| `Switch`        | 启用/禁用开关      | 2     | 📋 待验证 |
+| `Switch`        | 启用/禁用开关      | 2     | ⏭️ 跳过（Phase 2 使用 Select 实现状态切换） |
 | `Slider`        | 会话时长设置       | 4     | 📋 待验证 |
 | `DatePicker`    | 时间范围筛选       | 3     | 📋 待验证 |
 | `TimePicker`    | 定时任务配置       | 4     | 📋 待验证 |
@@ -766,10 +766,10 @@ system:settings - 系统设置
 | ------------ | -------------- | ----- | --------- |
 | `Breadcrumb` | 页面导航路径   | 1     | 📋 待验证 |
 | `Menu`       | 侧边栏菜单     | 1     | ✅ 已使用 |
-| `Tabs`       | 用户详情多标签 | 2     | 📋 待验证 |
-| `Pagination` | 列表分页       | 2     | 📋 待验证 |
+| `Tabs`       | 用户详情多标签 | 2     | ⏭️ 跳过（Phase 2 未实现多标签详情） |
+| `Pagination` | 列表分页       | 2     | ✅ 已使用 |
 | `Steps`      | 向导式表单     | 4     | 📋 待验证 |
-| `Tree`       | 权限树、组织树 | 2     | 📋 待验证 |
+| `Tree`       | 权限树、组织树 | 2     | ⏭️ 跳过（权限使用扁平 Checkbox/Select 实现） |
 
 ### 反馈/浮层组件 (Feedback)
 
@@ -778,10 +778,10 @@ system:settings - 系统设置
 | `Message`      | 全局：操作反馈     | 1     | ✅ 已使用 |
 | `Modal`        | 确认弹窗、表单弹窗 | 2     | ✅ 已使用 |
 | `Notification` | 系统通知           | 3     | 📋 待验证 |
-| `Alert`        | 警告信息展示       | 2     | 📋 待验证 |
-| `Drawer`       | 用户详情抽屉       | 2     | 📋 待验证 |
+| `Alert`        | 警告信息展示       | 2     | ✅ 已使用 |
+| `Drawer`       | 用户详情抽屉       | 2     | ⏭️ 跳过（Phase 2 使用 Modal 替代） |
 | `Popover`      | 快捷操作面板       | 3     | 📋 待验证 |
-| `Popconfirm`   | 删除确认           | 2     | 📋 待验证 |
+| `Popconfirm`   | 删除确认           | 2     | ⏭️ 跳过（Phase 2 使用 Modal 实现删除确认） |
 | `Tooltip`      | 图标/按钮提示      | 2     | 📋 待验证 |
 | `Dropdown`     | 用户菜单、更多操作 | 1     | 📋 待验证 |
 | `Loading`      | 加载状态           | 1     | 📋 待验证 |
@@ -791,7 +791,7 @@ system:settings - 系统设置
 
 | 组件       | 计划场景           | Phase | 状态      |
 | ---------- | ------------------ | ----- | --------- |
-| `Table`    | 用户列表、角色列表 | 2     | 📋 待验证 |
+| `Table`    | 用户列表、角色列表 | 2     | ✅ 已使用 |
 | `Timeline` | 操作日志时间线     | 3     | 📋 待验证 |
 
 ### 图表组件 (Charts)
@@ -804,6 +804,40 @@ system:settings - 系统设置
 | `PieChart`   | 角色分布           | 3     | 📋 待验证 |
 | `DonutChart` | 权限使用分布       | 3     | 📋 待验证 |
 | `RadarChart` | 用户能力图（可选） | 4     | 📋 待验证 |
+
+### Phase 2 组件覆盖验证小结
+
+> 验证日期：2026-02-25（Issue #42）
+
+**已验证通过的 Phase 2 组件**：
+
+| 组件 | Vue 项目 | React 项目 | 使用场景说明 |
+|------|----------|------------|-------------|
+| `Table` | ✅ UsersPage, RolesPage | ✅ UsersPage, RolesPage | 用户/角色列表展示，支持排序、行选择 |
+| `Pagination` | ✅ 通过 Table pagination prop | ✅ 通过 Table pagination prop | 分页切换、每页条数切换，非独立组件 |
+| `Tag` | ✅ UsersPage, RolesPage | ✅ UsersPage, RolesPage | 用户状态标签、角色标签、权限数/关联用户数展示 |
+| `Select` | ✅ UsersPage, RolesPage | ✅ UsersPage, RolesPage | 状态筛选、角色多选、权限多选 |
+| `Checkbox` | ✅ RolesPage | ✅ RolesPage | 权限配置弹窗使用分组 Checkbox（含全选/半选） |
+| `Modal` | ✅ UsersPage, RolesPage | ✅ UsersPage, RolesPage | 创建/编辑表单弹窗、删除确认弹窗 |
+| `Alert` | ✅ HomePage, AboutPage | ✅ HomePage, AboutPage | 信息提示展示 |
+| `Avatar` | ✅ MainHeader | ✅ MainHeader | 用户头像展示 |
+
+**设计决策导致跳过的组件**：
+
+| 组件 | 原计划场景 | 实际替代方案 | 说明 |
+|------|-----------|-------------|------|
+| `Tree` | 权限树形展示 | Checkbox 分组 (Vue) / Select 多选 (React) | 当前权限结构为扁平列表，无需树形展示 |
+| `Drawer` | 用户详情抽屉 | Modal 弹窗 | 用户详情通过编辑弹窗查看，无独立详情视图 |
+| `Switch` | 用户启用/禁用 | Select 下拉选择 | 状态切换使用 Select 组件实现 |
+| `Popconfirm` | 删除确认 | Modal 确认弹窗 | 删除操作通过独立 Modal 进行二次确认 |
+| `Tabs` | 用户详情多标签 | 未实现 | Phase 2 未实现多标签详情视图 |
+| `CheckboxGroup` | 批量权限配置 | 独立 Checkbox | Vue 端使用独立 Checkbox 实现分组逻辑 |
+| `Descriptions` | 用户详情展示 | Modal 内 Form | 详情通过编辑表单展示 |
+
+**双端一致性说明**：
+
+- Vue 与 React 在核心组件（Table, Tag, Select, Modal, Form, Checkbox）的使用上保持一致
+- 权限配置弹窗双端均使用分组 `Checkbox` 实现，支持组级全选/半选状态
 
 ---
 
@@ -935,6 +969,7 @@ system:settings - 系统设置
 
 | 日期       | 变更内容                                                  |
 | ---------- | --------------------------------------------------------- |
+| 2026-02-25 | Phase 2 组件覆盖验证完成，更新覆盖矩阵状态（#42）                |
 | 2026-01-30 | 优化 ROADMAP 结构，增加详细改造说明、接口设计、代码示例   |
 | 2026-01-28 | 新增 Redis Streams 事件总线架构设计，补充基础设施组件规划 |
 | 2026-01-28 | 初始化开发路线图，规划四阶段里程碑                        |
