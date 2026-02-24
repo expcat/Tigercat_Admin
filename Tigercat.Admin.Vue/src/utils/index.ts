@@ -6,3 +6,4 @@ export * from './validation';
 export * from './composables';
 export * from './types';
 export * from './permission';
+export * from './permission-helpers';

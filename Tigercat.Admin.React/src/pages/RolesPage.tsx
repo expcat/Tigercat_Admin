@@ -16,42 +16,21 @@ import type { TableColumn } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { PermissionGuard } from '../components/PermissionGuard';
 import { ShieldIcon, UserPlusIcon } from '../components/Icons';
-import {
-  apiRequest,
-  SESSION_KEY,
-  safeParse,
-  normalizeInput,
-  debounce,
-} from '../utils';
+import { apiRequest, normalizeInput, debounce, getAuthHeaders } from '../utils';
 import { usePermission } from '../utils/permission';
-import type { Session, PermissionInfo } from '../utils/types';
-
-// ---- Types ----
-interface RoleUserInfo {
-  id: number;
-  username: string;
-  displayName: string | null;
-}
-
-interface RoleItem {
-  id: number;
-  name: string;
-  description: string | null;
-  createdAt: string;
-  permissions: PermissionInfo[];
-  users: RoleUserInfo[];
-}
-
-interface PagedResult {
-  items: RoleItem[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-
-interface MessageResult {
-  message?: string;
-}
+import type {
+  PermissionInfo,
+  RoleUserInfo,
+  RoleItem,
+  MessageResult,
+} from '../utils/types';
+import {
+  GROUP_LABELS,
+  buildPermissionGroups,
+  toggleGroupPerms,
+  isGroupAllChecked,
+  isGroupPartialChecked,
+} from '../utils/permission-helpers';
 
 type RoleFormData = {
   name: string;
@@ -64,73 +43,6 @@ const INITIAL_FORM: RoleFormData = {
   description: '',
   permissionIds: [],
 };
-
-function getAuthHeaders(): HeadersInit {
-  const session = safeParse<Session>(localStorage.getItem(SESSION_KEY));
-  if (!session?.token) return {};
-  return { Authorization: `Bearer ${session.token}` };
-}
-
-/**
- * Build select-compatible options from a flat permission list.
- */
-function buildPermissionOptions(
-  permissions: PermissionInfo[],
-): { label: string; value: number }[] {
-  return permissions.map((p) => ({
-    label: p.description ? `${p.code}(${p.description})` : p.code,
-    value: p.id,
-  }));
-}
-
-/** Group labels for permission code prefixes. */
-const GROUP_LABELS: Record<string, string> = {
-  dashboard: '仪表盘',
-  user: '用户管理',
-  role: '角色管理',
-};
-
-/** Group a flat permission list by the prefix before ':'. */
-function buildPermissionGroups(
-  permissions: PermissionInfo[],
-): Record<string, PermissionInfo[]> {
-  const groups: Record<string, PermissionInfo[]> = {};
-  for (const p of permissions) {
-    const prefix = p.code.split(':')[0] || 'other';
-    if (!groups[prefix]) groups[prefix] = [];
-    groups[prefix].push(p);
-  }
-  return groups;
-}
-
-function toggleGroupPerms(
-  groupPerms: PermissionInfo[],
-  target: number[],
-): number[] {
-  const ids = groupPerms.map((p) => p.id);
-  const allChecked = ids.every((id) => target.includes(id));
-  if (allChecked) {
-    return target.filter((id) => !ids.includes(id));
-  }
-  const set = new Set(target);
-  ids.forEach((id) => set.add(id));
-  return [...set];
-}
-
-function isGroupAllChecked(
-  groupPerms: PermissionInfo[],
-  target: number[],
-): boolean {
-  return groupPerms.every((p) => target.includes(p.id));
-}
-
-function isGroupPartialChecked(
-  groupPerms: PermissionInfo[],
-  target: number[],
-): boolean {
-  const count = groupPerms.filter((p) => target.includes(p.id)).length;
-  return count > 0 && count < groupPerms.length;
-}
 
 function RolesPage() {
   const { has: hasPerm } = usePermission();
@@ -155,16 +67,14 @@ function RolesPage() {
 
   // Permission configuration modal
   const [permModalVisible, setPermModalVisible] = useState(false);
-  const [permEditingRole, setPermEditingRole] = useState<RoleItem | null>(null);
-  const [permSelectedIds, setPermSelectedIds] = useState<number[]>([]);
+  const [permConfigRole, setPermConfigRole] = useState<RoleItem | null>(null);
+  const [permConfigIds, setPermConfigIds] = useState<number[]>([]);
 
   // All available permissions for select
   const [allPermissions, setAllPermissions] = useState<PermissionInfo[]>([]);
 
-  // Refs to track current query state (avoids stale closures)
-  const currentPageRef = useRef(currentPage);
-  const pageSizeRef = useRef(pageSize);
-  const keywordRef = useRef(keyword);
+  // Ref to track current query state (avoids stale closures)
+  const queryRef = useRef({ page: currentPage, pageSize, keyword });
 
   // ---- Permission checks ----
   const canEdit = hasPerm('role:edit');
@@ -174,16 +84,20 @@ function RolesPage() {
   const loadRoles = useCallback(async () => {
     setLoading(true);
     try {
+      const { page, pageSize: ps, keyword: kw } = queryRef.current;
       const params = new URLSearchParams({
-        page: String(currentPageRef.current),
-        pageSize: String(pageSizeRef.current),
+        page: String(page),
+        pageSize: String(ps),
       });
-      if (keywordRef.current.trim()) {
-        params.set('keyword', keywordRef.current.trim());
+      if (kw.trim()) {
+        params.set('keyword', kw.trim());
       }
-      const res = await apiRequest<PagedResult>(`/api/roles?${params}`, {
-        headers: getAuthHeaders(),
-      });
+      const res = await apiRequest<PagedResult<RoleItem>>(
+        `/api/roles?${params}`,
+        {
+          headers: getAuthHeaders(),
+        },
+      );
       setRoles(res.data.items);
       setTotal(res.data.total);
     } catch (e: any) {
@@ -198,10 +112,9 @@ function RolesPage() {
 
   const loadPermissions = useCallback(async () => {
     try {
-      const res = await apiRequest<PermissionInfo[]>(
-        '/api/roles/permissions',
-        { headers: getAuthHeaders() },
-      );
+      const res = await apiRequest<PermissionInfo[]>('/api/roles/permissions', {
+        headers: getAuthHeaders(),
+      });
       setAllPermissions(res.data ?? []);
     } catch {
       setAllPermissions([]);
@@ -289,22 +202,22 @@ function RolesPage() {
 
   // ---- Permission configuration ----
   const openPermModal = (role: RoleItem) => {
-    setPermEditingRole(role);
-    setPermSelectedIds(role.permissions.map((p) => p.id));
+    setPermConfigRole(role);
+    setPermConfigIds(role.permissions.map((p) => p.id));
     setPermModalVisible(true);
   };
 
   const handlePermSubmit = async () => {
-    if (!permEditingRole) return;
+    if (!permConfigRole) return;
     try {
-      await apiRequest(`/api/roles/${permEditingRole.id}/permissions`, {
+      await apiRequest(`/api/roles/${permConfigRole.id}/permissions`, {
         method: 'PUT',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ permissionIds: permSelectedIds }),
+        body: JSON.stringify({ permissionIds: permConfigIds }),
       });
       Message.success({ content: '权限配置已保存', duration: 3000 });
       setPermModalVisible(false);
-      setPermEditingRole(null);
+      setPermConfigRole(null);
       loadRoles();
     } catch (e: any) {
       Message.error({
@@ -337,7 +250,7 @@ function RolesPage() {
   const debouncedLoad = useMemo(
     () =>
       debounce(() => {
-        currentPageRef.current = 1;
+        queryRef.current.page = 1;
         setCurrentPage(1);
         loadRoles();
       }, 300),
@@ -346,14 +259,18 @@ function RolesPage() {
 
   const handleSearch = (val: string) => {
     const normalized = normalizeInput(val);
-    keywordRef.current = normalized;
+    queryRef.current.keyword = normalized;
     setKeyword(normalized);
     debouncedLoad();
   };
 
   // ---- Table columns ----
   const permissionOptions = useMemo(
-    () => buildPermissionOptions(allPermissions),
+    () =>
+      allPermissions.map((p) => ({
+        label: p.description ? `${p.code}(${p.description})` : p.code,
+        value: p.id,
+      })),
     [allPermissions],
   );
 
@@ -462,13 +379,13 @@ function RolesPage() {
   );
 
   const handlePageChange = (page: { current: number; pageSize: number }) => {
-    if (page.pageSize !== pageSizeRef.current) {
-      pageSizeRef.current = page.pageSize;
-      currentPageRef.current = 1;
+    if (page.pageSize !== queryRef.current.pageSize) {
+      queryRef.current.pageSize = page.pageSize;
+      queryRef.current.page = 1;
       setPageSize(page.pageSize);
       setCurrentPage(1);
     } else {
-      currentPageRef.current = page.current;
+      queryRef.current.page = page.current;
       setCurrentPage(page.current);
     }
     loadRoles();
@@ -573,7 +490,7 @@ function RolesPage() {
       {/* Permission Configuration Modal */}
       <Modal
         open={permModalVisible}
-        title={`权限配置 — ${permEditingRole?.name ?? ''}`}
+        title={`权限配置 — ${permConfigRole?.name ?? ''}`}
         okText="保存"
         cancelText="取消"
         onOk={handlePermSubmit}
@@ -586,23 +503,18 @@ function RolesPage() {
                 className="border border-slate-200 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Checkbox
-                    checked={isGroupAllChecked(perms, permSelectedIds)}
-                    indeterminate={isGroupPartialChecked(
-                      perms,
-                      permSelectedIds,
-                    )}
+                    checked={isGroupAllChecked(perms, permConfigIds)}
+                    indeterminate={isGroupPartialChecked(perms, permConfigIds)}
                     onChange={() =>
-                      setPermSelectedIds(
-                        toggleGroupPerms(perms, permSelectedIds),
-                      )
+                      setPermConfigIds(toggleGroupPerms(perms, permConfigIds))
                     }
                   />
                   <span className="font-medium text-slate-700 text-sm">
                     {GROUP_LABELS[group] || group}
                   </span>
                   <Tag color="blue" size="sm">
-                    {perms.filter((p) => permSelectedIds.includes(p.id)).length}{' '}
-                    / {perms.length}
+                    {perms.filter((p) => permConfigIds.includes(p.id)).length} /{' '}
+                    {perms.length}
                   </Tag>
                 </div>
                 <div className="grid grid-cols-2 gap-2 ml-6">
@@ -611,13 +523,13 @@ function RolesPage() {
                       key={perm.id}
                       className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
                       <Checkbox
-                        checked={permSelectedIds.includes(perm.id)}
+                        checked={permConfigIds.includes(perm.id)}
                         onChange={(checked) => {
                           if (checked) {
-                            setPermSelectedIds([...permSelectedIds, perm.id]);
+                            setPermConfigIds([...permConfigIds, perm.id]);
                           } else {
-                            setPermSelectedIds(
-                              permSelectedIds.filter((id) => id !== perm.id),
+                            setPermConfigIds(
+                              permConfigIds.filter((id) => id !== perm.id),
                             );
                           }
                         }}

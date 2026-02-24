@@ -15,33 +15,14 @@ import type { TableColumn } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { PermissionGuard } from '../components/PermissionGuard';
 import { UsersIcon, UserPlusIcon } from '../components/Icons';
-import { apiRequest, SESSION_KEY, safeParse, normalizeInput, debounce } from '../utils';
+import { apiRequest, normalizeInput, debounce, getAuthHeaders } from '../utils';
 import { usePermission } from '../utils/permission';
-import type { Session } from '../utils/types';
-
-// ---- Types ----
-interface RoleInfo {
-  id: number;
-  name: string;
-}
-interface UserItem {
-  id: number;
-  username: string;
-  displayName: string | null;
-  status: number;
-  createdAt: string;
-  updatedAt: string | null;
-  roles: RoleInfo[];
-}
-interface PagedResult {
-  items: UserItem[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-interface MessageResult {
-  message?: string;
-}
+import type {
+  RoleInfo,
+  UserItem,
+  PagedResult,
+  MessageResult,
+} from '../utils/types';
 
 type UserFormData = {
   username: string;
@@ -58,12 +39,6 @@ const INITIAL_FORM: UserFormData = {
   status: 0,
   roleIds: [],
 };
-
-function getAuthHeaders(): HeadersInit {
-  const session = safeParse<Session>(localStorage.getItem(SESSION_KEY));
-  if (!session?.token) return {};
-  return { Authorization: `Bearer ${session.token}` };
-}
 
 function UsersPage() {
   const { has: hasPerm } = usePermission();
@@ -92,10 +67,8 @@ function UsersPage() {
   // All roles for select
   const [allRoles, setAllRoles] = useState<RoleInfo[]>([]);
 
-  // Refs to track current query state (avoids stale closures)
-  const currentPageRef = useRef(currentPage);
-  const pageSizeRef = useRef(pageSize);
-  const keywordRef = useRef(keyword);
+  // Ref to track current query state (avoids stale closures)
+  const queryRef = useRef({ page: currentPage, pageSize, keyword });
 
   // ---- Permission checks ----
   const canEdit = hasPerm('user:edit');
@@ -105,16 +78,20 @@ function UsersPage() {
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
+      const { page, pageSize: ps, keyword: kw } = queryRef.current;
       const params = new URLSearchParams({
-        page: String(currentPageRef.current),
-        pageSize: String(pageSizeRef.current),
+        page: String(page),
+        pageSize: String(ps),
       });
-      if (keywordRef.current.trim()) {
-        params.set('keyword', keywordRef.current.trim());
+      if (kw.trim()) {
+        params.set('keyword', kw.trim());
       }
-      const res = await apiRequest<PagedResult>(`/api/users?${params}`, {
-        headers: getAuthHeaders(),
-      });
+      const res = await apiRequest<PagedResult<UserItem>>(
+        `/api/users?${params}`,
+        {
+          headers: getAuthHeaders(),
+        },
+      );
       setUsers(res.data.items);
       setTotal(res.data.total);
     } catch (e: any) {
@@ -133,9 +110,7 @@ function UsersPage() {
         '/api/roles?pageSize=100',
         { headers: getAuthHeaders() },
       );
-      setAllRoles(
-        res.data.items.map((r: any) => ({ id: r.id, name: r.name })),
-      );
+      setAllRoles(res.data.items.map((r: any) => ({ id: r.id, name: r.name })));
     } catch {
       setAllRoles([]);
     }
@@ -280,7 +255,7 @@ function UsersPage() {
   const debouncedLoad = useMemo(
     () =>
       debounce(() => {
-        currentPageRef.current = 1;
+        queryRef.current.page = 1;
         setCurrentPage(1);
         loadUsers();
       }, 300),
@@ -289,7 +264,7 @@ function UsersPage() {
 
   const handleSearch = (val: string) => {
     const normalized = normalizeInput(val);
-    keywordRef.current = normalized;
+    queryRef.current.keyword = normalized;
     setKeyword(normalized);
     debouncedLoad();
   };
@@ -390,13 +365,13 @@ function UsersPage() {
   );
 
   const handlePageChange = (page: { current: number; pageSize: number }) => {
-    if (page.pageSize !== pageSizeRef.current) {
-      pageSizeRef.current = page.pageSize;
-      currentPageRef.current = 1;
+    if (page.pageSize !== queryRef.current.pageSize) {
+      queryRef.current.pageSize = page.pageSize;
+      queryRef.current.page = 1;
       setPageSize(page.pageSize);
       setCurrentPage(1);
     } else {
-      currentPageRef.current = page.current;
+      queryRef.current.page = page.current;
       setCurrentPage(page.current);
     }
     loadUsers();

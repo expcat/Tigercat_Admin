@@ -4,22 +4,9 @@ import { Card, Table, Button, Input, Modal, Form, FormItem, Select, Tag, Message
 import type { TableColumn } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
-import { apiRequest, type Session } from '../utils'
+import { apiRequest, debounce, type Session } from '../utils'
+import type { RoleInfo, UserItem, PagedResult, MessageResult } from '../utils/types'
 import { usePermission } from '../utils/permission'
-
-// ---- Types ----
-interface RoleInfo { id: number; name: string }
-interface UserItem {
-  id: number
-  username: string
-  displayName: string | null
-  status: number
-  createdAt: string
-  updatedAt: string | null
-  roles: RoleInfo[]
-}
-interface PagedResult { items: UserItem[]; total: number; page: number; pageSize: number }
-interface MessageResult { message?: string }
 
 // ---- Permission ----
 const { has: hasPerm } = usePermission()
@@ -72,7 +59,7 @@ async function loadUsers() {
     if (keyword.value.trim()) {
       params.set('keyword', keyword.value.trim())
     }
-    const res = await apiRequest<PagedResult>(`/api/users?${params}`, {
+    const res = await apiRequest<PagedResult<UserItem>>(`/api/users?${params}`, {
       headers: authHeaders.value,
     })
     users.value = res.data.items
@@ -323,14 +310,14 @@ function handleSelectionChange(keys: (string | number)[]) {
 }
 
 // ---- Search ----
-let searchTimer: ReturnType<typeof setTimeout> | null = null
+const debouncedLoad = debounce(() => {
+  currentPage.value = 1
+  loadUsers()
+}, 300)
+
 function handleSearch(val: string) {
   keyword.value = val
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {
-    currentPage.value = 1
-    loadUsers()
-  }, 300)
+  debouncedLoad()
 }
 
 // Role select options

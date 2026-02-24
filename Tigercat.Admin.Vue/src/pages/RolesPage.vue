@@ -4,21 +4,16 @@ import { Card, Table, Button, Input, Modal, Form, FormItem, Select, Tag, Message
 import type { TableColumn } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
-import { apiRequest, type Session } from '../utils'
+import { apiRequest, debounce, type Session } from '../utils'
+import type { PermissionInfo, RoleUserInfo, RoleItem, PagedResult } from '../utils/types'
 import { usePermission } from '../utils/permission'
-
-// ---- Types ----
-interface PermissionInfo { id: number; code: string; description: string | null }
-interface RoleUserInfo { id: number; username: string; displayName: string | null }
-interface RoleItem {
-  id: number
-  name: string
-  description: string | null
-  createdAt: string
-  permissions: PermissionInfo[]
-  users: RoleUserInfo[]
-}
-interface PagedResult { items: RoleItem[]; total: number; page: number; pageSize: number }
+import {
+  GROUP_LABELS,
+  buildPermissionGroups,
+  toggleGroupPerms,
+  isGroupAllChecked,
+  isGroupPartialChecked,
+} from '../utils/permission-helpers'
 
 // ---- Permission ----
 const { has: hasPerm } = usePermission()
@@ -72,7 +67,7 @@ async function loadRoles() {
     if (keyword.value.trim()) {
       params.set('keyword', keyword.value.trim())
     }
-    const res = await apiRequest<PagedResult>(`/api/roles?${params}`, {
+    const res = await apiRequest<PagedResult<RoleItem>>(`/api/roles?${params}`, {
       headers: authHeaders.value,
     })
     roles.value = res.data.items
@@ -326,53 +321,18 @@ function handlePageChange(e: any) {
 }
 
 // ---- Search ----
-let searchTimer: ReturnType<typeof setTimeout> | null = null
+const debouncedLoad = debounce(() => {
+  currentPage.value = 1
+  loadRoles()
+}, 300)
+
 function handleSearch(val: string) {
   keyword.value = val
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {
-    currentPage.value = 1
-    loadRoles()
-  }, 300)
+  debouncedLoad()
 }
 
-// Permission group helpers – group permissions by module prefix (e.g. "user", "role", "dashboard")
-const permissionGroups = computed(() => {
-  const groups: Record<string, PermissionInfo[]> = {}
-  for (const p of allPermissions.value) {
-    const prefix = p.code.split(':')[0] || 'other'
-    if (!groups[prefix]) groups[prefix] = []
-    groups[prefix].push(p)
-  }
-  return groups
-})
-
-const groupLabels: Record<string, string> = {
-  dashboard: '仪表盘',
-  user: '用户管理',
-  role: '角色管理',
-}
-
-function toggleGroupPerms(groupPerms: PermissionInfo[], target: number[]) {
-  const ids = groupPerms.map(p => p.id)
-  const allChecked = ids.every(id => target.includes(id))
-  if (allChecked) {
-    return target.filter(id => !ids.includes(id))
-  } else {
-    const set = new Set(target)
-    ids.forEach(id => set.add(id))
-    return [...set]
-  }
-}
-
-function isGroupAllChecked(groupPerms: PermissionInfo[], target: number[]) {
-  return groupPerms.every(p => target.includes(p.id))
-}
-
-function isGroupPartialChecked(groupPerms: PermissionInfo[], target: number[]) {
-  const checked = groupPerms.filter(p => target.includes(p.id))
-  return checked.length > 0 && checked.length < groupPerms.length
-}
+// Permission group helpers
+const permissionGroups = computed(() => buildPermissionGroups(allPermissions.value))
 
 // ---- Lifecycle ----
 onMounted(() => {
@@ -487,7 +447,7 @@ onMounted(() => {
               @update:model-value="permConfigIds = toggleGroupPerms(perms, permConfigIds)"
             />
             <span class="font-medium text-slate-700 text-sm">
-              {{ groupLabels[group as string] || group }}
+              {{ GROUP_LABELS[group as string] || group }}
             </span>
             <Tag color="blue" size="sm">
               {{ perms.filter(p => permConfigIds.includes(p.id)).length }} / {{ perms.length }}
