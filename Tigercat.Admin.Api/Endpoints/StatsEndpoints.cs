@@ -64,15 +64,14 @@ public class StatsEndpoints : IEndpointDefinition
     {
         var d = Math.Clamp(days ?? DefaultTrendDays, 1, MaxTrendDays);
         var startDate = DateTime.UtcNow.Date.AddDays(-d + 1);
+        var endDateExclusive = startDate.AddDays(d);
 
-        var users = await db.Users
-            .Where(u => u.CreatedAt >= startDate)
-            .ToListAsync(ct);
-
-        // Build a dictionary of date -> count from actual data
-        var grouped = users
+        // Aggregate in the database and restrict to the requested date range
+        var grouped = await db.Users
+            .Where(u => u.CreatedAt >= startDate && u.CreatedAt < endDateExclusive)
             .GroupBy(u => u.CreatedAt.Date)
-            .ToDictionary(g => g.Key, g => g.Count());
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Date, x => x.Count, ct);
 
         // Fill all dates in the range (including zero-count days)
         var points = new TrendPointResponse[d];
