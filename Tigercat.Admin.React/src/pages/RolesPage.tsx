@@ -77,7 +77,7 @@ function buildPermissionOptions(
   permissions: PermissionInfo[],
 ): { label: string; value: number }[] {
   return permissions.map((p) => ({
-    label: p.description ? `${p.code}（${p.description}）` : p.code,
+    label: p.description ? `${p.code}(${p.description})` : p.code,
     value: p.id,
   }));
 }
@@ -328,7 +328,7 @@ function RolesPage() {
         align: 'center',
         render: (record) => (
           <Tag color="blue" size="sm">
-            {record.permissions.length}
+            {record.permissions.length} 项
           </Tag>
         ),
       },
@@ -339,7 +339,7 @@ function RolesPage() {
         align: 'center',
         render: (record) => (
           <Tag color="purple" size="sm">
-            {record.users.length}
+            {record.users.length} 人
           </Tag>
         ),
       },
