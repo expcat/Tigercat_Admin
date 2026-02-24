@@ -775,6 +775,52 @@
 }
 ```
 
+### 24. 导出用户数据
+
+- **方法**：GET
+- **路径**：`/api/export/users`
+- **认证**：是（需要 `user:view` 权限）
+- **参数**：
+  - `format`（可选）：导出格式，可选 `csv`（默认）、`json`、`xlsx`
+  - `fields`（可选）：导出字段，逗号分隔。可选值：`id`、`username`、`displayName`、`status`、`createdAt`、`updatedAt`、`roles`。留空则导出全部字段。
+- **返回**：文件下载（非 JSON API 响应）
+  - CSV：`text/csv`，带 UTF-8 BOM
+  - JSON：`application/json`，数组格式
+  - XLSX：`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- **可能错误码**：
+  - `400`：不支持的格式
+  - `401`：未登录
+  - `403`：权限不足
+
+示例请求：
+
+```
+GET /api/export/users?format=csv&fields=id,username,status
+```
+
+### 25. 导出角色数据
+
+- **方法**：GET
+- **路径**：`/api/export/roles`
+- **认证**：是（需要 `role:view` 权限）
+- **参数**：
+  - `format`（可选）：导出格式，可选 `csv`（默认）、`json`、`xlsx`
+  - `fields`（可选）：导出字段，逗号分隔。可选值：`id`、`name`、`description`、`createdAt`、`permissions`、`userCount`。留空则导出全部字段。
+- **返回**：文件下载（非 JSON API 响应）
+  - CSV：`text/csv`，带 UTF-8 BOM
+  - JSON：`application/json`，数组格式
+  - XLSX：`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- **可能错误码**：
+  - `400`：不支持的格式
+  - `401`：未登录
+  - `403`：权限不足
+
+示例请求：
+
+```
+GET /api/export/roles?format=xlsx&fields=id,name,description
+```
+
 ---
 
 ## 通用错误码参考

@@ -55,6 +55,11 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(DistributionItemResponse))]
 [JsonSerializable(typeof(StatsDistributionResponse))]
 [JsonSerializable(typeof(ApiResponse<StatsDistributionResponse>))]
+// Export types
+[JsonSerializable(typeof(ExportUserRow))]
+[JsonSerializable(typeof(ExportRoleRow))]
+[JsonSerializable(typeof(ExportUserRow[]))]
+[JsonSerializable(typeof(ExportRoleRow[]))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }
