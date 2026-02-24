@@ -54,5 +54,10 @@ internal record ApiContracts(
     ApiResponse<StatsTrendResponse>? ApiResponseStatsTrendResponse,
     DistributionItemResponse? DistributionItemResponse,
     StatsDistributionResponse? StatsDistributionResponse,
-    ApiResponse<StatsDistributionResponse>? ApiResponseStatsDistributionResponse
+    ApiResponse<StatsDistributionResponse>? ApiResponseStatsDistributionResponse,
+    // Export
+    ExportUserRow? ExportUserRow,
+    ExportRoleRow? ExportRoleRow,
+    ExportUserRow[]? ExportUserRowArray,
+    ExportRoleRow[]? ExportRoleRowArray
 );

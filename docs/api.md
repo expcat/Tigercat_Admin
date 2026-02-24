@@ -775,23 +775,69 @@
 }
 ```
 
+### 24. 导出用户数据
+
+- **方法**：GET
+- **路径**：`/api/export/users`
+- **认证**：是（需要 `user:view` 权限）
+- **参数**：
+  - `format`（可选）：导出格式，可选 `csv`（默认）、`json`、`xlsx`
+  - `fields`（可选）：导出字段，逗号分隔。可选值：`id`、`username`、`displayName`、`status`、`createdAt`、`updatedAt`、`roles`。留空则导出全部字段。
+- **返回**：文件下载（非 JSON API 响应）
+  - CSV：`text/csv`，带 UTF-8 BOM
+  - JSON：`application/json`，数组格式
+  - XLSX：`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- **可能错误码**：
+  - `400`：不支持的格式
+  - `401`：未登录
+  - `403`：权限不足
+
+示例请求：
+
+```
+GET /api/export/users?format=csv&fields=id,username,status
+```
+
+### 25. 导出角色数据
+
+- **方法**：GET
+- **路径**：`/api/export/roles`
+- **认证**：是（需要 `role:view` 权限）
+- **参数**：
+  - `format`（可选）：导出格式，可选 `csv`（默认）、`json`、`xlsx`
+  - `fields`（可选）：导出字段，逗号分隔。可选值：`id`、`name`、`description`、`createdAt`、`permissions`、`userCount`。留空则导出全部字段。
+- **返回**：文件下载（非 JSON API 响应）
+  - CSV：`text/csv`，带 UTF-8 BOM
+  - JSON：`application/json`，数组格式
+  - XLSX：`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- **可能错误码**：
+  - `400`：不支持的格式
+  - `401`：未登录
+  - `403`：权限不足
+
+示例请求：
+
+```
+GET /api/export/roles?format=xlsx&fields=id,name,description
+```
+
 ---
 
 ## 通用错误码参考
 
 下表列出所有接口可能返回的业务状态码，供前端统一处理。
 
-| 状态码 | 含义               | 说明                                                                 |
-| ------ | ------------------ | -------------------------------------------------------------------- |
-| `200`  | 成功               | 请求成功                                                             |
-| `201`  | 创建成功           | 资源创建成功（POST 创建用户/角色等）                                 |
-| `400`  | 请求参数错误       | 参数缺失、格式不合法、违反业务规则（如不能删除自己、保留角色名等）   |
-| `401`  | 未授权             | 未登录或 Token 无效/过期                                             |
-| `403`  | 权限不足           | 已登录但没有对应操作权限                                             |
-| `404`  | 资源不存在         | 请求的用户、角色等不存在                                             |
-| `409`  | 冲突               | 资源已存在（用户名/角色名重复）                                      |
-| `500`  | 服务器内部错误     | 服务端异常                                                           |
-| `503`  | 服务不可用         | 依赖服务不可用（如 Redis 故障）                                      |
+| 状态码 | 含义           | 说明                                                               |
+| ------ | -------------- | ------------------------------------------------------------------ |
+| `200`  | 成功           | 请求成功                                                           |
+| `201`  | 创建成功       | 资源创建成功（POST 创建用户/角色等）                               |
+| `400`  | 请求参数错误   | 参数缺失、格式不合法、违反业务规则（如不能删除自己、保留角色名等） |
+| `401`  | 未授权         | 未登录或 Token 无效/过期                                           |
+| `403`  | 权限不足       | 已登录但没有对应操作权限                                           |
+| `404`  | 资源不存在     | 请求的用户、角色等不存在                                           |
+| `409`  | 冲突           | 资源已存在（用户名/角色名重复）                                    |
+| `500`  | 服务器内部错误 | 服务端异常                                                         |
+| `503`  | 服务不可用     | 依赖服务不可用（如 Redis 故障）                                    |
 
 ### 通用错误返回示例
 
@@ -823,10 +869,10 @@
 
 以下 API 操作在成功后会发布异步审计事件至 Redis Stream（`stream:auth`）：
 
-| 事件类型                      | 触发操作                       | 载荷字段                                               |
-| ----------------------------- | ------------------------------ | ------------------------------------------------------ |
-| `auth.user.registered`        | POST `/api/auth/register`      | `username`                                             |
-| `auth.user.login`             | POST `/api/auth/login`         | `username`、`expiresAt`                                |
-| `auth.user.password.changed`  | POST `/api/auth/change-password` | `username`                                           |
-| `auth.user.logout`            | POST `/api/auth/logout`        | `username`                                             |
-| `admin.user.password.reset`   | PUT `/api/users/{id}`（修改密码时） | `targetUserId`、`targetUsername`、`operator`        |
+| 事件类型                     | 触发操作                            | 载荷字段                                     |
+| ---------------------------- | ----------------------------------- | -------------------------------------------- |
+| `auth.user.registered`       | POST `/api/auth/register`           | `username`                                   |
+| `auth.user.login`            | POST `/api/auth/login`              | `username`、`expiresAt`                      |
+| `auth.user.password.changed` | POST `/api/auth/change-password`    | `username`                                   |
+| `auth.user.logout`           | POST `/api/auth/logout`             | `username`                                   |
+| `admin.user.password.reset`  | PUT `/api/users/{id}`（修改密码时） | `targetUserId`、`targetUsername`、`operator` |

@@ -10,6 +10,8 @@
 
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.2" />
 
+    <PackageReference Include="MiniExcel" Version="1.42.0" />
+
     <PackageReference Include="StackExchange.Redis" Version="2.8.16" />
 
     <PackageReference Include="FreeRedis" Version="0.6.5" />
