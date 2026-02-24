@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { ConfigProvider } from '@expcat/tigercat-react';
+import { PermissionProvider } from './utils/permission';
 import './index.css';
 import App from './App';
 
@@ -12,7 +13,9 @@ createRoot(rootElement).render(
   <StrictMode>
     <BrowserRouter>
       <ConfigProvider>
-        <App />
+        <PermissionProvider>
+          <App />
+        </PermissionProvider>
       </ConfigProvider>
     </BrowserRouter>
   </StrictMode>,
