@@ -56,5 +56,12 @@ internal record ApiContracts(
     ExportUserRow? ExportUserRow,
     ExportRoleRow? ExportRoleRow,
     ExportUserRow[]? ExportUserRowArray,
-    ExportRoleRow[]? ExportRoleRowArray
+    ExportRoleRow[]? ExportRoleRowArray,
+    // Settings
+    SettingItemResponse? SettingItemResponse,
+    SettingItemResponse[]? SettingItemResponseArray,
+    UpdateSettingsRequest? UpdateSettingsRequest,
+    SettingEntry? SettingEntry,
+    ApiResponse<SettingItemResponse>? ApiResponseSettingItemResponse,
+    ApiResponse<SettingItemResponse[]>? ApiResponseSettingItemResponseArray
 );

@@ -15,6 +15,7 @@ public class AdminDbContext : DbContext
     public DbSet<PermissionEntity> Permissions => Set<PermissionEntity>();
     public DbSet<UserRoleEntity> UserRoles => Set<UserRoleEntity>();
     public DbSet<RolePermissionEntity> RolePermissions => Set<RolePermissionEntity>();
+    public DbSet<SystemSettingEntity> SystemSettings => Set<SystemSettingEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -84,6 +85,16 @@ public class AdminDbContext : DbContext
             entity.HasOne(e => e.Permission)
                 .WithMany(p => p.RolePermissions)
                 .HasForeignKey(e => e.PermissionId);
+        });
+
+        // SystemSetting
+        modelBuilder.Entity<SystemSettingEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Key).IsUnique();
+            entity.Property(e => e.Key).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Value).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.Description).HasMaxLength(500);
         });
     }
 }
