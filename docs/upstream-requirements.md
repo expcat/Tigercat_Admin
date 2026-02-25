@@ -12,6 +12,7 @@
 | Menu          | Both             | 支持嵌套结构（submenu）以实现多级菜单                               | 高     | 待处理 |
 | Layout        | Both             | 建议提供标准的 Admin Layout 组件（Sidebar, Header, Content）        | 中     | 待处理 |
 | Sidebar       | Both             | 建议提供 SideBar 组件，支持折叠/展开 API 与动画                     | 中     | 待处理 |
+| Table         | Both             | 支持行展开（expandable row）功能，用于展开查看行详情区域            | 中     | 待处理 |
 
 ## 💡 说明
 

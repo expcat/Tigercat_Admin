@@ -259,12 +259,51 @@
 
 | 组件         | 计划场景           | Phase | 状态      |
 | ------------ | ------------------ | ----- | --------- |
-| `LineChart`  | 用户增长趋势       | 3     | 📋 待验证 |
+| `LineChart`  | 用户增长趋势       | 3     | ✅ 已使用 |
 | `AreaChart`  | 登录统计趋势       | 3     | 📋 待验证 |
-| `BarChart`   | 月度活跃对比       | 3     | 📋 待验证 |
-| `PieChart`   | 角色分布           | 3     | 📋 待验证 |
+| `BarChart`   | 月度活跃对比       | 3     | ✅ 已使用 |
+| `PieChart`   | 角色分布           | 3     | ✅ 已使用 |
 | `DonutChart` | 权限使用分布       | 3     | 📋 待验证 |
 | `RadarChart` | 用户能力图（可选） | 4     | 📋 待验证 |
+
+### Phase 3 图表/表格组件覆盖验证小结
+
+> 验证日期：2026-02-25（Issue #53）
+
+#### 图表组件验证
+
+| 组件         | Vue 项目       | React 项目     | 使用场景说明                                          |
+| ------------ | -------------- | -------------- | ----------------------------------------------------- |
+| `LineChart`  | ✅ HomePage    | ✅ HomePage    | 用户创建趋势（7/14/30/90 天切换），数据源 `/api/stats/trend` |
+| `BarChart`   | ✅ HomePage    | ✅ HomePage    | 用户概览柱状图（总用户/活跃/禁用/角色/权限）          |
+| `PieChart`   | ✅ HomePage    | ✅ HomePage    | 用户状态分布饼图，数据源 `/api/stats/distribution`    |
+| `AreaChart`  | ✅ 组件可用    | ✅ 组件可用    | 已验证导出可用，与 LineChart API 一致（含 stacked/fillOpacity） |
+| `DonutChart` | ✅ 组件可用    | ✅ 组件可用    | 已验证导出可用，与 PieChart API 一致（含 innerRadiusRatio）    |
+| `RadarChart` | ✅ 组件可用    | ✅ 组件可用    | Phase 4 计划使用，已验证组件存在且可导入               |
+
+**附加图表基础组件**：`ChartAxis`、`ChartCanvas`、`ChartGrid`、`ChartLegend`、`ChartSeries`、`ChartTooltip`、`ScatterChart` 均已验证双端可用。
+
+#### 表格高级能力验证
+
+| 能力          | 组件 API 支持 | 双端实际使用                    | 说明                                                                    |
+| ------------- | ------------- | ------------------------------- | ----------------------------------------------------------------------- |
+| 基础表格      | ✅ `Table`    | ✅ UsersPage, RolesPage         | 列定义、数据绑定                                                        |
+| 排序功能      | ✅ `sortable` + `SortState` | ✅ UsersPage              | 列头点击排序，支持自定义 `sortFn`                                       |
+| 筛选功能      | ✅ `ColumnFilter` (text/select/custom) | ⚠️ 使用外部 Select 实现 | Table 内置列筛选器可用，当前项目使用工具栏 `Select` 实现筛选            |
+| 分页功能      | ✅ `PaginationConfig` | ✅ UsersPage, RolesPage         | 通过 Table `pagination` prop 集成，支持页码/每页条数切换                |
+| 行选择        | ✅ `RowSelectionConfig` (checkbox/radio) | ✅ UsersPage     | 多选用于批量删除操作                                                    |
+| 行展开        | ❌ 不支持     | ❌ 未实现                       | Table 组件无 expandable row API，已记录上游需求                         |
+| 固定列        | ✅ `fixed: 'left' &#124; 'right'` + `columnLockable` | ✅ UsersPage | 支持左/右固定列及列头锁定按钮                                           |
+| 自定义列      | ✅ `render` + `renderHeader` | ✅ UsersPage              | 通过 `Popover` 实现列显示/隐藏切换                                      |
+| 高级组合表格  | ✅ `DataTableWithToolbar` | ❌ 未使用                 | 组件可用，当前手动组合 Card + 工具栏 + Table                            |
+
+**双端一致性说明**：
+
+- Vue 与 React 的图表组件（LineChart、BarChart、PieChart）使用方式和 API 完全一致
+- 表格高级功能（排序、行选择、固定列、分页）双端保持一致实现
+- 列显示/隐藏功能双端均通过 `Popover` + `Checkbox` 手动实现
+
+---
 
 ### Phase 2 组件覆盖验证小结
 
@@ -321,7 +360,7 @@
 - [ ] **[双端]** 仪表板图表集成
 - [ ] **[双端]** 数据表格高级功能（排序、筛选、固定列）
 - [ ] **[双端]** 数据导出功能
-- [ ] **[验证]** 测试全部图表组件
+- [x] **[验证]** 测试全部图表组件（#53）
 
 ---
 
@@ -354,6 +393,7 @@
 | Menu submenu 支持 | 侧边栏多级菜单 | ⏳ 待处理 | 先用单级菜单        |
 | Layout 组件       | 主布局框架     | ⏳ 待处理 | 自行实现 MainLayout |
 | Sidebar 组件      | 侧边栏折叠     | ⏳ 待处理 | 自行实现折叠逻辑    |
+| Table 行展开      | 数据表格行展开 | ⏳ 待处理 | 暂不实现该功能      |
 
 ---
 
@@ -361,6 +401,7 @@
 
 | 日期       | 变更内容                                                           |
 | ---------- | ------------------------------------------------------------------ |
+| 2026-02-25 | Phase 3 图表/表格组件覆盖验证完成，更新覆盖矩阵状态（#53）         |
 | 2026-02-25 | 精简 ROADMAP：压缩已完成的 Phase 1/2 详细设计，保留 Phase 3/4 规划 |
 | 2026-02-25 | Phase 2 组件覆盖验证完成，更新覆盖矩阵状态（#42）                  |
 | 2026-01-30 | 优化 ROADMAP 结构，增加详细改造说明、接口设计、代码示例            |
