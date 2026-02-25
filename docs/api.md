@@ -690,6 +690,12 @@
 }
 ```
 
+---
+
+## 统计接口 (`/api/stats`)
+
+> 以下接口均需登录（无额外权限要求）。未登录返回 `401`。
+
 ### 21. 统计概览
 
 - **方法**：GET
@@ -702,6 +708,8 @@
   - `disabledUsers`：禁用用户数
   - `totalRoles`：角色总数
   - `totalPermissions`：权限总数
+- **可能错误码**：
+  - `401`：未登录
 
 示例：
 
@@ -725,12 +733,14 @@
 - **方法**：GET
 - **路径**：`/api/stats/trend`
 - **认证**：是（登录即可，无额外权限要求）
-- **参数**：
-  - `days`（可选，默认 `7`，最大 `90`）：统计天数
+- **查询参数**：
+  - `days`（可选，默认 `7`，范围 `1-90`）：统计天数。超出范围的值会被自动修正到最近的边界值。
 - **返回 data**：
-  - `points`：按日期排列的数组
+  - `points`：按日期排列的数组，包含请求天数内每一天的数据（含零值天）
     - `date`：日期字符串（`yyyy-MM-dd`）
     - `count`：当日新增用户数
+- **可能错误码**：
+  - `401`：未登录
 
 示例：
 
@@ -763,6 +773,8 @@
   - `items`：分布数组
     - `label`：状态标签（`Active` / `Disabled`）
     - `value`：对应数量
+- **可能错误码**：
+  - `401`：未登录
 
 示例：
 
@@ -780,17 +792,25 @@
 }
 ```
 
+---
+
+## 导出接口 (`/api/export`)
+
+> 以下接口均需登录且需要对应权限。未登录返回 `401`，权限不足返回 `403`。
+> 单次导出上限为 **10,000** 条记录，超出时仅返回前 10,000 条。
+
 ### 24. 导出用户数据
 
 - **方法**：GET
 - **路径**：`/api/export/users`
-- **认证**：是（需要 `user:view` 权限）
-- **参数**：
+- **认证**：是
+- **权限**：`user:view`
+- **查询参数**：
   - `format`（可选）：导出格式，可选 `csv`（默认）、`json`、`xlsx`
-  - `fields`（可选）：导出字段，逗号分隔。可选值：`id`、`username`、`displayName`、`status`、`createdAt`、`updatedAt`、`roles`。留空则导出全部字段。
+  - `fields`（可选）：导出字段，逗号分隔。可选值：`id`、`username`、`displayName`、`status`、`createdAt`、`updatedAt`、`roles`。留空则导出全部字段。无效字段名会被忽略，若全部无效则导出全部字段。
 - **返回**：文件下载（非 JSON API 响应）
-  - CSV：`text/csv`，带 UTF-8 BOM
-  - JSON：`application/json`，数组格式
+  - CSV：`text/csv; charset=utf-8`，带 UTF-8 BOM（兼容 Excel 直接打开）
+  - JSON：`application/json; charset=utf-8`，数组格式
   - XLSX：`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
 - **可能错误码**：
   - `400`：不支持的格式
@@ -803,17 +823,29 @@
 GET /api/export/users?format=csv&fields=id,username,status
 ```
 
+错误示例（不支持的格式）：
+
+```json
+{
+  "code": 400,
+  "message": "不支持的格式，可选值：csv, json, xlsx",
+  "success": false,
+  "data": null
+}
+```
+
 ### 25. 导出角色数据
 
 - **方法**：GET
 - **路径**：`/api/export/roles`
-- **认证**：是（需要 `role:view` 权限）
-- **参数**：
+- **认证**：是
+- **权限**：`role:view`
+- **查询参数**：
   - `format`（可选）：导出格式，可选 `csv`（默认）、`json`、`xlsx`
-  - `fields`（可选）：导出字段，逗号分隔。可选值：`id`、`name`、`description`、`createdAt`、`permissions`、`userCount`。留空则导出全部字段。
+  - `fields`（可选）：导出字段，逗号分隔。可选值：`id`、`name`、`description`、`createdAt`、`permissions`、`userCount`。留空则导出全部字段。无效字段名会被忽略，若全部无效则导出全部字段。
 - **返回**：文件下载（非 JSON API 响应）
-  - CSV：`text/csv`，带 UTF-8 BOM
-  - JSON：`application/json`，数组格式
+  - CSV：`text/csv; charset=utf-8`，带 UTF-8 BOM（兼容 Excel 直接打开）
+  - JSON：`application/json; charset=utf-8`，数组格式
   - XLSX：`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
 - **可能错误码**：
   - `400`：不支持的格式
@@ -824,6 +856,17 @@ GET /api/export/users?format=csv&fields=id,username,status
 
 ```
 GET /api/export/roles?format=xlsx&fields=id,name,description
+```
+
+错误示例（不支持的格式）：
+
+```json
+{
+  "code": 400,
+  "message": "不支持的格式，可选值：csv, json, xlsx",
+  "success": false,
+  "data": null
+}
 ```
 
 ---
