@@ -23,6 +23,7 @@ import type {
   PermissionInfo,
   RoleUserInfo,
   RoleItem,
+  PagedResult,
   MessageResult,
 } from '../utils/types';
 import {
@@ -479,7 +480,7 @@ function RolesPage() {
             <Input
               value={keyword}
               placeholder="搜索角色名称或描述..."
-              onChange={(val) => handleSearch(normalizeInput(val))}
+              onChange={(val) => handleSearch(val)}
               className="w-64"
             />
             <Popover
