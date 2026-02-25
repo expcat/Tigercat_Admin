@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { inject, ref } from 'vue'
-import { Alert, Card, Text, Tag } from '@expcat/tigercat-vue'
-import type { Session } from '../utils'
+import { inject, ref, onMounted, watch, computed } from 'vue'
+import { Alert, Card, Text, Tag, Select, LineChart, BarChart, PieChart, Loading } from '@expcat/tigercat-vue'
+import type { Session, StatsOverview, StatsTrend, StatsDistribution } from '../utils'
+import { apiRequest } from '../utils'
 import Icon from '../components/Icon.vue'
 import AppLogo from '../components/AppLogo.vue'
 
@@ -9,13 +10,85 @@ const homeMessage = inject<import('vue').Ref<string>>('homeMessage', ref(''))
 const homeError = inject<import('vue').Ref<string>>('homeError', ref(''))
 const session = inject<import('vue').Ref<Session | null>>('session', ref(null))
 
-// 模拟统计数据
-const stats = [
-  { label: '总用户数', value: '1,234', trend: '+12%', trendUp: true, icon: 'users', iconClass: 'text-blue-600' },
-  { label: '活跃会话', value: '56', trend: '+5', trendUp: true, icon: 'activity', iconClass: 'text-purple-600' },
-  { label: '今日登录', value: '128', trend: '-3%', trendUp: false, icon: 'barChart', iconClass: 'text-orange-600' },
-  { label: '系统状态', value: '正常', status: 'success', icon: 'shieldCheck', iconClass: 'text-green-600' },
+// --- 统计数据状态 ---
+const overview = ref<StatsOverview | null>(null)
+const trend = ref<StatsTrend | null>(null)
+const distribution = ref<StatsDistribution | null>(null)
+const statsLoading = ref(false)
+const statsError = ref('')
+
+// 时间范围（天数）
+const trendDays = ref<number>(7)
+const trendDaysOptions = [
+  { value: 7, label: '近 7 天' },
+  { value: 14, label: '近 14 天' },
+  { value: 30, label: '近 30 天' },
+  { value: 90, label: '近 90 天' },
 ]
+
+// --- 统计卡片（基于真实概览数据） ---
+const statsCards = computed(() => {
+  const o = overview.value
+  return [
+    { label: '总用户数', value: o ? String(o.totalUsers) : '-', icon: 'users', iconClass: 'text-blue-600', bgClass: 'bg-blue-100 dark:bg-blue-900/30' },
+    { label: '活跃用户', value: o ? String(o.activeUsers) : '-', icon: 'activity', iconClass: 'text-purple-600', bgClass: 'bg-purple-100 dark:bg-purple-900/30' },
+    { label: '总角色数', value: o ? String(o.totalRoles) : '-', icon: 'shield', iconClass: 'text-orange-600', bgClass: 'bg-orange-100 dark:bg-orange-900/30' },
+    { label: '总权限数', value: o ? String(o.totalPermissions) : '-', icon: 'shieldCheck', iconClass: 'text-green-600', bgClass: 'bg-green-100 dark:bg-green-900/30' },
+  ]
+})
+
+// --- 图表数据 ---
+const trendChartData = computed(() => {
+  if (!trend.value) return []
+  return trend.value.points.map(p => ({ x: p.date as string | number, y: p.count }))
+})
+
+const distributionChartData = computed(() => {
+  if (!distribution.value) return []
+  return distribution.value.items.map(item => ({
+    value: item.value,
+    label: item.label,
+  }))
+})
+
+// --- API 请求 ---
+async function fetchOverview() {
+  const res = await apiRequest<StatsOverview>('/api/stats/overview')
+  overview.value = res.data
+}
+
+async function fetchTrend() {
+  const res = await apiRequest<StatsTrend>(`/api/stats/trend?days=${trendDays.value}`)
+  trend.value = res.data
+}
+
+async function fetchDistribution() {
+  const res = await apiRequest<StatsDistribution>('/api/stats/distribution')
+  distribution.value = res.data
+}
+
+async function loadStats() {
+  statsLoading.value = true
+  statsError.value = ''
+  try {
+    await Promise.all([fetchOverview(), fetchTrend(), fetchDistribution()])
+  } catch (e: any) {
+    statsError.value = e.message || '加载统计数据失败'
+  } finally {
+    statsLoading.value = false
+  }
+}
+
+// 切换时间范围时重新加载趋势
+watch(trendDays, async () => {
+  try {
+    await fetchTrend()
+  } catch (e: any) {
+    statsError.value = e.message || '加载趋势数据失败'
+  }
+})
+
+onMounted(loadStats)
 
 // 快捷操作
 const quickActions = [
@@ -23,14 +96,6 @@ const quickActions = [
   { label: '角色配置', icon: 'shield', key: 'roles' },
   { label: '系统设置', icon: 'settings', key: 'settings' },
   { label: '查看日志', icon: 'fileText', key: 'logs' },
-]
-
-// 最近活动
-const recentActivities = [
-  { time: '10 分钟前', action: '用户 admin 登录系统', type: 'info' },
-  { time: '30 分钟前', action: '新用户 test_user 注册', type: 'success' },
-  { time: '1 小时前', action: '系统配置已更新', type: 'warning' },
-  { time: '2 小时前', action: '用户 demo 修改密码', type: 'info' },
 ]
 </script>
 
@@ -63,49 +128,96 @@ const recentActivities = [
     </Card>
 
     <!-- 加载错误提示 -->
-    <Alert 
-      v-if="homeError" 
-      type="error" 
-      title="数据加载失败" 
-      :description="homeError" 
-      closable 
+    <Alert
+      v-if="homeError || statsError"
+      type="error"
+      title="数据加载失败"
+      :description="homeError || statsError"
+      closable
     />
 
     <!-- 统计卡片 -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <Card 
-        v-for="(stat, index) in stats" 
+      <Card
+        v-for="stat in statsCards"
         :key="stat.label"
         class="group hover:shadow-lg transition-shadow duration-300"
       >
         <div class="flex items-start justify-between">
           <div class="flex-1">
             <Text size="sm" color="secondary">{{ stat.label }}</Text>
-            <div class="text-2xl font-bold mt-2 text-slate-800">{{ stat.value }}</div>
-            <div v-if="stat.trend" class="mt-2 flex items-center gap-1">
-              <Tag 
-                :color="stat.trendUp ? 'green' : 'red'" 
-                size="sm"
-              >
-                {{ stat.trendUp ? '↑' : '↓' }} {{ stat.trend }}
-              </Tag>
-              <Text size="xs" color="secondary">较昨日</Text>
-            </div>
-            <div v-if="stat.status" class="mt-2">
-              <Tag color="green" size="sm">● 运行中</Tag>
+            <div class="text-2xl font-bold mt-2 text-slate-800">
+              <Loading v-if="statsLoading" size="sm" />
+              <template v-else>{{ stat.value }}</template>
             </div>
           </div>
-          <div 
+          <div
             class="w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
-            :class="[
-              index === 0 ? 'bg-blue-100 dark:bg-blue-900/30' : '',
-              index === 1 ? 'bg-purple-100 dark:bg-purple-900/30' : '',
-              index === 2 ? 'bg-orange-100 dark:bg-orange-900/30' : '',
-              index === 3 ? 'bg-green-100 dark:bg-green-900/30' : '',
-            ]"
+            :class="stat.bgClass"
           >
             <Icon :name="stat.icon" :size="20" :class="stat.iconClass" />
           </div>
+        </div>
+      </Card>
+    </div>
+
+    <!-- 图表区域 -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- 用户创建趋势（折线图） -->
+      <Card class="lg:col-span-2">
+        <template #header>
+          <div class="flex items-center justify-between">
+            <Text size="base" weight="bold">用户创建趋势</Text>
+            <div class="w-36">
+              <Select
+                v-model="trendDays"
+                :options="trendDaysOptions"
+                size="sm"
+                :clearable="false"
+              />
+            </div>
+          </div>
+        </template>
+        <div v-if="statsLoading" class="flex items-center justify-center h-52">
+          <Loading />
+        </div>
+        <LineChart
+          v-else-if="trendChartData.length"
+          :data="trendChartData"
+          :height="220"
+          :show-area="true"
+          :area-opacity="0.15"
+          :show-points="true"
+          :point-size="4"
+          :include-zero="true"
+          line-color="#3b82f6"
+          :animated="true"
+          x-axis-label="日期"
+          y-axis-label="新增用户"
+          :x-tick-format="(v: string | number) => String(v).slice(5)"
+        />
+        <div v-else class="flex items-center justify-center h-52 text-slate-400">
+          <Text size="sm" color="secondary">暂无趋势数据</Text>
+        </div>
+      </Card>
+
+      <!-- 用户状态分布（饼图） -->
+      <Card title="用户状态分布" class="lg:col-span-1">
+        <div v-if="statsLoading" class="flex items-center justify-center h-52">
+          <Loading />
+        </div>
+        <PieChart
+          v-else-if="distributionChartData.length"
+          :data="distributionChartData"
+          :height="220"
+          :colors="['#3b82f6', '#ef4444']"
+          :show-labels="true"
+          label-position="outside"
+          :show-legend="true"
+          legend-position="bottom"
+        />
+        <div v-else class="flex items-center justify-center h-52 text-slate-400">
+          <Text size="sm" color="secondary">暂无分布数据</Text>
         </div>
       </Card>
     </div>
@@ -139,28 +251,28 @@ const recentActivities = [
         </div>
       </Card>
 
-      <!-- 最近活动 -->
-      <Card title="最近活动" class="lg:col-span-2">
-        <div class="space-y-4">
-          <div
-            v-for="(activity, index) in recentActivities"
-            :key="index"
-            class="flex items-start gap-3 pb-4 border-b border-slate-100 last:border-0 last:pb-0"
-          >
-            <div 
-              class="w-2 h-2 rounded-full mt-2 shrink-0"
-              :class="{
-                'bg-blue-500': activity.type === 'info',
-                'bg-green-500': activity.type === 'success',
-                'bg-yellow-500': activity.type === 'warning',
-                'bg-red-500': activity.type === 'error',
-              }"
-            ></div>
-            <div class="flex-1 min-w-0">
-              <Text size="sm" class="text-slate-700">{{ activity.action }}</Text>
-              <Text size="xs" color="secondary" class="mt-1">{{ activity.time }}</Text>
-            </div>
-          </div>
+      <!-- 概览详情（柱状图） -->
+      <Card title="用户概览" class="lg:col-span-2">
+        <div v-if="statsLoading" class="flex items-center justify-center h-52">
+          <Loading />
+        </div>
+        <BarChart
+          v-else-if="overview"
+          :data="[
+            { value: overview.totalUsers, label: '总用户', color: '#3b82f6' },
+            { value: overview.activeUsers, label: '活跃', color: '#22c55e' },
+            { value: overview.disabledUsers, label: '禁用', color: '#ef4444' },
+            { value: overview.totalRoles, label: '角色', color: '#a855f7' },
+            { value: overview.totalPermissions, label: '权限', color: '#f97316' },
+          ]"
+          :height="220"
+          :show-grid="true"
+          :animated="true"
+          :bar-radius="6"
+          y-axis-label="数量"
+        />
+        <div v-else class="flex items-center justify-center h-52 text-slate-400">
+          <Text size="sm" color="secondary">暂无概览数据</Text>
         </div>
       </Card>
     </div>

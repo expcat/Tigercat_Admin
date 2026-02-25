@@ -62,3 +62,31 @@ export interface PagedResult<T = any> {
 export interface MessageResult {
   message?: string;
 }
+
+// ---- P3: Stats types ----
+
+export interface StatsOverview {
+  totalUsers: number;
+  activeUsers: number;
+  disabledUsers: number;
+  totalRoles: number;
+  totalPermissions: number;
+}
+
+export interface TrendPoint {
+  date: string;
+  count: number;
+}
+
+export interface StatsTrend {
+  points: TrendPoint[];
+}
+
+export interface DistributionItem {
+  label: string;
+  value: number;
+}
+
+export interface StatsDistribution {
+  items: DistributionItem[];
+}
