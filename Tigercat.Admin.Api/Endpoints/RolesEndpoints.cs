@@ -95,8 +95,12 @@ public class RolesEndpoints : IEndpointDefinition
         var desc = string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase);
         IOrderedQueryable<RoleEntity> ordered = sortBy?.ToLowerInvariant() switch
         {
-            "name" => desc ? query.OrderByDescending(r => r.Name) : query.OrderBy(r => r.Name),
-            "createdat" => desc ? query.OrderByDescending(r => r.CreatedAt) : query.OrderBy(r => r.CreatedAt),
+            "name" => desc
+                ? query.OrderByDescending(r => r.Name).ThenByDescending(r => r.Id)
+                : query.OrderBy(r => r.Name).ThenBy(r => r.Id),
+            "createdat" => desc
+                ? query.OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id)
+                : query.OrderBy(r => r.CreatedAt).ThenBy(r => r.Id),
             _ => desc ? query.OrderByDescending(r => r.Id) : query.OrderBy(r => r.Id),
         };
 

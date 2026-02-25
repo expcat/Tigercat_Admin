@@ -432,7 +432,7 @@ onMounted(() => {
             </template>
             <div class="space-y-2">
               <label
-                v-for="key in ALL_COLUMN_KEYS"
+                v-for="key in ALL_COLUMN_KEYS.filter(k => k !== 'actions' || canEdit || canDelete)"
                 :key="key"
                 class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800"
               >

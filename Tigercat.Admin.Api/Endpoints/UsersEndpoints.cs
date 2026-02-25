@@ -72,6 +72,13 @@ public class UsersEndpoints : IEndpointDefinition
 
         if (status.HasValue)
         {
+            if (status.Value != 0 && status.Value != 1)
+            {
+                return Results.Json(
+                    ApiResult.Fail("Invalid 'status' query parameter value. Allowed values are 0 and 1.", 400),
+                    AppJsonContext.Default.ApiResponseObject,
+                    statusCode: 400);
+            }
             query = query.Where(u => (int)u.Status == status.Value);
         }
 
@@ -80,10 +87,18 @@ public class UsersEndpoints : IEndpointDefinition
         var desc = string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase);
         IOrderedQueryable<UserEntity> ordered = sortBy?.ToLowerInvariant() switch
         {
-            "username" => desc ? query.OrderByDescending(u => u.Username) : query.OrderBy(u => u.Username),
-            "displayname" => desc ? query.OrderByDescending(u => u.DisplayName) : query.OrderBy(u => u.DisplayName),
-            "status" => desc ? query.OrderByDescending(u => u.Status) : query.OrderBy(u => u.Status),
-            "createdat" => desc ? query.OrderByDescending(u => u.CreatedAt) : query.OrderBy(u => u.CreatedAt),
+            "username" => desc
+                ? query.OrderByDescending(u => u.Username).ThenByDescending(u => u.Id)
+                : query.OrderBy(u => u.Username).ThenBy(u => u.Id),
+            "displayname" => desc
+                ? query.OrderByDescending(u => u.DisplayName).ThenByDescending(u => u.Id)
+                : query.OrderBy(u => u.DisplayName).ThenBy(u => u.Id),
+            "status" => desc
+                ? query.OrderByDescending(u => u.Status).ThenByDescending(u => u.Id)
+                : query.OrderBy(u => u.Status).ThenBy(u => u.Id),
+            "createdat" => desc
+                ? query.OrderByDescending(u => u.CreatedAt).ThenByDescending(u => u.Id)
+                : query.OrderBy(u => u.CreatedAt).ThenBy(u => u.Id),
             _ => desc ? query.OrderByDescending(u => u.Id) : query.OrderBy(u => u.Id),
         };
 

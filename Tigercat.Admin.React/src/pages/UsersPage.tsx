@@ -522,7 +522,7 @@ function UsersPage() {
               width={180}
               contentContent={
                 <div className="space-y-2">
-                  {ALL_COLUMN_KEYS.map((key) => (
+                  {ALL_COLUMN_KEYS.filter((k) => k !== 'actions' || canEdit || canDelete).map((key) => (
                     <label
                       key={key}
                       className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
