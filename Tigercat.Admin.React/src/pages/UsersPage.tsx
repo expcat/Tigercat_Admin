@@ -16,8 +16,9 @@ import {
 import type { TableColumn, SortState } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { PermissionGuard } from '../components/PermissionGuard';
-import { UsersIcon, UserPlusIcon, SettingsIcon } from '../components/Icons';
-import { apiRequest, normalizeInput, debounce, getAuthHeaders } from '../utils';
+import { UsersIcon, UserPlusIcon, SettingsIcon, DownloadIcon } from '../components/Icons';
+import { apiRequest, normalizeInput, debounce, getAuthHeaders, exportData } from '../utils';
+import type { ExportFormat } from '../utils/export';
 import { usePermission } from '../utils/permission';
 import type {
   RoleInfo,
@@ -41,6 +42,22 @@ const INITIAL_FORM: UserFormData = {
   status: 0,
   roleIds: [],
 };
+
+const EXPORT_FIELD_OPTIONS = [
+  { key: 'id', label: 'ID' },
+  { key: 'username', label: '用户名' },
+  { key: 'displayName', label: '显示名' },
+  { key: 'status', label: '状态' },
+  { key: 'createdAt', label: '创建时间' },
+  { key: 'updatedAt', label: '更新时间' },
+  { key: 'roles', label: '角色' },
+] as const;
+
+const FORMAT_OPTIONS = [
+  { label: 'CSV', value: 'csv' },
+  { label: 'JSON', value: 'json' },
+  { label: 'XLSX', value: 'xlsx' },
+];
 
 function UsersPage() {
   const { has: hasPerm } = usePermission();
@@ -77,6 +94,14 @@ function UsersPage() {
 
   // All roles for select
   const [allRoles, setAllRoles] = useState<RoleInfo[]>([]);
+
+  // Export state
+  const [exportModalVisible, setExportModalVisible] = useState(false);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('csv');
+  const [exportFields, setExportFields] = useState<string[]>(() =>
+    EXPORT_FIELD_OPTIONS.map((f) => f.key),
+  );
+  const [exporting, setExporting] = useState(false);
 
   // Ref to track current query state (avoids stale closures)
   const queryRef = useRef({
@@ -251,6 +276,41 @@ function UsersPage() {
       loadUsers();
     } catch (e: any) {
       Message.error({ content: e.message || '批量删除失败', duration: 3000 });
+    }
+  };
+
+  // ---- Export ----
+  const openExportModal = () => {
+    setExportFormat('csv');
+    setExportFields(EXPORT_FIELD_OPTIONS.map((f) => f.key));
+    setExportModalVisible(true);
+  };
+
+  const toggleExportField = (key: string) => {
+    setExportFields((prev) =>
+      prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key],
+    );
+  };
+
+  const handleExport = async () => {
+    if (exportFields.length === 0) {
+      Message.error({ content: '请至少选择一个导出字段', duration: 3000 });
+      return;
+    }
+    setExporting(true);
+    try {
+      await exportData({
+        entity: 'users',
+        format: exportFormat,
+        fields: exportFields,
+        headers: getAuthHeaders(),
+      });
+      Message.success({ content: '导出成功', duration: 3000 });
+      setExportModalVisible(false);
+    } catch (e: any) {
+      Message.error({ content: e.message || '导出失败', duration: 3000 });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -544,6 +604,14 @@ function UsersPage() {
             </Popover>
           </div>
           <div className="flex items-center gap-2">
+            <PermissionGuard code="user:view">
+              <Button variant="outline" onClick={openExportModal}>
+                <span className="flex items-center gap-1">
+                  <DownloadIcon size={16} />
+                  导出
+                </span>
+              </Button>
+            </PermissionGuard>
             <PermissionGuard code="user:delete">
               {selectedRowKeys.length > 0 && (
                 <Button
@@ -664,6 +732,41 @@ function UsersPage() {
           </span>
           吗？此操作不可撤销。
         </p>
+      </Modal>
+
+      {/* Export Modal */}
+      <Modal
+        open={exportModalVisible}
+        title="导出用户数据"
+        okText="导出"
+        cancelText="取消"
+        confirmLoading={exporting}
+        onOk={handleExport}
+        onCancel={() => setExportModalVisible(false)}>
+        <Form labelWidth={88}>
+          <FormItem label="导出格式">
+            <Select
+              value={exportFormat}
+              options={FORMAT_OPTIONS}
+              onChange={(val) => setExportFormat(val as ExportFormat)}
+            />
+          </FormItem>
+          <FormItem label="导出字段">
+            <div className="flex flex-wrap gap-3">
+              {EXPORT_FIELD_OPTIONS.map((field) => (
+                <label
+                  key={field.key}
+                  className="flex items-center gap-1.5 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
+                  <Checkbox
+                    checked={exportFields.includes(field.key)}
+                    onChange={() => toggleExportField(field.key)}
+                  />
+                  <span>{field.label}</span>
+                </label>
+              ))}
+            </div>
+          </FormItem>
+        </Form>
       </Modal>
 
       {/* Batch Delete Confirm */}
