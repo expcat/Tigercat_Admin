@@ -5,6 +5,7 @@ import type { TableColumn, SortState } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
 import { apiRequest, debounce, type Session } from '../utils'
+import { exportData, type ExportFormat } from '../utils/export'
 import type { PermissionInfo, RoleUserInfo, RoleItem, PagedResult } from '../utils/types'
 import { usePermission } from '../utils/permission'
 import {
@@ -61,6 +62,27 @@ const permConfigIds = ref<number[]>([])
 
 // All permissions for selection
 const allPermissions = ref<PermissionInfo[]>([])
+
+// ---- Export state ----
+const exportModalVisible = ref(false)
+const exportFormat = ref<ExportFormat>('csv')
+const exportFields = ref<string[]>(['id', 'name', 'description', 'createdAt', 'permissions', 'userCount'])
+const exporting = ref(false)
+
+const EXPORT_FIELD_OPTIONS = [
+  { key: 'id', label: 'ID' },
+  { key: 'name', label: '角色名称' },
+  { key: 'description', label: '描述' },
+  { key: 'createdAt', label: '创建时间' },
+  { key: 'permissions', label: '权限' },
+  { key: 'userCount', label: '用户数' },
+] as const
+
+const FORMAT_OPTIONS = [
+  { label: 'CSV', value: 'csv' },
+  { label: 'JSON', value: 'json' },
+  { label: 'XLSX', value: 'xlsx' },
+]
 
 // ---- API calls ----
 async function loadRoles() {
@@ -375,6 +397,44 @@ function handleSearch(val: string) {
 // Permission group helpers
 const permissionGroups = computed(() => buildPermissionGroups(allPermissions.value))
 
+// ---- Export ----
+function openExportModal() {
+  exportFormat.value = 'csv'
+  exportFields.value = EXPORT_FIELD_OPTIONS.map(f => f.key)
+  exportModalVisible.value = true
+}
+
+function toggleExportField(key: string) {
+  const idx = exportFields.value.indexOf(key)
+  if (idx >= 0) {
+    exportFields.value = exportFields.value.filter(f => f !== key)
+  } else {
+    exportFields.value = [...exportFields.value, key]
+  }
+}
+
+async function handleExport() {
+  if (exportFields.value.length === 0) {
+    Message.error({ content: '请至少选择一个导出字段', duration: 3000 })
+    return
+  }
+  exporting.value = true
+  try {
+    await exportData({
+      entity: 'roles',
+      format: exportFormat.value,
+      fields: exportFields.value,
+      headers: authHeaders.value,
+    })
+    Message.success({ content: '导出成功', duration: 3000 })
+    exportModalVisible.value = false
+  } catch (e: any) {
+    Message.error({ content: e.message || '导出失败', duration: 3000 })
+  } finally {
+    exporting.value = false
+  }
+}
+
 // ---- Lifecycle ----
 onMounted(() => {
   loadRoles()
@@ -429,6 +489,16 @@ onMounted(() => {
           </Popover>
         </div>
         <div class="flex items-center gap-2">
+          <Button
+            v-permission="'role:view'"
+            variant="outline"
+            @click="openExportModal"
+          >
+            <span class="flex items-center gap-1">
+              <Icon name="download" :size="16" />
+              导出
+            </span>
+          </Button>
           <Button
             v-permission="'role:create'"
             color="primary"
@@ -562,6 +632,42 @@ onMounted(() => {
         <span class="font-semibold text-slate-800">{{ deletingRole?.name }}</span>
         吗？此操作不可撤销。
       </p>
+    </Modal>
+
+    <!-- Export Modal -->
+    <Modal
+      :visible="exportModalVisible"
+      title="导出角色数据"
+      ok-text="导出"
+      cancel-text="取消"
+      @ok="handleExport"
+      @cancel="exportModalVisible = false"
+      @close="exportModalVisible = false"
+    >
+      <Form :label-width="88">
+        <FormItem label="导出格式">
+          <Select
+            v-model="exportFormat"
+            :options="FORMAT_OPTIONS"
+            placeholder="选择导出格式"
+          />
+        </FormItem>
+        <FormItem label="导出字段">
+          <div class="space-y-2">
+            <label
+              v-for="field in EXPORT_FIELD_OPTIONS"
+              :key="field.key"
+              class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800"
+            >
+              <Checkbox
+                :model-value="exportFields.includes(field.key)"
+                @update:model-value="() => toggleExportField(field.key)"
+              />
+              <span>{{ field.label }}</span>
+            </label>
+          </div>
+        </FormItem>
+      </Form>
     </Modal>
   </div>
 </template>
