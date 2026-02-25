@@ -260,11 +260,11 @@
 | 组件         | 计划场景           | Phase | 状态      |
 | ------------ | ------------------ | ----- | --------- |
 | `LineChart`  | 用户增长趋势       | 3     | ✅ 已使用 |
-| `AreaChart`  | 登录统计趋势       | 3     | ✅ 已验证 |
+| `AreaChart`  | 登录统计趋势       | 3     | 📋 待验证 |
 | `BarChart`   | 月度活跃对比       | 3     | ✅ 已使用 |
 | `PieChart`   | 角色分布           | 3     | ✅ 已使用 |
-| `DonutChart` | 权限使用分布       | 3     | ✅ 已验证 |
-| `RadarChart` | 用户能力图（可选） | 4     | ✅ 已验证 |
+| `DonutChart` | 权限使用分布       | 3     | 📋 待验证 |
+| `RadarChart` | 用户能力图（可选） | 4     | 📋 待验证 |
 
 ### Phase 3 图表/表格组件覆盖验证小结
 
@@ -293,7 +293,7 @@
 | 分页功能      | ✅ `PaginationConfig` | ✅ UsersPage, RolesPage         | 通过 Table `pagination` prop 集成，支持页码/每页条数切换                |
 | 行选择        | ✅ `RowSelectionConfig` (checkbox/radio) | ✅ UsersPage     | 多选用于批量删除操作                                                    |
 | 行展开        | ❌ 不支持     | ❌ 未实现                       | Table 组件无 expandable row API，已记录上游需求                         |
-| 固定列        | ✅ `fixed: 'left'\|'right'` + `columnLockable` | ✅ UsersPage | 支持左/右固定列及列头锁定按钮                                           |
+| 固定列        | ✅ `fixed: 'left' &#124; 'right'` + `columnLockable` | ✅ UsersPage | 支持左/右固定列及列头锁定按钮                                           |
 | 自定义列      | ✅ `render` + `renderHeader` | ✅ UsersPage              | 通过 `Popover` 实现列显示/隐藏切换                                      |
 | 高级组合表格  | ✅ `DataTableWithToolbar` | ❌ 未使用                 | 组件可用，当前手动组合 Card + 工具栏 + Table                            |
 
