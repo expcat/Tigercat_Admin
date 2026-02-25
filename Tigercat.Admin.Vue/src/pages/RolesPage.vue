@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, inject, onMounted, h } from 'vue'
-import { Card, Table, Button, Input, Modal, Form, FormItem, Select, Tag, Message, Checkbox } from '@expcat/tigercat-vue'
-import type { TableColumn } from '@expcat/tigercat-core'
+import { Card, Table, Button, Input, Modal, Form, FormItem, Select, Tag, Message, Checkbox, Popover } from '@expcat/tigercat-vue'
+import type { TableColumn, SortState } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
 import { apiRequest, debounce, type Session } from '../utils'
@@ -33,6 +33,12 @@ const keyword = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+
+// Sort state (controlled)
+const sortState = ref<SortState>({ key: null, direction: null })
+
+// Column visibility
+const hiddenColumns = ref<Set<string>>(new Set())
 
 // Modal state
 const modalVisible = ref(false)
@@ -66,6 +72,10 @@ async function loadRoles() {
     })
     if (keyword.value.trim()) {
       params.set('keyword', keyword.value.trim())
+    }
+    if (sortState.value.key && sortState.value.direction) {
+      params.set('sortBy', sortState.value.key)
+      params.set('sortOrder', sortState.value.direction)
     }
     const res = await apiRequest<PagedResult<RoleItem>>(`/api/roles?${params}`, {
       headers: authHeaders.value,
@@ -213,10 +223,32 @@ const permissionOptions = computed(() =>
 )
 
 // ---- Table columns ----
+const ALL_COLUMN_KEYS = ['id', 'name', 'description', 'permissions', 'users', 'createdAt', 'actions'] as const
+
+const columnLabels: Record<string, string> = {
+  id: 'ID',
+  name: '角色名称',
+  description: '描述',
+  permissions: '权限数',
+  users: '关联用户',
+  createdAt: '创建时间',
+  actions: '操作',
+}
+
+function toggleColumn(key: string) {
+  const next = new Set(hiddenColumns.value)
+  if (next.has(key)) {
+    next.delete(key)
+  } else {
+    next.add(key)
+  }
+  hiddenColumns.value = next
+}
+
 const columns = computed<TableColumn[]>(() => {
   const cols: TableColumn[] = [
-    { key: 'id', title: 'ID', width: 70, align: 'center' },
-    { key: 'name', title: '角色名称', width: 150 },
+    { key: 'id', title: 'ID', width: 70, align: 'center', sortable: true },
+    { key: 'name', title: '角色名称', width: 150, sortable: true },
     {
       key: 'description',
       title: '描述',
@@ -249,6 +281,7 @@ const columns = computed<TableColumn[]>(() => {
       key: 'createdAt',
       title: '创建时间',
       width: 180,
+      sortable: true,
       render: (record: any) =>
         h('span', { class: 'text-sm text-slate-600' },
           new Date(record.createdAt).toLocaleString('zh-CN')),
@@ -298,7 +331,8 @@ const columns = computed<TableColumn[]>(() => {
     })
   }
 
-  return cols
+  // Filter out hidden columns
+  return cols.filter(c => !hiddenColumns.value.has(c.key))
 })
 
 // ---- Pagination ----
@@ -317,6 +351,13 @@ function handlePageChange(e: any) {
     pageSize.value = e.pageSize
     currentPage.value = 1
   }
+  loadRoles()
+}
+
+// ---- Sort ----
+function handleSortChange(next: SortState) {
+  sortState.value = next
+  currentPage.value = 1
   loadRoles()
 }
 
@@ -363,6 +404,29 @@ onMounted(() => {
             @update:model-value="handleSearch"
             class="w-64"
           />
+          <Popover trigger="click" placement="bottom-end" :width="180">
+            <template #reference>
+              <Button variant="outline" size="sm">
+                <span class="flex items-center gap-1">
+                  <Icon name="settings" :size="14" />
+                  列显隐
+                </span>
+              </Button>
+            </template>
+            <div class="space-y-2">
+              <label
+                v-for="key in ALL_COLUMN_KEYS.filter(k => k !== 'actions' || canEdit || canDelete)"
+                :key="key"
+                class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800"
+              >
+                <Checkbox
+                  :model-value="!hiddenColumns.has(key)"
+                  @update:model-value="() => toggleColumn(key)"
+                />
+                <span>{{ columnLabels[key] || key }}</span>
+              </label>
+            </div>
+          </Popover>
         </div>
         <div class="flex items-center gap-2">
           <Button
@@ -386,11 +450,14 @@ onMounted(() => {
         :data-source="roles as any"
         :loading="loading"
         :pagination="paginationConfig"
+        :sort="sortState"
+        column-lockable
         row-key="id"
         :hoverable="true"
         :striped="true"
         empty-text="暂无角色数据"
         @page-change="handlePageChange"
+        @sort-change="handleSortChange"
       />
     </Card>
 

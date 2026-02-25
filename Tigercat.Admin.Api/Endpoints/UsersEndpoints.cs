@@ -46,11 +46,14 @@ public class UsersEndpoints : IEndpointDefinition
             .WithName("BatchDeleteUsers");
     }
 
-    // GET /api/users?page=1&pageSize=10&keyword=xxx
+    // GET /api/users?page=1&pageSize=10&keyword=xxx&sortBy=id&sortOrder=asc&status=0
     private static async Task<IResult> GetUsers(
         int? page,
         int? pageSize,
         string? keyword,
+        string? sortBy,
+        string? sortOrder,
+        int? status,
         AdminDbContext db,
         CancellationToken ct)
     {
@@ -67,10 +70,39 @@ public class UsersEndpoints : IEndpointDefinition
                 (u.DisplayName != null && u.DisplayName.ToLower().Contains(kw)));
         }
 
+        if (status.HasValue)
+        {
+            if (status.Value != 0 && status.Value != 1)
+            {
+                return Results.Json(
+                    ApiResult.Fail("Invalid 'status' query parameter value. Allowed values are 0 and 1.", 400),
+                    AppJsonContext.Default.ApiResponseObject,
+                    statusCode: 400);
+            }
+            query = query.Where(u => (int)u.Status == status.Value);
+        }
+
         var total = await query.CountAsync(ct);
 
-        var users = await query
-            .OrderBy(u => u.Id)
+        var desc = string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase);
+        IOrderedQueryable<UserEntity> ordered = sortBy?.ToLowerInvariant() switch
+        {
+            "username" => desc
+                ? query.OrderByDescending(u => u.Username).ThenByDescending(u => u.Id)
+                : query.OrderBy(u => u.Username).ThenBy(u => u.Id),
+            "displayname" => desc
+                ? query.OrderByDescending(u => u.DisplayName).ThenByDescending(u => u.Id)
+                : query.OrderBy(u => u.DisplayName).ThenBy(u => u.Id),
+            "status" => desc
+                ? query.OrderByDescending(u => u.Status).ThenByDescending(u => u.Id)
+                : query.OrderBy(u => u.Status).ThenBy(u => u.Id),
+            "createdat" => desc
+                ? query.OrderByDescending(u => u.CreatedAt).ThenByDescending(u => u.Id)
+                : query.OrderBy(u => u.CreatedAt).ThenBy(u => u.Id),
+            _ => desc ? query.OrderByDescending(u => u.Id) : query.OrderBy(u => u.Id),
+        };
+
+        var users = await ordered
             .Skip((p - 1) * ps)
             .Take(ps)
             .Select(u => new UserItemResponse(

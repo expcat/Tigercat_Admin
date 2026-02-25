@@ -11,11 +11,12 @@ import {
   Checkbox,
   Tag,
   Message,
+  Popover,
 } from '@expcat/tigercat-react';
-import type { TableColumn } from '@expcat/tigercat-core';
+import type { TableColumn, SortState } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { PermissionGuard } from '../components/PermissionGuard';
-import { ShieldIcon, UserPlusIcon } from '../components/Icons';
+import { ShieldIcon, UserPlusIcon, SettingsIcon } from '../components/Icons';
 import { apiRequest, normalizeInput, debounce, getAuthHeaders } from '../utils';
 import { usePermission } from '../utils/permission';
 import type {
@@ -55,6 +56,12 @@ function RolesPage() {
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
 
+  // Sort state (controlled)
+  const [sortState, setSortState] = useState<SortState>({ key: null, direction: null });
+
+  // Column visibility
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
+
   // Modal state — create / edit
   const [modalVisible, setModalVisible] = useState(false);
   const [modalTitle, setModalTitle] = useState('新增角色');
@@ -74,7 +81,12 @@ function RolesPage() {
   const [allPermissions, setAllPermissions] = useState<PermissionInfo[]>([]);
 
   // Ref to track current query state (avoids stale closures)
-  const queryRef = useRef({ page: currentPage, pageSize, keyword });
+  const queryRef = useRef({
+    page: currentPage,
+    pageSize,
+    keyword,
+    sortState: { key: null, direction: null } as SortState,
+  });
 
   // ---- Permission checks ----
   const canEdit = hasPerm('role:edit');
@@ -84,13 +96,17 @@ function RolesPage() {
   const loadRoles = useCallback(async () => {
     setLoading(true);
     try {
-      const { page, pageSize: ps, keyword: kw } = queryRef.current;
+      const { page, pageSize: ps, keyword: kw, sortState: ss } = queryRef.current;
       const params = new URLSearchParams({
         page: String(page),
         pageSize: String(ps),
       });
       if (kw.trim()) {
         params.set('keyword', kw.trim());
+      }
+      if (ss.key && ss.direction) {
+        params.set('sortBy', ss.key);
+        params.set('sortOrder', ss.direction);
       }
       const res = await apiRequest<PagedResult<RoleItem>>(
         `/api/roles?${params}`,
@@ -264,6 +280,37 @@ function RolesPage() {
     debouncedLoad();
   };
 
+  // ---- Column visibility ----
+  const ALL_COLUMN_KEYS = useMemo(
+    () => ['id', 'name', 'description', 'permissions', 'users', 'createdAt', 'actions'] as const,
+    [],
+  );
+
+  const columnLabels: Record<string, string> = useMemo(
+    () => ({
+      id: 'ID',
+      name: '角色名称',
+      description: '描述',
+      permissions: '权限数',
+      users: '关联用户',
+      createdAt: '创建时间',
+      actions: '操作',
+    }),
+    [],
+  );
+
+  const toggleColumn = useCallback((key: string) => {
+    setHiddenColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
+
   // ---- Table columns ----
   const permissionOptions = useMemo(
     () =>
@@ -276,8 +323,8 @@ function RolesPage() {
 
   const columns = useMemo<TableColumn<RoleItem>[]>(() => {
     const cols: TableColumn<RoleItem>[] = [
-      { key: 'id', title: 'ID', width: 70, align: 'center' },
-      { key: 'name', title: '角色名称', width: 150 },
+      { key: 'id', title: 'ID', width: 70, align: 'center', sortable: true },
+      { key: 'name', title: '角色名称', width: 150, sortable: true },
       {
         key: 'description',
         title: '描述',
@@ -314,6 +361,7 @@ function RolesPage() {
         key: 'createdAt',
         title: '创建时间',
         width: 180,
+        sortable: true,
         render: (record) => (
           <span className="text-sm text-slate-600">
             {new Date(record.createdAt).toLocaleString('zh-CN')}
@@ -362,8 +410,9 @@ function RolesPage() {
       });
     }
 
-    return cols;
-  }, [canEdit, canDelete]);
+    // Filter out hidden columns
+    return cols.filter((c) => !hiddenColumns.has(c.key));
+  }, [canEdit, canDelete, hiddenColumns]);
 
   // ---- Pagination ----
   const paginationConfig = useMemo(
@@ -390,6 +439,18 @@ function RolesPage() {
     }
     loadRoles();
   };
+
+  // ---- Sort ----
+  const handleSortChange = useCallback(
+    (next: SortState) => {
+      setSortState(next);
+      queryRef.current.sortState = next;
+      queryRef.current.page = 1;
+      setCurrentPage(1);
+      loadRoles();
+    },
+    [loadRoles],
+  );
 
   // ---- Form field helpers ----
   const setField = <K extends keyof RoleFormData>(
@@ -421,6 +482,32 @@ function RolesPage() {
               onChange={(val) => handleSearch(normalizeInput(val))}
               className="w-64"
             />
+            <Popover
+              trigger="click"
+              placement="bottom-end"
+              width={180}
+              contentContent={
+                <div className="space-y-2">
+                  {ALL_COLUMN_KEYS.filter((k) => k !== 'actions' || canEdit || canDelete).map((key) => (
+                    <label
+                      key={key}
+                      className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
+                      <Checkbox
+                        checked={!hiddenColumns.has(key)}
+                        onChange={() => toggleColumn(key)}
+                      />
+                      <span>{columnLabels[key] || key}</span>
+                    </label>
+                  ))}
+                </div>
+              }>
+              <Button variant="outline" size="sm">
+                <span className="flex items-center gap-1">
+                  <SettingsIcon size={14} />
+                  列显隐
+                </span>
+              </Button>
+            </Popover>
           </div>
           <div className="flex items-center gap-2">
             <PermissionGuard code="role:create">
@@ -442,11 +529,14 @@ function RolesPage() {
           dataSource={roles}
           loading={loading}
           pagination={paginationConfig}
+          sort={sortState}
+          columnLockable
           rowKey="id"
           hoverable
           striped
           emptyText="暂无角色数据"
           onPageChange={handlePageChange}
+          onSortChange={handleSortChange}
         />
       </Card>
 

@@ -220,6 +220,9 @@
   - `page`：页码（默认 `1`，最小 `1`）
   - `pageSize`：每页数量（默认 `10`，范围 `1-100`）
   - `keyword`：搜索关键词（按用户名或显示名模糊匹配，可选）
+  - `sortBy`：排序字段（可选，支持 `id`、`username`、`displayname`、`status`、`createdat`，默认按 `id`）
+  - `sortOrder`：排序方向（可选，`asc` 或 `desc`，默认 `asc`）
+  - `status`：状态筛选（可选，`0`=正常，`1`=禁用）
 - **返回 data**：
   - `items`：用户数组（见下方用户对象结构）
   - `total`：总数
@@ -459,6 +462,8 @@
   - `page`：页码（默认 `1`，最小 `1`）
   - `pageSize`：每页数量（默认 `10`，范围 `1-100`）
   - `keyword`：搜索关键词（按角色名称或描述模糊匹配，可选）
+  - `sortBy`：排序字段（可选，支持 `id`、`name`、`createdat`，默认按 `id`）
+  - `sortOrder`：排序方向（可选，`asc` 或 `desc`，默认 `asc`）
 - **返回 data**：
   - `items`：角色数组（见上方角色对象结构）
   - `total`：总数
