@@ -11,6 +11,8 @@ import {
   ShieldCheckIcon,
   PackageIcon,
   ZapIcon,
+  CalendarIcon,
+  GlobeIcon,
 } from '../components/Icons';
 import type { StatsOverview, StatsTrend, StatsDistribution } from '../utils';
 import { apiRequest, getAuthHeaders } from '../utils';
@@ -370,7 +372,7 @@ function HomePage() {
           </div>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">
-              📅
+              <CalendarIcon size={20} />
             </div>
             <div>
               <Text size="xs" color="secondary">最后更新</Text>
@@ -379,7 +381,7 @@ function HomePage() {
           </div>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
-              🌐
+              <GlobeIcon size={20} />
             </div>
             <div>
               <Text size="xs" color="secondary">API 状态</Text>
