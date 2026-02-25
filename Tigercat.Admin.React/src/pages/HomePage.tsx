@@ -1,15 +1,19 @@
-import { Alert, Card, Text, Tag } from '@expcat/tigercat-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Alert, Card, Text, Tag, Select, LineChart, BarChart, PieChart, Loading } from '@expcat/tigercat-react';
 import { useOutletContext } from 'react-router-dom';
 import {
   UsersIcon,
-  LinkIcon,
-  TrendingUpIcon,
-  CheckCircleIcon,
   ShieldIcon,
   SettingsIcon,
   FileTextIcon,
   LogoIcon,
+  ActivityIcon,
+  ShieldCheckIcon,
+  PackageIcon,
+  ZapIcon,
 } from '../components/Icons';
+import type { StatsOverview, StatsTrend, StatsDistribution } from '../utils';
+import { apiRequest, getAuthHeaders } from '../utils';
 
 interface Notice {
   type: 'success' | 'error' | '';
@@ -23,60 +27,139 @@ interface HomePageContext {
   username?: string;
 }
 
-// 模拟统计数据
-const stats = [
-  {
-    label: '总用户数',
-    value: '1,234',
-    trend: '+12%',
-    trendUp: true,
-    icon: <UsersIcon size={24} className="text-blue-500" />,
-  },
-  {
-    label: '活跃会话',
-    value: '56',
-    trend: '+5',
-    trendUp: true,
-    icon: <LinkIcon size={24} className="text-indigo-500" />,
-  },
-  {
-    label: '今日登录',
-    value: '128',
-    trend: '-3%',
-    trendUp: false,
-    icon: <TrendingUpIcon size={24} className="text-pink-500" />,
-  },
-  {
-    label: '系统状态',
-    value: '正常',
-    status: 'success' as const,
-    icon: <CheckCircleIcon size={24} className="text-green-500" />,
-  },
+const trendDaysOptions = [
+  { value: 7, label: '近 7 天' },
+  { value: 14, label: '近 14 天' },
+  { value: 30, label: '近 30 天' },
+  { value: 90, label: '近 90 天' },
 ];
+
+// 统计卡片配置
+const statsCardsMeta = [
+  { key: 'totalUsers', label: '总用户数', icon: UsersIcon, iconClass: 'text-blue-600', bgClass: 'bg-blue-100 dark:bg-blue-900/30' },
+  { key: 'activeUsers', label: '活跃用户', icon: ActivityIcon, iconClass: 'text-purple-600', bgClass: 'bg-purple-100 dark:bg-purple-900/30' },
+  { key: 'totalRoles', label: '总角色数', icon: ShieldIcon, iconClass: 'text-orange-600', bgClass: 'bg-orange-100 dark:bg-orange-900/30' },
+  { key: 'totalPermissions', label: '总权限数', icon: ShieldCheckIcon, iconClass: 'text-green-600', bgClass: 'bg-green-100 dark:bg-green-900/30' },
+] as const;
 
 // 快捷操作
 const quickActions = [
-  { label: '用户管理', icon: <UsersIcon size={20} />, key: 'users' },
-  { label: '角色配置', icon: <ShieldIcon size={20} />, key: 'roles' },
-  { label: '系统设置', icon: <SettingsIcon size={20} />, key: 'settings' },
-  { label: '查看日志', icon: <FileTextIcon size={20} />, key: 'logs' },
-];
-
-// 最近活动
-const recentActivities = [
-  { time: '10 分钟前', action: '用户 admin 登录系统', type: 'info' as const },
-  {
-    time: '30 分钟前',
-    action: '新用户 test_user 注册',
-    type: 'success' as const,
-  },
-  { time: '1 小时前', action: '系统配置已更新', type: 'warning' as const },
-  { time: '2 小时前', action: '用户 demo 修改密码', type: 'info' as const },
+  { label: '用户管理', icon: UsersIcon, key: 'users', colorClasses: 'from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200', iconClass: 'text-blue-600' },
+  { label: '角色配置', icon: ShieldIcon, key: 'roles', colorClasses: 'from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200', iconClass: 'text-purple-600' },
+  { label: '系统设置', icon: SettingsIcon, key: 'settings', colorClasses: 'from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200', iconClass: 'text-orange-600' },
+  { label: '查看日志', icon: FileTextIcon, key: 'logs', colorClasses: 'from-green-50 to-green-100 hover:from-green-100 hover:to-green-200', iconClass: 'text-green-600' },
 ];
 
 function HomePage() {
   const { notice, homeMessage, homeError, username } =
     useOutletContext<HomePageContext>();
+
+  // --- 统计数据状态 ---
+  const [overview, setOverview] = useState<StatsOverview | null>(null);
+  const [trend, setTrend] = useState<StatsTrend | null>(null);
+  const [distribution, setDistribution] = useState<StatsDistribution | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [trendLoading, setTrendLoading] = useState(false);
+  const [statsError, setStatsError] = useState('');
+  const [trendDays, setTrendDays] = useState<number>(7);
+  const trendRequestId = useRef(0);
+
+  // --- 统计卡片（基于真实概览数据） ---
+  const statsCards = useMemo(() => {
+    const o = overview;
+    return statsCardsMeta.map((meta) => ({
+      ...meta,
+      value: o ? String(o[meta.key]) : '-',
+    }));
+  }, [overview]);
+
+  // --- 图表数据 ---
+  const trendChartData = useMemo(() => {
+    if (!trend) return [];
+    return trend.points.map((p) => ({ x: p.date, y: p.count }));
+  }, [trend]);
+
+  const distributionChartData = useMemo(() => {
+    if (!distribution) return [];
+    return distribution.items.map((item) => ({
+      value: item.value,
+      label: item.label,
+    }));
+  }, [distribution]);
+
+  const barChartData = useMemo(() => {
+    if (!overview) return [];
+    return [
+      { x: '总用户', y: overview.totalUsers, color: '#3b82f6' },
+      { x: '活跃', y: overview.activeUsers, color: '#22c55e' },
+      { x: '禁用', y: overview.disabledUsers, color: '#ef4444' },
+      { x: '角色', y: overview.totalRoles, color: '#a855f7' },
+      { x: '权限', y: overview.totalPermissions, color: '#f97316' },
+    ];
+  }, [overview]);
+
+  // --- API 请求 ---
+  const fetchOverview = useCallback(async () => {
+    const res = await apiRequest<StatsOverview>('/api/stats/overview', {
+      headers: getAuthHeaders(),
+    });
+    setOverview(res.data);
+  }, []);
+
+  const fetchTrend = useCallback(async (days: number) => {
+    const id = ++trendRequestId.current;
+    const res = await apiRequest<StatsTrend>(`/api/stats/trend?days=${days}`, {
+      headers: getAuthHeaders(),
+    });
+    // 仅当此请求仍是最新请求时才更新数据，避免竞态
+    if (id === trendRequestId.current) {
+      setTrend(res.data);
+    }
+  }, []);
+
+  const fetchDistribution = useCallback(async () => {
+    const res = await apiRequest<StatsDistribution>('/api/stats/distribution', {
+      headers: getAuthHeaders(),
+    });
+    setDistribution(res.data);
+  }, []);
+
+  // 初始加载
+  useEffect(() => {
+    let cancelled = false;
+    const loadStats = async () => {
+      setStatsLoading(true);
+      setStatsError('');
+      try {
+        await Promise.all([fetchOverview(), fetchTrend(trendDays), fetchDistribution()]);
+      } catch (e: any) {
+        if (!cancelled) setStatsError(e.message || '加载统计数据失败');
+      } finally {
+        if (!cancelled) setStatsLoading(false);
+      }
+    };
+    loadStats();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 切换时间范围时重新加载趋势
+  const handleTrendDaysChange = useCallback(async (value: number | string | undefined) => {
+    const days = Number(value);
+    if (!days) return;
+    setTrendDays(days);
+    setTrendLoading(true);
+    try {
+      await fetchTrend(days);
+    } catch (e: any) {
+      setStatsError(e.message || '加载趋势数据失败');
+    } finally {
+      setTrendLoading(false);
+    }
+  }, [fetchTrend]);
+
+  const errorMessage = homeError || statsError;
+
   return (
     <div className="space-y-6">
       {/* 通知提示 */}
@@ -110,74 +193,113 @@ function HomePage() {
               </div>
             </div>
             <div className="hidden sm:flex items-center gap-2">
-              <Tag color="blue" size="sm">
-                管理员
-              </Tag>
-              <Tag color="green" size="sm">
-                已认证
-              </Tag>
+              <Tag color="blue" size="sm">管理员</Tag>
+              <Tag color="green" size="sm">已认证</Tag>
             </div>
           </div>
         </div>
       </Card>
 
       {/* 加载错误提示 */}
-      {homeError && (
+      {errorMessage && (
         <Alert
           type="error"
           title="数据加载失败"
-          description={homeError}
+          description={errorMessage}
           closable
         />
       )}
 
       {/* 统计卡片 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, index) => (
-          <Card
-            key={stat.label}
-            className="group hover:shadow-lg transition-shadow duration-300">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <Text size="sm" color="secondary">
-                  {stat.label}
-                </Text>
-                <div className="text-2xl font-bold mt-2 text-slate-800">
-                  {stat.value}
+        {statsCards.map((stat) => {
+          const IconComponent = stat.icon;
+          return (
+            <Card
+              key={stat.label}
+              className="group hover:shadow-lg transition-shadow duration-300"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <Text size="sm" color="secondary">{stat.label}</Text>
+                  <div className="text-2xl font-bold mt-2 text-slate-800">
+                    {statsLoading ? <Loading size="sm" /> : stat.value}
+                  </div>
                 </div>
-                {stat.trend && (
-                  <div className="mt-2 flex items-center gap-1">
-                    <Tag color={stat.trendUp ? 'green' : 'red'} size="sm">
-                      {stat.trendUp ? '↑' : '↓'} {stat.trend}
-                    </Tag>
-                    <Text size="xs" color="secondary">
-                      较昨日
-                    </Text>
-                  </div>
-                )}
-                {stat.status && (
-                  <div className="mt-2">
-                    <Tag color="green" size="sm">
-                      ● 运行中
-                    </Tag>
-                  </div>
-                )}
+                <div
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${stat.bgClass}`}
+                >
+                  <IconComponent size={20} className={stat.iconClass} />
+                </div>
               </div>
-              <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110 ${
-                  index === 0
-                    ? 'bg-blue-100'
-                    : index === 1
-                      ? 'bg-purple-100'
-                      : index === 2
-                        ? 'bg-orange-100'
-                        : 'bg-green-100'
-                }`}>
-                {stat.icon}
-              </div>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* 图表区域 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 用户创建趋势（折线图） */}
+        <Card className="lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <Text size="base" weight="bold">用户创建趋势</Text>
+            <div className="w-36">
+              <Select
+                value={trendDays}
+                options={trendDaysOptions}
+                size="sm"
+                clearable={false}
+                onChange={handleTrendDaysChange}
+              />
             </div>
-          </Card>
-        ))}
+          </div>
+          {(statsLoading || trendLoading) ? (
+            <div className="flex items-center justify-center h-52">
+              <Loading />
+            </div>
+          ) : trendChartData.length ? (
+            <LineChart
+              data={trendChartData}
+              height={220}
+              showArea={true}
+              areaOpacity={0.15}
+              showPoints={true}
+              pointSize={4}
+              includeZero={true}
+              lineColor="#3b82f6"
+              animated={true}
+              xAxisLabel="日期"
+              yAxisLabel="新增用户"
+              xTickFormat={(v) => String(v).slice(5)}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-52 text-slate-400">
+              <Text size="sm" color="secondary">暂无趋势数据</Text>
+            </div>
+          )}
+        </Card>
+
+        {/* 用户状态分布（饼图） */}
+        <Card title="用户状态分布" className="lg:col-span-1">
+          {statsLoading ? (
+            <div className="flex items-center justify-center h-52">
+              <Loading />
+            </div>
+          ) : distributionChartData.length ? (
+            <PieChart
+              data={distributionChartData}
+              height={220}
+              colors={['#3b82f6', '#ef4444']}
+              showLabels={true}
+              showLegend={true}
+              legendPosition="bottom"
+            />
+          ) : (
+            <div className="flex items-center justify-center h-52 text-slate-400">
+              <Text size="sm" color="secondary">暂无分布数据</Text>
+            </div>
+          )}
+        </Card>
       </div>
 
       {/* 内容区域 */}
@@ -185,58 +307,43 @@ function HomePage() {
         {/* 快捷操作 */}
         <Card title="快捷操作" className="lg:col-span-1">
           <div className="grid grid-cols-2 gap-3">
-            {quickActions.map((action, index) => (
-              <button
-                key={action.key}
-                className={`group flex flex-col items-center justify-center p-4 rounded-xl bg-linear-to-br transition-all duration-300 cursor-pointer border border-slate-200 hover:border-transparent hover:shadow-md ${
-                  index === 0
-                    ? 'from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200'
-                    : index === 1
-                      ? 'from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200'
-                      : index === 2
-                        ? 'from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200'
-                        : 'from-green-50 to-green-100 hover:from-green-100 hover:to-green-200'
-                }`}>
-                <span className="text-2xl mb-2 transition-transform group-hover:scale-110">
-                  {action.icon}
-                </span>
-                <Text size="sm" weight="medium">
-                  {action.label}
-                </Text>
-              </button>
-            ))}
+            {quickActions.map((action) => {
+              const IconComponent = action.icon;
+              return (
+                <button
+                  key={action.key}
+                  className={`group flex flex-col items-center justify-center p-4 rounded-xl bg-linear-to-br transition-all duration-300 cursor-pointer border border-slate-200 hover:border-transparent hover:shadow-md ${action.colorClasses}`}
+                >
+                  <div className="mb-2 transition-transform group-hover:scale-110">
+                    <IconComponent size={24} className={action.iconClass} />
+                  </div>
+                  <Text size="sm" weight="medium">{action.label}</Text>
+                </button>
+              );
+            })}
           </div>
         </Card>
 
-        {/* 最近活动 */}
-        <Card title="最近活动" className="lg:col-span-2">
-          <div className="space-y-4">
-            {recentActivities.map((activity, index) => (
-              <div
-                key={index}
-                className="flex items-start gap-3 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
-                <div
-                  className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
-                    activity.type === 'info'
-                      ? 'bg-blue-500'
-                      : activity.type === 'success'
-                        ? 'bg-green-500'
-                        : activity.type === 'warning'
-                          ? 'bg-yellow-500'
-                          : 'bg-red-500'
-                  }`}
-                />
-                <div className="flex-1 min-w-0">
-                  <Text size="sm" className="text-slate-700">
-                    {activity.action}
-                  </Text>
-                  <Text size="xs" color="secondary" className="mt-1">
-                    {activity.time}
-                  </Text>
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* 概览详情（柱状图） */}
+        <Card title="用户概览" className="lg:col-span-2">
+          {statsLoading ? (
+            <div className="flex items-center justify-center h-52">
+              <Loading />
+            </div>
+          ) : barChartData.length ? (
+            <BarChart
+              data={barChartData}
+              height={220}
+              showGrid={true}
+              animated={true}
+              barRadius={6}
+              yAxisLabel="数量"
+            />
+          ) : (
+            <div className="flex items-center justify-center h-52 text-slate-400">
+              <Text size="sm" color="secondary">暂无概览数据</Text>
+            </div>
+          )}
         </Card>
       </div>
 
@@ -245,28 +352,20 @@ function HomePage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
-              📦
+              <PackageIcon size={20} />
             </div>
             <div>
-              <Text size="xs" color="secondary">
-                系统版本
-              </Text>
-              <Text size="sm" weight="medium">
-                v1.0.0
-              </Text>
+              <Text size="xs" color="secondary">系统版本</Text>
+              <Text size="sm" weight="medium">v1.0.0</Text>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
-              ⚡
+              <ZapIcon size={20} />
             </div>
             <div>
-              <Text size="xs" color="secondary">
-                运行环境
-              </Text>
-              <Text size="sm" weight="medium">
-                .NET 10 + React 19
-              </Text>
+              <Text size="xs" color="secondary">运行环境</Text>
+              <Text size="sm" weight="medium">.NET 10 + React 19</Text>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -274,12 +373,8 @@ function HomePage() {
               📅
             </div>
             <div>
-              <Text size="xs" color="secondary">
-                最后更新
-              </Text>
-              <Text size="sm" weight="medium">
-                2026-01-28
-              </Text>
+              <Text size="xs" color="secondary">最后更新</Text>
+              <Text size="sm" weight="medium">2026-01-28</Text>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -287,12 +382,8 @@ function HomePage() {
               🌐
             </div>
             <div>
-              <Text size="xs" color="secondary">
-                API 状态
-              </Text>
-              <Tag color="green" size="sm">
-                ● 在线
-              </Tag>
+              <Text size="xs" color="secondary">API 状态</Text>
+              <Tag color="green" size="sm">● 在线</Tag>
             </div>
           </div>
         </div>
