@@ -10,12 +10,19 @@ const homeMessage = inject<import('vue').Ref<string>>('homeMessage', ref(''))
 const homeError = inject<import('vue').Ref<string>>('homeError', ref(''))
 const session = inject<import('vue').Ref<Session | null>>('session', ref(null))
 
+// 认证 headers
+const authHeaders = computed(() =>
+  session.value?.token ? { Authorization: `Bearer ${session.value.token}` } : {}
+)
+
 // --- 统计数据状态 ---
 const overview = ref<StatsOverview | null>(null)
 const trend = ref<StatsTrend | null>(null)
 const distribution = ref<StatsDistribution | null>(null)
 const statsLoading = ref(false)
+const trendLoading = ref(false)
 const statsError = ref('')
+let trendRequestId = 0
 
 // 时间范围（天数）
 const trendDays = ref<number>(7)
@@ -40,7 +47,7 @@ const statsCards = computed(() => {
 // --- 图表数据 ---
 const trendChartData = computed(() => {
   if (!trend.value) return []
-  return trend.value.points.map(p => ({ x: p.date as string | number, y: p.count }))
+  return trend.value.points.map(p => ({ x: p.date, y: p.count }))
 })
 
 const distributionChartData = computed(() => {
@@ -53,17 +60,27 @@ const distributionChartData = computed(() => {
 
 // --- API 请求 ---
 async function fetchOverview() {
-  const res = await apiRequest<StatsOverview>('/api/stats/overview')
+  const res = await apiRequest<StatsOverview>('/api/stats/overview', {
+    headers: authHeaders.value,
+  })
   overview.value = res.data
 }
 
 async function fetchTrend() {
-  const res = await apiRequest<StatsTrend>(`/api/stats/trend?days=${trendDays.value}`)
-  trend.value = res.data
+  const id = ++trendRequestId
+  const res = await apiRequest<StatsTrend>(`/api/stats/trend?days=${trendDays.value}`, {
+    headers: authHeaders.value,
+  })
+  // 仅当此请求仍是最新请求时才更新数据，避免竞态
+  if (id === trendRequestId) {
+    trend.value = res.data
+  }
 }
 
 async function fetchDistribution() {
-  const res = await apiRequest<StatsDistribution>('/api/stats/distribution')
+  const res = await apiRequest<StatsDistribution>('/api/stats/distribution', {
+    headers: authHeaders.value,
+  })
   distribution.value = res.data
 }
 
@@ -81,10 +98,13 @@ async function loadStats() {
 
 // 切换时间范围时重新加载趋势
 watch(trendDays, async () => {
+  trendLoading.value = true
   try {
     await fetchTrend()
   } catch (e: any) {
     statsError.value = e.message || '加载趋势数据失败'
+  } finally {
+    trendLoading.value = false
   }
 })
 
@@ -178,7 +198,7 @@ const quickActions = [
             </div>
           </div>
         </template>
-        <div v-if="statsLoading" class="flex items-center justify-center h-52">
+        <div v-if="statsLoading || trendLoading" class="flex items-center justify-center h-52">
           <Loading />
         </div>
         <LineChart
