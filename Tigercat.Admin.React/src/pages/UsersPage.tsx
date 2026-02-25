@@ -506,7 +506,7 @@ function UsersPage() {
             <Input
               value={keyword}
               placeholder="搜索用户名或显示名..."
-              onChange={(val) => handleSearch(normalizeInput(val))}
+              onChange={(val) => handleSearch(val)}
               className="w-64"
             />
             <Select
