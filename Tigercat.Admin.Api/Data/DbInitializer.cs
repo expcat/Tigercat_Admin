@@ -7,6 +7,17 @@ namespace Tigercat.Admin.Api.Data;
 public static class DbInitializer
 {
     /// <summary>
+    /// Seed system setting definitions. Each entry: (Key, Value, Description).
+    /// </summary>
+    private static readonly (string Key, string Value, string Description)[] SeedSettings =
+    [
+        ("site.name",           "Tigercat Admin",  "站点名称"),
+        ("site.logo",           "",                 "站点 Logo URL"),
+        ("auth.sessionTimeout", "1440",             "会话超时时间（分钟）"),
+        ("auth.maxAttempts",    "5",                "最大登录失败次数"),
+    ];
+
+    /// <summary>
     /// Seed permission definitions. Each entry: (Code, Description).
     /// </summary>
     private static readonly (string Code, string Description)[] SeedPermissions =
@@ -111,6 +122,22 @@ public static class DbInitializer
         if (newRolePermissions.Count > 0)
         {
             context.RolePermissions.AddRange(newRolePermissions);
+            await context.SaveChangesAsync(ct);
+        }
+
+        // --- Seed system settings (idempotent: skip existing by Key) ---
+        var existingSettingKeys = await context.SystemSettings
+            .Select(s => s.Key)
+            .ToHashSetAsync(ct);
+
+        var newSettings = SeedSettings
+            .Where(s => !existingSettingKeys.Contains(s.Key))
+            .Select(s => new SystemSettingEntity { Key = s.Key, Value = s.Value, Description = s.Description })
+            .ToList();
+
+        if (newSettings.Count > 0)
+        {
+            context.SystemSettings.AddRange(newSettings);
             await context.SaveChangesAsync(ct);
         }
 

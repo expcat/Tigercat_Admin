@@ -897,3 +897,135 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 | `auth.user.password.changed` | POST `/api/auth/change-password`    | `username`                                   |
 | `auth.user.logout`           | POST `/api/auth/logout`             | `username`                                   |
 | `admin.user.password.reset`  | PUT `/api/users/{id}`（修改密码时） | `targetUserId`、`targetUsername`、`operator` |
+
+---
+
+## 系统设置
+
+### 获取所有系统设置
+
+**GET** `/api/settings`
+
+> 需要登录（`RequireLogin`）
+
+**成功响应：**
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "key": "site.name",
+      "value": "Tigercat Admin",
+      "description": "站点名称",
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": null
+    }
+  ]
+}
+```
+
+### 按 Key 获取单个设置
+
+**GET** `/api/settings/{key}`
+
+> 需要登录（`RequireLogin`）
+
+**成功响应：**
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "success": true,
+  "data": {
+    "id": 1,
+    "key": "site.name",
+    "value": "Tigercat Admin",
+    "description": "站点名称",
+    "createdAt": "2026-01-01T00:00:00Z",
+    "updatedAt": null
+  }
+}
+```
+
+**错误响应（404）：**
+
+```json
+{
+  "code": 404,
+  "message": "设置项不存在",
+  "success": false,
+  "data": null
+}
+```
+
+### 批量更新系统设置
+
+**PUT** `/api/settings`
+
+> 需要登录（`RequireLogin`）
+
+**请求体：**
+
+```json
+{
+  "settings": [
+    { "key": "site.name", "value": "My Admin" },
+    { "key": "auth.sessionTimeout", "value": "720" }
+  ]
+}
+```
+
+**成功响应：**
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "key": "auth.sessionTimeout",
+      "value": "720",
+      "description": "会话超时时间（分钟）",
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-01-02T00:00:00Z"
+    },
+    {
+      "id": 2,
+      "key": "site.name",
+      "value": "My Admin",
+      "description": "站点名称",
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-01-02T00:00:00Z"
+    }
+  ]
+}
+```
+
+**错误响应（400 — 空设置项）：**
+
+```json
+{
+  "code": 400,
+  "message": "设置项不能为空",
+  "success": false,
+  "data": null
+}
+```
+
+**错误响应（404 — Key 不存在）：**
+
+```json
+{
+  "code": 404,
+  "message": "以下设置项不存在: invalid.key",
+  "success": false,
+  "data": null
+}
+```
