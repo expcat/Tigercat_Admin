@@ -66,6 +66,8 @@ public class SettingsEndpoints : IEndpointDefinition
             AppJsonContext.Default.ApiResponseSettingItemResponse);
     }
 
+    private const int MaxValueLength = 2000;
+
     /// <summary>
     /// PUT /api/settings — 批量更新设置（仅更新已存在的 Key）
     /// </summary>
@@ -82,12 +84,47 @@ public class SettingsEndpoints : IEndpointDefinition
                 statusCode: 400);
         }
 
-        var keys = request.Settings.Select(s => s.Key).ToList();
+        // Validate each entry
+        foreach (var entry in request.Settings)
+        {
+            if (string.IsNullOrWhiteSpace(entry.Key))
+            {
+                return Results.Json(
+                    ApiResult.Fail<SettingItemResponse[]>("设置项 Key 不能为空", 400),
+                    AppJsonContext.Default.ApiResponseSettingItemResponseArray,
+                    statusCode: 400);
+            }
+
+            if (entry.Value is null)
+            {
+                return Results.Json(
+                    ApiResult.Fail<SettingItemResponse[]>($"设置项 '{entry.Key}' 的 Value 不能为 null", 400),
+                    AppJsonContext.Default.ApiResponseSettingItemResponseArray,
+                    statusCode: 400);
+            }
+
+            if (entry.Value.Length > MaxValueLength)
+            {
+                return Results.Json(
+                    ApiResult.Fail<SettingItemResponse[]>($"设置项 '{entry.Key}' 的 Value 长度不能超过 {MaxValueLength}", 400),
+                    AppJsonContext.Default.ApiResponseSettingItemResponseArray,
+                    statusCode: 400);
+            }
+        }
+
+        // Normalize keys: trim + deduplicate (last-write-wins for duplicate keys)
+        var normalized = request.Settings
+            .Select(s => new SettingEntry(s.Key.Trim(), s.Value))
+            .GroupBy(s => s.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.Last())
+            .ToList();
+
+        var keys = normalized.Select(s => s.Key).ToList();
         var entities = await db.SystemSettings
             .Where(s => keys.Contains(s.Key))
             .ToListAsync(ct);
 
-        var entityMap = entities.ToDictionary(e => e.Key);
+        var entityMap = entities.ToDictionary(e => e.Key, StringComparer.OrdinalIgnoreCase);
         var notFound = keys.Where(k => !entityMap.ContainsKey(k)).ToList();
 
         if (notFound.Count > 0)
@@ -98,7 +135,7 @@ public class SettingsEndpoints : IEndpointDefinition
                 statusCode: 404);
         }
 
-        foreach (var entry in request.Settings)
+        foreach (var entry in normalized)
         {
             var entity = entityMap[entry.Key];
             entity.Value = entry.Value;

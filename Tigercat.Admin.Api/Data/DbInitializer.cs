@@ -125,10 +125,11 @@ public static class DbInitializer
             await context.SaveChangesAsync(ct);
         }
 
-        // --- Seed system settings (idempotent: skip existing by Key) ---
-        var existingSettingKeys = await context.SystemSettings
+        // --- Seed system settings (idempotent: skip existing by Key, case-insensitive) ---
+        var existingSettingKeys = (await context.SystemSettings
             .Select(s => s.Key)
-            .ToHashSetAsync(ct);
+            .ToListAsync(ct))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var newSettings = SeedSettings
             .Where(s => !existingSettingKeys.Contains(s.Key))
