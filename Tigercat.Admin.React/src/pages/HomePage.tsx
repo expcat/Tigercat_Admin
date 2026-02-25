@@ -1,5 +1,15 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Alert, Card, Text, Tag, Select, LineChart, BarChart, PieChart, Loading } from '@expcat/tigercat-react';
+import {
+  Alert,
+  Card,
+  Text,
+  Tag,
+  Select,
+  LineChart,
+  BarChart,
+  PieChart,
+  Loading,
+} from '@expcat/tigercat-react';
 import { useOutletContext } from 'react-router-dom';
 import {
   UsersIcon,
@@ -14,7 +24,7 @@ import {
   CalendarIcon,
   GlobeIcon,
 } from '../components/Icons';
-import type { StatsOverview, StatsTrend, StatsDistribution } from '../utils';
+import type { StatsOverview, StatsTrend } from '../utils';
 import { apiRequest, getAuthHeaders } from '../utils';
 
 interface Notice {
@@ -38,18 +48,70 @@ const trendDaysOptions = [
 
 // 统计卡片配置
 const statsCardsMeta = [
-  { key: 'totalUsers', label: '总用户数', icon: UsersIcon, iconClass: 'text-blue-600', bgClass: 'bg-blue-100 dark:bg-blue-900/30' },
-  { key: 'activeUsers', label: '活跃用户', icon: ActivityIcon, iconClass: 'text-purple-600', bgClass: 'bg-purple-100 dark:bg-purple-900/30' },
-  { key: 'totalRoles', label: '总角色数', icon: ShieldIcon, iconClass: 'text-orange-600', bgClass: 'bg-orange-100 dark:bg-orange-900/30' },
-  { key: 'totalPermissions', label: '总权限数', icon: ShieldCheckIcon, iconClass: 'text-green-600', bgClass: 'bg-green-100 dark:bg-green-900/30' },
+  {
+    key: 'totalUsers',
+    label: '总用户数',
+    icon: UsersIcon,
+    iconClass: 'text-blue-600',
+    bgClass: 'bg-blue-100 dark:bg-blue-900/30',
+  },
+  {
+    key: 'activeUsers',
+    label: '活跃用户',
+    icon: ActivityIcon,
+    iconClass: 'text-purple-600',
+    bgClass: 'bg-purple-100 dark:bg-purple-900/30',
+  },
+  {
+    key: 'totalRoles',
+    label: '总角色数',
+    icon: ShieldIcon,
+    iconClass: 'text-orange-600',
+    bgClass: 'bg-orange-100 dark:bg-orange-900/30',
+  },
+  {
+    key: 'totalPermissions',
+    label: '总权限数',
+    icon: ShieldCheckIcon,
+    iconClass: 'text-green-600',
+    bgClass: 'bg-green-100 dark:bg-green-900/30',
+  },
 ] as const;
 
 // 快捷操作
 const quickActions = [
-  { label: '用户管理', icon: UsersIcon, key: 'users', colorClasses: 'from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200', iconClass: 'text-blue-600' },
-  { label: '角色配置', icon: ShieldIcon, key: 'roles', colorClasses: 'from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200', iconClass: 'text-purple-600' },
-  { label: '系统设置', icon: SettingsIcon, key: 'settings', colorClasses: 'from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200', iconClass: 'text-orange-600' },
-  { label: '查看日志', icon: FileTextIcon, key: 'logs', colorClasses: 'from-green-50 to-green-100 hover:from-green-100 hover:to-green-200', iconClass: 'text-green-600' },
+  {
+    label: '用户管理',
+    icon: UsersIcon,
+    key: 'users',
+    colorClasses:
+      'from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200',
+    iconClass: 'text-blue-600',
+  },
+  {
+    label: '角色配置',
+    icon: ShieldIcon,
+    key: 'roles',
+    colorClasses:
+      'from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200',
+    iconClass: 'text-purple-600',
+  },
+  {
+    label: '系统设置',
+    icon: SettingsIcon,
+    key: 'settings',
+    colorClasses:
+      'from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200',
+    iconClass: 'text-orange-600',
+  },
+  {
+    label: '查看日志',
+    icon: FileTextIcon,
+    key: 'logs',
+    colorClasses:
+      'from-green-50 to-green-100 hover:from-green-100 hover:to-green-200',
+    iconClass: 'text-green-600',
+  },
 ];
 
 function HomePage() {
@@ -59,7 +121,6 @@ function HomePage() {
   // --- 统计数据状态 ---
   const [overview, setOverview] = useState<StatsOverview | null>(null);
   const [trend, setTrend] = useState<StatsTrend | null>(null);
-  const [distribution, setDistribution] = useState<StatsDistribution | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [trendLoading, setTrendLoading] = useState(false);
   const [statsError, setStatsError] = useState('');
@@ -82,12 +143,12 @@ function HomePage() {
   }, [trend]);
 
   const distributionChartData = useMemo(() => {
-    if (!distribution) return [];
-    return distribution.items.map((item) => ({
-      value: item.value,
-      label: item.label,
-    }));
-  }, [distribution]);
+    if (!overview) return [];
+    return [
+      { value: overview.activeUsers, label: 'Active' },
+      { value: overview.disabledUsers, label: 'Disabled' },
+    ];
+  }, [overview]);
 
   const barChartData = useMemo(() => {
     if (!overview) return [];
@@ -119,13 +180,6 @@ function HomePage() {
     }
   }, []);
 
-  const fetchDistribution = useCallback(async () => {
-    const res = await apiRequest<StatsDistribution>('/api/stats/distribution', {
-      headers: getAuthHeaders(),
-    });
-    setDistribution(res.data);
-  }, []);
-
   // 初始加载
   useEffect(() => {
     let cancelled = false;
@@ -133,7 +187,7 @@ function HomePage() {
       setStatsLoading(true);
       setStatsError('');
       try {
-        await Promise.all([fetchOverview(), fetchTrend(trendDays), fetchDistribution()]);
+        await Promise.all([fetchOverview(), fetchTrend(trendDays)]);
       } catch (e: any) {
         if (!cancelled) setStatsError(e.message || '加载统计数据失败');
       } finally {
@@ -141,24 +195,29 @@ function HomePage() {
       }
     };
     loadStats();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 切换时间范围时重新加载趋势
-  const handleTrendDaysChange = useCallback(async (value: number | string | undefined) => {
-    const days = Number(value);
-    if (!days) return;
-    setTrendDays(days);
-    setTrendLoading(true);
-    try {
-      await fetchTrend(days);
-    } catch (e: any) {
-      setStatsError(e.message || '加载趋势数据失败');
-    } finally {
-      setTrendLoading(false);
-    }
-  }, [fetchTrend]);
+  const handleTrendDaysChange = useCallback(
+    async (value: number | string | undefined) => {
+      const days = Number(value);
+      if (!days) return;
+      setTrendDays(days);
+      setTrendLoading(true);
+      try {
+        await fetchTrend(days);
+      } catch (e: any) {
+        setStatsError(e.message || '加载趋势数据失败');
+      } finally {
+        setTrendLoading(false);
+      }
+    },
+    [fetchTrend],
+  );
 
   const errorMessage = homeError || statsError;
 
@@ -195,8 +254,12 @@ function HomePage() {
               </div>
             </div>
             <div className="hidden sm:flex items-center gap-2">
-              <Tag color="blue" size="sm">管理员</Tag>
-              <Tag color="green" size="sm">已认证</Tag>
+              <Tag color="blue" size="sm">
+                管理员
+              </Tag>
+              <Tag color="green" size="sm">
+                已认证
+              </Tag>
             </div>
           </div>
         </div>
@@ -219,18 +282,18 @@ function HomePage() {
           return (
             <Card
               key={stat.label}
-              className="group hover:shadow-lg transition-shadow duration-300"
-            >
+              className="group hover:shadow-lg transition-shadow duration-300">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <Text size="sm" color="secondary">{stat.label}</Text>
+                  <Text size="sm" color="secondary">
+                    {stat.label}
+                  </Text>
                   <div className="text-2xl font-bold mt-2 text-slate-800">
                     {statsLoading ? <Loading size="sm" /> : stat.value}
                   </div>
                 </div>
                 <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${stat.bgClass}`}
-                >
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${stat.bgClass}`}>
                   <IconComponent size={20} className={stat.iconClass} />
                 </div>
               </div>
@@ -244,7 +307,9 @@ function HomePage() {
         {/* 用户创建趋势（折线图） */}
         <Card className="lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
-            <Text size="base" weight="bold">用户创建趋势</Text>
+            <Text size="base" weight="bold">
+              用户创建趋势
+            </Text>
             <div className="w-36">
               <Select
                 value={trendDays}
@@ -255,7 +320,7 @@ function HomePage() {
               />
             </div>
           </div>
-          {(statsLoading || trendLoading) ? (
+          {statsLoading || trendLoading ? (
             <div className="flex items-center justify-center h-52">
               <Loading />
             </div>
@@ -276,7 +341,9 @@ function HomePage() {
             />
           ) : (
             <div className="flex items-center justify-center h-52 text-slate-400">
-              <Text size="sm" color="secondary">暂无趋势数据</Text>
+              <Text size="sm" color="secondary">
+                暂无趋势数据
+              </Text>
             </div>
           )}
         </Card>
@@ -298,7 +365,9 @@ function HomePage() {
             />
           ) : (
             <div className="flex items-center justify-center h-52 text-slate-400">
-              <Text size="sm" color="secondary">暂无分布数据</Text>
+              <Text size="sm" color="secondary">
+                暂无分布数据
+              </Text>
             </div>
           )}
         </Card>
@@ -314,12 +383,13 @@ function HomePage() {
               return (
                 <button
                   key={action.key}
-                  className={`group flex flex-col items-center justify-center p-4 rounded-xl bg-linear-to-br transition-all duration-300 cursor-pointer border border-slate-200 hover:border-transparent hover:shadow-md ${action.colorClasses}`}
-                >
+                  className={`group flex flex-col items-center justify-center p-4 rounded-xl bg-linear-to-br transition-all duration-300 cursor-pointer border border-slate-200 hover:border-transparent hover:shadow-md ${action.colorClasses}`}>
                   <div className="mb-2 transition-transform group-hover:scale-110">
                     <IconComponent size={24} className={action.iconClass} />
                   </div>
-                  <Text size="sm" weight="medium">{action.label}</Text>
+                  <Text size="sm" weight="medium">
+                    {action.label}
+                  </Text>
                 </button>
               );
             })}
@@ -343,7 +413,9 @@ function HomePage() {
             />
           ) : (
             <div className="flex items-center justify-center h-52 text-slate-400">
-              <Text size="sm" color="secondary">暂无概览数据</Text>
+              <Text size="sm" color="secondary">
+                暂无概览数据
+              </Text>
             </div>
           )}
         </Card>
@@ -357,8 +429,12 @@ function HomePage() {
               <PackageIcon size={20} />
             </div>
             <div>
-              <Text size="xs" color="secondary">系统版本</Text>
-              <Text size="sm" weight="medium">v1.0.0</Text>
+              <Text size="xs" color="secondary">
+                系统版本
+              </Text>
+              <Text size="sm" weight="medium">
+                v1.0.0
+              </Text>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -366,8 +442,12 @@ function HomePage() {
               <ZapIcon size={20} />
             </div>
             <div>
-              <Text size="xs" color="secondary">运行环境</Text>
-              <Text size="sm" weight="medium">.NET 10 + React 19</Text>
+              <Text size="xs" color="secondary">
+                运行环境
+              </Text>
+              <Text size="sm" weight="medium">
+                .NET 10 + React 19
+              </Text>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -375,8 +455,12 @@ function HomePage() {
               <CalendarIcon size={20} />
             </div>
             <div>
-              <Text size="xs" color="secondary">最后更新</Text>
-              <Text size="sm" weight="medium">2026-01-28</Text>
+              <Text size="xs" color="secondary">
+                最后更新
+              </Text>
+              <Text size="sm" weight="medium">
+                2026-01-28
+              </Text>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -384,8 +468,12 @@ function HomePage() {
               <GlobeIcon size={20} />
             </div>
             <div>
-              <Text size="xs" color="secondary">API 状态</Text>
-              <Tag color="green" size="sm">● 在线</Tag>
+              <Text size="xs" color="secondary">
+                API 状态
+              </Text>
+              <Tag color="green" size="sm">
+                ● 在线
+              </Tag>
             </div>
           </div>
         </div>

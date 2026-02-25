@@ -52,9 +52,6 @@ internal record ApiContracts(
     TrendPointResponse? TrendPointResponse,
     StatsTrendResponse? StatsTrendResponse,
     ApiResponse<StatsTrendResponse>? ApiResponseStatsTrendResponse,
-    DistributionItemResponse? DistributionItemResponse,
-    StatsDistributionResponse? StatsDistributionResponse,
-    ApiResponse<StatsDistributionResponse>? ApiResponseStatsDistributionResponse,
     // Export
     ExportUserRow? ExportUserRow,
     ExportRoleRow? ExportRoleRow,

@@ -763,34 +763,7 @@
 }
 ```
 
-### 23. 用户状态分布
-
-- **方法**：GET
-- **路径**：`/api/stats/distribution`
-- **认证**：是（登录即可，无额外权限要求）
-- **参数**：无
-- **返回 data**：
-  - `items`：分布数组
-    - `label`：状态标签（`Active` / `Disabled`）
-    - `value`：对应数量
-- **可能错误码**：
-  - `401`：未登录
-
-示例：
-
-```json
-{
-  "code": 200,
-  "message": "Success",
-  "success": true,
-  "data": {
-    "items": [
-      { "label": "Active", "value": 8 },
-      { "label": "Disabled", "value": 2 }
-    ]
-  }
-}
-```
+> **注意**：用户状态分布（Active / Disabled）已包含在概览接口的 `activeUsers` / `disabledUsers` 字段中，前端可直接从概览数据派生，无需额外接口。
 
 ---
 

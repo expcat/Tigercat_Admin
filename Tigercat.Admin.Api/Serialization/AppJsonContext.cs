@@ -52,9 +52,6 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(TrendPointResponse))]
 [JsonSerializable(typeof(StatsTrendResponse))]
 [JsonSerializable(typeof(ApiResponse<StatsTrendResponse>))]
-[JsonSerializable(typeof(DistributionItemResponse))]
-[JsonSerializable(typeof(StatsDistributionResponse))]
-[JsonSerializable(typeof(ApiResponse<StatsDistributionResponse>))]
 // Export types
 [JsonSerializable(typeof(ExportUserRow))]
 [JsonSerializable(typeof(ExportRoleRow))]

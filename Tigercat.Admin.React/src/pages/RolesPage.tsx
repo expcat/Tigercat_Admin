@@ -16,8 +16,19 @@ import {
 import type { TableColumn, SortState } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { PermissionGuard } from '../components/PermissionGuard';
-import { ShieldIcon, UserPlusIcon, SettingsIcon, DownloadIcon } from '../components/Icons';
-import { apiRequest, normalizeInput, debounce, getAuthHeaders, exportData } from '../utils';
+import {
+  ShieldIcon,
+  UserPlusIcon,
+  SettingsIcon,
+  DownloadIcon,
+} from '../components/Icons';
+import {
+  apiRequest,
+  normalizeInput,
+  debounce,
+  getAuthHeaders,
+  exportData,
+} from '../utils';
 import type { ExportFormat } from '../utils/export';
 import { usePermission } from '../utils/permission';
 import type {
@@ -62,6 +73,26 @@ const FORMAT_OPTIONS = [
   { label: 'XLSX', value: 'xlsx' },
 ];
 
+const ALL_COLUMN_KEYS = [
+  'id',
+  'name',
+  'description',
+  'permissions',
+  'users',
+  'createdAt',
+  'actions',
+] as const;
+
+const COLUMN_LABELS: Record<string, string> = {
+  id: 'ID',
+  name: '角色名称',
+  description: '描述',
+  permissions: '权限数',
+  users: '关联用户',
+  createdAt: '创建时间',
+  actions: '操作',
+};
+
 function RolesPage() {
   const { has: hasPerm } = usePermission();
 
@@ -74,7 +105,10 @@ function RolesPage() {
   const [total, setTotal] = useState(0);
 
   // Sort state (controlled)
-  const [sortState, setSortState] = useState<SortState>({ key: null, direction: null });
+  const [sortState, setSortState] = useState<SortState>({
+    key: null,
+    direction: null,
+  });
 
   // Column visibility
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
@@ -121,7 +155,12 @@ function RolesPage() {
   const loadRoles = useCallback(async () => {
     setLoading(true);
     try {
-      const { page, pageSize: ps, keyword: kw, sortState: ss } = queryRef.current;
+      const {
+        page,
+        pageSize: ps,
+        keyword: kw,
+        sortState: ss,
+      } = queryRef.current;
       const params = new URLSearchParams({
         page: String(page),
         pageSize: String(ps),
@@ -341,24 +380,6 @@ function RolesPage() {
   };
 
   // ---- Column visibility ----
-  const ALL_COLUMN_KEYS = useMemo(
-    () => ['id', 'name', 'description', 'permissions', 'users', 'createdAt', 'actions'] as const,
-    [],
-  );
-
-  const columnLabels: Record<string, string> = useMemo(
-    () => ({
-      id: 'ID',
-      name: '角色名称',
-      description: '描述',
-      permissions: '权限数',
-      users: '关联用户',
-      createdAt: '创建时间',
-      actions: '操作',
-    }),
-    [],
-  );
-
   const toggleColumn = useCallback((key: string) => {
     setHiddenColumns((prev) => {
       const next = new Set(prev);
@@ -548,7 +569,9 @@ function RolesPage() {
               width={180}
               contentContent={
                 <div className="space-y-2">
-                  {ALL_COLUMN_KEYS.filter((k) => k !== 'actions' || canEdit || canDelete).map((key) => (
+                  {ALL_COLUMN_KEYS.filter(
+                    (k) => k !== 'actions' || canEdit || canDelete,
+                  ).map((key) => (
                     <label
                       key={key}
                       className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
@@ -556,7 +579,7 @@ function RolesPage() {
                         checked={!hiddenColumns.has(key)}
                         onChange={() => toggleColumn(key)}
                       />
-                      <span>{columnLabels[key] || key}</span>
+                      <span>{COLUMN_LABELS[key] || key}</span>
                     </label>
                   ))}
                 </div>

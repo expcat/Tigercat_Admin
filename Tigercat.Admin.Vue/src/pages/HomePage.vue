@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { inject, ref, onMounted, watch, computed } from 'vue'
 import { Alert, Card, Text, Tag, Select, LineChart, BarChart, PieChart, Loading } from '@expcat/tigercat-vue'
-import type { Session, StatsOverview, StatsTrend, StatsDistribution } from '../utils'
+import type { Session, StatsOverview, StatsTrend } from '../utils'
 import { apiRequest } from '../utils'
 import Icon from '../components/Icon.vue'
 import AppLogo from '../components/AppLogo.vue'
@@ -18,7 +18,6 @@ const authHeaders = computed(() =>
 // --- 统计数据状态 ---
 const overview = ref<StatsOverview | null>(null)
 const trend = ref<StatsTrend | null>(null)
-const distribution = ref<StatsDistribution | null>(null)
 const statsLoading = ref(false)
 const trendLoading = ref(false)
 const statsError = ref('')
@@ -51,11 +50,11 @@ const trendChartData = computed(() => {
 })
 
 const distributionChartData = computed(() => {
-  if (!distribution.value) return []
-  return distribution.value.items.map(item => ({
-    value: item.value,
-    label: item.label,
-  }))
+  if (!overview.value) return []
+  return [
+    { value: overview.value.activeUsers, label: 'Active' },
+    { value: overview.value.disabledUsers, label: 'Disabled' },
+  ]
 })
 
 // --- API 请求 ---
@@ -77,18 +76,11 @@ async function fetchTrend() {
   }
 }
 
-async function fetchDistribution() {
-  const res = await apiRequest<StatsDistribution>('/api/stats/distribution', {
-    headers: authHeaders.value,
-  })
-  distribution.value = res.data
-}
-
 async function loadStats() {
   statsLoading.value = true
   statsError.value = ''
   try {
-    await Promise.all([fetchOverview(), fetchTrend(), fetchDistribution()])
+    await Promise.all([fetchOverview(), fetchTrend()])
   } catch (e: any) {
     statsError.value = e.message || '加载统计数据失败'
   } finally {

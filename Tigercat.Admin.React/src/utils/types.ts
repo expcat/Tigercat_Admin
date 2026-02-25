@@ -81,12 +81,3 @@ export interface TrendPoint {
 export interface StatsTrend {
   points: TrendPoint[];
 }
-
-export interface DistributionItem {
-  label: string;
-  value: number;
-}
-
-export interface StatsDistribution {
-  items: DistributionItem[];
-}

@@ -15,9 +15,3 @@ public record TrendPointResponse(string Date, int Count);
 
 /// <summary>User-creation trend over a date range.</summary>
 public record StatsTrendResponse(TrendPointResponse[] Points);
-
-/// <summary>One slice of the user-status distribution.</summary>
-public record DistributionItemResponse(string Label, int Value);
-
-/// <summary>User-status distribution.</summary>
-public record StatsDistributionResponse(DistributionItemResponse[] Items);

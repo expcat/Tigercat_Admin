@@ -27,10 +27,6 @@ public class StatsEndpoints : IEndpointDefinition
         group.MapGet("/trend", GetTrend)
             .RequireLogin()
             .WithName("StatsTrend");
-
-        group.MapGet("/distribution", GetDistribution)
-            .RequireLogin()
-            .WithName("StatsDistribution");
     }
 
     // GET /api/stats/overview
@@ -40,7 +36,7 @@ public class StatsEndpoints : IEndpointDefinition
     {
         var totalUsers = await db.Users.CountAsync(ct);
         var activeUsers = await db.Users.CountAsync(u => u.Status == UserStatus.Active, ct);
-        var disabledUsers = await db.Users.CountAsync(u => u.Status == UserStatus.Disabled, ct);
+        var disabledUsers = totalUsers - activeUsers;
         var totalRoles = await db.Roles.CountAsync(ct);
         var totalPermissions = await db.Permissions.CountAsync(ct);
 
@@ -86,25 +82,5 @@ public class StatsEndpoints : IEndpointDefinition
         return Results.Json(
             ApiResult.Ok(data),
             AppJsonContext.Default.ApiResponseStatsTrendResponse);
-    }
-
-    // GET /api/stats/distribution
-    private static async Task<IResult> GetDistribution(
-        AdminDbContext db,
-        CancellationToken ct)
-    {
-        var activeCount = await db.Users.CountAsync(u => u.Status == UserStatus.Active, ct);
-        var disabledCount = await db.Users.CountAsync(u => u.Status == UserStatus.Disabled, ct);
-
-        var items = new DistributionItemResponse[]
-        {
-            new("Active", activeCount),
-            new("Disabled", disabledCount)
-        };
-
-        var data = new StatsDistributionResponse(items);
-        return Results.Json(
-            ApiResult.Ok(data),
-            AppJsonContext.Default.ApiResponseStatsDistributionResponse);
     }
 }

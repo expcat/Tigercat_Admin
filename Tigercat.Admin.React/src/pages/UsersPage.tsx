@@ -16,8 +16,19 @@ import {
 import type { TableColumn, SortState } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { PermissionGuard } from '../components/PermissionGuard';
-import { UsersIcon, UserPlusIcon, SettingsIcon, DownloadIcon } from '../components/Icons';
-import { apiRequest, normalizeInput, debounce, getAuthHeaders, exportData } from '../utils';
+import {
+  UsersIcon,
+  UserPlusIcon,
+  SettingsIcon,
+  DownloadIcon,
+} from '../components/Icons';
+import {
+  apiRequest,
+  normalizeInput,
+  debounce,
+  getAuthHeaders,
+  exportData,
+} from '../utils';
 import type { ExportFormat } from '../utils/export';
 import { usePermission } from '../utils/permission';
 import type {
@@ -59,6 +70,32 @@ const FORMAT_OPTIONS = [
   { label: 'XLSX', value: 'xlsx' },
 ];
 
+const ALL_COLUMN_KEYS = [
+  'id',
+  'username',
+  'displayName',
+  'status',
+  'roles',
+  'createdAt',
+  'actions',
+] as const;
+
+const COLUMN_LABELS: Record<string, string> = {
+  id: 'ID',
+  username: '用户名',
+  displayName: '显示名',
+  status: '状态',
+  roles: '角色',
+  createdAt: '创建时间',
+  actions: '操作',
+};
+
+const STATUS_OPTIONS = [
+  { label: '全部状态', value: '' },
+  { label: '正常', value: 0 },
+  { label: '禁用', value: 1 },
+];
+
 function UsersPage() {
   const { has: hasPerm } = usePermission();
 
@@ -72,7 +109,10 @@ function UsersPage() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
 
   // Sort state (controlled)
-  const [sortState, setSortState] = useState<SortState>({ key: null, direction: null });
+  const [sortState, setSortState] = useState<SortState>({
+    key: null,
+    direction: null,
+  });
 
   // Status filter
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
@@ -120,7 +160,13 @@ function UsersPage() {
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const { page, pageSize: ps, keyword: kw, sortState: ss, statusFilter: sf } = queryRef.current;
+      const {
+        page,
+        pageSize: ps,
+        keyword: kw,
+        sortState: ss,
+        statusFilter: sf,
+      } = queryRef.current;
       const params = new URLSearchParams({
         page: String(page),
         pageSize: String(ps),
@@ -354,24 +400,6 @@ function UsersPage() {
   };
 
   // ---- Column visibility ----
-  const ALL_COLUMN_KEYS = useMemo(
-    () => ['id', 'username', 'displayName', 'status', 'roles', 'createdAt', 'actions'] as const,
-    [],
-  );
-
-  const columnLabels: Record<string, string> = useMemo(
-    () => ({
-      id: 'ID',
-      username: '用户名',
-      displayName: '显示名',
-      status: '状态',
-      roles: '角色',
-      createdAt: '创建时间',
-      actions: '操作',
-    }),
-    [],
-  );
-
   const toggleColumn = useCallback((key: string) => {
     setHiddenColumns((prev) => {
       const next = new Set(prev);
@@ -507,15 +535,6 @@ function UsersPage() {
   );
 
   // ---- Status filter ----
-  const statusOptions = useMemo(
-    () => [
-      { label: '全部状态', value: '' },
-      { label: '正常', value: 0 },
-      { label: '禁用', value: 1 },
-    ],
-    [],
-  );
-
   const handleStatusFilter = useCallback(
     (val: number | string) => {
       const v = val === '' ? null : Number(val);
@@ -571,7 +590,7 @@ function UsersPage() {
             />
             <Select
               value={statusFilter ?? ''}
-              options={statusOptions}
+              options={STATUS_OPTIONS}
               placeholder="筛选状态"
               onChange={(val) => handleStatusFilter(val as number | string)}
               className="w-32"
@@ -582,7 +601,9 @@ function UsersPage() {
               width={180}
               contentContent={
                 <div className="space-y-2">
-                  {ALL_COLUMN_KEYS.filter((k) => k !== 'actions' || canEdit || canDelete).map((key) => (
+                  {ALL_COLUMN_KEYS.filter(
+                    (k) => k !== 'actions' || canEdit || canDelete,
+                  ).map((key) => (
                     <label
                       key={key}
                       className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
@@ -590,7 +611,7 @@ function UsersPage() {
                         checked={!hiddenColumns.has(key)}
                         onChange={() => toggleColumn(key)}
                       />
-                      <span>{columnLabels[key] || key}</span>
+                      <span>{COLUMN_LABELS[key] || key}</span>
                     </label>
                   ))}
                 </div>
