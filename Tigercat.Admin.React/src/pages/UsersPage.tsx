@@ -10,11 +10,13 @@ import {
   Select,
   Tag,
   Message,
+  Popover,
+  Checkbox,
 } from '@expcat/tigercat-react';
-import type { TableColumn } from '@expcat/tigercat-core';
+import type { TableColumn, SortState } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { PermissionGuard } from '../components/PermissionGuard';
-import { UsersIcon, UserPlusIcon } from '../components/Icons';
+import { UsersIcon, UserPlusIcon, SettingsIcon } from '../components/Icons';
 import { apiRequest, normalizeInput, debounce, getAuthHeaders } from '../utils';
 import { usePermission } from '../utils/permission';
 import type {
@@ -52,6 +54,15 @@ function UsersPage() {
   const [total, setTotal] = useState(0);
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
 
+  // Sort state (controlled)
+  const [sortState, setSortState] = useState<SortState>({ key: null, direction: null });
+
+  // Status filter
+  const [statusFilter, setStatusFilter] = useState<number | null>(null);
+
+  // Column visibility
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
+
   // Modal state
   const [modalVisible, setModalVisible] = useState(false);
   const [modalTitle, setModalTitle] = useState('新增用户');
@@ -68,7 +79,13 @@ function UsersPage() {
   const [allRoles, setAllRoles] = useState<RoleInfo[]>([]);
 
   // Ref to track current query state (avoids stale closures)
-  const queryRef = useRef({ page: currentPage, pageSize, keyword });
+  const queryRef = useRef({
+    page: currentPage,
+    pageSize,
+    keyword,
+    sortState: { key: null, direction: null } as SortState,
+    statusFilter: null as number | null,
+  });
 
   // ---- Permission checks ----
   const canEdit = hasPerm('user:edit');
@@ -78,13 +95,20 @@ function UsersPage() {
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const { page, pageSize: ps, keyword: kw } = queryRef.current;
+      const { page, pageSize: ps, keyword: kw, sortState: ss, statusFilter: sf } = queryRef.current;
       const params = new URLSearchParams({
         page: String(page),
         pageSize: String(ps),
       });
       if (kw.trim()) {
         params.set('keyword', kw.trim());
+      }
+      if (ss.key && ss.direction) {
+        params.set('sortBy', ss.key);
+        params.set('sortOrder', ss.direction);
+      }
+      if (sf !== null) {
+        params.set('status', String(sf));
       }
       const res = await apiRequest<PagedResult<UserItem>>(
         `/api/users?${params}`,
@@ -269,12 +293,43 @@ function UsersPage() {
     debouncedLoad();
   };
 
+  // ---- Column visibility ----
+  const ALL_COLUMN_KEYS = useMemo(
+    () => ['id', 'username', 'displayName', 'status', 'roles', 'createdAt', 'actions'] as const,
+    [],
+  );
+
+  const columnLabels: Record<string, string> = useMemo(
+    () => ({
+      id: 'ID',
+      username: '用户名',
+      displayName: '显示名',
+      status: '状态',
+      roles: '角色',
+      createdAt: '创建时间',
+      actions: '操作',
+    }),
+    [],
+  );
+
+  const toggleColumn = useCallback((key: string) => {
+    setHiddenColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
+
   // ---- Table columns ----
   const columns = useMemo<TableColumn<UserItem>[]>(() => {
     const cols: TableColumn<UserItem>[] = [
-      { key: 'id', title: 'ID', width: 70, align: 'center' },
-      { key: 'username', title: '用户名', width: 150 },
-      { key: 'displayName', title: '显示名', width: 150 },
+      { key: 'id', title: 'ID', width: 70, align: 'center', sortable: true },
+      { key: 'username', title: '用户名', width: 150, sortable: true },
+      { key: 'displayName', title: '显示名', width: 150, sortable: true },
       {
         key: 'status',
         title: '状态',
@@ -309,6 +364,7 @@ function UsersPage() {
         key: 'createdAt',
         title: '创建时间',
         width: 180,
+        sortable: true,
         render: (record) => (
           <span className="text-sm text-slate-600">
             {new Date(record.createdAt).toLocaleString('zh-CN')}
@@ -348,8 +404,9 @@ function UsersPage() {
       });
     }
 
-    return cols;
-  }, [canEdit, canDelete]);
+    // Filter out hidden columns
+    return cols.filter((c) => !hiddenColumns.has(c.key));
+  }, [canEdit, canDelete, hiddenColumns]);
 
   // ---- Pagination ----
   const paginationConfig = useMemo(
@@ -376,6 +433,40 @@ function UsersPage() {
     }
     loadUsers();
   };
+
+  // ---- Sort ----
+  const handleSortChange = useCallback(
+    (next: SortState) => {
+      setSortState(next);
+      queryRef.current.sortState = next;
+      queryRef.current.page = 1;
+      setCurrentPage(1);
+      loadUsers();
+    },
+    [loadUsers],
+  );
+
+  // ---- Status filter ----
+  const statusOptions = useMemo(
+    () => [
+      { label: '全部状态', value: '' },
+      { label: '正常', value: 0 },
+      { label: '禁用', value: 1 },
+    ],
+    [],
+  );
+
+  const handleStatusFilter = useCallback(
+    (val: number | string) => {
+      const v = val === '' ? null : Number(val);
+      setStatusFilter(v);
+      queryRef.current.statusFilter = v;
+      queryRef.current.page = 1;
+      setCurrentPage(1);
+      loadUsers();
+    },
+    [loadUsers],
+  );
 
   // ---- Selection ----
   const handleSelectionChange = (keys: (string | number)[]) => {
@@ -418,6 +509,39 @@ function UsersPage() {
               onChange={(val) => handleSearch(normalizeInput(val))}
               className="w-64"
             />
+            <Select
+              value={statusFilter ?? ''}
+              options={statusOptions}
+              placeholder="筛选状态"
+              onChange={(val) => handleStatusFilter(val as number | string)}
+              className="w-32"
+            />
+            <Popover
+              trigger="click"
+              placement="bottom-end"
+              width={180}
+              contentContent={
+                <div className="space-y-2">
+                  {ALL_COLUMN_KEYS.map((key) => (
+                    <label
+                      key={key}
+                      className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
+                      <Checkbox
+                        checked={!hiddenColumns.has(key)}
+                        onChange={() => toggleColumn(key)}
+                      />
+                      <span>{columnLabels[key] || key}</span>
+                    </label>
+                  ))}
+                </div>
+              }>
+              <Button variant="outline" size="sm">
+                <span className="flex items-center gap-1">
+                  <SettingsIcon size={14} />
+                  列显隐
+                </span>
+              </Button>
+            </Popover>
           </div>
           <div className="flex items-center gap-2">
             <PermissionGuard code="user:delete">
@@ -453,12 +577,15 @@ function UsersPage() {
           rowSelection={{
             selectedRowKeys,
           }}
+          sort={sortState}
+          columnLockable
           rowKey="id"
           hoverable
           striped
           emptyText="暂无用户数据"
           onPageChange={handlePageChange}
           onSelectionChange={handleSelectionChange}
+          onSortChange={handleSortChange}
         />
       </Card>
 
