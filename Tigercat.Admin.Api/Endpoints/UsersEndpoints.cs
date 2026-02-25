@@ -46,11 +46,14 @@ public class UsersEndpoints : IEndpointDefinition
             .WithName("BatchDeleteUsers");
     }
 
-    // GET /api/users?page=1&pageSize=10&keyword=xxx
+    // GET /api/users?page=1&pageSize=10&keyword=xxx&sortBy=id&sortOrder=asc&status=0
     private static async Task<IResult> GetUsers(
         int? page,
         int? pageSize,
         string? keyword,
+        string? sortBy,
+        string? sortOrder,
+        int? status,
         AdminDbContext db,
         CancellationToken ct)
     {
@@ -67,10 +70,24 @@ public class UsersEndpoints : IEndpointDefinition
                 (u.DisplayName != null && u.DisplayName.ToLower().Contains(kw)));
         }
 
+        if (status.HasValue)
+        {
+            query = query.Where(u => (int)u.Status == status.Value);
+        }
+
         var total = await query.CountAsync(ct);
 
-        var users = await query
-            .OrderBy(u => u.Id)
+        var desc = string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase);
+        IOrderedQueryable<UserEntity> ordered = sortBy?.ToLowerInvariant() switch
+        {
+            "username" => desc ? query.OrderByDescending(u => u.Username) : query.OrderBy(u => u.Username),
+            "displayname" => desc ? query.OrderByDescending(u => u.DisplayName) : query.OrderBy(u => u.DisplayName),
+            "status" => desc ? query.OrderByDescending(u => u.Status) : query.OrderBy(u => u.Status),
+            "createdat" => desc ? query.OrderByDescending(u => u.CreatedAt) : query.OrderBy(u => u.CreatedAt),
+            _ => desc ? query.OrderByDescending(u => u.Id) : query.OrderBy(u => u.Id),
+        };
+
+        var users = await ordered
             .Skip((p - 1) * ps)
             .Take(ps)
             .Select(u => new UserItemResponse(

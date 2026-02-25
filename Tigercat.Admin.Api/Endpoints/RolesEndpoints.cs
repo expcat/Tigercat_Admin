@@ -67,11 +67,13 @@ public class RolesEndpoints : IEndpointDefinition
             AppJsonContext.Default.ApiResponsePermissionInfoResponseArray);
     }
 
-    // GET /api/roles?page=1&pageSize=10&keyword=xxx
+    // GET /api/roles?page=1&pageSize=10&keyword=xxx&sortBy=id&sortOrder=asc
     private static async Task<IResult> GetRoles(
         int? page,
         int? pageSize,
         string? keyword,
+        string? sortBy,
+        string? sortOrder,
         AdminDbContext db,
         CancellationToken ct)
     {
@@ -90,8 +92,15 @@ public class RolesEndpoints : IEndpointDefinition
 
         var total = await query.CountAsync(ct);
 
-        var roles = await query
-            .OrderBy(r => r.Id)
+        var desc = string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase);
+        IOrderedQueryable<RoleEntity> ordered = sortBy?.ToLowerInvariant() switch
+        {
+            "name" => desc ? query.OrderByDescending(r => r.Name) : query.OrderBy(r => r.Name),
+            "createdat" => desc ? query.OrderByDescending(r => r.CreatedAt) : query.OrderBy(r => r.CreatedAt),
+            _ => desc ? query.OrderByDescending(r => r.Id) : query.OrderBy(r => r.Id),
+        };
+
+        var roles = await ordered
             .Skip((p - 1) * ps)
             .Take(ps)
             .Select(r => new RoleDetailResponse(
