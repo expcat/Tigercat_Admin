@@ -8,7 +8,7 @@ export interface ExportOptions {
   /** 要导出的字段（为空则导出全部） */
   fields?: string[];
   /** 认证请求头 */
-  headers?: HeadersInit;
+  headers?: Record<string, string>;
 }
 
 /**
@@ -16,16 +16,14 @@ export interface ExportOptions {
  * 后端返回的是原始文件流（非 JSON），需用 Blob 方式处理。
  */
 export async function exportData(options: ExportOptions): Promise<void> {
-  const { entity, format, fields, headers = {} } = options;
+  const { entity, format, fields, headers } = options;
   const params = new URLSearchParams({ format });
   if (fields && fields.length > 0) {
     params.set('fields', fields.join(','));
   }
 
   const response = await fetch(`/api/export/${entity}?${params}`, {
-    headers: {
-      ...headers,
-    },
+    headers: headers ? new Headers(headers) : undefined,
   });
 
   if (!response.ok) {
