@@ -8,7 +8,7 @@ export interface ExportOptions {
   /** 要导出的字段（为空则导出全部） */
   fields?: string[];
   /** 认证请求头 */
-  headers?: Record<string, string>;
+  headers?: HeadersInit;
 }
 
 /**

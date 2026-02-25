@@ -43,6 +43,22 @@ const INITIAL_FORM: UserFormData = {
   roleIds: [],
 };
 
+const EXPORT_FIELD_OPTIONS = [
+  { key: 'id', label: 'ID' },
+  { key: 'username', label: '用户名' },
+  { key: 'displayName', label: '显示名' },
+  { key: 'status', label: '状态' },
+  { key: 'createdAt', label: '创建时间' },
+  { key: 'updatedAt', label: '更新时间' },
+  { key: 'roles', label: '角色' },
+] as const;
+
+const FORMAT_OPTIONS = [
+  { label: 'CSV', value: 'csv' },
+  { label: 'JSON', value: 'json' },
+  { label: 'XLSX', value: 'xlsx' },
+];
+
 function UsersPage() {
   const { has: hasPerm } = usePermission();
 
@@ -82,8 +98,8 @@ function UsersPage() {
   // Export state
   const [exportModalVisible, setExportModalVisible] = useState(false);
   const [exportFormat, setExportFormat] = useState<ExportFormat>('csv');
-  const [exportFields, setExportFields] = useState<string[]>(
-    ['id', 'username', 'displayName', 'status', 'createdAt', 'updatedAt', 'roles'],
+  const [exportFields, setExportFields] = useState<string[]>(() =>
+    EXPORT_FIELD_OPTIONS.map((f) => f.key),
   );
   const [exporting, setExporting] = useState(false);
 
@@ -264,32 +280,9 @@ function UsersPage() {
   };
 
   // ---- Export ----
-  const EXPORT_FIELD_OPTIONS = useMemo(
-    () =>
-      [
-        { key: 'id', label: 'ID' },
-        { key: 'username', label: '用户名' },
-        { key: 'displayName', label: '显示名' },
-        { key: 'status', label: '状态' },
-        { key: 'createdAt', label: '创建时间' },
-        { key: 'updatedAt', label: '更新时间' },
-        { key: 'roles', label: '角色' },
-      ] as const,
-    [],
-  );
-
-  const FORMAT_OPTIONS = useMemo(
-    () => [
-      { label: 'CSV', value: 'csv' },
-      { label: 'JSON', value: 'json' },
-      { label: 'XLSX', value: 'xlsx' },
-    ],
-    [],
-  );
-
   const openExportModal = () => {
     setExportFormat('csv');
-    setExportFields(['id', 'username', 'displayName', 'status', 'createdAt', 'updatedAt', 'roles']);
+    setExportFields(EXPORT_FIELD_OPTIONS.map((f) => f.key));
     setExportModalVisible(true);
   };
 
@@ -310,7 +303,7 @@ function UsersPage() {
         entity: 'users',
         format: exportFormat,
         fields: exportFields,
-        headers: getAuthHeaders() as Record<string, string>,
+        headers: getAuthHeaders(),
       });
       Message.success({ content: '导出成功', duration: 3000 });
       setExportModalVisible(false);

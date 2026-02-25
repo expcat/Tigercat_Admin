@@ -47,6 +47,21 @@ const INITIAL_FORM: RoleFormData = {
   permissionIds: [],
 };
 
+const EXPORT_FIELD_OPTIONS = [
+  { key: 'id', label: 'ID' },
+  { key: 'name', label: '角色名称' },
+  { key: 'description', label: '描述' },
+  { key: 'createdAt', label: '创建时间' },
+  { key: 'permissions', label: '权限' },
+  { key: 'userCount', label: '用户数' },
+] as const;
+
+const FORMAT_OPTIONS = [
+  { label: 'CSV', value: 'csv' },
+  { label: 'JSON', value: 'json' },
+  { label: 'XLSX', value: 'xlsx' },
+];
+
 function RolesPage() {
   const { has: hasPerm } = usePermission();
 
@@ -85,8 +100,8 @@ function RolesPage() {
   // Export state
   const [exportModalVisible, setExportModalVisible] = useState(false);
   const [exportFormat, setExportFormat] = useState<ExportFormat>('csv');
-  const [exportFields, setExportFields] = useState<string[]>(
-    ['id', 'name', 'description', 'createdAt', 'permissions', 'userCount'],
+  const [exportFields, setExportFields] = useState<string[]>(() =>
+    EXPORT_FIELD_OPTIONS.map((f) => f.key),
   );
   const [exporting, setExporting] = useState(false);
 
@@ -254,31 +269,9 @@ function RolesPage() {
   };
 
   // ---- Export ----
-  const EXPORT_FIELD_OPTIONS = useMemo(
-    () =>
-      [
-        { key: 'id', label: 'ID' },
-        { key: 'name', label: '角色名称' },
-        { key: 'description', label: '描述' },
-        { key: 'createdAt', label: '创建时间' },
-        { key: 'permissions', label: '权限' },
-        { key: 'userCount', label: '用户数' },
-      ] as const,
-    [],
-  );
-
-  const FORMAT_OPTIONS = useMemo(
-    () => [
-      { label: 'CSV', value: 'csv' },
-      { label: 'JSON', value: 'json' },
-      { label: 'XLSX', value: 'xlsx' },
-    ],
-    [],
-  );
-
   const openExportModal = () => {
     setExportFormat('csv');
-    setExportFields(['id', 'name', 'description', 'createdAt', 'permissions', 'userCount']);
+    setExportFields(EXPORT_FIELD_OPTIONS.map((f) => f.key));
     setExportModalVisible(true);
   };
 
@@ -299,7 +292,7 @@ function RolesPage() {
         entity: 'roles',
         format: exportFormat,
         fields: exportFields,
-        headers: getAuthHeaders() as Record<string, string>,
+        headers: getAuthHeaders(),
       });
       Message.success({ content: '导出成功', duration: 3000 });
       setExportModalVisible(false);
