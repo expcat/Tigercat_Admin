@@ -72,7 +72,7 @@ public abstract class AdminApiFactory : WebApplicationFactory<Program>
 /// <summary>
 /// Factory that uses the EF Core <b>InMemory</b> provider.
 /// <c>DefaultConnection</c> is explicitly empty so that <c>Program.cs</c> selects
-/// <c>UseInMemoryDatabase</c> and registers <c>InMemoryUserStore / InMemorySessionStore</c>.
+/// <c>UseInMemoryDatabase</c>.  Auth stores always use the EF-backed implementations.
 /// </summary>
 public class InMemoryApiFactory : AdminApiFactory
 {

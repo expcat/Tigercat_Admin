@@ -22,6 +22,13 @@ public sealed class StubCacheService : ICacheService
 
     public Task SetAsync<T>(string key, T value, TimeSpan? ttl = null, CancellationToken ct = default)
     {
+        // Mirror RedisCacheService behaviour: null values are treated as a removal.
+        if (value is null)
+        {
+            _store.TryRemove(key, out _);
+            return Task.CompletedTask;
+        }
+
         _store[key] = value;
         return Task.CompletedTask;
     }
@@ -44,7 +51,13 @@ public sealed class StubCacheService : ICacheService
         }
 
         var value = await factory(ct);
-        _store[key] = value;
+
+        // Mirror RedisCacheService: null factory results are not cached.
+        if (value is not null)
+        {
+            _store[key] = value;
+        }
+
         return value;
     }
 }

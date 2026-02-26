@@ -49,32 +49,11 @@ builder.Services.AddDbContext<AdminDbContext>((sp, options) =>
     }
 });
 
-// When a relational provider is configured, use the EF-backed stores so that auth
-// operations share the same database as the rest of the application.  For the
-// InMemory provider (development / CI) the lightweight in-memory stores are used.
-// Resolved lazily via factory so that test-time configuration overrides take effect.
-builder.Services.AddSingleton<InMemoryUserStore>();
-builder.Services.AddSingleton<InMemorySessionStore>();
-builder.Services.AddScoped<EfUserStore>();
-builder.Services.AddScoped<EfSessionStore>();
-
-builder.Services.AddScoped<IUserStore>(sp =>
-{
-    var config = sp.GetRequiredService<IConfiguration>();
-    var connStr = config.GetConnectionString("DefaultConnection");
-    return !string.IsNullOrEmpty(connStr)
-        ? sp.GetRequiredService<EfUserStore>()
-        : sp.GetRequiredService<InMemoryUserStore>();
-});
-
-builder.Services.AddScoped<ISessionStore>(sp =>
-{
-    var config = sp.GetRequiredService<IConfiguration>();
-    var connStr = config.GetConnectionString("DefaultConnection");
-    return !string.IsNullOrEmpty(connStr)
-        ? sp.GetRequiredService<EfSessionStore>()
-        : sp.GetRequiredService<InMemorySessionStore>();
-});
+// Auth/user/session stores: always use EF-backed stores so that authentication,
+// registration and user-management endpoints all share the same AdminDbContext,
+// regardless of whether SQLite or the EF InMemory provider is used.
+builder.Services.AddScoped<IUserStore, EfUserStore>();
+builder.Services.AddScoped<ISessionStore, EfSessionStore>();
 
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 
