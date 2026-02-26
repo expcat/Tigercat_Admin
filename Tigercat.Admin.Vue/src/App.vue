@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, provide } from 'vue'
+import { computed, ref, watch, provide, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ConfigProvider, Message } from '@expcat/tigercat-vue'
 import {
@@ -8,7 +8,13 @@ import {
   apiRequest,
   createPermissionContext,
   PERMISSION_KEY,
+  getThemePreferences,
+  saveThemePreferences,
+  applyTheme,
+  watchSystemTheme,
   type Session,
+  type ThemeMode,
+  type ThemePreferences,
 } from './utils'
 
 const permission = createPermissionContext()
@@ -23,6 +29,30 @@ const homeMessage = ref('')
 const loading = ref(false)
 const homeError = ref('')
 const changeOpen = ref(false)
+
+/* ── Theme ────────────────────────────────────── */
+const themePrefs = ref<ThemePreferences>(getThemePreferences())
+
+const updateTheme = (prefs: ThemePreferences) => {
+  themePrefs.value = prefs
+  saveThemePreferences(prefs)
+  applyTheme(prefs)
+}
+
+const toggleThemeMode = () => {
+  const order: ThemeMode[] = ['light', 'dark', 'system']
+  const idx = order.indexOf(themePrefs.value.mode)
+  const next = order[(idx + 1) % order.length]
+  updateTheme({ ...themePrefs.value, mode: next })
+}
+
+// Apply theme on mount & watch system changes
+onMounted(() => {
+  applyTheme(themePrefs.value)
+})
+
+const unwatchSystem = watchSystemTheme(() => themePrefs.value)
+onUnmounted(() => unwatchSystem())
 
 const authHeaders = computed(() => (session.value?.token ? { Authorization: `Bearer ${session.value.token}` } : {}))
 
@@ -112,6 +142,9 @@ provide('handleChangePassword', handleChangePassword)
 provide('homeMessage', homeMessage)
 provide('homeError', homeError)
 provide(PERMISSION_KEY, permission)
+provide('themePrefs', themePrefs)
+provide('toggleThemeMode', toggleThemeMode)
+provide('updateTheme', updateTheme)
 </script>
 
 <template>

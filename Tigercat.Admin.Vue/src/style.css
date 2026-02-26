@@ -3,6 +3,21 @@
 @source "../node_modules/@expcat/tigercat-vue/dist/**/*.{js,mjs}";
 @source "../node_modules/@expcat/tigercat-core/dist/**/*.{js,mjs}";
 
+/* ── Dark mode fallback variables ── */
+.dark {
+  --tiger-primary: #6396ff;
+  --tiger-primary-light: #203564;
+  --tiger-primary-dark: #8db2ff;
+  --tiger-bg-page: #0d1117;
+  --tiger-bg-card: #161b22;
+  --tiger-bg-hover: #1b212c;
+  --tiger-text: #f0f6fc;
+  --tiger-text-secondary: #8b949f;
+  --tiger-border: #304050;
+  --tiger-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  color-scheme: dark;
+}
+
 @theme {
   --animate-shake: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
 

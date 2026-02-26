@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { MainHeader } from './MainHeader';
 import { MainSidebar } from './MainSidebar';
+import type { ThemeMode } from '../utils/types';
 
 interface MainLayoutProps {
   children: React.ReactNode;
   user: { username: string } | null;
+  themeMode: ThemeMode;
   onLogout: () => void;
   onChangePassword: () => void;
+  onToggleTheme: () => void;
   activeMenu?: string;
   onNavigate?: (key: string) => void;
 }
@@ -14,8 +17,10 @@ interface MainLayoutProps {
 export function MainLayout({
   children,
   user,
+  themeMode,
   onLogout,
   onChangePassword,
+  onToggleTheme,
   activeMenu,
   onNavigate,
 }: MainLayoutProps) {
@@ -37,7 +42,7 @@ export function MainLayout({
   };
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 overflow-hidden">
+    <div className="flex h-screen w-full bg-[var(--tiger-bg-page,#f9fafb)] overflow-hidden">
       {/* Sidebar */}
       <MainSidebar
         collapsed={collapsed}
@@ -51,8 +56,10 @@ export function MainLayout({
         {/* Header */}
         <MainHeader
           session={user}
+          themeMode={themeMode}
           onLogout={onLogout}
           onChangePassword={onChangePassword}
+          onToggleTheme={onToggleTheme}
         />
 
         {/* Content */}

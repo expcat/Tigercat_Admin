@@ -106,14 +106,14 @@ const filteredMenuItems = computed(() =>
 
 <template>
   <aside 
-    class="flex flex-col bg-white border-r border-slate-200 transition-all duration-300 shrink-0 shadow-sm"
+    class="flex flex-col bg-[var(--tiger-bg-card,#fff)] border-r border-[var(--tiger-border,#e2e8f0)] transition-all duration-300 shrink-0 shadow-sm"
     :class="collapsed ? 'w-16' : 'w-60'"
   >
     <!-- Logo -->
-    <div class="flex h-16 items-center justify-center border-b border-slate-100">
+    <div class="flex h-16 items-center justify-center border-b border-[var(--tiger-border,#e2e8f0)]">
       <div class="flex items-center gap-3">
         <AppLogo :size="36" />
-        <span v-if="!collapsed" class="font-bold text-lg text-slate-800 tracking-wide whitespace-nowrap">Tigercat</span>
+        <span v-if="!collapsed" class="font-bold text-lg text-[var(--tiger-text,#1f2937)] tracking-wide whitespace-nowrap">Tigercat</span>
       </div>
     </div>
 
@@ -129,20 +129,20 @@ const filteredMenuItems = computed(() =>
               class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
               :class="[
                 isExpanded(item.key) 
-                  ? 'bg-slate-100 text-slate-900' 
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'bg-[var(--tiger-bg-hover,#f3f4f6)] text-[var(--tiger-text,#1f2937)]' 
+                  : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
               ]"
             >
-              <span class="shrink-0 text-slate-500"><Icon :name="item.icon" :size="20" /></span>
+              <span class="shrink-0 text-[var(--tiger-text-secondary,#64748b)]"><Icon :name="item.icon" :size="20" /></span>
               <span v-if="!collapsed" class="flex-1 text-left whitespace-nowrap">{{ item.label }}</span>
-              <span v-if="!collapsed" class="text-slate-400 transition-transform duration-200" :class="isExpanded(item.key) ? 'rotate-180' : ''">
+              <span v-if="!collapsed" class="text-[var(--tiger-text-secondary,#64748b)] transition-transform duration-200" :class="isExpanded(item.key) ? 'rotate-180' : ''">
                 <Icon name="chevronDown" :size="16" />
               </span>
             </button>
             <!-- 子菜单 -->
             <ul 
               v-if="!collapsed && isExpanded(item.key)" 
-              class="mt-1 ml-4 space-y-1 border-l-2 border-slate-200 pl-3"
+              class="mt-1 ml-4 space-y-1 border-l-2 border-[var(--tiger-border,#e2e8f0)] pl-3"
             >
               <li v-for="child in item.children" :key="child.key">
                 <button
@@ -150,11 +150,11 @@ const filteredMenuItems = computed(() =>
                   class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200"
                   :class="[
                     isActive(child.key) 
-                      ? 'text-blue-600 font-medium bg-blue-50' 
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      ? 'text-[var(--tiger-primary,#2563eb)] font-medium bg-[var(--tiger-primary-light,#e0e7ff)]' 
+                      : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
                   ]"
                 >
-                  <span class="shrink-0" :class="isActive(child.key) ? 'text-blue-600' : 'text-slate-400'"><Icon :name="child.icon" :size="18" /></span>
+                  <span class="shrink-0" :class="isActive(child.key) ? 'text-[var(--tiger-primary,#2563eb)]' : 'text-[var(--tiger-text-secondary,#64748b)]'"><Icon :name="child.icon" :size="18" /></span>
                   <span class="whitespace-nowrap">{{ child.label }}</span>
                 </button>
               </li>
@@ -168,10 +168,10 @@ const filteredMenuItems = computed(() =>
               :class="[
                 isActive(item.key) 
                   ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md' 
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
               ]"
             >
-              <span class="shrink-0" :class="isActive(item.key) ? 'text-white' : 'text-slate-500'"><Icon :name="item.icon" :size="20" /></span>
+              <span class="shrink-0" :class="isActive(item.key) ? 'text-white' : 'text-[var(--tiger-text-secondary,#64748b)]'"><Icon :name="item.icon" :size="20" /></span>
               <span v-if="!collapsed" class="whitespace-nowrap">{{ item.label }}</span>
             </button>
           </li>
@@ -185,10 +185,10 @@ const filteredMenuItems = computed(() =>
               :class="[
                 isActive(item.key) 
                   ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md' 
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
               ]"
             >
-              <span class="shrink-0" :class="isActive(item.key) ? 'text-white' : 'text-slate-500'"><Icon :name="item.icon" :size="20" /></span>
+              <span class="shrink-0" :class="isActive(item.key) ? 'text-white' : 'text-[var(--tiger-text-secondary,#64748b)]'"><Icon :name="item.icon" :size="20" /></span>
               <span v-if="!collapsed" class="whitespace-nowrap">{{ item.label }}</span>
             </button>
           </li>
@@ -197,10 +197,10 @@ const filteredMenuItems = computed(() =>
     </nav>
     
     <!-- 折叠按钮 -->
-    <div class="p-3 border-t border-slate-100">
+    <div class="p-3 border-t border-[var(--tiger-border,#e2e8f0)]">
       <button 
         @click="toggleCollapsed" 
-        class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all duration-200"
+        class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)] transition-all duration-200"
       >
         <span class="shrink-0">
           <Icon :name="collapsed ? 'chevronRight' : 'chevronLeft'" :size="18" />

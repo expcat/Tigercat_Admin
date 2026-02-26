@@ -2,6 +2,7 @@
 import { tigercatPlugin } from '@expcat/tigercat-core';
 
 export default {
+  darkMode: 'class',
   content: [
     './index.html',
     './src/**/*.{vue,js,ts,jsx,tsx}',

@@ -110,15 +110,15 @@ export function MainSidebar({
 
   return (
     <aside
-      className={`flex flex-col bg-white border-r border-slate-200 transition-all duration-300 shrink-0 shadow-sm ${
+      className={`flex flex-col bg-[var(--tiger-bg-card,#fff)] border-r border-[var(--tiger-border,#e2e8f0)] transition-all duration-300 shrink-0 shadow-sm ${
         collapsed ? 'w-16' : 'w-60'
       }`}>
       {/* Logo */}
-      <div className="flex h-16 items-center justify-center border-b border-slate-100">
+      <div className="flex h-16 items-center justify-center border-b border-[var(--tiger-border,#e2e8f0)]">
         <div className="flex items-center gap-3">
           <LogoIcon />
           {!collapsed && (
-            <span className="font-bold text-lg text-slate-800 tracking-wide whitespace-nowrap">
+            <span className="font-bold text-lg text-[var(--tiger-text,#1f2937)] tracking-wide whitespace-nowrap">
               Tigercat
             </span>
           )}
@@ -138,10 +138,10 @@ export function MainSidebar({
                       onClick={() => toggleExpand(item.key)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                         isExpanded(item.key)
-                          ? 'bg-slate-100 text-slate-900'
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                          ? 'bg-[var(--tiger-bg-hover,#f3f4f6)] text-[var(--tiger-text,#1f2937)]'
+                          : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
                       }`}>
-                      <span className="shrink-0 text-slate-500">
+                      <span className="shrink-0 text-[var(--tiger-text-secondary,#64748b)]">
                         {item.icon}
                       </span>
                       {!collapsed && (
@@ -151,7 +151,7 @@ export function MainSidebar({
                       )}
                       {!collapsed && (
                         <span
-                          className={`text-slate-400 transition-transform duration-200 ${
+                          className={`text-[var(--tiger-text-secondary,#64748b)] transition-transform duration-200 ${
                             isExpanded(item.key) ? 'rotate-180' : ''
                           }`}>
                           <ChevronDownIcon size={16} />
@@ -160,18 +160,18 @@ export function MainSidebar({
                     </button>
                     {/* 子菜单 */}
                     {!collapsed && isExpanded(item.key) && (
-                      <ul className="mt-1 ml-4 space-y-1 border-l-2 border-slate-200 pl-3">
+                      <ul className="mt-1 ml-4 space-y-1 border-l-2 border-[var(--tiger-border,#e2e8f0)] pl-3">
                         {item.children.map((child) => (
                           <li key={child.key}>
                             <button
                               onClick={() => onMenuSelect(child.key)}
                               className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
                                 isActive(child.key)
-                                  ? 'text-blue-600 font-medium bg-blue-50'
-                                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                  ? 'text-[var(--tiger-primary,#2563eb)] font-medium bg-[var(--tiger-primary-light,#e0e7ff)]'
+                                  : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
                               }`}>
                               <span
-                                className={`shrink-0 ${isActive(child.key) ? 'text-blue-600' : 'text-slate-400'}`}>
+                                className={`shrink-0 ${isActive(child.key) ? 'text-[var(--tiger-primary,#2563eb)]' : 'text-[var(--tiger-text-secondary,#64748b)]'}`}>
                                 {child.icon}
                               </span>
                               <span className="whitespace-nowrap">
@@ -190,10 +190,10 @@ export function MainSidebar({
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                       isActive(item.key)
                         ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
                     }`}>
                     <span
-                      className={`shrink-0 ${isActive(item.key) ? 'text-white' : 'text-slate-500'}`}>
+                      className={`shrink-0 ${isActive(item.key) ? 'text-white' : 'text-[var(--tiger-text-secondary,#64748b)]'}`}>
                       {item.icon}
                     </span>
                     {!collapsed && (
@@ -212,10 +212,10 @@ export function MainSidebar({
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                     isActive(item.key)
                       ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
                   }`}>
                   <span
-                    className={`shrink-0 ${isActive(item.key) ? 'text-white' : 'text-slate-500'}`}>
+                    className={`shrink-0 ${isActive(item.key) ? 'text-white' : 'text-[var(--tiger-text-secondary,#64748b)]'}`}>
                     {item.icon}
                   </span>
                   {!collapsed && (
@@ -229,10 +229,10 @@ export function MainSidebar({
       </nav>
 
       {/* 折叠按钮 */}
-      <div className="p-3 border-t border-slate-100">
+      <div className="p-3 border-t border-[var(--tiger-border,#e2e8f0)]">
         <button
           onClick={() => onCollapsedChange(!collapsed)}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all duration-200">
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)] transition-all duration-200">
           <span className="shrink-0">
             {collapsed ? (
               <ChevronRightIcon size={18} />

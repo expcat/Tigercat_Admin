@@ -92,3 +92,13 @@ export interface SettingItem {
   createdAt: string;
   updatedAt: string | null;
 }
+
+// ---- Theme types ----
+
+export type ThemeMode = 'light' | 'dark' | 'system';
+
+export interface ThemePreferences {
+  mode: ThemeMode;
+  primaryColor: string;
+  compactMode: boolean;
+}
