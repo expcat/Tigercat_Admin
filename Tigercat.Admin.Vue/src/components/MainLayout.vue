@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MainHeader from './MainHeader.vue'
 import MainSidebar from './MainSidebar.vue'
+import type { ThemeMode } from '../utils/types'
 
 interface Session {
   username: string
@@ -10,17 +11,20 @@ interface Session {
 
 const props = defineProps<{
   session: Session | null
+  themeMode: ThemeMode
+  compactMode?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'logout'): void
   (e: 'change-password'): void
+  (e: 'toggle-theme'): void
 }>()
 
 const route = useRoute()
 const router = useRouter()
 
-const collapsed = ref(false)
+const collapsed = ref(props.compactMode ?? false)
 
 const MENU_ROUTES = {
   home: 'dashboard',
@@ -57,7 +61,7 @@ watch(
 </script>
 
 <template>
-  <div class="flex h-screen w-full bg-slate-50 overflow-hidden">
+  <div class="flex h-screen w-full bg-[var(--tiger-bg-page,#f9fafb)] overflow-hidden">
     <!-- Sidebar -->
     <MainSidebar 
       v-model:collapsed="collapsed"
@@ -70,8 +74,10 @@ watch(
       <!-- Header -->
       <MainHeader 
         :session="session"
+        :theme-mode="themeMode"
         @logout="$emit('logout')"
         @change-password="$emit('change-password')"
+        @toggle-theme="$emit('toggle-theme')"
       />
 
       <!-- Content -->

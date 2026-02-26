@@ -3,6 +3,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
 } from 'react';
@@ -32,6 +33,12 @@ import {
   Session,
   Notice,
   usePermission,
+  getThemePreferences,
+  saveThemePreferences,
+  applyTheme,
+  watchSystemTheme,
+  type ThemeMode,
+  type ThemePreferences,
 } from './utils';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -89,8 +96,11 @@ interface HomeContext {
 interface ProtectedLayoutProps {
   user: { username: string } | null;
   activeMenu: MenuKey;
+  themeMode: ThemeMode;
   onLogout: () => void;
   onChangePassword: () => void;
+  onToggleTheme: () => void;
+  compactMode: boolean;
   onNavigate: (key: MenuKey) => void;
   changeOpen: boolean;
   changeForm: ChangePasswordForm;
@@ -103,8 +113,11 @@ interface ProtectedLayoutProps {
 function ProtectedLayout({
   user,
   activeMenu,
+  themeMode,
+  compactMode,
   onLogout,
   onChangePassword,
+  onToggleTheme,
   onNavigate,
   changeOpen,
   changeForm,
@@ -116,8 +129,11 @@ function ProtectedLayout({
   return (
     <MainLayout
       user={user}
+      themeMode={themeMode}
+      compactMode={compactMode}
       onLogout={onLogout}
       onChangePassword={onChangePassword}
+      onToggleTheme={onToggleTheme}
       activeMenu={activeMenu}
       onNavigate={onNavigate}>
       <Suspense fallback={<PageLoader />}>
@@ -171,6 +187,40 @@ function App() {
   const [notice, setNotice] = useState<Notice>({ type: '', message: '' });
   const [homeError, setHomeError] = useState('');
   const [changeOpen, setChangeOpen] = useState(false);
+
+  /* ── Theme ────────────────────────────────────── */
+  const [themePrefs, setThemePrefs] =
+    useState<ThemePreferences>(getThemePreferences);
+
+  const updateTheme = useCallback((prefs: ThemePreferences) => {
+    setThemePrefs(prefs);
+    saveThemePreferences(prefs);
+    applyTheme(prefs);
+  }, []);
+
+  const toggleThemeMode = useCallback(() => {
+    setThemePrefs((prev) => {
+      const order: ThemeMode[] = ['light', 'dark', 'system'];
+      const idx = order.indexOf(prev.mode);
+      const next: ThemePreferences = {
+        ...prev,
+        mode: order[(idx + 1) % order.length],
+      };
+      saveThemePreferences(next);
+      applyTheme(next);
+      return next;
+    });
+  }, []);
+
+  // Apply theme before paint to avoid FOUC
+  useLayoutEffect(() => {
+    applyTheme(themePrefs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    return watchSystemTheme(() => themePrefs);
+  }, [themePrefs]);
 
   const authHeaders = useMemo(() => {
     if (!session?.token) return {};
@@ -316,8 +366,11 @@ function App() {
             <ProtectedLayout
               user={session ? { username: session.username } : null}
               activeMenu={activeMenu}
+              themeMode={themePrefs.mode}
+              compactMode={themePrefs.compactMode}
               onLogout={handleLogout}
               onChangePassword={() => setChangeOpen(true)}
+              onToggleTheme={toggleThemeMode}
               onNavigate={handleNavigate}
               changeOpen={changeOpen}
               changeForm={changeForm}

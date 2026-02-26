@@ -13,11 +13,13 @@ import { SettingsIcon } from '../components/Icons';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest, getAuthHeaders } from '../utils';
 import { usePermission } from '../utils/permission';
+import { COLOR_PRESETS } from '../utils/constants';
 import type { SettingItem } from '../utils/types';
 
 const GROUP_LABELS: Record<string, string> = {
   site: '站点设置',
   auth: '认证安全',
+  theme: '主题与个性化',
 };
 
 /* ── 控件类型映射 ────────────────────────────── */
@@ -47,6 +49,24 @@ const SETTING_CONTROLS: Record<string, SettingControl> = {
       { label: '15 次', value: '15' },
       { label: '20 次', value: '20' },
     ],
+  },
+  'theme.mode': {
+    type: 'select',
+    options: [
+      { label: '浅色', value: 'light' },
+      { label: '深色', value: 'dark' },
+      { label: '跟随系统', value: 'system' },
+    ],
+  },
+  'theme.primaryColor': {
+    type: 'select',
+    options: COLOR_PRESETS.map((c) => ({
+      label: `${c.label} (${c.value})`,
+      value: c.value,
+    })),
+  },
+  'theme.compactMode': {
+    type: 'switch',
   },
 };
 

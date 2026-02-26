@@ -2,20 +2,25 @@
 import { inject } from 'vue'
 import { Form, FormItem, Input, Modal } from '@expcat/tigercat-vue'
 import MainLayout from './MainLayout.vue'
-import type { Session } from '../utils'
+import type { Session, ThemePreferences } from '../utils'
 
 const session = inject<import('vue').Ref<Session | null>>('session')!
 const changeForm = inject<import('vue').Ref<{ oldPassword: string; newPassword: string }>>('changeForm')!
 const changeOpen = inject<import('vue').Ref<boolean>>('changeOpen')!
 const handleLogout = inject<() => void>('handleLogout')!
 const handleChangePassword = inject<() => void>('handleChangePassword')!
+const themePrefs = inject<import('vue').Ref<ThemePreferences>>('themePrefs')!
+const toggleThemeMode = inject<() => void>('toggleThemeMode')!
 </script>
 
 <template>
   <MainLayout
     :session="session"
+    :theme-mode="themePrefs.mode"
+    :compact-mode="themePrefs.compactMode"
     @logout="handleLogout"
     @change-password="changeOpen = true"
+    @toggle-theme="toggleThemeMode"
   >
     <RouterView />
 

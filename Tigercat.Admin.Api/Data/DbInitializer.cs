@@ -15,6 +15,9 @@ public static class DbInitializer
         ("site.logo",           "",                 "站点 Logo URL"),
         ("auth.sessionTimeout", "1440",             "会话超时时间（分钟）"),
         ("auth.maxAttempts",    "5",                "最大登录失败次数"),
+        ("theme.mode",          "system",            "默认主题模式（light / dark / system）"),
+        ("theme.primaryColor",  "#2563eb",           "默认主色调"),
+        ("theme.compactMode",   "false",             "紧凑模式（侧边栏默认折叠）"),
     ];
 
     /// <summary>

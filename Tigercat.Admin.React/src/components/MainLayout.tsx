@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { MainHeader } from './MainHeader';
 import { MainSidebar } from './MainSidebar';
+import type { ThemeMode } from '../utils/types';
 
 interface MainLayoutProps {
   children: React.ReactNode;
   user: { username: string } | null;
+  themeMode: ThemeMode;
+  compactMode?: boolean;
   onLogout: () => void;
   onChangePassword: () => void;
+  onToggleTheme: () => void;
   activeMenu?: string;
   onNavigate?: (key: string) => void;
 }
@@ -14,12 +18,15 @@ interface MainLayoutProps {
 export function MainLayout({
   children,
   user,
+  themeMode,
+  compactMode,
   onLogout,
   onChangePassword,
+  onToggleTheme,
   activeMenu,
   onNavigate,
 }: MainLayoutProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(compactMode ?? false);
   const [internalActiveMenu, setInternalActiveMenu] = useState(
     activeMenu ?? 'home',
   );
@@ -37,7 +44,7 @@ export function MainLayout({
   };
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 overflow-hidden">
+    <div className="flex h-screen w-full bg-[var(--tiger-bg-page,#f9fafb)] overflow-hidden">
       {/* Sidebar */}
       <MainSidebar
         collapsed={collapsed}
@@ -51,8 +58,10 @@ export function MainLayout({
         {/* Header */}
         <MainHeader
           session={user}
+          themeMode={themeMode}
           onLogout={onLogout}
           onChangePassword={onChangePassword}
+          onToggleTheme={onToggleTheme}
         />
 
         {/* Content */}

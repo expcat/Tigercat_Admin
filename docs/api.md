@@ -928,6 +928,18 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 }
 ```
 
+#### 预置系统设置项
+
+| Key | 默认值 | 描述 |
+|-----|--------|------|
+| `site.name` | `Tigercat Admin` | 站点名称 |
+| `site.logo` | _(空)_ | 站点 Logo URL |
+| `auth.sessionTimeout` | `1440` | 会话超时时间（分钟） |
+| `auth.maxAttempts` | `5` | 最大登录失败次数 |
+| `theme.mode` | `system` | 默认主题模式（`light` / `dark` / `system`） |
+| `theme.primaryColor` | `#2563eb` | 默认主色调（HEX 色值） |
+| `theme.compactMode` | `false` | 紧凑模式（侧边栏默认折叠） |
+
 ### 按 Key 获取单个设置
 
 **GET** `/api/settings/{key}`
