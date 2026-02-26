@@ -34,13 +34,14 @@ builder.Services.AddHostedService<RedisStreamConsumer>();
 // Database provider: when a "DefaultConnection" connection string is configured the app
 // uses SQLite (recommended for production); otherwise it falls back to the EF Core
 // InMemory provider (development / CI only — data is lost on restart).
-var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
-
-builder.Services.AddDbContext<AdminDbContext>(options =>
+// Configuration is read at service-resolution time so that test hosts can override it.
+builder.Services.AddDbContext<AdminDbContext>((sp, options) =>
 {
-    if (!string.IsNullOrEmpty(defaultConnection))
+    var config = sp.GetRequiredService<IConfiguration>();
+    var connStr = config.GetConnectionString("DefaultConnection");
+    if (!string.IsNullOrEmpty(connStr))
     {
-        options.UseSqlite(defaultConnection);
+        options.UseSqlite(connStr);
     }
     else
     {
@@ -48,9 +49,33 @@ builder.Services.AddDbContext<AdminDbContext>(options =>
     }
 });
 
-// Register in-memory stores by default
-builder.Services.AddSingleton<IUserStore, InMemoryUserStore>();
-builder.Services.AddSingleton<ISessionStore, InMemorySessionStore>();
+// When a relational provider is configured, use the EF-backed stores so that auth
+// operations share the same database as the rest of the application.  For the
+// InMemory provider (development / CI) the lightweight in-memory stores are used.
+// Resolved lazily via factory so that test-time configuration overrides take effect.
+builder.Services.AddSingleton<InMemoryUserStore>();
+builder.Services.AddSingleton<InMemorySessionStore>();
+builder.Services.AddScoped<EfUserStore>();
+builder.Services.AddScoped<EfSessionStore>();
+
+builder.Services.AddScoped<IUserStore>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var connStr = config.GetConnectionString("DefaultConnection");
+    return !string.IsNullOrEmpty(connStr)
+        ? sp.GetRequiredService<EfUserStore>()
+        : sp.GetRequiredService<InMemoryUserStore>();
+});
+
+builder.Services.AddScoped<ISessionStore>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var connStr = config.GetConnectionString("DefaultConnection");
+    return !string.IsNullOrEmpty(connStr)
+        ? sp.GetRequiredService<EfSessionStore>()
+        : sp.GetRequiredService<InMemorySessionStore>();
+});
+
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -163,3 +188,6 @@ static Task<IResult> GetInfo(CancellationToken ct)
 
 public record HealthResponse(string Status, DateTime Timestamp);
 public record InfoResponse(string Name, string Version, string Description);
+
+// Make the implicit Program class accessible to the integration test project.
+public partial class Program { }

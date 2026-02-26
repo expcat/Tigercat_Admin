@@ -1,0 +1,296 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using Tigercat.Admin.Api.Auth;
+using Tigercat.Admin.Api.Common;
+using Tigercat.Admin.Api.Endpoints;
+using Tigercat.Admin.Api.Tests.Fixtures;
+using Xunit;
+
+namespace Tigercat.Admin.Api.Tests;
+
+/// <summary>
+/// Helper extensions for reading <see cref="ApiResponse{T}"/> payloads from test responses.
+/// </summary>
+internal static class HttpResponseExtensions
+{
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
+
+    public static async Task<ApiResponse<T>?> ReadApiResponseAsync<T>(this HttpResponseMessage response)
+    {
+        var content = await response.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<ApiResponse<T>>(content, JsonOptions);
+    }
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Abstract base — all provider-agnostic regression tests live here.
+// The two concrete subclasses at the bottom instantiate the fixture
+// for InMemory and SQLite respectively.
+// ───────────────────────────────────────────────────────────────────────
+
+public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture>
+    where TFixture : AdminApiFactory
+{
+    private readonly HttpClient _client;
+
+    protected ProviderRegressionTests(TFixture factory)
+    {
+        _client = factory.CreateClient();
+    }
+
+    // ── Helpers ─────────────────────────────────────────────────────────
+
+    /// <summary>Login as the seeded admin and return the session token.</summary>
+    private async Task<string> LoginAsAdminAsync()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/login",
+            new LoginRequest("admin", "admin123"));
+
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.ReadApiResponseAsync<LoginResponse>();
+        Assert.NotNull(body);
+        Assert.True(body.Success);
+        Assert.NotNull(body.Data);
+        Assert.False(string.IsNullOrWhiteSpace(body.Data.Token));
+
+        return body.Data.Token;
+    }
+
+    /// <summary>Build a request message with the session token attached.</summary>
+    private static HttpRequestMessage AuthRequest(HttpMethod method, string url, string token)
+    {
+        var request = new HttpRequestMessage(method, url);
+        request.Headers.Add("X-Token", token);
+        return request;
+    }
+
+    // ── 1. Login / Logout Flow ──────────────────────────────────────────
+
+    [Fact]
+    public async Task Login_WithDefaultAdmin_ReturnsToken()
+    {
+        var token = await LoginAsAdminAsync();
+        Assert.NotEmpty(token);
+    }
+
+    [Fact]
+    public async Task Login_WithBadPassword_Returns401()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/login",
+            new LoginRequest("admin", "wrong_password"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+        var body = await response.ReadApiResponseAsync<LoginResponse>();
+        Assert.NotNull(body);
+        Assert.False(body.Success);
+    }
+
+    [Fact]
+    public async Task Logout_WithValidToken_Succeeds()
+    {
+        var token = await LoginAsAdminAsync();
+
+        var logoutRequest = AuthRequest(HttpMethod.Post, "/api/auth/logout", token);
+        var response = await _client.SendAsync(logoutRequest);
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<MessageResponse>();
+        Assert.NotNull(body);
+        Assert.True(body.Success);
+    }
+
+    [Fact]
+    public async Task Logout_ThenReuse_Returns401()
+    {
+        var token = await LoginAsAdminAsync();
+
+        // Logout
+        var logoutRequest = AuthRequest(HttpMethod.Post, "/api/auth/logout", token);
+        await _client.SendAsync(logoutRequest);
+
+        // Try to use the revoked token
+        var permRequest = AuthRequest(HttpMethod.Get, "/api/auth/permissions", token);
+        var response = await _client.SendAsync(permRequest);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetPermissions_AsAdmin_ReturnsAllPermissions()
+    {
+        var token = await LoginAsAdminAsync();
+        var request = AuthRequest(HttpMethod.Get, "/api/auth/permissions", token);
+        var response = await _client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<UserPermissionsResponse>();
+        Assert.NotNull(body?.Data);
+        Assert.Equal("admin", body.Data.Username);
+        Assert.NotEmpty(body.Data.Permissions);
+    }
+
+    // ── 2. System Settings Read / Write ─────────────────────────────────
+
+    [Fact]
+    public async Task GetSettings_ReturnsSeededData()
+    {
+        var token = await LoginAsAdminAsync();
+
+        var request = AuthRequest(HttpMethod.Get, "/api/settings", token);
+        var response = await _client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<SettingItemResponse[]>();
+
+        Assert.NotNull(body?.Data);
+        Assert.True(body.Data.Length > 0, "Expected at least one seeded setting");
+
+        // Verify a known seeded setting
+        Assert.Contains(body.Data, s => s.Key == "site.name");
+    }
+
+    [Fact]
+    public async Task GetSettingByKey_ReturnsCorrectSetting()
+    {
+        var token = await LoginAsAdminAsync();
+
+        // Use a setting that is NOT modified by other tests to avoid ordering issues.
+        var request = AuthRequest(HttpMethod.Get, "/api/settings/theme.mode", token);
+        var response = await _client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<SettingItemResponse>();
+
+        Assert.NotNull(body?.Data);
+        Assert.Equal("theme.mode", body.Data.Key);
+        Assert.Equal("system", body.Data.Value);
+    }
+
+    [Fact]
+    public async Task UpdateSettings_ModifiesValue()
+    {
+        var token = await LoginAsAdminAsync();
+
+        // Update theme.primaryColor (uses a dedicated setting to avoid conflicts)
+        var updatePayload = new UpdateSettingsRequest(
+            [new SettingEntry("theme.primaryColor", "#ff0000")]);
+
+        var updateRequest = new HttpRequestMessage(HttpMethod.Put, "/api/settings")
+        {
+            Content = JsonContent.Create(updatePayload),
+        };
+        updateRequest.Headers.Add("X-Token", token);
+
+        var updateResponse = await _client.SendAsync(updateRequest);
+        updateResponse.EnsureSuccessStatusCode();
+
+        // Read back to verify
+        var readRequest = AuthRequest(HttpMethod.Get, "/api/settings/theme.primaryColor", token);
+        var readResponse = await _client.SendAsync(readRequest);
+        readResponse.EnsureSuccessStatusCode();
+
+        var body = await readResponse.ReadApiResponseAsync<SettingItemResponse>();
+        Assert.NotNull(body?.Data);
+        Assert.Equal("#ff0000", body.Data.Value);
+    }
+
+    // ── 3. Key List Pages Loading ───────────────────────────────────────
+
+    [Fact]
+    public async Task GetUsers_ReturnsPagedResult()
+    {
+        var token = await LoginAsAdminAsync();
+
+        var request = AuthRequest(HttpMethod.Get, "/api/users?page=1&pageSize=10", token);
+        var response = await _client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<PagedResponse<UserItemResponse>>();
+
+        Assert.NotNull(body?.Data);
+        Assert.True(body.Data.Total >= 1, "Expected at least one seeded user (admin)");
+        Assert.NotEmpty(body.Data.Items);
+        Assert.Contains(body.Data.Items, u => u.Username == "admin");
+    }
+
+    [Fact]
+    public async Task GetRoles_ReturnsPagedResult()
+    {
+        var token = await LoginAsAdminAsync();
+
+        var request = AuthRequest(HttpMethod.Get, "/api/roles?page=1&pageSize=10", token);
+        var response = await _client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<PagedResponse<RoleDetailResponse>>();
+
+        Assert.NotNull(body?.Data);
+        Assert.True(body.Data.Total >= 3, "Expected at least 3 seeded roles (Admin, Editor, Viewer)");
+        Assert.Contains(body.Data.Items, r => r.Name == "Admin");
+        Assert.Contains(body.Data.Items, r => r.Name == "Editor");
+        Assert.Contains(body.Data.Items, r => r.Name == "Viewer");
+    }
+
+    [Fact]
+    public async Task GetAllPermissions_ReturnsSeededPermissions()
+    {
+        var token = await LoginAsAdminAsync();
+
+        var request = AuthRequest(HttpMethod.Get, "/api/roles/permissions", token);
+        var response = await _client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<PermissionInfoResponse[]>();
+
+        Assert.NotNull(body?.Data);
+        // DbInitializer seeds 11 permissions
+        Assert.True(body.Data.Length >= 11, $"Expected at least 11 permissions, got {body.Data.Length}");
+        Assert.Contains(body.Data, p => p.Code == "dashboard:view");
+        Assert.Contains(body.Data, p => p.Code == "user:view");
+        Assert.Contains(body.Data, p => p.Code == "setting:view");
+    }
+
+    // ── 4. Health Endpoints ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task HealthCheck_ReturnsHealthy()
+    {
+        var response = await _client.GetAsync("/api/health");
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.ReadApiResponseAsync<HealthResponse>();
+        Assert.NotNull(body?.Data);
+        Assert.Equal("healthy", body.Data.Status);
+    }
+
+    [Fact]
+    public async Task InfoEndpoint_ReturnsApiInfo()
+    {
+        var response = await _client.GetAsync("/api/info");
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.ReadApiResponseAsync<InfoResponse>();
+        Assert.NotNull(body?.Data);
+        Assert.Equal("Tigercat Admin API", body.Data.Name);
+    }
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Concrete test classes — one per database provider
+// ───────────────────────────────────────────────────────────────────────
+
+public class InMemoryProviderRegressionTests : ProviderRegressionTests<InMemoryApiFactory>
+{
+    public InMemoryProviderRegressionTests(InMemoryApiFactory factory) : base(factory) { }
+}
+
+public class SqliteProviderRegressionTests : ProviderRegressionTests<SqliteApiFactory>
+{
+    public SqliteProviderRegressionTests(SqliteApiFactory factory) : base(factory) { }
+}
