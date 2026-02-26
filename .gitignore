@@ -10,6 +10,11 @@ obj/
 *.exe
 *.pdb
 
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal
+
 # Aspire
 .aspire/
 

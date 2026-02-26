@@ -56,7 +56,16 @@ public static class DbInitializer
     /// </summary>
     public static async Task InitializeAsync(AdminDbContext context, CancellationToken ct = default)
     {
-        await context.Database.EnsureCreatedAsync(ct);
+        // Use migrations for relational providers (e.g. SQLite); fall back to
+        // EnsureCreated for the InMemory provider which does not support migrations.
+        if (context.Database.IsRelational())
+        {
+            await context.Database.MigrateAsync(ct);
+        }
+        else
+        {
+            await context.Database.EnsureCreatedAsync(ct);
+        }
 
         // --- Seed permissions (idempotent: skip existing by Code) ---
         var existingPermCodes = await context.Permissions
