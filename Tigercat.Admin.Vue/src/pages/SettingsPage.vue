@@ -1,97 +1,20 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, inject } from 'vue'
-import type { Ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Card, Button, Input, Select, Switch, Message, Text, Tag } from '@expcat/tigercat-vue'
 import PageHeader from '../components/PageHeader.vue'
-import { apiRequest } from '../utils'
+import { apiRequest, getAuthHeaders } from '../utils'
 import { usePermission } from '../utils/permission'
-import { COLOR_PRESETS } from '../utils/constants'
-import type { SettingItem, Session } from '../utils/types'
-
-/* ── 分组标签 ────────────────────────────────── */
-const GROUP_LABELS: Record<string, string> = {
-  site: '站点设置',
-  auth: '认证安全',
-  theme: '主题与个性化',
-}
-
-/* ── 控件类型映射 ────────────────────────────── */
-type SettingControl =
-  | { type: 'input' }
-  | { type: 'switch' }
-  | { type: 'select'; options: { label: string; value: string }[] }
-
-const SETTING_CONTROLS: Record<string, SettingControl> = {
-  'auth.sessionTimeout': {
-    type: 'select',
-    options: [
-      { label: '15 分钟', value: '15' },
-      { label: '30 分钟', value: '30' },
-      { label: '60 分钟', value: '60' },
-      { label: '2 小时', value: '120' },
-      { label: '8 小时', value: '480' },
-      { label: '24 小时', value: '1440' },
-    ],
-  },
-  'auth.maxAttempts': {
-    type: 'select',
-    options: [
-      { label: '3 次', value: '3' },
-      { label: '5 次', value: '5' },
-      { label: '10 次', value: '10' },
-      { label: '15 次', value: '15' },
-      { label: '20 次', value: '20' },
-    ],
-  },
-  'theme.mode': {
-    type: 'select',
-    options: [
-      { label: '浅色', value: 'light' },
-      { label: '深色', value: 'dark' },
-      { label: '跟随系统', value: 'system' },
-    ],
-  },
-  'theme.primaryColor': {
-    type: 'select',
-    options: COLOR_PRESETS.map(c => ({ label: `${c.label} (${c.value})`, value: c.value })),
-  },
-  'theme.compactMode': {
-    type: 'switch',
-  },
-}
-
-function getControl(key: string): SettingControl {
-  return SETTING_CONTROLS[key] ?? { type: 'input' }
-}
-
-function getSelectOptions(key: string): { label: string; value: string }[] {
-  const ctrl = SETTING_CONTROLS[key]
-  return ctrl?.type === 'select' ? ctrl.options : []
-}
+import { SETTINGS_GROUP_LABELS, getControl, getControlOptions, groupSettings } from '../utils/settings'
+import type { SettingItem } from '../utils/types'
 
 /* ── 状态 ────────────────────────────────────── */
-const session = inject<Ref<Session | null>>('session')!
-const authHeaders = computed(() =>
-  session.value?.token ? { Authorization: `Bearer ${session.value.token}` } : {}
-)
-
 const settings = ref<SettingItem[]>([])
 const editValues = ref<Record<string, string>>({})
 const loading = ref(true)
 const saving = ref(false)
 const { has: hasPerm } = usePermission()
 const canEdit = computed(() => hasPerm('setting:edit'))
-
-const groups = computed(() => {
-  const map: Record<string, SettingItem[]> = {}
-  for (const item of settings.value) {
-    const prefix = item.key.split('.')[0] || 'other'
-    const group = (map[prefix] ??= [])
-    group.push(item)
-  }
-  return Object.entries(map)
-})
-
+const groups = computed(() => groupSettings(settings.value))
 const hasChanges = computed(() =>
   settings.value.some(s => editValues.value[s.key] !== s.value)
 )
@@ -101,7 +24,7 @@ async function fetchSettings() {
   try {
     loading.value = true
     const res = await apiRequest<SettingItem[]>('/api/settings', {
-      headers: authHeaders.value,
+      headers: getAuthHeaders(),
     })
     settings.value = res.data
     const values: Record<string, string> = {}
@@ -116,17 +39,15 @@ async function fetchSettings() {
 
 async function handleSave() {
   if (!canEdit.value) return
-
   const entries = settings.value
     .filter(s => editValues.value[s.key] !== s.value)
     .map(s => ({ key: s.key, value: editValues.value[s.key] ?? s.value }))
   if (entries.length === 0) return
-
   try {
     saving.value = true
     await apiRequest<SettingItem[]>('/api/settings', {
       method: 'PUT',
-      headers: authHeaders.value,
+      headers: getAuthHeaders(),
       body: JSON.stringify({ settings: entries }),
     })
     Message.success({ content: '设置已保存', duration: 3000 })
@@ -156,7 +77,7 @@ onMounted(fetchSettings)
 
     <template v-else>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card v-for="[prefix, items] in groups" :key="prefix" :title="GROUP_LABELS[prefix] ?? prefix">
+        <Card v-for="[prefix, items] in groups" :key="prefix" :title="SETTINGS_GROUP_LABELS[prefix] ?? prefix">
           <div class="space-y-4">
             <div v-for="item in items" :key="item.key" class="space-y-1">
               <div class="flex items-center gap-2">
@@ -164,26 +85,21 @@ onMounted(fetchSettings)
                 <Tag color="blue" size="sm">{{ item.key }}</Tag>
               </div>
 
-              <!-- Switch 控件 -->
               <Switch
                 v-if="getControl(item.key).type === 'switch'"
                 :checked="editValues[item.key] === 'true'"
                 @update:checked="(val: boolean) => (editValues[item.key] = String(val))"
                 :disabled="!canEdit"
               />
-
-              <!-- Select 控件 -->
               <Select
                 v-else-if="getControl(item.key).type === 'select'"
                 :model-value="editValues[item.key] ?? ''"
-                :options="getSelectOptions(item.key)"
+                :options="getControlOptions(item.key)"
                 @update:model-value="(val: string) => (editValues[item.key] = String(val))"
                 :placeholder="`选择 ${item.description ?? item.key}`"
                 :disabled="!canEdit"
                 :clearable="false"
               />
-
-              <!-- 默认 Input 控件 -->
               <Input
                 v-else
                 :model-value="editValues[item.key] ?? ''"

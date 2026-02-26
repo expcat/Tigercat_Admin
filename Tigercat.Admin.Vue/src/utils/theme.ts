@@ -12,7 +12,9 @@ const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 
 /** Derive light/dark from a CSS variable for .dark derivations */
 function deriveDarkVariant(hex: string): { light: string; dark: string } {
-  const safeHex = HEX_COLOR_RE.test(hex) ? hex : DEFAULT_PREFERENCES.primaryColor;
+  const safeHex = HEX_COLOR_RE.test(hex)
+    ? hex
+    : DEFAULT_PREFERENCES.primaryColor;
 
   // Simple heuristic: lighten by blending with white/black
   const r = parseInt(safeHex.slice(1, 3), 16);
@@ -88,17 +90,6 @@ export function watchSystemTheme(prefs: () => ThemePreferences): () => void {
     }
   };
 
-  if ('addEventListener' in mql) {
-    mql.addEventListener('change', handler);
-    return () => mql.removeEventListener('change', handler);
-  }
-
-  // Fallback for older Safari/WebView
-  const legacy = mql as unknown as { addListener(l: typeof handler): void; removeListener(l: typeof handler): void };
-  if (typeof legacy.addListener === 'function') {
-    legacy.addListener(handler);
-    return () => legacy.removeListener(handler);
-  }
-
-  return () => {};
+  mql.addEventListener('change', handler);
+  return () => mql.removeEventListener('change', handler);
 }

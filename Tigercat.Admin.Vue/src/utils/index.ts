@@ -9,3 +9,4 @@ export * from './permission';
 export * from './permission-helpers';
 export * from './export';
 export * from './theme';
+export * from './settings';
