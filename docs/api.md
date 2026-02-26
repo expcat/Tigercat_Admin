@@ -900,15 +900,46 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 
 ---
 
-## 系统设置
+## 系统设置接口 (`/api/settings`)
 
-### 获取所有系统设置
+> 以下接口均需登录且需要对应权限。未登录返回 `401`，权限不足返回 `403`。
 
-**GET** `/api/settings`
+**设置项对象结构**：
 
-> 需要登录且拥有 `setting:view` 权限
+| 字段          | 类型           | 说明            |
+| ------------- | -------------- | --------------- |
+| `id`          | number         | 设置项 ID       |
+| `key`         | string         | 设置键名        |
+| `value`       | string         | 设置值          |
+| `description` | string \| null | 描述            |
+| `createdAt`   | string         | 创建时间（UTC） |
+| `updatedAt`   | string \| null | 更新时间（UTC） |
 
-**成功响应：**
+#### 预置系统设置项
+
+| Key                    | 默认值            | 描述                                         |
+| ---------------------- | ----------------- | -------------------------------------------- |
+| `site.name`            | `Tigercat Admin`  | 站点名称                                     |
+| `site.logo`            | _(空)_            | 站点 Logo URL                                |
+| `auth.sessionTimeout`  | `1440`            | 会话超时时间（分钟）                         |
+| `auth.maxAttempts`     | `5`               | 最大登录失败次数                             |
+| `theme.mode`           | `system`          | 默认主题模式（`light` / `dark` / `system`）  |
+| `theme.primaryColor`   | `#2563eb`         | 默认主色调（HEX 色值）                       |
+| `theme.compactMode`    | `false`           | 紧凑模式（侧边栏默认折叠）                   |
+
+### 23. 获取所有系统设置
+
+- **方法**：GET
+- **路径**：`/api/settings`
+- **认证**：是
+- **权限**：`setting:view`
+- **参数**：无
+- **返回 data**：设置项数组（见上方设置项对象结构），按 `key` 升序排列
+- **可能错误码**：
+  - `401`：未登录
+  - `403`：权限不足
+
+示例：
 
 ```json
 {
@@ -918,6 +949,14 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
   "data": [
     {
       "id": 1,
+      "key": "auth.maxAttempts",
+      "value": "5",
+      "description": "最大登录失败次数",
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": null
+    },
+    {
+      "id": 2,
       "key": "site.name",
       "value": "Tigercat Admin",
       "description": "站点名称",
@@ -928,25 +967,21 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 }
 ```
 
-#### 预置系统设置项
+### 23.1 按 Key 获取单个设置
 
-| Key | 默认值 | 描述 |
-|-----|--------|------|
-| `site.name` | `Tigercat Admin` | 站点名称 |
-| `site.logo` | _(空)_ | 站点 Logo URL |
-| `auth.sessionTimeout` | `1440` | 会话超时时间（分钟） |
-| `auth.maxAttempts` | `5` | 最大登录失败次数 |
-| `theme.mode` | `system` | 默认主题模式（`light` / `dark` / `system`） |
-| `theme.primaryColor` | `#2563eb` | 默认主色调（HEX 色值） |
-| `theme.compactMode` | `false` | 紧凑模式（侧边栏默认折叠） |
+- **方法**：GET
+- **路径**：`/api/settings/{key}`
+- **认证**：是
+- **权限**：`setting:view`
+- **路径参数**：
+  - `key`：设置键名
+- **返回 data**：设置项对象（同上）
+- **可能错误码**：
+  - `401`：未登录
+  - `403`：权限不足
+  - `404`：设置项不存在
 
-### 按 Key 获取单个设置
-
-**GET** `/api/settings/{key}`
-
-> 需要登录且拥有 `setting:view` 权限
-
-**成功响应：**
+示例：
 
 ```json
 {
@@ -964,7 +999,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 }
 ```
 
-**错误响应（404）：**
+错误示例（设置项不存在）：
 
 ```json
 {
@@ -975,13 +1010,28 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 }
 ```
 
-### 批量更新系统设置
+### 23.2 批量更新系统设置
 
-**PUT** `/api/settings`
+- **方法**：PUT
+- **路径**：`/api/settings`
+- **认证**：是
+- **权限**：`setting:edit`
+- **请求体**：
+  - `settings`：设置项数组（必填，至少一项），每项包含：
+    - `key`：设置键名（必填，不能为空白）
+    - `value`：设置值（必填，不能为 `null`，最长 2000 字符）
+- **返回 data**：更新后的设置项数组，按 `key` 升序排列
+- **可能错误码**：
+  - `400`：设置项不能为空 / Key 不能为空 / Value 不能为 null / Value 长度超过 2000 字符
+  - `401`：未登录
+  - `403`：权限不足
+  - `404`：设置项（Key）不存在
+- **说明**：
+  - 仅支持更新已存在的 Key，不支持新增
+  - Key 会自动去除首尾空格
+  - 重复 Key 以最后一个为准（last-write-wins）
 
-> 需要登录且拥有 `setting:edit` 权限
-
-**请求体：**
+示例请求体：
 
 ```json
 {
@@ -992,7 +1042,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 }
 ```
 
-**成功响应：**
+示例返回：
 
 ```json
 {
@@ -1020,7 +1070,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 }
 ```
 
-**错误响应（400 — 空设置项）：**
+错误示例（设置项为空）：
 
 ```json
 {
@@ -1031,7 +1081,40 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 }
 ```
 
-**错误响应（404 — Key 不存在）：**
+错误示例（Key 为空白）：
+
+```json
+{
+  "code": 400,
+  "message": "设置项 Key 不能为空",
+  "success": false,
+  "data": null
+}
+```
+
+错误示例（Value 为 null）：
+
+```json
+{
+  "code": 400,
+  "message": "设置项 'site.name' 的 Value 不能为 null",
+  "success": false,
+  "data": null
+}
+```
+
+错误示例（Value 超长）：
+
+```json
+{
+  "code": 400,
+  "message": "设置项 'site.name' 的 Value 长度不能超过 2000",
+  "success": false,
+  "data": null
+}
+```
+
+错误示例（Key 不存在）：
 
 ```json
 {
