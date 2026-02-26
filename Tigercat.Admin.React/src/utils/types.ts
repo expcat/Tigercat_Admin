@@ -81,3 +81,14 @@ export interface TrendPoint {
 export interface StatsTrend {
   points: TrendPoint[];
 }
+
+// ---- P4: Settings types ----
+
+export interface SettingItem {
+  id: number;
+  key: string;
+  value: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
