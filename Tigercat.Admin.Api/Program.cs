@@ -31,10 +31,22 @@ builder.Services.AddSingleton<IEventPublisher, RedisStreamPublisher>();
 builder.Services.AddSingleton<IIdempotencyService, RedisIdempotencyService>();
 builder.Services.AddHostedService<RedisStreamConsumer>();
 
-// EF Core InMemory database (development only; does not enforce SQL constraints such as
-// string length limits — use a real database provider for production environments).
+// Database provider: when a "DefaultConnection" connection string is configured the app
+// uses SQLite (recommended for production); otherwise it falls back to the EF Core
+// InMemory provider (development / CI only — data is lost on restart).
+var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
+
 builder.Services.AddDbContext<AdminDbContext>(options =>
-    options.UseInMemoryDatabase("TigercatAdmin"));
+{
+    if (!string.IsNullOrEmpty(defaultConnection))
+    {
+        options.UseSqlite(defaultConnection);
+    }
+    else
+    {
+        options.UseInMemoryDatabase("TigercatAdmin");
+    }
+});
 
 // Register in-memory stores by default
 builder.Services.AddSingleton<IUserStore, InMemoryUserStore>();
