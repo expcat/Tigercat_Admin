@@ -31,6 +31,8 @@ public static class DbInitializer
         ("role:create",    "创建角色"),
         ("role:edit",      "编辑角色"),
         ("role:delete",    "删除角色"),
+        ("setting:view",   "查看系统设置"),
+        ("setting:edit",   "编辑系统设置"),
     ];
 
     /// <summary>
@@ -40,9 +42,9 @@ public static class DbInitializer
     [
         ("Admin",  "超级管理员，拥有所有权限", SeedPermissions.Select(p => p.Code).ToArray()),
         ("Editor", "编辑员，可查看和编辑",
-            ["dashboard:view", "user:view", "user:edit", "role:view", "role:edit"]),
+            ["dashboard:view", "user:view", "user:edit", "role:view", "role:edit", "setting:view", "setting:edit"]),
         ("Viewer", "只读用户，仅可查看",
-            ["dashboard:view", "user:view", "role:view"]),
+            ["dashboard:view", "user:view", "role:view", "setting:view"]),
     ];
 
     /// <summary>

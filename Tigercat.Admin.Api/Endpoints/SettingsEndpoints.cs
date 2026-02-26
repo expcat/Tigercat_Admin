@@ -14,15 +14,15 @@ public class SettingsEndpoints : IEndpointDefinition
             .WithTags("Settings");
 
         group.MapGet("", GetSettings)
-            .RequireLogin()
+            .RequirePermission("setting:view")
             .WithName("GetSettings");
 
         group.MapPut("", UpdateSettings)
-            .RequireLogin()
+            .RequirePermission("setting:edit")
             .WithName("UpdateSettings");
 
         group.MapGet("/{key}", GetSettingByKey)
-            .RequireLogin()
+            .RequirePermission("setting:view")
             .WithName("GetSettingByKey");
     }
 

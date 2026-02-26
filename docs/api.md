@@ -906,7 +906,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 
 **GET** `/api/settings`
 
-> 需要登录（`RequireLogin`）
+> 需要登录且拥有 `setting:view` 权限
 
 **成功响应：**
 
@@ -932,7 +932,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 
 **GET** `/api/settings/{key}`
 
-> 需要登录（`RequireLogin`）
+> 需要登录且拥有 `setting:view` 权限
 
 **成功响应：**
 
@@ -967,7 +967,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 
 **PUT** `/api/settings`
 
-> 需要登录（`RequireLogin`）
+> 需要登录且拥有 `setting:edit` 权限
 
 **请求体：**
 
