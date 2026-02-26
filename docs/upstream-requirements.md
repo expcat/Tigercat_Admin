@@ -13,6 +13,7 @@
 | Layout        | Both             | 建议提供标准的 Admin Layout 组件（Sidebar, Header, Content）        | 中     | 待处理 |
 | Sidebar       | Both             | 建议提供 SideBar 组件，支持折叠/展开 API 与动画                     | 中     | 待处理 |
 | Table         | Both             | 支持行展开（expandable row）功能，用于展开查看行详情区域            | 中     | 待处理 |
+| InputNumber   | Both             | 组件库缺少 `InputNumber` 组件，需支持数值输入（含 min/max/step/精度控制） | 中     | 待处理 |
 
 ## 💡 说明
 
