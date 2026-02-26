@@ -3,6 +3,8 @@ import {
   Card,
   Button,
   Input,
+  Select,
+  Switch,
   Message,
   Text,
   Tag,
@@ -17,6 +19,40 @@ const GROUP_LABELS: Record<string, string> = {
   site: '站点设置',
   auth: '认证安全',
 };
+
+/* ── 控件类型映射 ────────────────────────────── */
+type SettingControl =
+  | { type: 'input' }
+  | { type: 'switch' }
+  | { type: 'select'; options: { label: string; value: string }[] };
+
+const SETTING_CONTROLS: Record<string, SettingControl> = {
+  'auth.sessionTimeout': {
+    type: 'select',
+    options: [
+      { label: '15 分钟', value: '15' },
+      { label: '30 分钟', value: '30' },
+      { label: '60 分钟', value: '60' },
+      { label: '2 小时', value: '120' },
+      { label: '8 小时', value: '480' },
+      { label: '24 小时', value: '1440' },
+    ],
+  },
+  'auth.maxAttempts': {
+    type: 'select',
+    options: [
+      { label: '3 次', value: '3' },
+      { label: '5 次', value: '5' },
+      { label: '10 次', value: '10' },
+      { label: '15 次', value: '15' },
+      { label: '20 次', value: '20' },
+    ],
+  },
+};
+
+function getControl(key: string): SettingControl {
+  return SETTING_CONTROLS[key] ?? { type: 'input' };
+}
 
 function groupSettings(items: SettingItem[]): [string, SettingItem[]][] {
   const map: Record<string, SettingItem[]> = {};
@@ -103,29 +139,60 @@ function SettingsPage() {
             {groups.map(([prefix, items]) => (
               <Card key={prefix} title={GROUP_LABELS[prefix] ?? prefix}>
                 <div className="space-y-4">
-                  {items.map((item) => (
-                    <div key={item.key} className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Text size="sm" weight="medium">
-                          {item.description ?? item.key}
-                        </Text>
-                        <Tag color="blue" size="sm">
-                          {item.key}
-                        </Tag>
+                  {items.map((item) => {
+                    const ctrl = getControl(item.key);
+                    return (
+                      <div key={item.key} className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Text size="sm" weight="medium">
+                            {item.description ?? item.key}
+                          </Text>
+                          <Tag color="blue" size="sm">
+                            {item.key}
+                          </Tag>
+                        </div>
+
+                        {ctrl.type === 'switch' ? (
+                          <Switch
+                            checked={editValues[item.key] === 'true'}
+                            onChange={(val) =>
+                              setEditValues((prev) => ({
+                                ...prev,
+                                [item.key]: String(val),
+                              }))
+                            }
+                            disabled={!canEdit}
+                          />
+                        ) : ctrl.type === 'select' ? (
+                          <Select
+                            value={editValues[item.key] ?? ''}
+                            options={ctrl.options}
+                            onChange={(val) =>
+                              setEditValues((prev) => ({
+                                ...prev,
+                                [item.key]: String(val),
+                              }))
+                            }
+                            placeholder={`选择 ${item.description ?? item.key}`}
+                            disabled={!canEdit}
+                            clearable={false}
+                          />
+                        ) : (
+                          <Input
+                            value={editValues[item.key] ?? ''}
+                            onChange={(val) =>
+                              setEditValues((prev) => ({
+                                ...prev,
+                                [item.key]: val,
+                              }))
+                            }
+                            placeholder={`输入 ${item.key} 的值`}
+                            disabled={!canEdit}
+                          />
+                        )}
                       </div>
-                      <Input
-                        value={editValues[item.key] ?? ''}
-                        onChange={(val) =>
-                          setEditValues((prev) => ({
-                            ...prev,
-                            [item.key]: val,
-                          }))
-                        }
-                        placeholder={`输入 ${item.key} 的值`}
-                        disabled={!canEdit}
-                      />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </Card>
             ))}
