@@ -4,6 +4,7 @@ import type { Ref } from 'vue'
 import { Card, Button, Input, Message, Text, Tag } from '@expcat/tigercat-vue'
 import PageHeader from '../components/PageHeader.vue'
 import { apiRequest } from '../utils'
+import { usePermission } from '../utils/permission'
 import type { SettingItem, Session } from '../utils/types'
 
 const GROUP_LABELS: Record<string, string> = {
@@ -20,12 +21,15 @@ const settings = ref<SettingItem[]>([])
 const editValues = ref<Record<string, string>>({})
 const loading = ref(true)
 const saving = ref(false)
+const { has: hasPerm } = usePermission()
+const canEdit = computed(() => hasPerm('setting:edit'))
 
 const groups = computed(() => {
   const map: Record<string, SettingItem[]> = {}
   for (const item of settings.value) {
     const prefix = item.key.split('.')[0] || 'other'
-    ;(map[prefix] ??= []).push(item)
+    const group = (map[prefix] ??= [])
+    group.push(item)
   }
   return Object.entries(map)
 })
@@ -52,6 +56,8 @@ async function fetchSettings() {
 }
 
 async function handleSave() {
+  if (!canEdit.value) return
+
   const entries = settings.value
     .filter(s => editValues.value[s.key] !== s.value)
     .map(s => ({ key: s.key, value: editValues.value[s.key] ?? s.value }))
@@ -102,13 +108,14 @@ onMounted(fetchSettings)
                 :model-value="editValues[item.key] ?? ''"
                 @update:model-value="(val: string) => (editValues[item.key] = val)"
                 :placeholder="`输入 ${item.key} 的值`"
+                :disabled="!canEdit"
               />
             </div>
           </div>
         </Card>
       </div>
 
-      <div class="flex justify-end">
+      <div v-if="canEdit" class="flex justify-end">
         <Button color="primary" :disabled="!hasChanges || saving" @click="handleSave">
           {{ saving ? '保存中…' : '保存修改' }}
         </Button>

@@ -1,8 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Input, Message, Text, Tag } from '@expcat/tigercat-react';
+import {
+  Card,
+  Button,
+  Input,
+  Message,
+  Text,
+  Tag,
+} from '@expcat/tigercat-react';
 import { SettingsIcon } from '../components/Icons';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest, getAuthHeaders } from '../utils';
+import { usePermission } from '../utils/permission';
 import type { SettingItem } from '../utils/types';
 
 const GROUP_LABELS: Record<string, string> = {
@@ -24,6 +32,8 @@ function SettingsPage() {
   const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { has: hasPerm } = usePermission();
+  const canEdit = hasPerm('setting:edit');
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -47,6 +57,8 @@ function SettingsPage() {
   }, [fetchSettings]);
 
   const handleSave = async () => {
+    if (!canEdit) return;
+
     const entries = settings
       .filter((s) => editValues[s.key] !== s.value)
       .map((s) => ({ key: s.key, value: editValues[s.key] ?? s.value }));
@@ -110,6 +122,7 @@ function SettingsPage() {
                           }))
                         }
                         placeholder={`输入 ${item.key} 的值`}
+                        disabled={!canEdit}
                       />
                     </div>
                   ))}
@@ -118,15 +131,16 @@ function SettingsPage() {
             ))}
           </div>
 
-          <div className="flex justify-end">
-            <Button
-              color="primary"
-              onClick={handleSave}
-              disabled={!hasChanges || saving}
-            >
-              {saving ? '保存中…' : '保存修改'}
-            </Button>
-          </div>
+          {canEdit && (
+            <div className="flex justify-end">
+              <Button
+                color="primary"
+                onClick={handleSave}
+                disabled={!hasChanges || saving}>
+                {saving ? '保存中…' : '保存修改'}
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>
