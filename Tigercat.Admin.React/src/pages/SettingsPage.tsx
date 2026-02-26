@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card,
   Button,
@@ -117,8 +117,11 @@ function SettingsPage() {
     }
   };
 
-  const groups = groupSettings(settings);
-  const hasChanges = settings.some((s) => editValues[s.key] !== s.value);
+  const groups = useMemo(() => groupSettings(settings), [settings]);
+  const hasChanges = useMemo(
+    () => settings.some((s) => editValues[s.key] !== s.value),
+    [settings, editValues],
+  );
 
   return (
     <div className="space-y-6">
