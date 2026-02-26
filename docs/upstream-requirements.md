@@ -4,16 +4,16 @@
 
 ## 📋 需求列表
 
-| 组件名称      | 平台 (Vue/React) | 需求描述                                                            | 优先级 | 状态   |
-| :------------ | :--------------- | :------------------------------------------------------------------ | :----- | :----- |
-| (示例) Button | Vue              | 需要支持 loading 状态下的图标自定义                                 | 中     | 已完成 |
-| Input         | Both             | 支持 `prefix` 和 `suffix` 插槽或属性以显示图标（如用户名/密码图标） | 高     | 已完成 |
-| Input         | Both             | 明确支持 `type` 属性（如 `password`）                               | 高     | 已完成 |
-| Menu          | Both             | 支持嵌套结构（submenu）以实现多级菜单                               | 高     | 待处理 |
-| Layout        | Both             | 建议提供标准的 Admin Layout 组件（Sidebar, Header, Content）        | 中     | 待处理 |
-| Sidebar       | Both             | 建议提供 SideBar 组件，支持折叠/展开 API 与动画                     | 中     | 待处理 |
-| Table         | Both             | 支持行展开（expandable row）功能，用于展开查看行详情区域            | 中     | 待处理 |
-| InputNumber   | Both             | 组件库缺少 `InputNumber` 组件，需支持数值输入（含 min/max/step/精度控制） | 中     | 待处理 |
+| 组件名称      | 平台 (Vue/React) | 需求描述                                                                  | 优先级 | 状态   |
+| :------------ | :--------------- | :------------------------------------------------------------------------ | :----- | :----- |
+| (示例) Button | Vue              | 需要支持 loading 状态下的图标自定义                                       | 中     | 已完成 |
+| Input         | Both             | 支持 `prefix` 和 `suffix` 插槽或属性以显示图标（如用户名/密码图标）       | 高     | 已完成 |
+| Input         | Both             | 明确支持 `type` 属性（如 `password`）                                     | 高     | 已完成 |
+| Menu          | Both             | 支持嵌套结构（submenu）以实现多级菜单                                     | 高     | 已完成 |
+| Layout        | Both             | 建议提供标准的 Admin Layout 组件（Sidebar, Header, Content）              | 中     | 已完成 |
+| Sidebar       | Both             | 建议提供 SideBar 组件，支持折叠/展开 API 与动画                           | 中     | 已完成 |
+| Table         | Both             | 支持行展开（expandable row）功能，用于展开查看行详情区域                  | 中     | 待处理 |
+| InputNumber   | Both             | 组件库缺少 `InputNumber` 组件，需支持数值输入（含 min/max/step/精度控制） | 中     | 已完成 |
 
 ## 💡 说明
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Layout, Content } from '@expcat/tigercat-vue'
 import MainHeader from './MainHeader.vue'
 import MainSidebar from './MainSidebar.vue'
 import type { ThemeMode } from '../utils/types'
@@ -61,7 +62,7 @@ watch(
 </script>
 
 <template>
-  <div class="flex h-screen w-full bg-[var(--tiger-bg-page,#f9fafb)] overflow-hidden">
+  <Layout class="h-screen w-full overflow-hidden">
     <!-- Sidebar -->
     <MainSidebar 
       v-model:collapsed="collapsed"
@@ -70,7 +71,7 @@ watch(
     />
 
     <!-- Main Content Area -->
-    <div class="flex flex-col flex-1 min-w-0">
+    <Layout>
       <!-- Header -->
       <MainHeader 
         :session="session"
@@ -81,11 +82,11 @@ watch(
       />
 
       <!-- Content -->
-      <main class="flex-1 overflow-auto p-6 scroll-smooth">
-         <div class="mx-auto max-w-7xl animate-fade-in">
-            <slot></slot>
-         </div>
-      </main>
-    </div>
-  </div>
+      <Content class="overflow-auto p-6 scroll-smooth">
+        <div class="mx-auto max-w-7xl animate-fade-in">
+          <slot></slot>
+        </div>
+      </Content>
+    </Layout>
+  </Layout>
 </template>

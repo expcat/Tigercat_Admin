@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, Avatar } from '@expcat/tigercat-react';
+import { Text, Avatar, Header } from '@expcat/tigercat-react';
 import {
   HomeIcon,
   LockIcon,
@@ -42,7 +42,7 @@ export function MainHeader({
   onToggleTheme,
 }: MainHeaderProps) {
   return (
-    <header className="h-16 bg-[var(--tiger-bg-card,#fff)] border-b border-[var(--tiger-border,#e2e8f0)] flex items-center justify-between px-6 shadow-sm z-10">
+    <Header className="flex items-center justify-between px-6 shadow-sm z-10">
       {/* 左侧标题 */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
@@ -97,6 +97,6 @@ export function MainHeader({
           </button>
         </div>
       </div>
-    </header>
+    </Header>
   );
 }

@@ -3,6 +3,7 @@ import {
   Card,
   Button,
   Input,
+  InputNumber,
   Select,
   Switch,
   Message,
@@ -135,6 +136,20 @@ function SettingsPage() {
                             placeholder={`选择 ${item.description ?? item.key}`}
                             disabled={!canEdit}
                             clearable={false}
+                          />
+                        ) : ctrl.type === 'number' ? (
+                          <InputNumber
+                            value={Number(editValues[item.key]) || 0}
+                            onChange={(val) =>
+                              setEditValues((prev) => ({
+                                ...prev,
+                                [item.key]: String(val ?? 0),
+                              }))
+                            }
+                            min={ctrl.min}
+                            max={ctrl.max}
+                            step={ctrl.step}
+                            disabled={!canEdit}
                           />
                         ) : (
                           <Input

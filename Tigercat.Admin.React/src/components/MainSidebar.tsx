@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Sidebar, Menu, MenuItem, SubMenu } from '@expcat/tigercat-react';
 import {
   DashboardIcon,
   ServerIcon,
@@ -9,11 +10,10 @@ import {
   LogoIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
-  ChevronDownIcon,
 } from './Icons';
 import { usePermission } from '../utils/permission';
 
-interface MenuItem {
+interface MenuItemDef {
   key: string;
   label: string;
   icon: React.ReactNode;
@@ -23,7 +23,7 @@ interface MenuItem {
    * - `string[]` — must have **ALL** listed permissions
    */
   permission?: string | string[];
-  children?: MenuItem[];
+  children?: MenuItemDef[];
 }
 
 interface MainSidebarProps {
@@ -33,7 +33,7 @@ interface MainSidebarProps {
   onMenuSelect: (key: string) => void;
 }
 
-const MENU_ITEMS: MenuItem[] = [
+const MENU_ITEMS: MenuItemDef[] = [
   {
     key: 'home',
     label: '仪表盘',
@@ -62,7 +62,7 @@ const MENU_ITEMS: MenuItem[] = [
   },
 ];
 
-const BOTTOM_MENU_ITEMS: MenuItem[] = [
+const BOTTOM_MENU_ITEMS: MenuItemDef[] = [
   {
     key: 'about',
     label: '关于',
@@ -76,12 +76,14 @@ export function MainSidebar({
   onCollapsedChange,
   onMenuSelect,
 }: MainSidebarProps) {
-  const [expandedKeys, setExpandedKeys] = useState<string[]>(['system']);
+  const [expandedKeys, setExpandedKeys] = useState<(string | number)[]>([
+    'system',
+  ]);
   const { has: hasPerm } = usePermission();
 
   // ---- Permission-based menu filtering ----
   const filteredMenuItems = useMemo(() => {
-    function isPermitted(item: MenuItem): boolean {
+    function isPermitted(item: MenuItemDef): boolean {
       if (!item.permission) return true;
       const codes = Array.isArray(item.permission)
         ? item.permission
@@ -96,23 +98,15 @@ export function MainSidebar({
         return { ...item, children: visibleChildren };
       }
       return isPermitted(item) ? item : null;
-    }).filter(Boolean) as MenuItem[];
+    }).filter(Boolean) as MenuItemDef[];
   }, [hasPerm]);
 
-  const toggleExpand = (key: string) => {
-    setExpandedKeys((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
-    );
+  const handleSelect = (key: string | number) => {
+    onMenuSelect(String(key));
   };
 
-  const isExpanded = (key: string) => expandedKeys.includes(key);
-  const isActive = (key: string) => activeMenu === key;
-
   return (
-    <aside
-      className={`flex flex-col bg-[var(--tiger-bg-card,#fff)] border-r border-[var(--tiger-border,#e2e8f0)] transition-all duration-300 shrink-0 shadow-sm ${
-        collapsed ? 'w-16' : 'w-60'
-      }`}>
+    <Sidebar collapsed={collapsed} width="240px" collapsedWidth="64px">
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b border-[var(--tiger-border,#e2e8f0)]">
         <div className="flex items-center gap-3">
@@ -126,105 +120,51 @@ export function MainSidebar({
       </div>
 
       {/* Menu */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3">
+      <nav className="flex-1 overflow-y-auto py-2">
         <div className="flex flex-col min-h-full">
-          <ul className="space-y-1">
-            {filteredMenuItems.map((item) => (
-              <li key={item.key}>
-                {item.children && item.children.length > 0 ? (
-                  // 有子菜单
-                  <>
-                    <button
-                      onClick={() => toggleExpand(item.key)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                        isExpanded(item.key)
-                          ? 'bg-[var(--tiger-bg-hover,#f3f4f6)] text-[var(--tiger-text,#1f2937)]'
-                          : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
-                      }`}>
-                      <span className="shrink-0 text-[var(--tiger-text-secondary,#64748b)]">
-                        {item.icon}
-                      </span>
-                      {!collapsed && (
-                        <span className="flex-1 text-left whitespace-nowrap">
-                          {item.label}
-                        </span>
-                      )}
-                      {!collapsed && (
-                        <span
-                          className={`text-[var(--tiger-text-secondary,#64748b)] transition-transform duration-200 ${
-                            isExpanded(item.key) ? 'rotate-180' : ''
-                          }`}>
-                          <ChevronDownIcon size={16} />
-                        </span>
-                      )}
-                    </button>
-                    {/* 子菜单 */}
-                    {!collapsed && isExpanded(item.key) && (
-                      <ul className="mt-1 ml-4 space-y-1 border-l-2 border-[var(--tiger-border,#e2e8f0)] pl-3">
-                        {item.children.map((child) => (
-                          <li key={child.key}>
-                            <button
-                              onClick={() => onMenuSelect(child.key)}
-                              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
-                                isActive(child.key)
-                                  ? 'text-[var(--tiger-primary,#2563eb)] font-medium bg-[var(--tiger-primary-light,#e0e7ff)]'
-                                  : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
-                              }`}>
-                              <span
-                                className={`shrink-0 ${isActive(child.key) ? 'text-[var(--tiger-primary,#2563eb)]' : 'text-[var(--tiger-text-secondary,#64748b)]'}`}>
-                                {child.icon}
-                              </span>
-                              <span className="whitespace-nowrap">
-                                {child.label}
-                              </span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </>
-                ) : (
-                  // 无子菜单
-                  <button
-                    onClick={() => onMenuSelect(item.key)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                      isActive(item.key)
-                        ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md'
-                        : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
-                    }`}>
-                    <span
-                      className={`shrink-0 ${isActive(item.key) ? 'text-white' : 'text-[var(--tiger-text-secondary,#64748b)]'}`}>
-                      {item.icon}
-                    </span>
-                    {!collapsed && (
-                      <span className="whitespace-nowrap">{item.label}</span>
-                    )}
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-          <ul className="mt-auto space-y-1 pt-4">
-            {BOTTOM_MENU_ITEMS.map((item) => (
-              <li key={item.key}>
-                <button
-                  onClick={() => onMenuSelect(item.key)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    isActive(item.key)
-                      ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md'
-                      : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
-                  }`}>
-                  <span
-                    className={`shrink-0 ${isActive(item.key) ? 'text-white' : 'text-[var(--tiger-text-secondary,#64748b)]'}`}>
-                    {item.icon}
-                  </span>
-                  {!collapsed && (
-                    <span className="whitespace-nowrap">{item.label}</span>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
+          <Menu
+            selectedKeys={[activeMenu]}
+            openKeys={expandedKeys}
+            collapsed={collapsed}
+            onSelect={handleSelect}
+            onOpenChange={(_key, info) => setExpandedKeys(info.openKeys)}>
+            {filteredMenuItems.map((item) =>
+              item.children && item.children.length > 0 ? (
+                <SubMenu
+                  key={item.key}
+                  itemKey={item.key}
+                  title={item.label}
+                  icon={item.icon}>
+                  {item.children.map((child) => (
+                    <MenuItem
+                      key={child.key}
+                      itemKey={child.key}
+                      icon={child.icon}>
+                      {child.label}
+                    </MenuItem>
+                  ))}
+                </SubMenu>
+              ) : (
+                <MenuItem key={item.key} itemKey={item.key} icon={item.icon}>
+                  {item.label}
+                </MenuItem>
+              ),
+            )}
+          </Menu>
+
+          {/* Bottom menu */}
+          <div className="mt-auto pt-2">
+            <Menu
+              selectedKeys={[activeMenu]}
+              collapsed={collapsed}
+              onSelect={handleSelect}>
+              {BOTTOM_MENU_ITEMS.map((item) => (
+                <MenuItem key={item.key} itemKey={item.key} icon={item.icon}>
+                  {item.label}
+                </MenuItem>
+              ))}
+            </Menu>
+          </div>
         </div>
       </nav>
 
@@ -243,6 +183,6 @@ export function MainSidebar({
           {!collapsed && <span className="whitespace-nowrap">收起菜单</span>}
         </button>
       </div>
-    </aside>
+    </Sidebar>
   );
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Card, Button, Input, Select, Switch, Message, Text, Tag } from '@expcat/tigercat-vue'
+import { Card, Button, Input, InputNumber, Select, Switch, Message, Text, Tag } from '@expcat/tigercat-vue'
 import PageHeader from '../components/PageHeader.vue'
 import { apiRequest, getAuthHeaders } from '../utils'
 import { usePermission } from '../utils/permission'
@@ -99,6 +99,15 @@ onMounted(fetchSettings)
                 :placeholder="`选择 ${item.description ?? item.key}`"
                 :disabled="!canEdit"
                 :clearable="false"
+              />
+              <InputNumber
+                v-else-if="getControl(item.key).type === 'number'"
+                :model-value="Number(editValues[item.key]) || 0"
+                @update:model-value="(val: number | null) => (editValues[item.key] = String(val ?? 0))"
+                :min="(getControl(item.key) as any).min"
+                :max="(getControl(item.key) as any).max"
+                :step="(getControl(item.key) as any).step"
+                :disabled="!canEdit"
               />
               <Input
                 v-else

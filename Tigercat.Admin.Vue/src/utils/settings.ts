@@ -6,7 +6,8 @@ import type { SettingItem } from './types';
 export type SettingControl =
   | { type: 'input' }
   | { type: 'switch' }
-  | { type: 'select'; options: { label: string; value: string }[] };
+  | { type: 'select'; options: { label: string; value: string }[] }
+  | { type: 'number'; min?: number; max?: number; step?: number };
 
 /** 设置分组中文标签 */
 export const SETTINGS_GROUP_LABELS: Record<string, string> = {
@@ -18,25 +19,16 @@ export const SETTINGS_GROUP_LABELS: Record<string, string> = {
 /** 特殊设置项的控件映射 */
 export const SETTING_CONTROLS: Record<string, SettingControl> = {
   'auth.sessionTimeout': {
-    type: 'select',
-    options: [
-      { label: '15 分钟', value: '15' },
-      { label: '30 分钟', value: '30' },
-      { label: '60 分钟', value: '60' },
-      { label: '2 小时', value: '120' },
-      { label: '8 小时', value: '480' },
-      { label: '24 小时', value: '1440' },
-    ],
+    type: 'number',
+    min: 5,
+    max: 1440,
+    step: 5,
   },
   'auth.maxAttempts': {
-    type: 'select',
-    options: [
-      { label: '3 次', value: '3' },
-      { label: '5 次', value: '5' },
-      { label: '10 次', value: '10' },
-      { label: '15 次', value: '15' },
-      { label: '20 次', value: '20' },
-    ],
+    type: 'number',
+    min: 1,
+    max: 50,
+    step: 1,
   },
   'theme.mode': {
     type: 'select',

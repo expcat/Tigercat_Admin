@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Layout, Content } from '@expcat/tigercat-react';
 import { MainHeader } from './MainHeader';
 import { MainSidebar } from './MainSidebar';
 import type { ThemeMode } from '../utils/types';
@@ -44,7 +45,7 @@ export function MainLayout({
   };
 
   return (
-    <div className="flex h-screen w-full bg-[var(--tiger-bg-page,#f9fafb)] overflow-hidden">
+    <Layout className="h-screen w-full overflow-hidden">
       {/* Sidebar */}
       <MainSidebar
         collapsed={collapsed}
@@ -54,7 +55,7 @@ export function MainLayout({
       />
 
       {/* Main Content Area */}
-      <div className="flex flex-col flex-1 min-w-0">
+      <Layout>
         {/* Header */}
         <MainHeader
           session={user}
@@ -65,10 +66,10 @@ export function MainLayout({
         />
 
         {/* Content */}
-        <main className="flex-1 overflow-auto p-6 scroll-smooth">
+        <Content className="overflow-auto p-6 scroll-smooth">
           <div className="mx-auto max-w-7xl animate-fade-in">{children}</div>
-        </main>
-      </div>
-    </div>
+        </Content>
+      </Layout>
+    </Layout>
   );
 }

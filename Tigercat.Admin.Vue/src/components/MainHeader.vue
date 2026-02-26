@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Text, Avatar } from '@expcat/tigercat-vue'
+import { Text, Avatar, Header } from '@expcat/tigercat-vue'
 import Icon from './Icon.vue'
 import type { ThemeMode } from '../utils/types'
 import { resolveEffectiveMode } from '../utils/theme'
@@ -32,7 +32,7 @@ function getThemeLabel(mode: ThemeMode): string {
 </script>
 
 <template>
-  <header class="h-16 bg-[var(--tiger-bg-card,#fff)] border-b border-[var(--tiger-border,#e2e8f0)] flex items-center justify-between px-6 shadow-sm z-10">
+  <Header class="flex items-center justify-between px-6 shadow-sm z-10">
     <!-- 左侧标题 -->
     <div class="flex items-center gap-3">
       <div class="flex items-center gap-2">
@@ -79,5 +79,5 @@ function getThemeLabel(mode: ThemeMode): string {
         </button>
       </div>
     </div>
-  </header>
+  </Header>
 </template>

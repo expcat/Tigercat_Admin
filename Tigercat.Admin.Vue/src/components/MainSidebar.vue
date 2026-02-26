@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, h } from 'vue'
+import { Sidebar, Menu, MenuItem, SubMenu } from '@expcat/tigercat-vue'
 import Icon from './Icon.vue'
 import AppLogo from './AppLogo.vue'
 import { usePermission } from '../utils/permission'
 
-interface MenuItem {
+interface MenuItemDef {
   key: string
   label: string
   icon: string
@@ -14,7 +15,7 @@ interface MenuItem {
    * - `string[]` — must have **ALL** listed permissions (same semantics as v-permission)
    */
   permission?: string | string[]
-  children?: MenuItem[]
+  children?: MenuItemDef[]
 }
 
 const props = defineProps<{
@@ -28,7 +29,7 @@ const emit = defineEmits<{
   (e: 'select', key: string): void
 }>()
 
-const menuItems: MenuItem[] = [
+const menuItems: MenuItemDef[] = [
   { 
     key: 'home', 
     label: '仪表盘', 
@@ -47,45 +48,28 @@ const menuItems: MenuItem[] = [
   }
 ]
 
-const bottomMenuItems: MenuItem[] = [
-  {
-    key: 'about',
-    label: '关于',
-    icon: 'info'
-  }
+const bottomMenuItems: MenuItemDef[] = [
+  { key: 'about', label: '关于', icon: 'info' }
 ]
 
-// 展开的菜单组
-const expandedKeys = ref<string[]>(['system'])
+const expandedKeys = ref<(string | number)[]>(['system'])
 
-const handleMenuSelect = (key: string) => {
-  emit('update:activeMenu', key)
-  emit('select', key)
-}
-
-const toggleExpand = (key: string) => {
-  const index = expandedKeys.value.indexOf(key)
-  if (index > -1) {
-    expandedKeys.value.splice(index, 1)
-  } else {
-    expandedKeys.value.push(key)
-  }
+const handleMenuSelect = (key: string | number) => {
+  const k = String(key)
+  emit('update:activeMenu', k)
+  emit('select', k)
 }
 
 const toggleCollapsed = () => {
   emit('update:collapsed', !props.collapsed)
 }
 
-const isExpanded = (key: string) => expandedKeys.value.includes(key)
-const isActive = (key: string) => props.activeMenu === key
-
 // ---- Permission-based menu filtering ----
 const { has: hasPerm } = usePermission()
 
-function isPermitted(item: MenuItem): boolean {
+function isPermitted(item: MenuItemDef): boolean {
   if (!item.permission) return true
   const codes = Array.isArray(item.permission) ? item.permission : [item.permission]
-  // Require ALL listed permissions — consistent with v-permission default semantics
   return codes.every((c) => hasPerm(c))
 }
 
@@ -100,14 +84,18 @@ const filteredMenuItems = computed(() =>
       }
       return isPermitted(item) ? item : null
     })
-    .filter(Boolean) as MenuItem[]
+    .filter(Boolean) as MenuItemDef[]
 )
+
+/** Helper to create an Icon VNode for menu icon props */
+const menuIcon = (name: string, size = 20) => h(Icon, { name, size })
 </script>
 
 <template>
-  <aside 
-    class="flex flex-col bg-[var(--tiger-bg-card,#fff)] border-r border-[var(--tiger-border,#e2e8f0)] transition-all duration-300 shrink-0 shadow-sm"
-    :class="collapsed ? 'w-16' : 'w-60'"
+  <Sidebar
+    :collapsed="collapsed"
+    width="240px"
+    collapsed-width="64px"
   >
     <!-- Logo -->
     <div class="flex h-16 items-center justify-center border-b border-[var(--tiger-border,#e2e8f0)]">
@@ -118,81 +106,58 @@ const filteredMenuItems = computed(() =>
     </div>
 
     <!-- Menu -->
-    <nav class="flex-1 overflow-y-auto py-4 px-3">
+    <nav class="flex-1 overflow-y-auto py-2">
       <div class="flex flex-col min-h-full">
-        <ul class="space-y-1">
-        <template v-for="item in filteredMenuItems" :key="item.key">
-          <!-- 有子菜单 -->
-          <li v-if="item.children && item.children.length > 0">
-            <button
-              @click="toggleExpand(item.key)"
-              class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
-              :class="[
-                isExpanded(item.key) 
-                  ? 'bg-[var(--tiger-bg-hover,#f3f4f6)] text-[var(--tiger-text,#1f2937)]' 
-                  : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
-              ]"
+        <Menu
+          :selected-keys="[activeMenu]"
+          :open-keys="expandedKeys"
+          :collapsed="collapsed"
+          @select="handleMenuSelect"
+          @update:open-keys="(keys: (string | number)[]) => expandedKeys = keys"
+        >
+          <template v-for="item in filteredMenuItems" :key="item.key">
+            <SubMenu
+              v-if="item.children?.length"
+              :item-key="item.key"
+              :title="item.label"
+              :icon="menuIcon(item.icon)"
             >
-              <span class="shrink-0 text-[var(--tiger-text-secondary,#64748b)]"><Icon :name="item.icon" :size="20" /></span>
-              <span v-if="!collapsed" class="flex-1 text-left whitespace-nowrap">{{ item.label }}</span>
-              <span v-if="!collapsed" class="text-[var(--tiger-text-secondary,#64748b)] transition-transform duration-200" :class="isExpanded(item.key) ? 'rotate-180' : ''">
-                <Icon name="chevronDown" :size="16" />
-              </span>
-            </button>
-            <!-- 子菜单 -->
-            <ul 
-              v-if="!collapsed && isExpanded(item.key)" 
-              class="mt-1 ml-4 space-y-1 border-l-2 border-[var(--tiger-border,#e2e8f0)] pl-3"
+              <MenuItem
+                v-for="child in item.children"
+                :key="child.key"
+                :item-key="child.key"
+                :icon="menuIcon(child.icon, 18)"
+              >
+                {{ child.label }}
+              </MenuItem>
+            </SubMenu>
+            <MenuItem
+              v-else
+              :item-key="item.key"
+              :icon="menuIcon(item.icon)"
             >
-              <li v-for="child in item.children" :key="child.key">
-                <button
-                  @click="handleMenuSelect(child.key)"
-                  class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200"
-                  :class="[
-                    isActive(child.key) 
-                      ? 'text-[var(--tiger-primary,#2563eb)] font-medium bg-[var(--tiger-primary-light,#e0e7ff)]' 
-                      : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
-                  ]"
-                >
-                  <span class="shrink-0" :class="isActive(child.key) ? 'text-[var(--tiger-primary,#2563eb)]' : 'text-[var(--tiger-text-secondary,#64748b)]'"><Icon :name="child.icon" :size="18" /></span>
-                  <span class="whitespace-nowrap">{{ child.label }}</span>
-                </button>
-              </li>
-            </ul>
-          </li>
-          <!-- 无子菜单 -->
-          <li v-else>
-            <button
-              @click="handleMenuSelect(item.key)"
-              class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
-              :class="[
-                isActive(item.key) 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md' 
-                  : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
-              ]"
+              {{ item.label }}
+            </MenuItem>
+          </template>
+        </Menu>
+
+        <!-- Bottom menu -->
+        <div class="mt-auto pt-2">
+          <Menu
+            :selected-keys="[activeMenu]"
+            :collapsed="collapsed"
+            @select="handleMenuSelect"
+          >
+            <MenuItem
+              v-for="item in bottomMenuItems"
+              :key="item.key"
+              :item-key="item.key"
+              :icon="menuIcon(item.icon)"
             >
-              <span class="shrink-0" :class="isActive(item.key) ? 'text-white' : 'text-[var(--tiger-text-secondary,#64748b)]'"><Icon :name="item.icon" :size="20" /></span>
-              <span v-if="!collapsed" class="whitespace-nowrap">{{ item.label }}</span>
-            </button>
-          </li>
-        </template>
-        </ul>
-        <ul class="mt-auto space-y-1 pt-4">
-          <li v-for="item in bottomMenuItems" :key="item.key">
-            <button
-              @click="handleMenuSelect(item.key)"
-              class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
-              :class="[
-                isActive(item.key) 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md' 
-                  : 'text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)]'
-              ]"
-            >
-              <span class="shrink-0" :class="isActive(item.key) ? 'text-white' : 'text-[var(--tiger-text-secondary,#64748b)]'"><Icon :name="item.icon" :size="20" /></span>
-              <span v-if="!collapsed" class="whitespace-nowrap">{{ item.label }}</span>
-            </button>
-          </li>
-        </ul>
+              {{ item.label }}
+            </MenuItem>
+          </Menu>
+        </div>
       </div>
     </nav>
     
@@ -208,5 +173,5 @@ const filteredMenuItems = computed(() =>
         <span v-if="!collapsed" class="whitespace-nowrap">收起菜单</span>
       </button>
     </div>
-  </aside>
+  </Sidebar>
 </template>
