@@ -47,6 +47,11 @@ function getControl(key: string): SettingControl {
   return SETTING_CONTROLS[key] ?? { type: 'input' }
 }
 
+function getSelectOptions(key: string): { label: string; value: string }[] {
+  const ctrl = SETTING_CONTROLS[key]
+  return ctrl?.type === 'select' ? ctrl.options : []
+}
+
 /* ── 状态 ────────────────────────────────────── */
 const session = inject<Ref<Session | null>>('session')!
 const authHeaders = computed(() =>
@@ -154,7 +159,7 @@ onMounted(fetchSettings)
               <Select
                 v-else-if="getControl(item.key).type === 'select'"
                 :model-value="editValues[item.key] ?? ''"
-                :options="(getControl(item.key) as { type: 'select'; options: { label: string; value: string }[] }).options"
+                :options="getSelectOptions(item.key)"
                 @update:model-value="(val: string) => (editValues[item.key] = String(val))"
                 :placeholder="`选择 ${item.description ?? item.key}`"
                 :disabled="!canEdit"
