@@ -11,5 +11,15 @@ export default defineConfig({
         changeOrigin: true,
       }
     }
-  }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-framework': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': ['@expcat/tigercat-react', '@expcat/tigercat-core'],
+        },
+      },
+    },
+  },
 })

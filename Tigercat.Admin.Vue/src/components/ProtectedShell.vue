@@ -22,7 +22,18 @@ const toggleThemeMode = inject<() => void>('toggleThemeMode')!
     @change-password="changeOpen = true"
     @toggle-theme="toggleThemeMode"
   >
-    <RouterView />
+    <RouterView v-slot="{ Component }">
+      <Suspense>
+        <template #default>
+          <component :is="Component" />
+        </template>
+        <template #fallback>
+          <div class="flex items-center justify-center h-full min-h-50">
+            <div class="text-slate-500">加载中...</div>
+          </div>
+        </template>
+      </Suspense>
+    </RouterView>
 
     <Modal
       v-model="changeOpen"
