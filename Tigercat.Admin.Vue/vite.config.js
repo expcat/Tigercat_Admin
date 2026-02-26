@@ -11,5 +11,15 @@ export default defineConfig({
         changeOrigin: true,
       }
     }
-  }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-framework': ['vue', 'vue-router'],
+          'vendor-ui': ['@expcat/tigercat-vue', '@expcat/tigercat-core'],
+        },
+      },
+    },
+  },
 })
