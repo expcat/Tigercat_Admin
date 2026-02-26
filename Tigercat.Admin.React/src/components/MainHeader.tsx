@@ -64,7 +64,8 @@ export function MainHeader({
         <button
           onClick={onToggleTheme}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)] transition-colors"
-          title={getThemeLabel(themeMode)}>
+          title={getThemeLabel(themeMode)}
+          aria-label={getThemeLabel(themeMode)}>
           <ThemeIcon mode={themeMode} />
         </button>
 

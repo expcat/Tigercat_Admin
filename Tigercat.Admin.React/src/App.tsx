@@ -3,6 +3,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
 } from 'react';
@@ -99,6 +100,7 @@ interface ProtectedLayoutProps {
   onLogout: () => void;
   onChangePassword: () => void;
   onToggleTheme: () => void;
+  compactMode: boolean;
   onNavigate: (key: MenuKey) => void;
   changeOpen: boolean;
   changeForm: ChangePasswordForm;
@@ -112,6 +114,7 @@ function ProtectedLayout({
   user,
   activeMenu,
   themeMode,
+  compactMode,
   onLogout,
   onChangePassword,
   onToggleTheme,
@@ -127,6 +130,7 @@ function ProtectedLayout({
     <MainLayout
       user={user}
       themeMode={themeMode}
+      compactMode={compactMode}
       onLogout={onLogout}
       onChangePassword={onChangePassword}
       onToggleTheme={onToggleTheme}
@@ -208,8 +212,8 @@ function App() {
     });
   }, []);
 
-  // Apply theme on mount & watch system changes
-  useEffect(() => {
+  // Apply theme before paint to avoid FOUC
+  useLayoutEffect(() => {
     applyTheme(themePrefs);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -363,6 +367,7 @@ function App() {
               user={session ? { username: session.username } : null}
               activeMenu={activeMenu}
               themeMode={themePrefs.mode}
+              compactMode={themePrefs.compactMode}
               onLogout={handleLogout}
               onChangePassword={() => setChangeOpen(true)}
               onToggleTheme={toggleThemeMode}

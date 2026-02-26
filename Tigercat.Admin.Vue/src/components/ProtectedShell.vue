@@ -17,6 +17,7 @@ const toggleThemeMode = inject<() => void>('toggleThemeMode')!
   <MainLayout
     :session="session"
     :theme-mode="themePrefs.mode"
+    :compact-mode="themePrefs.compactMode"
     @logout="handleLogout"
     @change-password="changeOpen = true"
     @toggle-theme="toggleThemeMode"

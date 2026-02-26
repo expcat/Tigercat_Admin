@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, provide, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, provide, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ConfigProvider, Message } from '@expcat/tigercat-vue'
 import {
@@ -46,10 +46,8 @@ const toggleThemeMode = () => {
   updateTheme({ ...themePrefs.value, mode: next })
 }
 
-// Apply theme on mount & watch system changes
-onMounted(() => {
-  applyTheme(themePrefs.value)
-})
+// Apply theme immediately during setup (before first render)
+applyTheme(themePrefs.value)
 
 const unwatchSystem = watchSystemTheme(() => themePrefs.value)
 onUnmounted(() => unwatchSystem())

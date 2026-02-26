@@ -12,6 +12,7 @@ interface Session {
 const props = defineProps<{
   session: Session | null
   themeMode: ThemeMode
+  compactMode?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -23,7 +24,7 @@ const emit = defineEmits<{
 const route = useRoute()
 const router = useRouter()
 
-const collapsed = ref(false)
+const collapsed = ref(props.compactMode ?? false)
 
 const MENU_ROUTES = {
   home: 'dashboard',

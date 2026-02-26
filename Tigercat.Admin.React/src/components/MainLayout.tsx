@@ -7,6 +7,7 @@ interface MainLayoutProps {
   children: React.ReactNode;
   user: { username: string } | null;
   themeMode: ThemeMode;
+  compactMode?: boolean;
   onLogout: () => void;
   onChangePassword: () => void;
   onToggleTheme: () => void;
@@ -18,13 +19,14 @@ export function MainLayout({
   children,
   user,
   themeMode,
+  compactMode,
   onLogout,
   onChangePassword,
   onToggleTheme,
   activeMenu,
   onNavigate,
 }: MainLayoutProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(compactMode ?? false);
   const [internalActiveMenu, setInternalActiveMenu] = useState(
     activeMenu ?? 'home',
   );

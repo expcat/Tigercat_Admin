@@ -48,6 +48,7 @@ function getThemeLabel(mode: ThemeMode): string {
         @click="$emit('toggle-theme')" 
         class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)] transition-colors"
         :title="getThemeLabel(themeMode)"
+        :aria-label="getThemeLabel(themeMode)"
       >
         <Icon :name="getThemeIcon(themeMode)" :size="16" />
       </button>

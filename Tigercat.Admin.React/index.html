@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>tigercat-admin-react</title>
+    <script>
+      // Prevent FOUC: apply theme before framework mount
+      try {
+        var t = JSON.parse(localStorage.getItem('tigercat.admin.theme') || '{}');
+        var m = t.mode || 'system';
+        if (m === 'system') m = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        if (m === 'dark') document.documentElement.classList.add('dark');
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

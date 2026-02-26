@@ -13,6 +13,7 @@ import { SettingsIcon } from '../components/Icons';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest, getAuthHeaders } from '../utils';
 import { usePermission } from '../utils/permission';
+import { COLOR_PRESETS } from '../utils/constants';
 import type { SettingItem } from '../utils/types';
 
 const GROUP_LABELS: Record<string, string> = {
@@ -59,16 +60,10 @@ const SETTING_CONTROLS: Record<string, SettingControl> = {
   },
   'theme.primaryColor': {
     type: 'select',
-    options: [
-      { label: '蓝色 (#2563eb)', value: '#2563eb' },
-      { label: '紫色 (#7c3aed)', value: '#7c3aed' },
-      { label: '青色 (#0891b2)', value: '#0891b2' },
-      { label: '绿色 (#16a34a)', value: '#16a34a' },
-      { label: '橙色 (#ea580c)', value: '#ea580c' },
-      { label: '红色 (#dc2626)', value: '#dc2626' },
-      { label: '粉色 (#db2777)', value: '#db2777' },
-      { label: '灰色 (#475569)', value: '#475569' },
-    ],
+    options: COLOR_PRESETS.map((c) => ({
+      label: `${c.label} (${c.value})`,
+      value: c.value,
+    })),
   },
   'theme.compactMode': {
     type: 'switch',
