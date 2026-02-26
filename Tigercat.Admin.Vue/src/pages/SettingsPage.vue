@@ -1,17 +1,53 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, inject } from 'vue'
 import type { Ref } from 'vue'
-import { Card, Button, Input, Message, Text, Tag } from '@expcat/tigercat-vue'
+import { Card, Button, Input, Select, Switch, Message, Text, Tag } from '@expcat/tigercat-vue'
 import PageHeader from '../components/PageHeader.vue'
 import { apiRequest } from '../utils'
 import { usePermission } from '../utils/permission'
 import type { SettingItem, Session } from '../utils/types'
 
+/* ── 分组标签 ────────────────────────────────── */
 const GROUP_LABELS: Record<string, string> = {
   site: '站点设置',
   auth: '认证安全',
 }
 
+/* ── 控件类型映射 ────────────────────────────── */
+type SettingControl =
+  | { type: 'input' }
+  | { type: 'switch' }
+  | { type: 'select'; options: { label: string; value: string }[] }
+
+const SETTING_CONTROLS: Record<string, SettingControl> = {
+  'auth.sessionTimeout': {
+    type: 'select',
+    options: [
+      { label: '15 分钟', value: '15' },
+      { label: '30 分钟', value: '30' },
+      { label: '60 分钟', value: '60' },
+      { label: '2 小时', value: '120' },
+      { label: '8 小时', value: '480' },
+      { label: '24 小时', value: '1440' },
+    ],
+  },
+  'auth.maxAttempts': {
+    type: 'select',
+    options: [
+      { label: '3 次', value: '3' },
+      { label: '5 次', value: '5' },
+      { label: '10 次', value: '10' },
+      { label: '15 次', value: '15' },
+      { label: '20 次', value: '20' },
+    ],
+  },
+}
+
+function getControl(key: string): SettingControl {
+  return SETTING_CONTROLS[key] ?? { type: 'input' }
+}
+
+/* ── 状态 ────────────────────────────────────── */
 const session = inject<Ref<Session | null>>('session')!
 const authHeaders = computed(() =>
   session.value?.token ? { Authorization: `Bearer ${session.value.token}` } : {}
@@ -38,6 +74,7 @@ const hasChanges = computed(() =>
   settings.value.some(s => editValues.value[s.key] !== s.value)
 )
 
+/* ── API 操作 ────────────────────────────────── */
 async function fetchSettings() {
   try {
     loading.value = true
@@ -104,7 +141,29 @@ onMounted(fetchSettings)
                 <Text size="sm" weight="medium">{{ item.description ?? item.key }}</Text>
                 <Tag color="blue" size="sm">{{ item.key }}</Tag>
               </div>
+
+              <!-- Switch 控件 -->
+              <Switch
+                v-if="getControl(item.key).type === 'switch'"
+                :checked="editValues[item.key] === 'true'"
+                @update:checked="(val: boolean) => (editValues[item.key] = String(val))"
+                :disabled="!canEdit"
+              />
+
+              <!-- Select 控件 -->
+              <Select
+                v-else-if="getControl(item.key).type === 'select'"
+                :model-value="editValues[item.key] ?? ''"
+                :options="(getControl(item.key) as { type: 'select'; options: { label: string; value: string }[] }).options"
+                @update:model-value="(val: string) => (editValues[item.key] = String(val))"
+                :placeholder="`选择 ${item.description ?? item.key}`"
+                :disabled="!canEdit"
+                :clearable="false"
+              />
+
+              <!-- 默认 Input 控件 -->
               <Input
+                v-else
                 :model-value="editValues[item.key] ?? ''"
                 @update:model-value="(val: string) => (editValues[item.key] = val)"
                 :placeholder="`输入 ${item.key} 的值`"
