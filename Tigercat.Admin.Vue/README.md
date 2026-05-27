@@ -7,7 +7,7 @@ Tigercat Admin Vue3 前端实现，使用 Vite 构建。
 - Vue 3
 - Vite
 - PNPM
-- Tigercat UI (待集成)
+- Tigercat UI 1.2.0
 
 ## 运行
 
@@ -43,16 +43,15 @@ src/
 
 ```javascript
 fetch('/api/info')
-  .then(response => response.json())
-  .then(data => console.log(data))
+  .then((response) => response.json())
+  .then((data) => console.log(data));
 ```
 
 ### Tigercat UI 集成
 
-待 Tigercat UI Vue 版本就绪后进行集成。
+已集成 `@expcat/tigercat-vue` 与 `@expcat/tigercat-core` 1.2.0，组件文档见 https://expcat.github.io/Tigercat/vue/。
 
 ## 端口
 
 - 开发环境: 5173
 - 可通过环境变量 `PORT` 自定义
-

@@ -99,7 +99,7 @@ const goToLogin = () => {
           />
         </FormItem>
         <div class="mt-8 flex flex-col gap-3">
-          <Button variant="primary" block :loading="loading" type="button" @click="handleRegister">注册</Button>
+          <Button variant="primary" block :loading="loading" html-type="button" @click="handleRegister">注册</Button>
           <div class="text-center text-sm text-gray-500">
             已有账号？
             <button

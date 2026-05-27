@@ -96,7 +96,7 @@ function LoginPage({ onSuccess }: LoginPageProps) {
               variant="primary"
               block
               loading={loading}
-              type="button"
+              htmlType="button"
               onClick={handleLogin}>
               登录
             </Button>

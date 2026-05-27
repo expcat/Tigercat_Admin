@@ -18,8 +18,8 @@ Tigercat_Admin/
 ### 环境要求
 
 - .NET 10 SDK
-- Node.js 18+
-- PNPM 8+
+- Node.js 20.11+
+- PNPM 10+
 
 ### 安装依赖
 
@@ -85,13 +85,12 @@ pnpm dev
 - ✅ React 19 + Vite 前端
 - ✅ Tigercat UI 集成 (@expcat/tigercat-vue/react)
 - ✅ PNPM Workspace 管理
-- ✅ 基础健康检查 API
+- ✅ 认证、用户、角色、权限、统计、导出、设置 API
 - ✅ CORS 跨域支持
 - ✅ API 代理配置
 - ✅ 解决方案文件 (Tigercat.Admin.sln)
-- ⏳ 路由配置（待实现）
-- ⏳ 状态管理（待实现）
-- ⏳ 业务功能（待实现）
+- ✅ 双端路由、权限守卫与主布局
+- ✅ 用户/角色/设置/仪表板核心页面
 
 ## 🧩 架构说明
 
@@ -106,8 +105,8 @@ pnpm dev
 
 ### 前端 UI 规范
 
-- **Vue**: 尽量使用 [@expcat/tigercat-vue](https://raw.githubusercontent.com/expcat/Tigercat/refs/heads/main/docs/components-vue.md) 组件。
-- **React**: 尽量使用 [@expcat/tigercat-react](https://raw.githubusercontent.com/expcat/Tigercat/refs/heads/main/docs/components-react.md) 组件。
+- **Vue**: 尽量使用 [@expcat/tigercat-vue](https://expcat.github.io/Tigercat/vue/) 组件。
+- **React**: 尽量使用 [@expcat/tigercat-react](https://expcat.github.io/Tigercat/react/) 组件。
 - **约束**: 避免过多冗余样式，保持两端一致。
 - **反馈机制**: 发现组件库功能缺失或不满足需求时，请在 [docs/upstream-requirements.md](docs/upstream-requirements.md) 中记录。
 - 配置 CORS 支持跨域
@@ -120,8 +119,8 @@ pnpm dev
 - Vue3 和 React 两套独立实现
 - 使用 Vite 作为构建工具
 - 配置 API 代理
-- 基础管理后台界面
-- 预留 Tigercat UI 集成
+- Tigercat UI 1.2.0 管理后台界面
+- Tailwind CSS v4 modern 插件接入
 
 ## 📝 开发说明
 
@@ -133,11 +132,7 @@ pnpm dev
 
 ### Tigercat UI 集成
 
-待 Tigercat UI 组件库就绪后，按照以下步骤集成:
-
-1. 在前端项目中安装 Tigercat UI 包
-2. 配置组件库
-3. 替换基础组件为 Tigercat UI 组件
+当前已集成 `@expcat/tigercat-vue`、`@expcat/tigercat-react` 与 `@expcat/tigercat-core` 1.2.0。前端样式入口通过 Tailwind CSS v4 的 `@plugin "@expcat/tigercat-core/tailwind/modern"` 接入 Tigercat 现代主题，并通过 `@source` 扫描组件库产物。
 
 ## 📄 许可证
 

@@ -89,7 +89,7 @@ const goToRegister = () => {
             variant="primary"
             block
             :loading="loading"
-            type="button"
+            html-type="button"
             @click="handleLogin"
           >
             登录

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@expcat/tigercat-core/tailwind/modern";
 
 @source "../node_modules/@expcat/tigercat-react/dist/**/*.{js,mjs}";
 @source "../node_modules/@expcat/tigercat-core/dist/**/*.{js,mjs}";

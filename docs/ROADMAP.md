@@ -1,448 +1,151 @@
-# 开发路线图 (ROADMAP)
+# Tigercat Admin 路线图
 
-> **项目定位**：演示 & 验证项目，以模拟全功能后台管理系统为载体，磨合 .NET 10 + Tigercat UI 组件库，持续优化并反馈上游组件需求。
+> 项目定位：以 .NET 10 Aspire + Tigercat UI 为基础，验证 Vue 3 与 React 双端后台管理体验，并持续把真实业务场景中的组件诉求反馈给上游。
 
-**最后更新**：2026-02-26
-
----
-
-## 📌 项目愿景
-
-| 目标     | 说明                                                                                |
-| -------- | ----------------------------------------------------------------------------------- |
-| **演示** | 展示 .NET 10 + Tigercat UI 构建现代后台的最佳实践                                   |
-| **验证** | 覆盖 Tigercat UI 全部组件，验证真实场景下的可用性                                   |
-| **反馈** | 发现组件缺陷或需求，及时记录到 [upstream-requirements.md](upstream-requirements.md) |
-| **磨合** | 双前端（Vue/React）保持一致，验证组件库跨框架一致性                                 |
+最后更新：2026-05-27
 
 ---
 
-## 🏗️ 技术架构
+## 文档职责边界
 
-### 基础设施组件
-
-| 组件                    | 用途                              | Phase | 状态      |
-| ----------------------- | --------------------------------- | ----- | --------- |
-| **EF Core InMemory**    | 业务持久化（开发阶段）            | 1     | ✅ 已集成 |
-| **Redis**               | 缓存 + Streams 事件总线           | 1     | ✅ 已集成 |
-| **SQLite / PostgreSQL** | 业务持久化（生产切换）            | 4     | 📋 待做   |
-| **Aspire Dashboard**    | 服务编排 + 观测（日志/指标/链路） | 1     | ✅ 已集成 |
-
-### 服务通信模型
-
-| 模式         | 技术选型            | 适用场景                         |
-| ------------ | ------------------- | -------------------------------- |
-| **同步通信** | HTTP REST API       | 前端调用、查询、校验、强一致流程 |
-| **异步通信** | Redis Streams       | 事件驱动、削峰、最终一致、解耦   |
-| **实时推送** | SignalR (WebSocket) | 前端实时通知、消息推送           |
-
-### Redis 双客户端策略
-
-| 客户端                  | 用途             | 命令类型                                        |
-| ----------------------- | ---------------- | ----------------------------------------------- |
-| **StackExchange.Redis** | 常规缓存读写     | GET/SET、Hash、计数器（非阻塞）                 |
-| **FreeRedis**           | Streams 事件消费 | XADD、XREADGROUP(BLOCK)、XACK、XPENDING、XCLAIM |
+- 本文只记录当前基线、已完成模块的升级计划、后续重建计划和验证门禁。
+- API 细节以 [api.md](api.md) 为准。
+- 组件缺口与上游诉求以 [upstream-requirements.md](upstream-requirements.md) 为准。
+- Tigercat UI 最新使用方式以官方文档为准：[Vue 3](https://expcat.github.io/Tigercat/vue/) / [React](https://expcat.github.io/Tigercat/react/) / [迁移指南](https://raw.githubusercontent.com/expcat/Tigercat/main/docs/MIGRATION.md)。
 
 ---
 
-## 🎯 里程碑规划
+## 当前基线
 
-### Phase 1：基础设施升级 ✅ 已完成
+| 项目 | 当前状态                                                                                                    |
+| ---- | ----------------------------------------------------------------------------------------------------------- |
+| 后端 | .NET 10 Minimal API，Aspire 编排，EF Core InMemory / SQLite Provider，Redis 缓存与 Streams 事件总线         |
+| 前端 | Vue 3.5 与 React 19 双实现，Vite 构建，React Router / Vue Router 路由懒加载                                 |
+| UI   | `@expcat/tigercat-core` / `@expcat/tigercat-vue` / `@expcat/tigercat-react` 升级到 `1.2.0`                  |
+| 样式 | Tailwind CSS v4，CSS 入口使用 `@plugin "@expcat/tigercat-core/tailwind/modern"` 与 `@source` 扫描组件库产物 |
+| 文档 | API 文档覆盖认证、用户、角色、统计、导出、设置接口；Roadmap 改为活跃计划文档                                |
 
-> 完成日期：2026-02  
-> 内容：前端路由库（vue-router@4 / react-router-dom@6）集成、EF Core InMemory 改造（接口异步化 + 种子数据）、Redis 缓存 + Streams 事件总线、新增 UsersPage / RolesPage / SettingsPage / AboutPage 占位页面。
+### Tigercat 1.2.0 对齐项
 
-### Phase 2：用户与权限系统 ✅ 已完成
-
-> 完成日期：2026-02  
-> 内容：用户 CRUD（6 端点）、角色 CRUD（7 端点）、RBAC 权限控制（`PermissionFilter`）、前端权限指令/组件（Vue `v-permission` / React `PermissionGuard`）、双端 UsersPage + RolesPage 完整实现。  
-> 详见 [docs/api.md](api.md) 中的端点文档。
-
----
-
-### Phase 3：数据展示模块 📊
-
-> **目标**：实现仪表板增强、数据表格高级功能、图表展示、数据导出
-
-**前置依赖**：Phase 2 完成
-
-#### 3.1 仪表板增强
-
-**统计数据 API**：
-
-| 端点                      | 功能     | 返回数据                     |
-| ------------------------- | -------- | ---------------------------- |
-| `/api/stats/overview`     | 总览统计 | 用户数、角色数、今日登录数   |
-| `/api/stats/trend`        | 趋势数据 | 近 7/30 天用户增长、登录趋势 |
-| `/api/stats/distribution` | 分布数据 | 角色分布、权限使用分布       |
-
-**仪表板组件**：
-
-| 组件     | 说明                       | 组件验证                 |
-| -------- | -------------------------- | ------------------------ |
-| 统计卡片 | 用户数、角色数、今日登录等 | `Card`, `Badge`          |
-| 趋势图表 | 用户增长趋势、登录统计     | `LineChart`, `AreaChart` |
-| 饼图展示 | 角色分布、权限使用情况     | `PieChart`, `DonutChart` |
-| 柱状图   | 月度活跃用户对比           | `BarChart`               |
-| 数据刷新 | 手动/自动刷新机制          | `Button`, `Loading`      |
-| 时间筛选 | 日期范围选择器             | `DatePicker`             |
-
-#### 3.2 数据表格高级功能
-
-| 功能     | 说明             | 组件验证               |
-| -------- | ---------------- | ---------------------- |
-| 基础表格 | 列定义、数据绑定 | `Table`                |
-| 排序功能 | 列头点击排序     | `Table`                |
-| 筛选功能 | 列筛选器         | `Table`, `Select`      |
-| 分页功能 | 分页器集成       | `Pagination`           |
-| 行选择   | 单选/多选        | `Table`, `Checkbox`    |
-| 行展开   | 展开详情区域     | `Table`                |
-| 固定列   | 左右固定列       | `Table`                |
-| 自定义列 | 列显示/隐藏切换  | `Checkbox`, `Dropdown` |
-
-#### 3.3 数据导出
-
-**导出 API 设计**：
-
-| 端点                | 功能     | 参数         |
-| ------------------- | -------- | ------------ | ---- | ---------------- |
-| `/api/export/users` | 导出用户 | `?format=csv | xlsx | json&fields=...` |
-| `/api/export/roles` | 导出角色 | `?format=csv | xlsx | json`            |
-
-**前端实现**：
-
-- 导出按钮触发 API 请求
-- 使用 Blob 处理文件下载
-- 支持选择导出字段
-- 支持 CSV、Excel、JSON 格式
+| 项目                 | 状态   | 说明                                                                                                   |
+| -------------------- | ------ | ------------------------------------------------------------------------------------------------------ |
+| 依赖升级             | 已完成 | 两端 UI 包与 core 包升级到 `^1.2.0`                                                                    |
+| Tailwind modern 接入 | 已完成 | 两端 CSS 入口接入官方 modern 插件；保留 `@source` 以覆盖组件库 class 扫描                              |
+| Modal 可见性语义     | 已完成 | Vue 端从 `visible` 迁移到 `open` / `update:open`；React 端已使用 `open`                                |
+| Button 原生类型      | 已完成 | 双端登录/注册按钮使用 `htmlType` / `html-type`                                                         |
+| 文档链接             | 已完成 | Roadmap、README、子项目 README 与仓库指令均指向最新官方文档入口                                        |
+| 组件缺口复核         | 进行中 | 旧版缺口需要基于 1.2.0 重新验证，已知 `InputNumber`、`Layout`、`Sidebar`、`SubMenu` 均可导入并参与构建 |
 
 ---
 
-### Phase 4：系统设置与优化 ⚙️
+## 已完成模块升级规划
 
-> **目标**：系统配置功能、主题切换、性能优化、数据库切换验证
+已完成模块不再继续按旧 Phase 展开，而是按“升级目标 + 回归验证 + 可替换组件”管理。
 
-**前置依赖**：Phase 3 完成
-
-#### 4.1 系统设置页面
-
-**设置项设计**：
-
-| 分类     | 设置项               | 组件验证                    |
-| -------- | -------------------- | --------------------------- |
-| 基础设置 | 站点名称、Logo、描述 | `Input`, `Upload`           |
-| 安全设置 | 密码策略、会话时长   | `Input`, `Switch`, `Slider` |
-| 通知设置 | 邮件、消息配置       | `Switch`, `Input`           |
-
-**后端 API**：
-
-| 端点            | 方法 | 功能         |
-| --------------- | ---- | ------------ |
-| `/api/settings` | GET  | 获取系统设置 |
-| `/api/settings` | PUT  | 更新系统设置 |
-
-#### 4.2 主题与个性化
-
-| 功能     | 说明                | 组件验证                   |
-| -------- | ------------------- | -------------------------- |
-| 主题切换 | 亮色/暗色模式       | `Switch`, `ConfigProvider` |
-| 主色调   | 自定义主题色        | `ColorPicker`（如有）      |
-| 布局设置 | 侧边栏位置、宽度    | `Radio`, `Slider`          |
-| 偏好存储 | localStorage 持久化 | -                          |
-
-#### 4.3 数据库切换验证
-
-| 任务            | 说明                                        |
-| --------------- | ------------------------------------------- |
-| SQLite 集成     | 添加 `Microsoft.EntityFrameworkCore.Sqlite` |
-| 迁移脚本        | EF Core Migrations 生成与执行               |
-| 配置切换        | `appsettings.{env}.json` 多环境配置         |
-| 功能验证        | 全流程回归测试                              |
-| PostgreSQL 预留 | 文档说明 + 配置示例                         |
-
-#### 4.4 性能优化
-
-| 优化项       | 说明                         |
-| ------------ | ---------------------------- |
-| 路由懒加载   | `() => import('./Page.vue')` |
-| 组件按需引入 | Tree-shaking 优化包体积      |
-| API 响应缓存 | 适当的缓存策略（SWR 模式）   |
-| 虚拟滚动     | 大数据表格使用虚拟滚动优化   |
+| 模块       | 当前完成内容                                         | 1.2.0 升级重点                                                                    | 验证要求                                                       |
+| ---------- | ---------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 认证与会话 | 注册、登录、退出、修改密码、权限获取、Redis 审计事件 | 保持表单控件、按钮 loading 与错误反馈 API 对齐；补充会话过期体验                  | 双端登录/注册构建通过；后续补 E2E 登录流                       |
+| 主布局     | Header、Sidebar、路由保护、权限过滤菜单              | 复核 `Layout`、`Sidebar`、`Menu`、`SubMenu` 最新能力，减少自定义布局逻辑          | 桌面与窄屏菜单可用；权限过滤后不出现空分组                     |
+| 用户管理   | 分页、搜索、状态筛选、排序、行选择、批量删除、导出   | 尝试用 `DataTableWithToolbar` 或 `VirtualTable` 收敛表格组合逻辑；保留权限守卫    | 用户 CRUD、批量删除、导出 CSV/JSON/XLSX 回归                   |
+| 角色与权限 | 角色 CRUD、权限分组配置、角色导出                    | 复核 `Tree` / `TreeSelect` 是否更适合权限配置；保留扁平权限数据兼容               | 权限保存、Admin 保护规则、导出回归                             |
+| 仪表板     | 统计概览、趋势图、用户状态分布派生图表               | 引入更多 1.2.0 图表能力时优先复用现有 API 数据，不先扩接口                        | `/api/stats/overview`、`/api/stats/trend` 可用；图表空状态清晰 |
+| 系统设置   | 设置读取、批量更新、主题/安全/站点配置表单           | 用 `InputNumber`、`ColorPicker`、`Segmented` 等新版组件替换临时 Select/Input 方案 | 设置保存后双端状态一致，非法值提示清楚                         |
+| 数据导出   | 用户/角色导出，支持 `csv`、`json`、`xlsx` 与字段选择 | 评估 `@expcat/tigercat-core/utils/table-export` 是否能减少本地导出辅助逻辑        | 文件名、内容类型、字段过滤和权限校验回归                       |
 
 ---
 
-## 🧩 组件覆盖矩阵
+## 后续重建路线
 
-> 追踪 Tigercat UI 组件在项目中的使用情况，确保全面验证
+### Milestone A：1.2.0 升级收口
 
-### 基础组件 (Basic)
+目标：完成依赖升级后的兼容性回归，把旧版“上游缺失”判断全部重新审计。
 
-| 组件      | 计划场景                 | Phase | 状态        |
-| --------- | ------------------------ | ----- | ----------- |
-| `Button`  | 全局：表单提交、操作按钮 | 1     | ✅ 已使用   |
-| `Icon`    | 全局：菜单图标、操作图标 | 1     | 📋 待验证   |
-| `Text`    | 全局：文本展示           | 1     | ✅ 已使用   |
-| `Code`    | 关于页：版本信息展示     | 4     | ✅ 组件可用 |
-| `Link`    | 全局：链接跳转           | 1     | 📋 待验证   |
-| `Tag`     | 用户列表：状态标签       | 2     | ✅ 已使用   |
-| `Badge`   | 仪表板：统计数字         | 3     | 📋 待验证   |
-| `Avatar`  | 用户头像展示             | 2     | ✅ 已使用   |
-| `Divider` | 表单分隔、内容分隔       | 2     | 📋 待验证   |
+- [x] 升级 `@expcat/tigercat-core`、`@expcat/tigercat-vue`、`@expcat/tigercat-react` 到 `1.2.0`。
+- [x] 按迁移指南处理 `Modal visible -> open` 与 `Button type -> htmlType`。
+- [x] 按最新文档接入 Tailwind v4 modern 插件。
+- [x] 更新 README、子项目 README 与仓库 Copilot 指南中的 Tigercat 文档链接。
+- [ ] 基于 1.2.0 重跑组件覆盖清单，关闭已不再成立的上游需求。
+- [ ] 整理构建产物与 lockfile 策略，明确根 workspace lockfile 为准还是保留子项目 lockfile。
 
-### 布局组件 (Layout)
+### Milestone B：后台骨架重建
 
-| 组件           | 计划场景           | Phase | 状态                                    |
-| -------------- | ------------------ | ----- | --------------------------------------- |
-| `Space`        | 按钮组、表单项间距 | 1     | ✅ 已使用                               |
-| `Grid`         | 仪表板卡片布局     | 3     | 📋 待验证                               |
-| `Layout`       | 主布局框架         | 1     | 🔄 上游待完善                           |
-| `Card`         | 仪表板统计卡片     | 3     | ✅ 已使用                               |
-| `Collapse`     | 设置页分组折叠     | 4     | ✅ 组件可用（设置页使用 Card 分组替代） |
-| `List`         | 操作日志列表       | 3     | 📋 待验证                               |
-| `Descriptions` | 用户详情展示       | 2     | ⏭️ 跳过（Phase 2 使用 Modal 展示详情）  |
-| `Skeleton`     | 加载占位           | 2     | 📋 待验证                               |
+目标：把自定义布局逻辑逐步迁移到 Tigercat 1.2.0 原生组件能力上。
 
-### 表单组件 (Form)
+- [ ] 用最新版 `Layout` / `Sidebar` / `Menu` / `SubMenu` 复核并重构 `MainLayout`、`MainSidebar`、`MainHeader`。
+- [ ] 增加 `Breadcrumb`，让用户、角色、设置、关于页拥有一致导航层级。
+- [ ] 引入 `Dropdown` 或 `Popover` 统一用户菜单、主题切换、快捷操作入口。
+- [ ] 处理移动端侧边栏折叠、遮罩关闭与键盘可访问性。
 
-| 组件            | 计划场景           | Phase | 状态                                        |
-| --------------- | ------------------ | ----- | ------------------------------------------- |
-| `Form`          | 全局：表单容器     | 1     | ✅ 已使用                                   |
-| `Input`         | 全局：文本输入     | 1     | ✅ 已使用                                   |
-| `InputNumber`   | 设置页：数值配置   | 4     | ❌ 上游缺失（组件库未提供，已记录上游需求） |
-| `Textarea`      | 角色描述、备注     | 2     | 📋 待验证                                   |
-| `Select`        | 用户角色选择、筛选 | 2     | ✅ 已使用                                   |
-| `Checkbox`      | 权限多选           | 2     | ✅ 已使用                                   |
-| `CheckboxGroup` | 批量权限配置       | 2     | ⏭️ 跳过（使用独立 Checkbox 实现）           |
-| `Radio`         | 单选配置项         | 4     | ✅ 组件可用（设置页使用 Select 替代）        |
-| `RadioGroup`    | 布局选择           | 4     | ✅ 组件可用（设置页使用 Select 替代）        |
-| `Switch`        | 设置页：开关控件   | 4     | ✅ 已使用（SettingsPage `theme.compactMode`）|
-| `Slider`        | 会话时长设置       | 4     | ✅ 组件可用（设置页使用 Select 替代）        |
-| `DatePicker`    | 时间范围筛选       | 3     | 📋 待验证                                   |
-| `TimePicker`    | 定时任务配置       | 4     | ✅ 组件可用（当前无定时设置场景）           |
-| `Upload`        | 头像上传、Logo上传 | 4     | ✅ 组件可用（当前无文件上传场景）           |
+### Milestone C：数据工作台重建
 
-### 导航组件 (Navigation)
+目标：让用户和角色模块成为 Tigercat 表格高级能力的主验证场景。
 
-| 组件         | 计划场景       | Phase | 状态                                         |
-| ------------ | -------------- | ----- | -------------------------------------------- |
-| `Breadcrumb` | 页面导航路径   | 1     | 📋 待验证                                    |
-| `Menu`       | 侧边栏菜单     | 1     | ✅ 已使用                                    |
-| `Tabs`       | 用户详情多标签 | 2     | ⏭️ 跳过（Phase 2 未实现多标签详情）          |
-| `Pagination` | 列表分页       | 2     | ✅ 已使用                                    |
-| `Steps`      | 向导式表单     | 4     | ✅ 组件可用（当前无向导式表单场景）          |
-| `Tree`       | 权限树、组织树 | 2     | ⏭️ 跳过（权限使用扁平 Checkbox/Select 实现） |
+- [ ] 评估 `DataTableWithToolbar` 是否能替代当前手写 Card + Toolbar + Table 组合。
+- [ ] 对大数据列表引入 `VirtualTable` 或服务端分页边界提示，避免前端误用大数组渲染。
+- [ ] 使用 `Tooltip`、`Popover`、`Dropdown` 规范行操作、列配置与危险操作确认。
+- [ ] 复核 Table 固定列、列显隐、排序、选择、分页在 Vue/React 的 API 差异。
 
-### 反馈/浮层组件 (Feedback)
+### Milestone D：权限与设置体验重建
 
-| 组件           | 计划场景           | Phase | 状态                                       |
-| -------------- | ------------------ | ----- | ------------------------------------------ |
-| `Message`      | 全局：操作反馈     | 1     | ✅ 已使用                                  |
-| `Modal`        | 确认弹窗、表单弹窗 | 2     | ✅ 已使用                                  |
-| `Notification` | 系统通知           | 3     | 📋 待验证                                  |
-| `Alert`        | 警告信息展示       | 2     | ✅ 已使用                                  |
-| `Drawer`       | 用户详情抽屉       | 2     | ⏭️ 跳过（Phase 2 使用 Modal 替代）         |
-| `Popover`      | 快捷操作面板       | 3     | 📋 待验证                                  |
-| `Popconfirm`   | 删除确认           | 2     | ⏭️ 跳过（Phase 2 使用 Modal 实现删除确认） |
-| `Tooltip`      | 图标/按钮提示      | 2     | 📋 待验证                                  |
-| `Dropdown`     | 用户菜单、更多操作 | 1     | 📋 待验证                                  |
-| `Loading`      | 加载状态           | 1     | 📋 待验证                                  |
-| `Progress`     | 上传进度、任务进度 | 4     | ✅ 组件可用（当前无进度展示场景）          |
+目标：让权限配置和系统设置从“能用”升级为“可长期维护”。
 
-### 数据展示组件 (Data)
+- [ ] 权限配置评估 `Tree` / `TreeSelect` / `Transfer`，保留扁平权限数据并提供分组视图。
+- [ ] 设置页用 `InputNumber` 管理数值配置，用 `ColorPicker` 管理主题色，用 `Segmented` 管理轻量选项。
+- [ ] 增加设置变更确认与恢复默认值流程，优先使用 `Popconfirm` / `Modal`。
+- [ ] 为站点 Logo 与头像预留 `Upload` / `CropUpload` 场景。
 
-| 组件       | 计划场景           | Phase | 状态      |
-| ---------- | ------------------ | ----- | --------- |
-| `Table`    | 用户列表、角色列表 | 2     | ✅ 已使用 |
-| `Timeline` | 操作日志时间线     | 3     | 📋 待验证 |
+### Milestone E：可观测与运维扩展
 
-### 图表组件 (Charts)
+目标：把 Redis Streams、审计事件和导出能力扩展为真实后台常见工作流。
 
-| 组件         | 计划场景           | Phase | 状态        |
-| ------------ | ------------------ | ----- | ----------- |
-| `LineChart`  | 用户增长趋势       | 3     | ✅ 已使用   |
-| `AreaChart`  | 登录统计趋势       | 3     | 📋 待验证   |
-| `BarChart`   | 月度活跃对比       | 3     | ✅ 已使用   |
-| `PieChart`   | 角色分布           | 3     | ✅ 已使用   |
-| `DonutChart` | 权限使用分布       | 3     | 📋 待验证   |
-| `RadarChart` | 用户能力图（可选） | 4     | ✅ 组件可用 |
-
-### Phase 3 图表/表格组件覆盖验证小结
-
-> 验证日期：2026-02-25（Issue #53）
-
-#### 图表组件验证
-
-| 组件         | Vue 项目    | React 项目  | 使用场景说明                                                    |
-| ------------ | ----------- | ----------- | --------------------------------------------------------------- |
-| `LineChart`  | ✅ HomePage | ✅ HomePage | 用户创建趋势（7/14/30/90 天切换），数据源 `/api/stats/trend`    |
-| `BarChart`   | ✅ HomePage | ✅ HomePage | 用户概览柱状图（总用户/活跃/禁用/角色/权限）                    |
-| `PieChart`   | ✅ HomePage | ✅ HomePage | 用户状态分布饼图，数据源 `/api/stats/distribution`              |
-| `AreaChart`  | ✅ 组件可用 | ✅ 组件可用 | 已验证导出可用，与 LineChart API 一致（含 stacked/fillOpacity） |
-| `DonutChart` | ✅ 组件可用 | ✅ 组件可用 | 已验证导出可用，与 PieChart API 一致（含 innerRadiusRatio）     |
-| `RadarChart` | ✅ 组件可用 | ✅ 组件可用 | Phase 4 计划使用，已验证组件存在且可导入                        |
-
-**附加图表基础组件**：`ChartAxis`、`ChartCanvas`、`ChartGrid`、`ChartLegend`、`ChartSeries`、`ChartTooltip`、`ScatterChart` 均已验证双端可用。
-
-#### 表格高级能力验证
-
-| 能力         | 组件 API 支持                                        | 双端实际使用            | 说明                                                         |
-| ------------ | ---------------------------------------------------- | ----------------------- | ------------------------------------------------------------ |
-| 基础表格     | ✅ `Table`                                           | ✅ UsersPage, RolesPage | 列定义、数据绑定                                             |
-| 排序功能     | ✅ `sortable` + `SortState`                          | ✅ UsersPage            | 列头点击排序，支持自定义 `sortFn`                            |
-| 筛选功能     | ✅ `ColumnFilter` (text/select/custom)               | ⚠️ 使用外部 Select 实现 | Table 内置列筛选器可用，当前项目使用工具栏 `Select` 实现筛选 |
-| 分页功能     | ✅ `PaginationConfig`                                | ✅ UsersPage, RolesPage | 通过 Table `pagination` prop 集成，支持页码/每页条数切换     |
-| 行选择       | ✅ `RowSelectionConfig` (checkbox/radio)             | ✅ UsersPage            | 多选用于批量删除操作                                         |
-| 行展开       | ❌ 不支持                                            | ❌ 未实现               | Table 组件无 expandable row API，已记录上游需求              |
-| 固定列       | ✅ `fixed: 'left' &#124; 'right'` + `columnLockable` | ✅ UsersPage            | 支持左/右固定列及列头锁定按钮                                |
-| 自定义列     | ✅ `render` + `renderHeader`                         | ✅ UsersPage            | 通过 `Popover` 实现列显示/隐藏切换                           |
-| 高级组合表格 | ✅ `DataTableWithToolbar`                            | ❌ 未使用               | 组件可用，当前手动组合 Card + 工具栏 + Table                 |
-
-**双端一致性说明**：
-
-- Vue 与 React 的图表组件（LineChart、BarChart、PieChart）使用方式和 API 完全一致
-- 表格高级功能（排序、行选择、固定列、分页）双端保持一致实现
-- 列显示/隐藏功能双端均通过 `Popover` + `Checkbox` 手动实现
+- [ ] 新增审计日志页面，使用 `Timeline` / `ActivityFeed` 展示认证与用户管理事件。
+- [ ] 新增通知中心，验证 `Notification` / `NotificationCenter` / `Badge`。
+- [ ] 新增任务面板，验证 `TaskBoard` 或 `Kanban` 作为后续异步任务入口。
+- [ ] 完成 SQLite 开发持久化与 PostgreSQL 生产配置文档，补充数据库切换回归测试。
 
 ---
 
-### Phase 4 组件覆盖验证小结
+## 组件覆盖重审清单
 
-> 验证日期：2026-02-26（Issue #64）
+Tigercat 1.2.0 已提供 133+ 组件，Roadmap 不再维护完整组件字典，只保留本项目近期需要优先验证的组件集合。
 
-#### 表单 / 设置相关组件验证
-
-| 组件          | Vue 项目        | React 项目      | 使用场景说明                                                            |
-| ------------- | --------------- | --------------- | ----------------------------------------------------------------------- |
-| `Switch`      | ✅ SettingsPage | ✅ SettingsPage | `theme.compactMode` 开关，Phase 2 跳过后在 Phase 4 设置页正式使用       |
-| `Collapse`    | ✅ 组件可用     | ✅ 组件可用     | 已验证导出可用（含 `CollapsePanel`），设置页使用 Card 分组替代          |
-| `Radio`       | ✅ 组件可用     | ✅ 组件可用     | 已验证导出可用（含 `RadioGroup`），设置页 `theme.mode` 使用 Select 替代 |
-| `Slider`      | ✅ 组件可用     | ✅ 组件可用     | 已验证导出可用，设置页 `auth.sessionTimeout` 使用 Select 预选值替代     |
-| `TimePicker`  | ✅ 组件可用     | ✅ 组件可用     | 已验证导出可用，当前无定时配置场景，后续可用                            |
-| `InputNumber` | ❌ 不可用       | ❌ 不可用       | 组件库未提供此组件，已记录上游需求                                      |
-| `Upload`      | ✅ 组件可用     | ✅ 组件可用     | 已验证导出可用（含 `CropUpload`、`ImageCropper`），当前无文件上传场景   |
-| `Code`        | ✅ 组件可用     | ✅ 组件可用     | 已验证导出可用，AboutPage 可选用于版本信息展示                          |
-| `Steps`       | ✅ 组件可用     | ✅ 组件可用     | 已验证导出可用（含 `StepsItem`），当前无向导式表单场景                  |
-| `Progress`    | ✅ 组件可用     | ✅ 组件可用     | 已验证导出可用，当前无进度展示场景                                      |
-
-#### 设计决策说明
-
-| 组件          | 原计划场景     | 实际方案       | 说明                                                 |
-| ------------- | -------------- | -------------- | ---------------------------------------------------- |
-| `Collapse`    | 设置页分组折叠 | Card 分组      | 设置项较少，Card 平铺比折叠面板体验更直观            |
-| `Radio`       | 主题模式单选   | Select 下拉    | 选项较少（浅色/深色/跟随系统），Select 更节省空间    |
-| `Slider`      | 会话时长设置   | Select 预选值  | 会话时长为离散值（15/30/60/120 分钟），Select 更合适 |
-| `InputNumber` | 设置页数值配置 | Select / Input | 组件库未提供 InputNumber，使用 Select 预设选项替代   |
-| `TimePicker`  | 定时任务配置   | 未实现         | 当前无需时间选择的设置项                             |
-
-**双端一致性说明**：
-
-- Vue 与 React 的 SettingsPage 使用完全一致的组件组合（Card、Input、Select、Switch、Tag、Text）
-- 设置分组、控件映射逻辑（`SETTING_CONTROLS`）双端保持相同实现
-- `Switch` 组件在 Phase 4 设置页中正式投入使用，验证了 `checked` / `onChange` 等核心 API
+| 场景       | 优先组件                                                                            | 目标                               |
+| ---------- | ----------------------------------------------------------------------------------- | ---------------------------------- |
+| 应用骨架   | `Layout`、`Sidebar`、`Menu`、`SubMenu`、`Breadcrumb`、`Dropdown`                    | 减少自定义后台框架代码             |
+| 表格工作台 | `Table`、`VirtualTable`、`DataTableWithToolbar`、`Popover`、`Tooltip`、`Popconfirm` | 统一用户/角色列表交互              |
+| 表单设置   | `Form`、`Input`、`InputNumber`、`ColorPicker`、`Segmented`、`Switch`、`Slider`      | 设置页从临时控件升级到语义化控件   |
+| 权限配置   | `Tree`、`TreeSelect`、`Transfer`、`Checkbox`、`Tabs`                                | 支持复杂权限分组与批量配置         |
+| 仪表板     | `Statistic`、`LineChart`、`BarChart`、`PieChart`、`DonutChart`、`GaugeChart`        | 扩展统计展示，不重复造图表封装     |
+| 运维扩展   | `Timeline`、`ActivityFeed`、`NotificationCenter`、`TaskBoard`、`FileManager`        | 支撑审计、通知、任务、文件管理计划 |
 
 ---
 
-### Phase 2 组件覆盖验证小结
+## 上游需求处理规则
 
-> 验证日期：2026-02-25（Issue #42）
-
-**已验证通过的 Phase 2 组件**：
-
-| 组件         | Vue 项目                      | React 项目                    | 使用场景说明                                  |
-| ------------ | ----------------------------- | ----------------------------- | --------------------------------------------- |
-| `Table`      | ✅ UsersPage, RolesPage       | ✅ UsersPage, RolesPage       | 用户/角色列表展示，支持排序、行选择           |
-| `Pagination` | ✅ 通过 Table pagination prop | ✅ 通过 Table pagination prop | 分页切换、每页条数切换，非独立组件            |
-| `Tag`        | ✅ UsersPage, RolesPage       | ✅ UsersPage, RolesPage       | 用户状态标签、角色标签、权限数/关联用户数展示 |
-| `Select`     | ✅ UsersPage, RolesPage       | ✅ UsersPage, RolesPage       | 状态筛选、角色多选、权限多选                  |
-| `Checkbox`   | ✅ RolesPage                  | ✅ RolesPage                  | 权限配置弹窗使用分组 Checkbox（含全选/半选）  |
-| `Modal`      | ✅ UsersPage, RolesPage       | ✅ UsersPage, RolesPage       | 创建/编辑表单弹窗、删除确认弹窗               |
-| `Alert`      | ✅ HomePage, AboutPage        | ✅ HomePage, AboutPage        | 信息提示展示                                  |
-| `Avatar`     | ✅ MainHeader                 | ✅ MainHeader                 | 用户头像展示                                  |
-
-**设计决策导致跳过的组件**：
-
-| 组件            | 原计划场景     | 实际替代方案                              | 说明                                     |
-| --------------- | -------------- | ----------------------------------------- | ---------------------------------------- |
-| `Tree`          | 权限树形展示   | Checkbox 分组 (Vue) / Select 多选 (React) | 当前权限结构为扁平列表，无需树形展示     |
-| `Drawer`        | 用户详情抽屉   | Modal 弹窗                                | 用户详情通过编辑弹窗查看，无独立详情视图 |
-| `Switch`        | 用户启用/禁用  | Select 下拉选择                           | Phase 2 跳过，Phase 4 设置页已使用       |
-| `Popconfirm`    | 删除确认       | Modal 确认弹窗                            | 删除操作通过独立 Modal 进行二次确认      |
-| `Tabs`          | 用户详情多标签 | 未实现                                    | Phase 2 未实现多标签详情视图             |
-| `CheckboxGroup` | 批量权限配置   | 独立 Checkbox                             | Vue 端使用独立 Checkbox 实现分组逻辑     |
-| `Descriptions`  | 用户详情展示   | Modal 内 Form                             | 详情通过编辑表单展示                     |
-
-**双端一致性说明**：
-
-- Vue 与 React 在核心组件（Table, Tag, Select, Modal, Form, Checkbox）的使用上保持一致
-- 权限配置弹窗双端均使用分组 `Checkbox` 实现，支持组级全选/半选状态
+1. 先用 Tigercat 1.2.0 官方文档和本地构建验证确认缺口是否仍存在。
+2. 若组件已提供能力，优先改造本项目实现并关闭旧需求。
+3. 若组件存在但 API 不满足后台场景，在 [upstream-requirements.md](upstream-requirements.md) 记录具体平台、期望 API、业务场景和替代方案。
+4. 涉及上游 breaking change 时，同步检查官方 [迁移指南](https://raw.githubusercontent.com/expcat/Tigercat/main/docs/MIGRATION.md) 与本项目双端代码。
 
 ---
 
-## 📋 任务看板
+## 验证门禁
 
-### Phase 1 - 基础设施升级 ✅
-
-> 已完成：前端路由升级（双端）、EF Core InMemory 集成、Redis 缓存 + Streams 事件总线、新增页面占位。
-
-### Phase 2 - 用户与权限系统 ✅
-
-> 已完成：User/Role/Permission CRUD API、PermissionFilter 中间件、双端 UsersPage + RolesPage、权限控制（Vue `v-permission` / React `PermissionGuard`）、api.md 文档更新。
-
----
-
-### Phase 3 - 数据展示模块
-
-- [ ] **[后端]** 实现统计数据 API（overview, trend, distribution）
-- [ ] **[后端]** 实现数据导出 API
-- [ ] **[双端]** 仪表板图表集成
-- [ ] **[双端]** 数据表格高级功能（排序、筛选、固定列）
-- [ ] **[双端]** 数据导出功能
-- [x] **[验证]** 测试全部图表组件（#53）
+| 改动类型             | 最小验证                                                           |
+| -------------------- | ------------------------------------------------------------------ |
+| Tigercat UI 依赖升级 | `pnpm install`、`pnpm build`                                       |
+| React 前端改动       | `pnpm --filter tigercat-admin-react build`                         |
+| Vue 前端改动         | `pnpm --filter tigercat-admin-vue build`                           |
+| API 改动             | `dotnet test Tigercat.Admin.sln`，并确认 [api.md](api.md) 同步更新 |
+| Roadmap / docs only  | 检查链接、状态与当前代码一致，必要时运行 Markdown 格式检查         |
+| 组件覆盖重审         | 记录组件是否真实导入、构建通过、双端交互一致，以及是否需要上游需求 |
 
 ---
 
-### Phase 4 - 系统设置与优化
+## 近期任务看板
 
-- [ ] **[后端]** 系统设置 CRUD API
-- [ ] **[后端]** SQLite Provider 集成 + Migrations
-- [ ] **[双端]** 设置页面实现
-- [ ] **[双端]** 主题切换功能
-- [ ] **[双端]** 路由懒加载优化
-- [ ] **[测试]** 数据库切换回归测试
-- [x] **[验证]** 剩余组件覆盖验证（#64）
-
----
-
-## 🔗 上游需求管理
-
-### 流程说明
-
-1. **发现问题**：在开发过程中发现组件缺陷或功能缺失
-2. **记录需求**：在 [upstream-requirements.md](upstream-requirements.md) 添加详细描述
-3. **标注状态**：在本文档相关任务标注 `🔄 上游依赖`
-4. **跟踪进展**：定期检查上游仓库更新，同步状态
-5. **验证完成**：上游修复后进行验证，更新两份文档
-
-### 当前上游依赖项
-
-| 需求              | 阻塞任务       | 上游状态  | 替代方案            |
-| ----------------- | -------------- | --------- | ------------------- |
-| Menu submenu 支持 | 侧边栏多级菜单 | ⏳ 待处理 | 先用单级菜单        |
-| Layout 组件       | 主布局框架     | ⏳ 待处理 | 自行实现 MainLayout |
-| Sidebar 组件      | 侧边栏折叠     | ⏳ 待处理 | 自行实现折叠逻辑    |
-| Table 行展开      | 数据表格行展开 | ⏳ 待处理 | 暂不实现该功能      |
-| InputNumber 组件  | 设置页数值配置 | ⏳ 待处理 | 使用 Select/Input   |
-
----
-
-## 📝 变更日志
-
-| 日期       | 变更内容                                                                                 |
-| ---------- | ---------------------------------------------------------------------------------------- |
-| 2026-02-26 | Phase 4 组件覆盖验证完成（Collapse/Radio/Slider/TimePicker 等），更新覆盖矩阵状态（#64） |
-| 2026-02-25 | Phase 3 图表/表格组件覆盖验证完成，更新覆盖矩阵状态（#53）                               |
-| 2026-02-25 | 精简 ROADMAP：压缩已完成的 Phase 1/2 详细设计，保留 Phase 3/4 规划                       |
-| 2026-02-25 | Phase 2 组件覆盖验证完成，更新覆盖矩阵状态（#42）                                        |
-| 2026-01-30 | 优化 ROADMAP 结构，增加详细改造说明、接口设计、代码示例                                  |
-| 2026-01-28 | 新增 Redis Streams 事件总线架构设计，补充基础设施组件规划                                |
-| 2026-01-28 | 初始化开发路线图，规划四阶段里程碑                                                       |
+- [x] 升级 Tigercat UI 到 `1.2.0` 并完成前端生产构建验证。
+- [x] 重写 Roadmap，按最新 Tigercat 文档规划已完成模块升级与后续重建。
+- [x] 更新 README 与 `.github/copilot-instructions.md` 中的 Tigercat 官方文档链接。
+- [ ] 重审 [upstream-requirements.md](upstream-requirements.md)，移除或更新 1.2.0 已解决的历史缺口。
+- [ ] 补充用户/角色/设置核心流程的 E2E 回归计划。

@@ -1,6 +1,3 @@
-/** @type {import('tailwindcss').Config} */
-import { tigercatPlugin } from '@expcat/tigercat-core';
-
 export default {
   darkMode: 'class',
   content: [
@@ -11,5 +8,5 @@ export default {
   theme: {
     extend: {},
   },
-  plugins: [tigercatPlugin],
+  plugins: [],
 };

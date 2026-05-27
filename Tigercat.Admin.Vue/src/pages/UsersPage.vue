@@ -566,13 +566,13 @@ onMounted(() => {
 
     <!-- Create / Edit Modal -->
     <Modal
-      :visible="modalVisible"
+      :open="modalVisible"
       :title="modalTitle"
       ok-text="确定"
       cancel-text="取消"
       @ok="handleSubmit"
       @cancel="modalVisible = false"
-      @close="modalVisible = false"
+      @update:open="modalVisible = $event"
     >
       <Form :model="formData" :label-width="88">
         <FormItem label="用户名" name="username">
@@ -618,13 +618,13 @@ onMounted(() => {
 
     <!-- Single Delete Confirm -->
     <Modal
-      :visible="deleteConfirmVisible"
+      :open="deleteConfirmVisible"
       title="确认删除"
       ok-text="确认删除"
       cancel-text="取消"
       @ok="confirmDelete"
       @cancel="deleteConfirmVisible = false"
-      @close="deleteConfirmVisible = false"
+      @update:open="deleteConfirmVisible = $event"
     >
       <p class="text-slate-600">
         确定要删除用户
@@ -635,13 +635,13 @@ onMounted(() => {
 
     <!-- Batch Delete Confirm -->
     <Modal
-      :visible="batchDeleteConfirmVisible"
+      :open="batchDeleteConfirmVisible"
       title="确认批量删除"
       ok-text="确认删除"
       cancel-text="取消"
       @ok="confirmBatchDelete"
       @cancel="batchDeleteConfirmVisible = false"
-      @close="batchDeleteConfirmVisible = false"
+      @update:open="batchDeleteConfirmVisible = $event"
     >
       <p class="text-slate-600">
         确定要删除选中的
@@ -652,13 +652,13 @@ onMounted(() => {
 
     <!-- Export Modal -->
     <Modal
-      :visible="exportModalVisible"
+      :open="exportModalVisible"
       title="导出用户数据"
       ok-text="导出"
       cancel-text="取消"
       @ok="handleExport"
       @cancel="exportModalVisible = false"
-      @close="exportModalVisible = false"
+      @update:open="exportModalVisible = $event"
     >
       <Form :label-width="88">
         <FormItem label="导出格式">

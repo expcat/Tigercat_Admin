@@ -8,7 +8,7 @@ Tigercat Admin React 前端实现，使用 Vite 构建。
 - Vite
 - PNPM
 - ESLint
-- Tigercat UI (待集成)
+- Tigercat UI 1.2.0
 
 ## 运行
 
@@ -48,13 +48,13 @@ src/
 
 ```javascript
 fetch('/api/info')
-  .then(response => response.json())
-  .then(data => console.log(data))
+  .then((response) => response.json())
+  .then((data) => console.log(data));
 ```
 
 ### Tigercat UI 集成
 
-待 Tigercat UI React 版本就绪后进行集成。
+已集成 `@expcat/tigercat-react` 与 `@expcat/tigercat-core` 1.2.0，组件文档见 https://expcat.github.io/Tigercat/react/。
 
 ## 端口
 
@@ -66,4 +66,3 @@ fetch('/api/info')
 - 与 Vue3 版本保持界面和交互一致
 - 使用 React Hooks 进行状态管理
 - 遵循 ESLint 代码规范
-
