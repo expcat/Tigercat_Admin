@@ -1,18 +1,18 @@
 import React from 'react';
-import { Text, Avatar, Header } from '@expcat/tigercat-react';
 import {
-  HomeIcon,
-  LockIcon,
-  LogOutIcon,
-  SunIcon,
-  MoonIcon,
-  MonitorIcon,
-} from './Icons';
+  Text,
+  Avatar,
+  Header,
+  Breadcrumb,
+  BreadcrumbItem,
+} from '@expcat/tigercat-react';
+import { LockIcon, LogOutIcon, SunIcon, MoonIcon, MonitorIcon } from './Icons';
 import type { ThemeMode } from '../utils/types';
 import { resolveEffectiveMode } from '../utils/theme';
 
 interface MainHeaderProps {
   session: { username: string } | null;
+  pageTitle: string;
   themeMode: ThemeMode;
   onLogout: () => void;
   onChangePassword: () => void;
@@ -36,6 +36,7 @@ function getThemeLabel(mode: ThemeMode): string {
 
 export function MainHeader({
   session,
+  pageTitle,
   themeMode,
   onLogout,
   onChangePassword,
@@ -43,19 +44,17 @@ export function MainHeader({
 }: MainHeaderProps) {
   return (
     <Header className="flex items-center justify-between px-6 shadow-sm z-10">
-      {/* 左侧标题 */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-[var(--tiger-text-secondary,#64748b)]">
-            <HomeIcon size={24} />
-          </span>
-          <Text
-            size="lg"
-            weight="bold"
-            className="text-[var(--tiger-text,#1f2937)]">
-            管理中心
-          </Text>
-        </div>
+      <div className="flex min-w-0 flex-col gap-1 py-3">
+        <Text
+          size="lg"
+          weight="bold"
+          className="text-[var(--tiger-text,#1f2937)]">
+          管理中心
+        </Text>
+        <Breadcrumb className="text-sm text-[var(--tiger-text-secondary,#64748b)]">
+          <BreadcrumbItem>管理中心</BreadcrumbItem>
+          <BreadcrumbItem current>{pageTitle}</BreadcrumbItem>
+        </Breadcrumb>
       </div>
 
       {/* 右侧操作区 */}

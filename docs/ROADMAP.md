@@ -2,7 +2,7 @@
 
 > 项目定位：以 .NET 10 Aspire + Tigercat UI 为基础，验证 Vue 3 与 React 双端后台管理体验，并持续把真实业务场景中的组件诉求反馈给上游。
 
-最后更新：2026-05-27
+最后更新：2026-05-28
 
 ---
 
@@ -27,13 +27,13 @@
 
 ### Tigercat 1.2.0 对齐项
 
-| 项目                 | 状态   | 说明                                                                                                   |
-| -------------------- | ------ | ------------------------------------------------------------------------------------------------------ |
-| 依赖升级             | 已完成 | 两端 UI 包与 core 包升级到 `^1.2.0`                                                                    |
-| Tailwind modern 接入 | 已完成 | 两端 CSS 入口接入官方 modern 插件；保留 `@source` 以覆盖组件库 class 扫描                              |
-| Modal 可见性语义     | 已完成 | Vue 端从 `visible` 迁移到 `open` / `update:open`；React 端已使用 `open`                                |
-| Button 原生类型      | 已完成 | 双端登录/注册按钮使用 `htmlType` / `html-type`                                                         |
-| 文档链接             | 已完成 | Roadmap、README、子项目 README 与仓库指令均指向最新官方文档入口                                        |
+| 项目                 | 状态   | 说明                                                                                                |
+| -------------------- | ------ | --------------------------------------------------------------------------------------------------- |
+| 依赖升级             | 已完成 | 两端 UI 包与 core 包升级到 `^1.2.0`                                                                 |
+| Tailwind modern 接入 | 已完成 | 两端 CSS 入口接入官方 modern 插件；保留 `@source` 以覆盖组件库 class 扫描                           |
+| Modal 可见性语义     | 已完成 | Vue 端从 `visible` 迁移到 `open` / `update:open`；React 端已使用 `open`                             |
+| Button 原生类型      | 已完成 | 双端登录/注册按钮使用 `htmlType` / `html-type`                                                      |
+| 文档链接             | 已完成 | Roadmap、README、子项目 README 与仓库指令均指向最新官方文档入口                                     |
 | 组件缺口复核         | 已完成 | 已完成首轮 1.2.0 复核，`InputNumber`、`Layout`、`Sidebar`、`SubMenu` 已在双端源码导入并通过生产构建 |
 
 ---
@@ -65,14 +65,14 @@
 - [x] 按最新文档接入 Tailwind v4 modern 插件。
 - [x] 更新 README、子项目 README 与仓库 Copilot 指南中的 Tigercat 文档链接。
 - [x] 基于 1.2.0 重跑组件覆盖清单，关闭已不再成立的上游需求。
-- [ ] 整理构建产物与 lockfile 策略，明确根 workspace lockfile 为准还是保留子项目 lockfile。
+- [x] 整理构建产物与 lockfile 策略，明确根 workspace lockfile 为准还是保留子项目 lockfile。
 
 ### Milestone B：后台骨架重建
 
 目标：把自定义布局逻辑逐步迁移到 Tigercat 1.2.0 原生组件能力上。
 
 - [ ] 用最新版 `Layout` / `Sidebar` / `Menu` / `SubMenu` 复核并重构 `MainLayout`、`MainSidebar`、`MainHeader`。
-- [ ] 增加 `Breadcrumb`，让用户、角色、设置、关于页拥有一致导航层级。
+- [x] 增加 `Breadcrumb`，让用户、角色、设置、关于页拥有一致导航层级。
 - [ ] 引入 `Dropdown` 或 `Popover` 统一用户菜单、主题切换、快捷操作入口。
 - [ ] 处理移动端侧边栏折叠、遮罩关闭与键盘可访问性。
 
@@ -148,5 +148,5 @@ Tigercat 1.2.0 已提供 133+ 组件，Roadmap 不再维护完整组件字典，
 - [x] 重写 Roadmap，按最新 Tigercat 文档规划已完成模块升级与后续重建。
 - [x] 更新 README 与 `.github/copilot-instructions.md` 中的 Tigercat 官方文档链接。
 - [x] 重审 [upstream-requirements.md](upstream-requirements.md)，移除或更新 1.2.0 已解决的历史缺口。
-- [ ] 明确根 workspace lockfile 为唯一安装基线，并清理子项目 lockfile 漂移风险。
+- [x] 明确根 workspace lockfile 为唯一安装基线，并清理子项目 lockfile 漂移风险。
 - [ ] 补充用户/角色/设置核心流程的 E2E 回归计划。

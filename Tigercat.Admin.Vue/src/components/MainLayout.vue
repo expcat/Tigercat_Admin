@@ -6,6 +6,14 @@ import MainHeader from './MainHeader.vue'
 import MainSidebar from './MainSidebar.vue'
 import type { ThemeMode } from '../utils/types'
 
+const PAGE_TITLES: Record<string, string> = {
+  home: '仪表盘',
+  users: '用户管理',
+  roles: '角色管理',
+  settings: '系统设置',
+  about: '关于'
+}
+
 interface Session {
   username: string
 }
@@ -38,6 +46,8 @@ const MENU_ROUTES = {
 type MenuKey = keyof typeof MENU_ROUTES
 
 const activeMenu = ref<MenuKey>('home')
+
+const pageTitle = computed(() => PAGE_TITLES[activeMenu.value] ?? '仪表盘')
 
 const ROUTE_TO_MENU = Object.fromEntries(
   Object.entries(MENU_ROUTES).map(([key, value]) => [value, key as MenuKey])
@@ -75,6 +85,7 @@ watch(
       <!-- Header -->
       <MainHeader 
         :session="session"
+        :page-title="pageTitle"
         :theme-mode="themeMode"
         @logout="$emit('logout')"
         @change-password="$emit('change-password')"

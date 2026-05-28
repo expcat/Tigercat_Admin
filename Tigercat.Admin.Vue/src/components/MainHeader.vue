@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Text, Avatar, Header } from '@expcat/tigercat-vue'
+import { Text, Avatar, Header, Breadcrumb, BreadcrumbItem } from '@expcat/tigercat-vue'
 import Icon from './Icon.vue'
 import type { ThemeMode } from '../utils/types'
 import { resolveEffectiveMode } from '../utils/theme'
@@ -10,6 +10,7 @@ interface Session {
 
 defineProps<{
   session: Session | null
+  pageTitle: string
   themeMode: ThemeMode
 }>()
 
@@ -33,12 +34,12 @@ function getThemeLabel(mode: ThemeMode): string {
 
 <template>
   <Header class="flex items-center justify-between px-6 shadow-sm z-10">
-    <!-- 左侧标题 -->
-    <div class="flex items-center gap-3">
-      <div class="flex items-center gap-2">
-        <span class="text-[var(--tiger-text-secondary,#64748b)]"><Icon name="home" :size="24" /></span>
-        <Text size="lg" weight="bold" class="text-[var(--tiger-text,#1f2937)]">管理中心</Text>
-      </div>
+    <div class="flex min-w-0 flex-col gap-1 py-3">
+      <Text size="lg" weight="bold" class="text-[var(--tiger-text,#1f2937)]">管理中心</Text>
+      <Breadcrumb class-name="text-sm text-[var(--tiger-text-secondary,#64748b)]">
+        <BreadcrumbItem>管理中心</BreadcrumbItem>
+        <BreadcrumbItem current>{{ pageTitle }}</BreadcrumbItem>
+      </Breadcrumb>
     </div>
     
     <!-- 右侧操作区 -->

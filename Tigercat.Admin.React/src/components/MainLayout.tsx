@@ -4,6 +4,14 @@ import { MainHeader } from './MainHeader';
 import { MainSidebar } from './MainSidebar';
 import type { ThemeMode } from '../utils/types';
 
+const PAGE_TITLES: Record<string, string> = {
+  home: '仪表盘',
+  users: '用户管理',
+  roles: '角色管理',
+  settings: '系统设置',
+  about: '关于',
+};
+
 interface MainLayoutProps {
   children: React.ReactNode;
   user: { username: string } | null;
@@ -44,6 +52,8 @@ export function MainLayout({
     onNavigate?.(key);
   };
 
+  const pageTitle = PAGE_TITLES[currentActiveMenu] ?? '仪表盘';
+
   return (
     <Layout className="h-screen w-full overflow-hidden">
       {/* Sidebar */}
@@ -59,6 +69,7 @@ export function MainLayout({
         {/* Header */}
         <MainHeader
           session={user}
+          pageTitle={pageTitle}
           themeMode={themeMode}
           onLogout={onLogout}
           onChangePassword={onChangePassword}
