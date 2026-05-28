@@ -20,6 +20,9 @@ public static class DbInitializer
         ("theme.compactMode",   "false",             "紧凑模式（侧边栏默认折叠）"),
     ];
 
+    public static IReadOnlyDictionary<string, string> DefaultSettingValues { get; } =
+        SeedSettings.ToDictionary(setting => setting.Key, setting => setting.Value, StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Seed permission definitions. Each entry: (Code, Description).
     /// </summary>

@@ -8,6 +8,22 @@ namespace Tigercat.Admin.Api.Endpoints;
 
 public class SettingsEndpoints : IEndpointDefinition
 {
+    private static SettingItemResponse ToSettingItemResponse(Data.Entities.SystemSettingEntity setting)
+    {
+        var defaultValue = DbInitializer.DefaultSettingValues.TryGetValue(setting.Key, out var value)
+            ? value
+            : setting.Value;
+
+        return new SettingItemResponse(
+            setting.Id,
+            setting.Key,
+            setting.Value,
+            defaultValue,
+            setting.Description,
+            setting.CreatedAt,
+            setting.UpdatedAt);
+    }
+
     public void DefineEndpoints(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/settings")
@@ -35,11 +51,10 @@ public class SettingsEndpoints : IEndpointDefinition
     {
         var settings = await db.SystemSettings
             .OrderBy(s => s.Key)
-            .Select(s => new SettingItemResponse(s.Id, s.Key, s.Value, s.Description, s.CreatedAt, s.UpdatedAt))
             .ToArrayAsync(ct);
 
         return Results.Json(
-            ApiResult.Ok(settings),
+            ApiResult.Ok(settings.Select(ToSettingItemResponse).ToArray()),
             AppJsonContext.Default.ApiResponseSettingItemResponseArray);
     }
 
@@ -62,7 +77,7 @@ public class SettingsEndpoints : IEndpointDefinition
         }
 
         return Results.Json(
-            ApiResult.Ok(new SettingItemResponse(setting.Id, setting.Key, setting.Value, setting.Description, setting.CreatedAt, setting.UpdatedAt)),
+            ApiResult.Ok(ToSettingItemResponse(setting)),
             AppJsonContext.Default.ApiResponseSettingItemResponse);
     }
 
@@ -146,7 +161,7 @@ public class SettingsEndpoints : IEndpointDefinition
 
         var updated = entities
             .OrderBy(s => s.Key)
-            .Select(s => new SettingItemResponse(s.Id, s.Key, s.Value, s.Description, s.CreatedAt, s.UpdatedAt))
+            .Select(ToSettingItemResponse)
             .ToArray();
 
         return Results.Json(

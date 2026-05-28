@@ -906,26 +906,27 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 
 **设置项对象结构**：
 
-| 字段          | 类型           | 说明            |
-| ------------- | -------------- | --------------- |
-| `id`          | number         | 设置项 ID       |
-| `key`         | string         | 设置键名        |
-| `value`       | string         | 设置值          |
-| `description` | string \| null | 描述            |
-| `createdAt`   | string         | 创建时间（UTC） |
-| `updatedAt`   | string \| null | 更新时间（UTC） |
+| 字段           | 类型           | 说明            |
+| -------------- | -------------- | --------------- |
+| `id`           | number         | 设置项 ID       |
+| `key`          | string         | 设置键名        |
+| `value`        | string         | 设置值          |
+| `defaultValue` | string         | 系统默认值      |
+| `description`  | string \| null | 描述            |
+| `createdAt`    | string         | 创建时间（UTC） |
+| `updatedAt`    | string \| null | 更新时间（UTC） |
 
 #### 预置系统设置项
 
-| Key                    | 默认值            | 描述                                         |
-| ---------------------- | ----------------- | -------------------------------------------- |
-| `site.name`            | `Tigercat Admin`  | 站点名称                                     |
-| `site.logo`            | _(空)_            | 站点 Logo URL                                |
-| `auth.sessionTimeout`  | `1440`            | 会话超时时间（分钟）                         |
-| `auth.maxAttempts`     | `5`               | 最大登录失败次数                             |
-| `theme.mode`           | `system`          | 默认主题模式（`light` / `dark` / `system`）  |
-| `theme.primaryColor`   | `#2563eb`         | 默认主色调（HEX 色值）                       |
-| `theme.compactMode`    | `false`           | 紧凑模式（侧边栏默认折叠）                   |
+| Key                   | 默认值           | 描述                                        |
+| --------------------- | ---------------- | ------------------------------------------- |
+| `site.name`           | `Tigercat Admin` | 站点名称                                    |
+| `site.logo`           | _(空)_           | 站点 Logo URL                               |
+| `auth.sessionTimeout` | `1440`           | 会话超时时间（分钟）                        |
+| `auth.maxAttempts`    | `5`              | 最大登录失败次数                            |
+| `theme.mode`          | `system`         | 默认主题模式（`light` / `dark` / `system`） |
+| `theme.primaryColor`  | `#2563eb`        | 默认主色调（HEX 色值）                      |
+| `theme.compactMode`   | `false`          | 紧凑模式（侧边栏默认折叠）                  |
 
 ### 23. 获取所有系统设置
 
@@ -951,6 +952,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
       "id": 1,
       "key": "auth.maxAttempts",
       "value": "5",
+      "defaultValue": "5",
       "description": "最大登录失败次数",
       "createdAt": "2026-01-01T00:00:00Z",
       "updatedAt": null
@@ -959,6 +961,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
       "id": 2,
       "key": "site.name",
       "value": "Tigercat Admin",
+      "defaultValue": "Tigercat Admin",
       "description": "站点名称",
       "createdAt": "2026-01-01T00:00:00Z",
       "updatedAt": null
@@ -992,6 +995,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
     "id": 1,
     "key": "site.name",
     "value": "Tigercat Admin",
+    "defaultValue": "Tigercat Admin",
     "description": "站点名称",
     "createdAt": "2026-01-01T00:00:00Z",
     "updatedAt": null
@@ -1054,6 +1058,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
       "id": 1,
       "key": "auth.sessionTimeout",
       "value": "720",
+      "defaultValue": "1440",
       "description": "会话超时时间（分钟）",
       "createdAt": "2026-01-01T00:00:00Z",
       "updatedAt": "2026-01-02T00:00:00Z"
@@ -1062,6 +1067,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
       "id": 2,
       "key": "site.name",
       "value": "My Admin",
+      "defaultValue": "Tigercat Admin",
       "description": "站点名称",
       "createdAt": "2026-01-01T00:00:00Z",
       "updatedAt": "2026-01-02T00:00:00Z"

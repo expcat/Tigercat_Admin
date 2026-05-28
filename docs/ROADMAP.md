@@ -93,7 +93,7 @@
 
 - [x] 角色页权限配置弹窗已改为 `Tree`：保留扁平 `permissionIds` 提交，同时提供按模块分组、搜索与整组勾选视图；`TreeSelect` / `Transfer` 暂不引入到该场景。
 - [x] 双端设置页已保留 `InputNumber` 管理数值配置，并把 `theme.primaryColor` 改为 `ColorPicker`、`theme.mode` 改为 `Segmented`，减少通用 `Select` 占位实现。
-- [ ] 增加设置变更确认与恢复默认值流程，优先使用 `Popconfirm` / `Modal`。
+- [x] 增加设置变更确认与恢复默认值流程，使用 `Modal` 确认保存、使用 `Popconfirm` 触发恢复默认值，并由设置接口返回 `defaultValue` 作为统一默认值来源。
 - [ ] 为站点 Logo 与头像预留 `Upload` / `CropUpload` 场景。
 
 ### Milestone E：可观测与运维扩展

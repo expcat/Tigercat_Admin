@@ -88,6 +88,7 @@ export interface SettingItem {
   id: number;
   key: string;
   value: string;
+  defaultValue: string;
   description: string | null;
   createdAt: string;
   updatedAt: string | null;

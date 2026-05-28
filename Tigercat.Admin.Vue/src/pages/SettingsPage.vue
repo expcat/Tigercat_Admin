@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Card, Button, ColorPicker, Input, InputNumber, Select, Segmented, Switch, Message, Text, Tag } from '@expcat/tigercat-vue'
+import { Card, Button, ColorPicker, Input, InputNumber, Modal, Popconfirm, Select, Segmented, Switch, Message, Text, Tag } from '@expcat/tigercat-vue'
 import PageHeader from '../components/PageHeader.vue'
 import { apiRequest, getAuthHeaders } from '../utils'
 import { usePermission } from '../utils/permission'
@@ -12,11 +12,16 @@ const settings = ref<SettingItem[]>([])
 const editValues = ref<Record<string, string>>({})
 const loading = ref(true)
 const saving = ref(false)
+const saveConfirmOpen = ref(false)
 const { has: hasPerm } = usePermission()
 const canEdit = computed(() => hasPerm('setting:edit'))
 const groups = computed(() => groupSettings(settings.value))
-const hasChanges = computed(() =>
-  settings.value.some(s => editValues.value[s.key] !== s.value)
+const changedSettings = computed(() =>
+  settings.value.filter(s => editValues.value[s.key] !== s.value)
+)
+const hasChanges = computed(() => changedSettings.value.length > 0)
+const hasDefaultOverrides = computed(() =>
+  settings.value.some(s => editValues.value[s.key] !== s.defaultValue)
 )
 
 /* ── API 操作 ────────────────────────────────── */
@@ -39,8 +44,7 @@ async function fetchSettings() {
 
 async function handleSave() {
   if (!canEdit.value) return
-  const entries = settings.value
-    .filter(s => editValues.value[s.key] !== s.value)
+  const entries = changedSettings.value
     .map(s => ({ key: s.key, value: editValues.value[s.key] ?? s.value }))
   if (entries.length === 0) return
   try {
@@ -50,6 +54,7 @@ async function handleSave() {
       headers: getAuthHeaders(),
       body: JSON.stringify({ settings: entries }),
     })
+    saveConfirmOpen.value = false
     Message.success({ content: '设置已保存', duration: 3000 })
     await fetchSettings()
   } catch (e: any) {
@@ -57,6 +62,13 @@ async function handleSave() {
   } finally {
     saving.value = false
   }
+}
+
+function handleRestoreDefaults() {
+  editValues.value = Object.fromEntries(
+    settings.value.map((item) => [item.key, item.defaultValue])
+  )
+  Message.success({ content: '已恢复默认值，请确认保存修改', duration: 3000 })
 }
 
 onMounted(fetchSettings)
@@ -136,11 +148,44 @@ onMounted(fetchSettings)
         </Card>
       </div>
 
-      <div v-if="canEdit" class="flex justify-end">
-        <Button color="primary" :disabled="!hasChanges || saving" @click="handleSave">
+      <div v-if="canEdit" class="flex flex-wrap justify-end gap-3">
+        <Popconfirm
+          title="恢复默认值"
+          description="会将当前表单恢复为系统默认配置，提交后才会真正生效。"
+          ok-text="恢复默认值"
+          cancel-text="取消"
+          placement="top"
+          @confirm="handleRestoreDefaults"
+        >
+          <Button variant="outline" :disabled="!hasDefaultOverrides || saving">
+            恢复默认值
+          </Button>
+        </Popconfirm>
+        <Button color="primary" :disabled="!hasChanges || saving" @click="saveConfirmOpen = true">
           {{ saving ? '保存中…' : '保存修改' }}
         </Button>
       </div>
+
+      <Modal
+        :open="saveConfirmOpen"
+        title="确认保存设置"
+        :ok-text="saving ? '保存中…' : '确认保存'"
+        cancel-text="取消"
+        @ok="handleSave"
+        @cancel="saveConfirmOpen = false"
+        @update:open="saveConfirmOpen = $event"
+      >
+        <div class="space-y-4">
+          <Text>
+            将提交 {{ changedSettings.length }} 项设置变更。保存后会立即影响当前系统配置。
+          </Text>
+          <div class="flex flex-wrap gap-2">
+            <Tag v-for="item in changedSettings" :key="item.key" color="blue" size="sm">
+              {{ item.key }}
+            </Tag>
+          </div>
+        </div>
+      </Modal>
     </template>
   </div>
 </template>

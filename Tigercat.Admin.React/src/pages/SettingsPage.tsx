@@ -5,6 +5,8 @@ import {
   ColorPicker,
   Input,
   InputNumber,
+  Modal,
+  Popconfirm,
   Select,
   Segmented,
   Switch,
@@ -30,6 +32,7 @@ function SettingsPage() {
   const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const { has: hasPerm } = usePermission();
   const canEdit = hasPerm('setting:edit');
 
@@ -77,10 +80,25 @@ function SettingsPage() {
   };
 
   const groups = useMemo(() => groupSettings(settings), [settings]);
-  const hasChanges = useMemo(
-    () => settings.some((s) => editValues[s.key] !== s.value),
+  const changedSettings = useMemo(
+    () => settings.filter((s) => editValues[s.key] !== s.value),
     [settings, editValues],
   );
+  const hasChanges = changedSettings.length > 0;
+  const hasDefaultOverrides = useMemo(
+    () => settings.some((s) => editValues[s.key] !== s.defaultValue),
+    [settings, editValues],
+  );
+
+  const handleRestoreDefaults = () => {
+    setEditValues(
+      Object.fromEntries(settings.map((item) => [item.key, item.defaultValue])),
+    );
+    Message.success({
+      content: '已恢复默认值，请确认保存修改',
+      duration: 3000,
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -202,15 +220,50 @@ function SettingsPage() {
           </div>
 
           {canEdit && (
-            <div className="flex justify-end">
+            <div className="flex flex-wrap justify-end gap-3">
+              <Popconfirm
+                title="恢复默认值"
+                description="会将当前表单恢复为系统默认配置，提交后才会真正生效。"
+                okText="恢复默认值"
+                cancelText="取消"
+                placement="top"
+                onConfirm={handleRestoreDefaults}>
+                <Button
+                  variant="outline"
+                  disabled={!hasDefaultOverrides || saving}>
+                  恢复默认值
+                </Button>
+              </Popconfirm>
               <Button
                 color="primary"
-                onClick={handleSave}
+                onClick={() => setSaveConfirmOpen(true)}
                 disabled={!hasChanges || saving}>
                 {saving ? '保存中…' : '保存修改'}
               </Button>
             </div>
           )}
+
+          <Modal
+            open={saveConfirmOpen}
+            title="确认保存设置"
+            okText={saving ? '保存中…' : '确认保存'}
+            cancelText="取消"
+            onOk={handleSave}
+            onCancel={() => setSaveConfirmOpen(false)}>
+            <div className="space-y-4">
+              <Text>
+                将提交 {changedSettings.length}{' '}
+                项设置变更。保存后会立即影响当前系统配置。
+              </Text>
+              <div className="flex flex-wrap gap-2">
+                {changedSettings.map((item) => (
+                  <Tag key={item.key} color="blue" size="sm">
+                    {item.key}
+                  </Tag>
+                ))}
+              </div>
+            </div>
+          </Modal>
         </>
       )}
     </div>
