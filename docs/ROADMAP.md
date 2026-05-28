@@ -73,7 +73,7 @@
 
 - [ ] 用最新版 `Layout` / `Sidebar` / `Menu` / `SubMenu` 复核并重构 `MainLayout`、`MainSidebar`、`MainHeader`。
 - [x] 增加 `Breadcrumb`，让用户、角色、设置、关于页拥有一致导航层级。
-- [ ] 引入 `Dropdown` 或 `Popover` 统一用户菜单、主题切换、快捷操作入口。
+- [x] 引入 `Dropdown` 或 `Popover` 统一用户菜单、主题切换、快捷操作入口。
 - [ ] 处理移动端侧边栏折叠、遮罩关闭与键盘可访问性。
 
 ### Milestone C：数据工作台重建
