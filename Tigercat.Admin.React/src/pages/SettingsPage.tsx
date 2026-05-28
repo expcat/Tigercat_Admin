@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
+  Avatar,
   Card,
   Button,
+  CropUpload,
   ColorPicker,
   Input,
   InputNumber,
@@ -13,8 +15,10 @@ import {
   Message,
   Text,
   Tag,
+  Upload,
 } from '@expcat/tigercat-react';
-import { SettingsIcon } from '../components/Icons';
+import type { UploadRequestOptions } from '@expcat/tigercat-core';
+import { LogoIcon, SettingsIcon } from '../components/Icons';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest, getAuthHeaders } from '../utils';
 import { usePermission } from '../utils/permission';
@@ -33,6 +37,8 @@ function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const { has: hasPerm } = usePermission();
   const canEdit = hasPerm('setting:edit');
 
@@ -56,6 +62,17 @@ function SettingsPage() {
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
+
+  useEffect(() => {
+    return () => {
+      if (logoPreviewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(logoPreviewUrl);
+      }
+      if (avatarPreviewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(avatarPreviewUrl);
+      }
+    };
+  }, [logoPreviewUrl, avatarPreviewUrl]);
 
   const handleSave = async () => {
     if (!canEdit) return;
@@ -100,6 +117,44 @@ function SettingsPage() {
     });
   };
 
+  const currentLogoUrl = logoPreviewUrl || editValues['site.logo'] || '';
+
+  const updatePreviewUrl = (
+    nextUrl: string,
+    currentUrl: string | null,
+    setUrl: (value: string | null) => void,
+  ) => {
+    if (currentUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(currentUrl);
+    }
+    setUrl(nextUrl);
+  };
+
+  const handleLogoUpload = ({
+    file,
+    onProgress,
+    onSuccess,
+  }: UploadRequestOptions) => {
+    const nextUrl = URL.createObjectURL(file);
+    updatePreviewUrl(nextUrl, logoPreviewUrl, setLogoPreviewUrl);
+    onProgress?.(100);
+    onSuccess?.({ previewUrl: nextUrl });
+    Message.success({
+      content:
+        'Logo 上传场景已预留为本地预览，待接入媒体存储后可自动回填站点配置。',
+      duration: 3000,
+    });
+  };
+
+  const handleAvatarCropComplete = (result: { blob: Blob }) => {
+    const nextUrl = URL.createObjectURL(result.blob);
+    updatePreviewUrl(nextUrl, avatarPreviewUrl, setAvatarPreviewUrl);
+    Message.success({
+      content: '头像裁剪场景已预留为本地预览，待补用户头像字段后可持久化保存。',
+      duration: 3000,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -115,6 +170,93 @@ function SettingsPage() {
         </Card>
       ) : (
         <>
+          <Card title="媒体资源预留" className="overflow-hidden">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="space-y-4 rounded-2xl border border-dashed border-slate-300 p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Text weight="bold">站点 Logo</Text>
+                    <Text size="sm" color="secondary">
+                      预留 Upload 场景，当前仍以 site.logo URL
+                      作为持久化配置来源。
+                    </Text>
+                  </div>
+                  <Tag color="blue" size="sm">
+                    Upload
+                  </Tag>
+                </div>
+
+                <div className="flex min-h-44 items-center justify-center rounded-2xl bg-slate-50 p-6">
+                  {currentLogoUrl ? (
+                    <img
+                      src={currentLogoUrl}
+                      alt="站点 Logo 预览"
+                      className="max-h-28 max-w-full rounded-2xl object-contain"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-3 text-slate-500">
+                      <LogoIcon size={56} />
+                      <Text size="sm" color="secondary">
+                        暂无 Logo，上传后会在这里显示本地预览
+                      </Text>
+                    </div>
+                  )}
+                </div>
+
+                <Upload
+                  accept="image/*"
+                  disabled={!canEdit}
+                  listType="picture-card"
+                  showFileList={false}
+                  maxSize={2 * 1024 * 1024}
+                  customRequest={handleLogoUpload}
+                />
+
+                <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  当前持久化值：{editValues['site.logo'] || '未设置'}
+                </div>
+              </div>
+
+              <div className="space-y-4 rounded-2xl border border-dashed border-slate-300 p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Text weight="bold">用户头像</Text>
+                    <Text size="sm" color="secondary">
+                      预留 CropUpload
+                      场景，当前仅做本地裁剪预览，后续再接用户头像字段。
+                    </Text>
+                  </div>
+                  <Tag color="cyan" size="sm">
+                    CropUpload
+                  </Tag>
+                </div>
+
+                <div className="flex min-h-44 items-center justify-center rounded-2xl bg-slate-50 p-6">
+                  <Avatar
+                    src={avatarPreviewUrl ?? undefined}
+                    className="h-24 w-24 text-lg">
+                    管理
+                  </Avatar>
+                </div>
+
+                <CropUpload
+                  accept="image/*"
+                  disabled={!canEdit}
+                  maxSize={2 * 1024 * 1024}
+                  modalTitle="裁剪头像"
+                  onCropComplete={handleAvatarCropComplete}>
+                  <Button variant="outline" disabled={!canEdit}>
+                    选择头像并裁剪
+                  </Button>
+                </CropUpload>
+
+                <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  当前头像仍使用用户名首字母回退展示，本次仅预留裁剪上传入口。
+                </div>
+              </div>
+            </div>
+          </Card>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {groups.map(([prefix, items]) => (
               <Card
