@@ -1,3 +1,4 @@
+import type { TreeNode } from '@expcat/tigercat-core';
 import type { PermissionInfo } from './types';
 
 /** Group labels for permission code prefixes. */
@@ -18,6 +19,22 @@ export function buildPermissionGroups(
     groups[prefix].push(p);
   }
   return groups;
+}
+
+export function buildPermissionTreeData(
+  permissions: PermissionInfo[],
+): TreeNode[] {
+  return Object.entries(buildPermissionGroups(permissions)).map(
+    ([group, groupPerms]) => ({
+      key: `group:${group}`,
+      label: GROUP_LABELS[group] || group,
+      children: groupPerms.map((perm) => ({
+        key: perm.id,
+        label: perm.description ? `${perm.description} (${perm.code})` : perm.code,
+        isLeaf: true,
+      })),
+    }),
+  )
 }
 
 export function toggleGroupPerms(

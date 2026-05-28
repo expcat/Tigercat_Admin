@@ -91,7 +91,7 @@
 
 目标：让权限配置和系统设置从“能用”升级为“可长期维护”。
 
-- [ ] 权限配置评估 `Tree` / `TreeSelect` / `Transfer`，保留扁平权限数据并提供分组视图。
+- [x] 角色页权限配置弹窗已改为 `Tree`：保留扁平 `permissionIds` 提交，同时提供按模块分组、搜索与整组勾选视图；`TreeSelect` / `Transfer` 暂不引入到该场景。
 - [ ] 设置页用 `InputNumber` 管理数值配置，用 `ColorPicker` 管理主题色，用 `Segmented` 管理轻量选项。
 - [ ] 增加设置变更确认与恢复默认值流程，优先使用 `Popconfirm` / `Modal`。
 - [ ] 为站点 Logo 与头像预留 `Upload` / `CropUpload` 场景。

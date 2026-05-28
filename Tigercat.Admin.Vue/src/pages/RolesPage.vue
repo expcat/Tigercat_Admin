@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, inject, onMounted, h } from 'vue'
-import { DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tooltip, Message, Checkbox, Popover } from '@expcat/tigercat-vue'
+import { DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tree, Tooltip, Message, Checkbox, Popover } from '@expcat/tigercat-vue'
 import type { TableColumn, SortState } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
@@ -9,11 +9,7 @@ import { exportData, type ExportFormat } from '../utils/export'
 import type { PermissionInfo, RoleUserInfo, RoleItem, PagedResult } from '../utils/types'
 import { usePermission } from '../utils/permission'
 import {
-  GROUP_LABELS,
-  buildPermissionGroups,
-  toggleGroupPerms,
-  isGroupAllChecked,
-  isGroupPartialChecked,
+  buildPermissionTreeData,
 } from '../utils/permission-helpers'
 
 // ---- Permission ----
@@ -231,6 +227,12 @@ const permissionOptions = computed(() =>
   }))
 )
 
+const permissionTreeData = computed(() => buildPermissionTreeData(allPermissions.value))
+
+function handlePermTreeCheck(checkedKeys: (string | number)[]) {
+  permConfigIds.value = checkedKeys.filter((key): key is number => typeof key === 'number')
+}
+
 // ---- Table columns ----
 const ALL_COLUMN_KEYS = ['id', 'name', 'description', 'permissions', 'users', 'createdAt', 'actions'] as const
 
@@ -418,9 +420,6 @@ const serverPaginationHint = computed(() => {
   return '列表采用服务端分页，当前仅加载本页数据。后端每页最多返回 100 条记录。'
 })
 
-// Permission group helpers
-const permissionGroups = computed(() => buildPermissionGroups(allPermissions.value))
-
 // ---- Export ----
 function openExportModal() {
   exportFormat.value = 'csv'
@@ -591,44 +590,26 @@ onMounted(() => {
       @cancel="permModalVisible = false"
       @update:open="permModalVisible = $event"
     >
-      <div class="space-y-4 max-h-96 overflow-y-auto">
-        <div v-for="(perms, group) in permissionGroups" :key="group" class="border border-slate-200 rounded-lg p-3">
-          <div class="flex items-center gap-2 mb-2">
-            <Checkbox
-              :model-value="isGroupAllChecked(perms, permConfigIds)"
-              :indeterminate="isGroupPartialChecked(perms, permConfigIds)"
-              @update:model-value="permConfigIds = toggleGroupPerms(perms, permConfigIds)"
-            />
-            <span class="font-medium text-slate-700 text-sm">
-              {{ GROUP_LABELS[group as string] || group }}
-            </span>
-            <Tag color="blue" size="sm">
-              {{ perms.filter(p => permConfigIds.includes(p.id)).length }} / {{ perms.length }}
-            </Tag>
-          </div>
-          <div class="grid grid-cols-2 gap-2 ml-6">
-            <label
-              v-for="perm in perms"
-              :key="perm.id"
-              class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800"
-            >
-              <Checkbox
-                :model-value="permConfigIds.includes(perm.id)"
-                @update:model-value="(checked: boolean) => {
-                  if (checked) {
-                    permConfigIds = [...permConfigIds, perm.id]
-                  } else {
-                    permConfigIds = permConfigIds.filter(id => id !== perm.id)
-                  }
-                }"
-              />
-              <span>{{ perm.description || perm.code }}</span>
-              <span class="text-xs text-slate-400">({{ perm.code }})</span>
-            </label>
-          </div>
+      <div class="space-y-3">
+        <div class="flex items-center justify-between gap-3 text-sm text-slate-600">
+          <span>按分组勾选权限，保存时仍提交扁平 permissionIds。</span>
+          <Tag color="blue" size="sm">
+            {{ permConfigIds.length }} / {{ allPermissions.length }}
+          </Tag>
         </div>
-        <div v-if="allPermissions.length === 0" class="text-center text-slate-400 py-4">
-          暂无可配置的权限
+        <div class="max-h-96 overflow-y-auto rounded-lg border border-slate-200 p-3">
+          <Tree
+            :tree-data="permissionTreeData"
+            :checked-keys="permConfigIds"
+            checkable
+            block-node
+            searchable
+            default-expand-all
+            check-strategy="child"
+            empty-text="暂无可配置的权限"
+            aria-label="角色权限树"
+            @check="handlePermTreeCheck"
+          />
         </div>
       </div>
     </Modal>

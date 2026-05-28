@@ -13,6 +13,7 @@ import {
   Select,
   Checkbox,
   Tag,
+  Tree,
   Tooltip,
   Message,
   Popover,
@@ -43,11 +44,7 @@ import type {
   MessageResult,
 } from '../utils/types';
 import {
-  GROUP_LABELS,
-  buildPermissionGroups,
-  toggleGroupPerms,
-  isGroupAllChecked,
-  isGroupPartialChecked,
+  buildPermissionTreeData,
 } from '../utils/permission-helpers';
 
 type RoleFormData = {
@@ -394,6 +391,20 @@ function RolesPage() {
     [allPermissions],
   );
 
+  const permissionTreeData = useMemo(
+    () => buildPermissionTreeData(allPermissions),
+    [allPermissions],
+  );
+
+  const handlePermTreeCheck = useCallback(
+    (checkedKeys: (string | number)[]) => {
+      setPermConfigIds(
+        checkedKeys.filter((key): key is number => typeof key === 'number'),
+      );
+    },
+    [],
+  );
+
   const columns = useMemo<TableColumn<RoleItem>[]>(() => {
     const cols: TableColumn<RoleItem>[] = [
       { key: 'id', title: 'ID', width: 70, align: 'center', sortable: true },
@@ -688,60 +699,27 @@ function RolesPage() {
         cancelText="取消"
         onOk={handlePermSubmit}
         onCancel={() => setPermModalVisible(false)}>
-        <div className="space-y-4 max-h-96 overflow-y-auto">
-          {Object.entries(buildPermissionGroups(allPermissions)).map(
-            ([group, perms]) => (
-              <div
-                key={group}
-                className="border border-slate-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Checkbox
-                    checked={isGroupAllChecked(perms, permConfigIds)}
-                    indeterminate={isGroupPartialChecked(perms, permConfigIds)}
-                    onChange={() =>
-                      setPermConfigIds(toggleGroupPerms(perms, permConfigIds))
-                    }
-                  />
-                  <span className="font-medium text-slate-700 text-sm">
-                    {GROUP_LABELS[group] || group}
-                  </span>
-                  <Tag color="blue" size="sm">
-                    {perms.filter((p) => permConfigIds.includes(p.id)).length} /{' '}
-                    {perms.length}
-                  </Tag>
-                </div>
-                <div className="grid grid-cols-2 gap-2 ml-6">
-                  {perms.map((perm) => (
-                    <label
-                      key={perm.id}
-                      className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
-                      <Checkbox
-                        checked={permConfigIds.includes(perm.id)}
-                        onChange={(checked) => {
-                          if (checked) {
-                            setPermConfigIds([...permConfigIds, perm.id]);
-                          } else {
-                            setPermConfigIds(
-                              permConfigIds.filter((id) => id !== perm.id),
-                            );
-                          }
-                        }}
-                      />
-                      <span>{perm.description || perm.code}</span>
-                      <span className="text-xs text-slate-400">
-                        ({perm.code})
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ),
-          )}
-          {allPermissions.length === 0 && (
-            <div className="text-center text-slate-400 py-4">
-              暂无可配置的权限
-            </div>
-          )}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
+            <span>按分组勾选权限，保存时仍提交扁平 permissionIds。</span>
+            <Tag color="blue" size="sm">
+              {permConfigIds.length} / {allPermissions.length}
+            </Tag>
+          </div>
+          <div className="max-h-96 overflow-y-auto rounded-lg border border-slate-200 p-3">
+            <Tree
+              treeData={permissionTreeData}
+              checkable
+              blockNode
+              searchable
+              defaultExpandAll
+              checkStrategy="child"
+              checkedKeys={permConfigIds}
+              emptyText="暂无可配置的权限"
+              ariaLabel="角色权限树"
+              onCheck={handlePermTreeCheck}
+            />
+          </div>
         </div>
       </Modal>
 
