@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
-  Card,
-  Table,
+  DataTableWithToolbar,
   Button,
   Input,
   Modal,
@@ -13,7 +12,11 @@ import {
   Popover,
   Checkbox,
 } from '@expcat/tigercat-react';
-import type { TableColumn, SortState } from '@expcat/tigercat-core';
+import type {
+  TableColumn,
+  SortState,
+  TableToolbarFilterValue,
+} from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { PermissionGuard } from '../components/PermissionGuard';
 import {
@@ -90,8 +93,7 @@ const COLUMN_LABELS: Record<string, string> = {
   actions: '操作',
 };
 
-const STATUS_OPTIONS = [
-  { label: '全部状态', value: '' },
+const STATUS_FILTER_OPTIONS = [
   { label: '正常', value: 0 },
   { label: '禁用', value: 1 },
 ];
@@ -298,11 +300,12 @@ function UsersPage() {
   };
 
   // ---- Batch delete ----
-  const handleBatchDelete = () => {
-    if (selectedRowKeys.length === 0) {
+  const handleBatchDelete = (keys = selectedRowKeys) => {
+    if (keys.length === 0) {
       Message.error({ content: '请选择要删除的用户', duration: 3000 });
       return;
     }
+    setSelectedRowKeys(keys as number[]);
     setBatchDeleteConfirmVisible(true);
   };
 
@@ -511,14 +514,19 @@ function UsersPage() {
 
   const handlePageChange = (page: { current: number; pageSize: number }) => {
     if (page.pageSize !== queryRef.current.pageSize) {
-      queryRef.current.pageSize = page.pageSize;
-      queryRef.current.page = 1;
-      setPageSize(page.pageSize);
-      setCurrentPage(1);
-    } else {
-      queryRef.current.page = page.current;
-      setCurrentPage(page.current);
+      return;
     }
+
+    queryRef.current.page = page.current;
+    setCurrentPage(page.current);
+    loadUsers();
+  };
+
+  const handlePageSizeChange = (current: number, nextPageSize: number) => {
+    queryRef.current.pageSize = nextPageSize;
+    queryRef.current.page = 1;
+    setPageSize(nextPageSize);
+    setCurrentPage(1);
     loadUsers();
   };
 
@@ -536,15 +544,22 @@ function UsersPage() {
 
   // ---- Status filter ----
   const handleStatusFilter = useCallback(
-    (val: number | string) => {
-      const v = val === '' ? null : Number(val);
-      setStatusFilter(v);
-      queryRef.current.statusFilter = v;
+    (value: TableToolbarFilterValue) => {
+      const nextStatus = value === null || value === '' ? null : Number(value);
+      setStatusFilter(nextStatus);
+      queryRef.current.statusFilter = nextStatus;
       queryRef.current.page = 1;
       setCurrentPage(1);
       loadUsers();
     },
     [loadUsers],
+  );
+
+  const handleToolbarFiltersChange = useCallback(
+    (filters: Record<string, TableToolbarFilterValue>) => {
+      handleStatusFilter(filters.status ?? null);
+    },
+    [handleStatusFilter],
   );
 
   // ---- Selection ----
@@ -556,6 +571,36 @@ function UsersPage() {
   const roleOptions = useMemo(
     () => allRoles.map((r) => ({ label: r.name, value: r.id })),
     [allRoles],
+  );
+
+  const tableToolbar = useMemo(
+    () => ({
+      searchValue: keyword,
+      searchPlaceholder: '搜索用户名或显示名...',
+      filters: [
+        {
+          key: 'status',
+          label: '状态',
+          placeholder: '筛选状态',
+          options: STATUS_FILTER_OPTIONS,
+          value: statusFilter,
+        },
+      ],
+      bulkActions: canDelete
+        ? [
+            {
+              key: 'batch-delete',
+              label: '批量删除',
+              variant: 'outline' as const,
+              onClick: (keys: (string | number)[]) =>
+                handleBatchDelete(keys as number[]),
+            },
+          ]
+        : undefined,
+      selectedKeys: selectedRowKeys,
+      selectedCount: selectedRowKeys.length,
+    }),
+    [canDelete, handleBatchDelete, keyword, selectedRowKeys, statusFilter],
   );
 
   // ---- Form field helpers ----
@@ -578,105 +623,78 @@ function UsersPage() {
         ]}
       />
 
-      {/* Toolbar */}
-      <Card>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3 flex-wrap">
-            <Input
-              value={keyword}
-              placeholder="搜索用户名或显示名..."
-              onChange={(val) => handleSearch(val)}
-              className="w-64"
-            />
-            <Select
-              value={statusFilter ?? ''}
-              options={STATUS_OPTIONS}
-              placeholder="筛选状态"
-              onChange={(val) => handleStatusFilter(val as number | string)}
-              className="w-32"
-            />
-            <Popover
-              trigger="click"
-              placement="bottom-end"
-              width={180}
-              contentContent={
-                <div className="space-y-2">
-                  {ALL_COLUMN_KEYS.filter(
-                    (k) => k !== 'actions' || canEdit || canDelete,
-                  ).map((key) => (
-                    <label
-                      key={key}
-                      className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
-                      <Checkbox
-                        checked={!hiddenColumns.has(key)}
-                        onChange={() => toggleColumn(key)}
-                      />
-                      <span>{COLUMN_LABELS[key] || key}</span>
-                    </label>
-                  ))}
-                </div>
-              }>
-              <Button variant="outline" size="sm">
-                <span className="flex items-center gap-1">
-                  <SettingsIcon size={14} />
-                  列显隐
-                </span>
-              </Button>
-            </Popover>
-          </div>
-          <div className="flex items-center gap-2">
-            <PermissionGuard code="user:view">
-              <Button variant="outline" onClick={openExportModal}>
-                <span className="flex items-center gap-1">
-                  <DownloadIcon size={16} />
-                  导出
-                </span>
-              </Button>
-            </PermissionGuard>
-            <PermissionGuard code="user:delete">
-              {selectedRowKeys.length > 0 && (
-                <Button
-                  color="danger"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBatchDelete}>
-                  批量删除 ({selectedRowKeys.length})
-                </Button>
-              )}
-            </PermissionGuard>
-            <PermissionGuard code="user:create">
-              <Button color="primary" onClick={openCreateModal}>
-                <span className="flex items-center gap-1">
-                  <UserPlusIcon size={16} />
-                  新增用户
-                </span>
-              </Button>
-            </PermissionGuard>
-          </div>
-        </div>
-      </Card>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Popover
+          trigger="click"
+          placement="bottom-end"
+          width={180}
+          contentContent={
+            <div className="space-y-2">
+              {ALL_COLUMN_KEYS.filter(
+                (k) => k !== 'actions' || canEdit || canDelete,
+              ).map((key) => (
+                <label
+                  key={key}
+                  className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
+                  <Checkbox
+                    checked={!hiddenColumns.has(key)}
+                    onChange={() => toggleColumn(key)}
+                  />
+                  <span>{COLUMN_LABELS[key] || key}</span>
+                </label>
+              ))}
+            </div>
+          }>
+          <Button variant="outline" size="sm">
+            <span className="flex items-center gap-1">
+              <SettingsIcon size={14} />
+              列显隐
+            </span>
+          </Button>
+        </Popover>
+        <PermissionGuard code="user:view">
+          <Button variant="outline" onClick={openExportModal}>
+            <span className="flex items-center gap-1">
+              <DownloadIcon size={16} />
+              导出
+            </span>
+          </Button>
+        </PermissionGuard>
+        <PermissionGuard code="user:create">
+          <Button color="primary" onClick={openCreateModal}>
+            <span className="flex items-center gap-1">
+              <UserPlusIcon size={16} />
+              新增用户
+            </span>
+          </Button>
+        </PermissionGuard>
+      </div>
 
-      {/* Users Table */}
-      <Card>
-        <Table
-          columns={columns}
-          dataSource={users}
-          loading={loading}
-          pagination={paginationConfig}
-          rowSelection={{
-            selectedRowKeys,
-          }}
-          sort={sortState}
-          columnLockable
-          rowKey="id"
-          hoverable
-          striped
-          emptyText="暂无用户数据"
-          onPageChange={handlePageChange}
-          onSelectionChange={handleSelectionChange}
-          onSortChange={handleSortChange}
-        />
-      </Card>
+      <DataTableWithToolbar
+        columns={columns}
+        dataSource={users}
+        loading={loading}
+        pagination={paginationConfig}
+        rowSelection={{
+          selectedRowKeys,
+        }}
+        sort={sortState}
+        columnLockable
+        rowKey="id"
+        hoverable
+        striped
+        emptyText="暂无用户数据"
+        toolbar={tableToolbar}
+        onSearchChange={handleSearch}
+        onSearch={handleSearch}
+        onFiltersChange={handleToolbarFiltersChange}
+        onPageChange={(current, nextPageSize) =>
+          handlePageChange({ current, pageSize: nextPageSize })
+        }
+        onPageSizeChange={handlePageSizeChange}
+        onSelectionChange={handleSelectionChange}
+        onSortChange={handleSortChange}
+      />
 
       {/* Create / Edit Modal */}
       <Modal

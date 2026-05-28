@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, inject, onMounted, h } from 'vue'
-import { Card, Table, Button, Input, Modal, Form, FormItem, Select, Tag, Message, Popover, Checkbox } from '@expcat/tigercat-vue'
-import type { TableColumn, SortState } from '@expcat/tigercat-core'
+import { DataTableWithToolbar, Button, Input, Modal, Form, FormItem, Select, Tag, Message, Popover, Checkbox } from '@expcat/tigercat-vue'
+import type { TableColumn, SortState, TableToolbarFilterValue } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
 import { apiRequest, debounce, type Session } from '../utils'
@@ -205,11 +205,12 @@ async function confirmDelete() {
   }
 }
 
-async function handleBatchDelete() {
-  if (selectedRowKeys.value.length === 0) {
+async function handleBatchDelete(keys = selectedRowKeys.value) {
+  if (keys.length === 0) {
     Message.error({ content: '请选择要删除的用户', duration: 3000 })
     return
   }
+  selectedRowKeys.value = [...keys] as number[]
   batchDeleteConfirmVisible.value = true
 }
 
@@ -359,12 +360,18 @@ const paginationConfig = computed(() => ({
   pageSizeOptions: [10, 20, 50],
 }))
 
-function handlePageChange(e: any) {
-  if (e.current !== undefined) currentPage.value = e.current
-  if (e.pageSize !== undefined) {
-    pageSize.value = e.pageSize
-    currentPage.value = 1
+function handlePageChange(current: number, nextPageSize: number) {
+  if (nextPageSize !== pageSize.value) {
+    return
   }
+
+  currentPage.value = current
+  loadUsers()
+}
+
+function handlePageSizeChange(_current: number, nextPageSize: number) {
+  pageSize.value = nextPageSize
+  currentPage.value = 1
   loadUsers()
 }
 
@@ -380,16 +387,19 @@ function handleSortChange(next: SortState) {
 }
 
 // ---- Status filter ----
-const statusOptions = [
-  { label: '全部状态', value: '' },
+const statusFilterOptions = [
   { label: '正常', value: 0 },
   { label: '禁用', value: 1 },
 ]
 
-function handleStatusFilter(val: number | string) {
-  statusFilter.value = val === '' ? null : Number(val)
+function handleStatusFilter(value: TableToolbarFilterValue) {
+  statusFilter.value = value === null || value === '' ? null : Number(value)
   currentPage.value = 1
   loadUsers()
+}
+
+function handleToolbarFiltersChange(filters: Record<string, TableToolbarFilterValue>) {
+  handleStatusFilter(filters.status ?? null)
 }
 
 // ---- Search ----
@@ -407,6 +417,32 @@ function handleSearch(val: string) {
 const roleOptions = computed(() =>
   allRoles.value.map(r => ({ label: r.name, value: r.id }))
 )
+
+const tableToolbar = computed(() => ({
+  searchValue: keyword.value,
+  searchPlaceholder: '搜索用户名或显示名...',
+  filters: [
+    {
+      key: 'status',
+      label: '状态',
+      placeholder: '筛选状态',
+      options: statusFilterOptions,
+      value: statusFilter.value,
+    },
+  ],
+  bulkActions: canDelete.value
+    ? [
+        {
+          key: 'batch-delete',
+          label: '批量删除',
+          variant: 'outline',
+          onClick: (keys: (string | number)[]) => handleBatchDelete(keys as number[]),
+        },
+      ]
+    : undefined,
+  selectedKeys: selectedRowKeys.value,
+  selectedCount: selectedRowKeys.value.length,
+}))
 
 // ---- Export ----
 function openExportModal() {
@@ -465,104 +501,76 @@ onMounted(() => {
       ]"
     />
 
-    <!-- Toolbar -->
-    <Card>
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-3 flex-wrap">
-          <Input
-            :model-value="keyword"
-            placeholder="搜索用户名或显示名..."
-            @update:model-value="handleSearch"
-            class="w-64"
-          />
-          <Select
-            :model-value="statusFilter ?? ''"
-            :options="statusOptions"
-            placeholder="筛选状态"
-            @update:model-value="handleStatusFilter"
-            class="w-32"
-          />
-          <Popover trigger="click" placement="bottom-end" :width="180">
-            <template #reference>
-              <Button variant="outline" size="sm">
-                <span class="flex items-center gap-1">
-                  <Icon name="settings" :size="14" />
-                  列显隐
-                </span>
-              </Button>
-            </template>
-            <div class="space-y-2">
-              <label
-                v-for="key in ALL_COLUMN_KEYS.filter(k => k !== 'actions' || canEdit || canDelete)"
-                :key="key"
-                class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800"
-              >
-                <Checkbox
-                  :model-value="!hiddenColumns.has(key)"
-                  @update:model-value="() => toggleColumn(key)"
-                />
-                <span>{{ columnLabels[key] || key }}</span>
-              </label>
-            </div>
-          </Popover>
-        </div>
-        <div class="flex items-center gap-2">
-          <Button
-            v-permission="'user:view'"
-            variant="outline"
-            @click="openExportModal"
-          >
+    <div class="flex flex-wrap justify-end gap-2">
+      <Popover trigger="click" placement="bottom-end" :width="180">
+        <template #reference>
+          <Button variant="outline" size="sm">
             <span class="flex items-center gap-1">
-              <Icon name="download" :size="16" />
-              导出
+              <Icon name="settings" :size="14" />
+              列显隐
             </span>
           </Button>
-          <Button
-            v-permission="'user:delete'"
-            v-if="selectedRowKeys.length > 0"
-            color="danger"
-            variant="outline"
-            size="sm"
-            @click="handleBatchDelete"
+        </template>
+        <div class="space-y-2">
+          <label
+            v-for="key in ALL_COLUMN_KEYS.filter(k => k !== 'actions' || canEdit || canDelete)"
+            :key="key"
+            class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800"
           >
-            批量删除 ({{ selectedRowKeys.length }})
-          </Button>
-          <Button
-            v-permission="'user:create'"
-            color="primary"
-            @click="openCreateModal"
-          >
-            <span class="flex items-center gap-1">
-              <Icon name="userPlus" :size="16" />
-              新增用户
-            </span>
-          </Button>
+            <Checkbox
+              :model-value="!hiddenColumns.has(key)"
+              @update:model-value="() => toggleColumn(key)"
+            />
+            <span>{{ columnLabels[key] || key }}</span>
+          </label>
         </div>
-      </div>
-    </Card>
+      </Popover>
+      <Button
+        v-permission="'user:view'"
+        variant="outline"
+        @click="openExportModal"
+      >
+        <span class="flex items-center gap-1">
+          <Icon name="download" :size="16" />
+          导出
+        </span>
+      </Button>
+      <Button
+        v-permission="'user:create'"
+        color="primary"
+        @click="openCreateModal"
+      >
+        <span class="flex items-center gap-1">
+          <Icon name="userPlus" :size="16" />
+          新增用户
+        </span>
+      </Button>
+    </div>
 
-    <!-- Users Table -->
-    <Card>
-      <Table
-        :columns="columns"
-        :data-source="users as any"
-        :loading="loading"
-        :pagination="paginationConfig"
-        :row-selection="{
-          selectedRowKeys: selectedRowKeys,
-          type: 'checkbox',
-        }"
-        :sort="sortState"
-        column-lockable
-        row-key="id"
-        :hoverable="true"
-        :striped="true"
-        empty-text="暂无用户数据"
-        @page-change="handlePageChange"
-        @selection-change="handleSelectionChange"
-        @sort-change="handleSortChange"
-      />
-    </Card>
+    <DataTableWithToolbar
+      :columns="columns"
+      :data-source="users as any"
+      :loading="loading"
+      :pagination="paginationConfig"
+      :row-selection="{
+        selectedRowKeys: selectedRowKeys,
+        type: 'checkbox',
+      }"
+      :sort="sortState"
+      column-lockable
+      row-key="id"
+      :hoverable="true"
+      :striped="true"
+      empty-text="暂无用户数据"
+      :toolbar="tableToolbar"
+      @search-change="handleSearch"
+      @search="handleSearch"
+      @filters-change="handleToolbarFiltersChange"
+      @page-change="handlePageChange"
+      @page-size-change="handlePageSizeChange"
+      @selection-change="handleSelectionChange"
+      @sort-change="handleSortChange"
+    />
 
     <!-- Create / Edit Modal -->
     <Modal

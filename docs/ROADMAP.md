@@ -82,7 +82,7 @@
 
 目标：让用户和角色模块成为 Tigercat 表格高级能力的主验证场景。
 
-- [ ] 评估 `DataTableWithToolbar` 是否能替代当前手写 Card + Toolbar + Table 组合。
+- [x] 用户页已用 `DataTableWithToolbar` 替代手写 Card + Toolbar + Table 组合，承接搜索、状态筛选、分页、排序、选择与批量删除。
 - [ ] 对大数据列表引入 `VirtualTable` 或服务端分页边界提示，避免前端误用大数组渲染。
 - [ ] 使用 `Tooltip`、`Popover`、`Dropdown` 规范行操作、列配置与危险操作确认。
 - [ ] 复核 Table 固定列、列显隐、排序、选择、分页在 Vue/React 的 API 差异。
