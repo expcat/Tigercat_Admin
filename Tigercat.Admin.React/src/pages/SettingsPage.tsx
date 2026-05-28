@@ -2,9 +2,11 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card,
   Button,
+  ColorPicker,
   Input,
   InputNumber,
   Select,
+  Segmented,
   Switch,
   Message,
   Text,
@@ -16,7 +18,9 @@ import { apiRequest, getAuthHeaders } from '../utils';
 import { usePermission } from '../utils/permission';
 import {
   SETTINGS_GROUP_LABELS,
+  getColorPresets,
   getControl,
+  getControlOptions,
   groupSettings,
 } from '../utils/settings';
 import type { SettingItem } from '../utils/types';
@@ -123,10 +127,23 @@ function SettingsPage() {
                             }
                             disabled={!canEdit}
                           />
+                        ) : ctrl.type === 'segmented' ? (
+                          <Segmented
+                            value={editValues[item.key] ?? ''}
+                            options={getControlOptions(item.key)}
+                            onChange={(val) =>
+                              setEditValues((prev) => ({
+                                ...prev,
+                                [item.key]: String(val),
+                              }))
+                            }
+                            disabled={!canEdit}
+                            block
+                          />
                         ) : ctrl.type === 'select' ? (
                           <Select
                             value={editValues[item.key] ?? ''}
-                            options={ctrl.options}
+                            options={getControlOptions(item.key)}
                             onChange={(val) =>
                               setEditValues((prev) => ({
                                 ...prev,
@@ -136,6 +153,18 @@ function SettingsPage() {
                             placeholder={`选择 ${item.description ?? item.key}`}
                             disabled={!canEdit}
                             clearable={false}
+                          />
+                        ) : ctrl.type === 'color' ? (
+                          <ColorPicker
+                            value={editValues[item.key] || '#2563eb'}
+                            presets={getColorPresets(item.key)}
+                            onChange={(val) =>
+                              setEditValues((prev) => ({
+                                ...prev,
+                                [item.key]: val,
+                              }))
+                            }
+                            disabled={!canEdit}
                           />
                         ) : ctrl.type === 'number' ? (
                           <InputNumber

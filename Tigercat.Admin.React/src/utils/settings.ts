@@ -7,6 +7,8 @@ export type SettingControl =
   | { type: 'input' }
   | { type: 'switch' }
   | { type: 'select'; options: { label: string; value: string }[] }
+  | { type: 'segmented'; options: { label: string; value: string }[] }
+  | { type: 'color'; presets?: string[] }
   | { type: 'number'; min?: number; max?: number; step?: number };
 
 /** 设置分组中文标签 */
@@ -31,7 +33,7 @@ export const SETTING_CONTROLS: Record<string, SettingControl> = {
     step: 1,
   },
   'theme.mode': {
-    type: 'select',
+    type: 'segmented',
     options: [
       { label: '浅色', value: 'light' },
       { label: '深色', value: 'dark' },
@@ -39,11 +41,8 @@ export const SETTING_CONTROLS: Record<string, SettingControl> = {
     ],
   },
   'theme.primaryColor': {
-    type: 'select',
-    options: COLOR_PRESETS.map((c) => ({
-      label: `${c.label} (${c.value})`,
-      value: c.value,
-    })),
+    type: 'color',
+    presets: COLOR_PRESETS.map((c) => c.value),
   },
   'theme.compactMode': {
     type: 'switch',
@@ -60,7 +59,14 @@ export function getControlOptions(
   key: string,
 ): { label: string; value: string }[] {
   const ctrl = SETTING_CONTROLS[key];
-  return ctrl?.type === 'select' ? ctrl.options : [];
+  return ctrl?.type === 'select' || ctrl?.type === 'segmented'
+    ? ctrl.options
+    : [];
+}
+
+export function getColorPresets(key: string): string[] {
+  const ctrl = SETTING_CONTROLS[key];
+  return ctrl?.type === 'color' ? (ctrl.presets ?? []) : [];
 }
 
 /** 按 key 前缀分组设置项 */

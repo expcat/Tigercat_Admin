@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Card, Button, Input, InputNumber, Select, Switch, Message, Text, Tag } from '@expcat/tigercat-vue'
+import { Card, Button, ColorPicker, Input, InputNumber, Select, Segmented, Switch, Message, Text, Tag } from '@expcat/tigercat-vue'
 import PageHeader from '../components/PageHeader.vue'
 import { apiRequest, getAuthHeaders } from '../utils'
 import { usePermission } from '../utils/permission'
-import { SETTINGS_GROUP_LABELS, getControl, getControlOptions, groupSettings } from '../utils/settings'
+import { SETTINGS_GROUP_LABELS, getColorPresets, getControl, getControlOptions, groupSettings } from '../utils/settings'
 import type { SettingItem } from '../utils/types'
 
 /* ── 状态 ────────────────────────────────────── */
@@ -99,6 +99,21 @@ onMounted(fetchSettings)
                 :placeholder="`选择 ${item.description ?? item.key}`"
                 :disabled="!canEdit"
                 :clearable="false"
+              />
+              <Segmented
+                v-else-if="getControl(item.key).type === 'segmented'"
+                :model-value="editValues[item.key] ?? ''"
+                :options="getControlOptions(item.key)"
+                @update:model-value="(val: string | number) => (editValues[item.key] = String(val))"
+                :disabled="!canEdit"
+                block
+              />
+              <ColorPicker
+                v-else-if="getControl(item.key).type === 'color'"
+                :model-value="editValues[item.key] || '#2563eb'"
+                :presets="getColorPresets(item.key)"
+                @update:model-value="(val: string) => (editValues[item.key] = val)"
+                :disabled="!canEdit"
               />
               <InputNumber
                 v-else-if="getControl(item.key).type === 'number'"
