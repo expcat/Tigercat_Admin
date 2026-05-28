@@ -8,6 +8,13 @@
     "build": "pnpm --filter tigercat-admin-react build && pnpm --filter tigercat-admin-vue build",
     "build:vue": "pnpm --filter tigercat-admin-vue build",
     "build:react": "pnpm --filter tigercat-admin-react build",
-    "build:all": "pnpm -r build"
+    "build:all": "pnpm -r build",
+    "e2e": "playwright test",
+    "e2e:react": "playwright test --project=react",
+    "e2e:vue": "playwright test --project=vue",
+    "e2e:install": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
   }
 }

@@ -14,22 +14,34 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
-    ?? throw new InvalidOperationException("Redis connection string is not configured.");
+var useInMemoryInfrastructure = builder.Configuration.GetValue<bool>("Infrastructure:UseInMemory");
 
-// Redis clients: StackExchange.Redis for general cache operations, FreeRedis for stream-style workloads and blocking commands.
-builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+if (useInMemoryInfrastructure)
 {
-    var options = ConfigurationOptions.Parse(redisConnectionString);
-    options.AbortOnConnectFail = false;
-    return ConnectionMultiplexer.Connect(options);
-});
+    builder.Services.AddMemoryCache();
+    builder.Services.AddSingleton<ICacheService, InMemoryCacheService>();
+    builder.Services.AddSingleton<IEventPublisher, NullEventPublisher>();
+    builder.Services.AddSingleton<IIdempotencyService, InMemoryIdempotencyService>();
+}
+else
+{
+    var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
+        ?? throw new InvalidOperationException("Redis connection string is not configured.");
 
-builder.Services.AddSingleton<IRedisClient>(_ => new RedisClient(redisConnectionString));
-builder.Services.AddSingleton<ICacheService, RedisCacheService>();
-builder.Services.AddSingleton<IEventPublisher, RedisStreamPublisher>();
-builder.Services.AddSingleton<IIdempotencyService, RedisIdempotencyService>();
-builder.Services.AddHostedService<RedisStreamConsumer>();
+    // Redis clients: StackExchange.Redis for general cache operations, FreeRedis for stream-style workloads and blocking commands.
+    builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+    {
+        var options = ConfigurationOptions.Parse(redisConnectionString);
+        options.AbortOnConnectFail = false;
+        return ConnectionMultiplexer.Connect(options);
+    });
+
+    builder.Services.AddSingleton<IRedisClient>(_ => new RedisClient(redisConnectionString));
+    builder.Services.AddSingleton<ICacheService, RedisCacheService>();
+    builder.Services.AddSingleton<IEventPublisher, RedisStreamPublisher>();
+    builder.Services.AddSingleton<IIdempotencyService, RedisIdempotencyService>();
+    builder.Services.AddHostedService<RedisStreamConsumer>();
+}
 
 // Database provider selection is explicit via Database:Provider when configured.
 // If omitted, the app keeps backward-compatible behavior: SQLite when a
@@ -129,7 +141,10 @@ catch (Exception ex)
 
 // Map Endpoints Explicitly (AOT compatible)
 app.MapEndpoint<AuthEndpoints>();
-app.MapEndpoint<AuditEndpoints>();
+if (!useInMemoryInfrastructure)
+{
+    app.MapEndpoint<AuditEndpoints>();
+}
 app.MapEndpoint<HomeEndpoints>();
 app.MapEndpoint<UsersEndpoints>();
 app.MapEndpoint<RolesEndpoints>();
@@ -143,8 +158,11 @@ app.MapGet("/api/health", GetHealth)
 app.MapGet("/api/info", GetInfo)
     .WithName("GetInfo");
 
-app.MapGet("/api/health/redis", GetRedisHealth)
-    .WithName("RedisHealthCheck");
+if (!useInMemoryInfrastructure)
+{
+    app.MapGet("/api/health/redis", GetRedisHealth)
+        .WithName("RedisHealthCheck");
+}
 
 await app.RunAsync();
 

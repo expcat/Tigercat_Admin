@@ -126,6 +126,9 @@ pnpm install              # 安装所有依赖
 pnpm dev:vue             # 运行 Vue 开发服务器
 pnpm dev:react           # 运行 React 开发服务器
 pnpm build:all           # 构建所有前端项目
+pnpm e2e                 # 运行 React + Vue 首批 E2E 烟测
+pnpm e2e:react           # 仅运行 React E2E 烟测
+pnpm e2e:vue             # 仅运行 Vue E2E 烟测
 
 # .NET
 dotnet build             # 构建解决方案

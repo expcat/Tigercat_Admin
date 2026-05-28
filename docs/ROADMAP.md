@@ -151,4 +151,5 @@ Tigercat 1.2.0 已提供 133+ 组件，Roadmap 不再维护完整组件字典，
 - [x] 更新 README 与 `.github/copilot-instructions.md` 中的 Tigercat 官方文档链接。
 - [x] 重审 [upstream-requirements.md](upstream-requirements.md)，移除或更新 1.2.0 已解决的历史缺口。
 - [x] 明确根 workspace lockfile 为唯一安装基线，并清理子项目 lockfile 漂移风险。
-- [ ] 补充用户/角色/设置核心流程的 E2E 回归计划。
+- [x] 补充用户/角色/设置核心流程的 E2E 回归计划，详见 [e2e-regression-plan.md](e2e-regression-plan.md)。
+- [x] 落地 Playwright 工作区 E2E 基座，并补充 React / Vue 双端认证与用户页访问烟测。
