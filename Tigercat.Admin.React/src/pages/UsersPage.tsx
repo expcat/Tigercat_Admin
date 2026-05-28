@@ -2,12 +2,17 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   DataTableWithToolbar,
   Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
   Input,
   Modal,
   Form,
   FormItem,
+  Popconfirm,
   Select,
   Tag,
+  Tooltip,
   Message,
   Popover,
   Checkbox,
@@ -128,9 +133,6 @@ function UsersPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<UserFormData>({ ...INITIAL_FORM });
 
-  // Delete state
-  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
-  const [deletingUser, setDeletingUser] = useState<UserItem | null>(null);
   const [batchDeleteConfirmVisible, setBatchDeleteConfirmVisible] =
     useState(false);
 
@@ -276,22 +278,14 @@ function UsersPage() {
   };
 
   // ---- Delete ----
-  const handleDelete = (user: UserItem) => {
-    setDeletingUser(user);
-    setDeleteConfirmVisible(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!deletingUser) return;
-    const userId = deletingUser.id;
+  const handleDelete = async (user: UserItem) => {
+    const userId = user.id;
     try {
       await apiRequest(`/api/users/${userId}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
       Message.success({ content: '删除成功', duration: 3000 });
-      setDeleteConfirmVisible(false);
-      setDeletingUser(null);
       setSelectedRowKeys((prev) => prev.filter((k) => k !== userId));
       loadUsers();
     } catch (e: any) {
@@ -468,27 +462,38 @@ function UsersPage() {
       cols.push({
         key: 'actions',
         title: '操作',
-        width: 160,
+        width: 180,
         align: 'center',
         fixed: 'right',
         render: (record) => (
-          <div className="flex items-center justify-center gap-1">
+          <div className="flex items-center justify-center gap-2">
             {canEdit && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => openEditModal(record)}>
-                编辑
-              </Button>
+              <Tooltip content="更多操作">
+                <Dropdown trigger="click" placement="bottom-end">
+                  <Button size="sm" variant="ghost">
+                    操作
+                  </Button>
+                  <DropdownMenu className="min-w-28">
+                    <DropdownItem onClick={() => openEditModal(record)}>
+                      编辑用户
+                    </DropdownItem>
+                  </DropdownMenu>
+                </Dropdown>
+              </Tooltip>
             )}
             {canDelete && (
-              <Button
-                size="sm"
-                variant="ghost"
-                color="danger"
-                onClick={() => handleDelete(record)}>
-                删除
-              </Button>
+              <Popconfirm
+                title="确认删除用户"
+                description={`将删除用户 ${record.username}，此操作不可撤销。`}
+                okText="删除"
+                cancelText="取消"
+                okType="danger"
+                placement="left"
+                onConfirm={() => handleDelete(record)}>
+                <Button size="sm" variant="ghost" color="danger">
+                  删除
+                </Button>
+              </Popconfirm>
             )}
           </div>
         ),
@@ -751,26 +756,6 @@ function UsersPage() {
             />
           </FormItem>
         </Form>
-      </Modal>
-
-      {/* Single Delete Confirm */}
-      <Modal
-        open={deleteConfirmVisible}
-        title="确认删除"
-        okText="确认删除"
-        cancelText="取消"
-        onOk={confirmDelete}
-        onCancel={() => setDeleteConfirmVisible(false)}
-        role="alertdialog"
-        aria-label={`确认删除用户 ${deletingUser?.username ?? ''}`}>
-        <p className="text-slate-600">
-          确定要删除用户
-          <span className="font-semibold text-slate-800">
-            {' '}
-            {deletingUser?.username}{' '}
-          </span>
-          吗？此操作不可撤销。
-        </p>
       </Modal>
 
       {/* Export Modal */}

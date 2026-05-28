@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, inject, onMounted, h } from 'vue'
-import { DataTableWithToolbar, Button, Input, Modal, Form, FormItem, Select, Tag, Message, Popover, Checkbox } from '@expcat/tigercat-vue'
+import { DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tooltip, Message, Popover, Checkbox } from '@expcat/tigercat-vue'
 import type { TableColumn, SortState, TableToolbarFilterValue } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
@@ -50,9 +50,6 @@ const formData = ref({
   roleIds: [] as number[],
 })
 
-// Delete state
-const deleteConfirmVisible = ref(false)
-const deletingUser = ref<UserItem | null>(null)
 const batchDeleteConfirmVisible = ref(false)
 
 // All roles for select
@@ -182,13 +179,7 @@ async function handleSubmit() {
 }
 
 async function handleDelete(user: UserItem) {
-  deletingUser.value = user
-  deleteConfirmVisible.value = true
-}
-
-async function confirmDelete() {
-  if (!deletingUser.value) return
-  const userId = deletingUser.value.id
+  const userId = user.id
 
   try {
     await apiRequest(`/api/users/${userId}`, {
@@ -196,8 +187,6 @@ async function confirmDelete() {
       headers: authHeaders.value,
     })
     Message.success({ content: '删除成功', duration: 3000 })
-    deleteConfirmVisible.value = false
-    deletingUser.value = null
     selectedRowKeys.value = selectedRowKeys.value.filter(k => k !== userId)
     await loadUsers()
   } catch (e: any) {
@@ -317,28 +306,52 @@ const columns = computed<TableColumn[]>(() => {
     cols.push({
       key: 'actions',
       title: '操作',
-      width: 160,
+      width: 180,
       align: 'center',
       fixed: 'right',
       render: (record: any) => {
+        const user = record as UserItem
         const buttons: any[] = []
         if (canEdit.value) {
           buttons.push(
-            h(Button, {
-              size: 'sm',
-              variant: 'ghost',
-              onClick: () => openEditModal(record as UserItem),
-            }, () => '编辑')
+            h(Tooltip, { content: '更多操作' }, {
+              default: () =>
+                h(Dropdown, { trigger: 'click', placement: 'bottom-end' }, {
+                  default: () => [
+                    h(Button, {
+                      size: 'sm',
+                      variant: 'ghost',
+                    }, () => '操作'),
+                    h(DropdownMenu, null, {
+                      default: () => [
+                        h(DropdownItem, {
+                          onClick: () => openEditModal(user),
+                        }, () => '编辑用户')
+                      ],
+                    }),
+                  ],
+                }),
+            })
           )
         }
         if (canDelete.value) {
           buttons.push(
-            h(Button, {
-              size: 'sm',
-              variant: 'ghost',
-              color: 'danger',
-              onClick: () => handleDelete(record as UserItem),
-            }, () => '删除')
+            h(Popconfirm, {
+              title: '确认删除用户',
+              description: `将删除用户 ${user.username}，此操作不可撤销。`,
+              okText: '删除',
+              cancelText: '取消',
+              okType: 'danger',
+              placement: 'left',
+              onConfirm: () => handleDelete(user),
+            }, {
+              default: () =>
+                h(Button, {
+                  size: 'sm',
+                  variant: 'ghost',
+                  color: 'danger',
+                }, () => '删除'),
+            })
           )
         }
         return h('div', { class: 'flex items-center justify-center gap-1' }, buttons)
@@ -622,23 +635,6 @@ onMounted(() => {
           />
         </FormItem>
       </Form>
-    </Modal>
-
-    <!-- Single Delete Confirm -->
-    <Modal
-      :open="deleteConfirmVisible"
-      title="确认删除"
-      ok-text="确认删除"
-      cancel-text="取消"
-      @ok="confirmDelete"
-      @cancel="deleteConfirmVisible = false"
-      @update:open="deleteConfirmVisible = $event"
-    >
-      <p class="text-slate-600">
-        确定要删除用户
-        <span class="font-semibold text-slate-800">{{ deletingUser?.username }}</span>
-        吗？此操作不可撤销。
-      </p>
     </Modal>
 
     <!-- Batch Delete Confirm -->

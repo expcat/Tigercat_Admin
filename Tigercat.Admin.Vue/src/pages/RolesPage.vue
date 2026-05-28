@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, inject, onMounted, h } from 'vue'
-import { DataTableWithToolbar, Button, Input, Modal, Form, FormItem, Select, Tag, Message, Checkbox, Popover } from '@expcat/tigercat-vue'
+import { DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tooltip, Message, Checkbox, Popover } from '@expcat/tigercat-vue'
 import type { TableColumn, SortState } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
@@ -50,10 +50,6 @@ const formData = ref({
   description: '',
   permissionIds: [] as number[],
 })
-
-// Delete state
-const deleteConfirmVisible = ref(false)
-const deletingRole = ref<RoleItem | null>(null)
 
 // Permission config modal
 const permModalVisible = ref(false)
@@ -173,21 +169,12 @@ async function handleSubmit() {
 }
 
 async function handleDelete(role: RoleItem) {
-  deletingRole.value = role
-  deleteConfirmVisible.value = true
-}
-
-async function confirmDelete() {
-  if (!deletingRole.value) return
-
   try {
-    await apiRequest(`/api/roles/${deletingRole.value.id}`, {
+    await apiRequest(`/api/roles/${role.id}`, {
       method: 'DELETE',
       headers: authHeaders.value,
     })
     Message.success({ content: '删除成功', duration: 3000 })
-    deleteConfirmVisible.value = false
-    deletingRole.value = null
     await loadRoles()
   } catch (e: any) {
     Message.error({ content: e.message || '删除失败', duration: 3000 })
@@ -315,7 +302,7 @@ const columns = computed<TableColumn[]>(() => {
     cols.push({
       key: 'actions',
       title: '操作',
-      width: 220,
+      width: 180,
       align: 'center',
       fixed: 'right',
       render: (record: any) => {
@@ -323,29 +310,47 @@ const columns = computed<TableColumn[]>(() => {
         const buttons: any[] = []
         if (canEdit.value) {
           buttons.push(
-            h(Button, {
-              size: 'sm',
-              variant: 'ghost',
-              onClick: () => openEditModal(role),
-            }, () => '编辑')
-          )
-          buttons.push(
-            h(Button, {
-              size: 'sm',
-              variant: 'ghost',
-              color: 'primary',
-              onClick: () => openPermModal(role),
-            }, () => '权限')
+            h(Tooltip, { content: '更多操作' }, {
+              default: () =>
+                h(Dropdown, { trigger: 'click', placement: 'bottom-end' }, {
+                  default: () => [
+                    h(Button, {
+                      size: 'sm',
+                      variant: 'ghost',
+                    }, () => '操作'),
+                    h(DropdownMenu, null, {
+                      default: () => [
+                        h(DropdownItem, {
+                          onClick: () => openEditModal(role),
+                        }, () => '编辑角色'),
+                        h(DropdownItem, {
+                          onClick: () => openPermModal(role),
+                        }, () => '权限配置')
+                      ],
+                    }),
+                  ],
+                }),
+            })
           )
         }
         if (canDelete.value) {
           buttons.push(
-            h(Button, {
-              size: 'sm',
-              variant: 'ghost',
-              color: 'danger',
-              onClick: () => handleDelete(role),
-            }, () => '删除')
+            h(Popconfirm, {
+              title: '确认删除角色',
+              description: `将删除角色 ${role.name}，此操作不可撤销。`,
+              okText: '删除',
+              cancelText: '取消',
+              okType: 'danger',
+              placement: 'left',
+              onConfirm: () => handleDelete(role),
+            }, {
+              default: () =>
+                h(Button, {
+                  size: 'sm',
+                  variant: 'ghost',
+                  color: 'danger',
+                }, () => '删除'),
+            })
           )
         }
         return h('div', { class: 'flex items-center justify-center gap-1' }, buttons)
@@ -614,23 +619,6 @@ onMounted(() => {
           暂无可配置的权限
         </div>
       </div>
-    </Modal>
-
-    <!-- Delete Confirm -->
-    <Modal
-      :open="deleteConfirmVisible"
-      title="确认删除"
-      ok-text="确认删除"
-      cancel-text="取消"
-      @ok="confirmDelete"
-      @cancel="deleteConfirmVisible = false"
-      @update:open="deleteConfirmVisible = $event"
-    >
-      <p class="text-slate-600">
-        确定要删除角色
-        <span class="font-semibold text-slate-800">{{ deletingRole?.name }}</span>
-        吗？此操作不可撤销。
-      </p>
     </Modal>
 
     <!-- Export Modal -->

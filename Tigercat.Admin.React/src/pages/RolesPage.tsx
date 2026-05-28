@@ -2,13 +2,18 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   DataTableWithToolbar,
   Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
   Input,
   Modal,
   Form,
   FormItem,
+  Popconfirm,
   Select,
   Checkbox,
   Tag,
+  Tooltip,
   Message,
   Popover,
 } from '@expcat/tigercat-react';
@@ -117,10 +122,6 @@ function RolesPage() {
   const [modalTitle, setModalTitle] = useState('新增角色');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<RoleFormData>({ ...INITIAL_FORM });
-
-  // Delete state
-  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
-  const [deletingRole, setDeletingRole] = useState<RoleItem | null>(null);
 
   // Permission configuration modal
   const [permModalVisible, setPermModalVisible] = useState(false);
@@ -258,21 +259,13 @@ function RolesPage() {
   };
 
   // ---- Delete ----
-  const handleDelete = (role: RoleItem) => {
-    setDeletingRole(role);
-    setDeleteConfirmVisible(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!deletingRole) return;
+  const handleDelete = async (role: RoleItem) => {
     try {
-      await apiRequest<MessageResult>(`/api/roles/${deletingRole.id}`, {
+      await apiRequest<MessageResult>(`/api/roles/${role.id}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
       Message.success({ content: '删除成功', duration: 3000 });
-      setDeleteConfirmVisible(false);
-      setDeletingRole(null);
       loadRoles();
     } catch (e: any) {
       Message.error({ content: e.message || '删除失败', duration: 3000 });
@@ -454,36 +447,41 @@ function RolesPage() {
       cols.push({
         key: 'actions',
         title: '操作',
-        width: 220,
+        width: 180,
         align: 'center',
         fixed: 'right',
         render: (record) => (
-          <div className="flex items-center justify-center gap-1">
+          <div className="flex items-center justify-center gap-2">
             {canEdit && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => openEditModal(record)}>
-                编辑
-              </Button>
-            )}
-            {canEdit && (
-              <Button
-                size="sm"
-                variant="ghost"
-                color="primary"
-                onClick={() => openPermModal(record)}>
-                权限
-              </Button>
+              <Tooltip content="更多操作">
+                <Dropdown trigger="click" placement="bottom-end">
+                  <Button size="sm" variant="ghost">
+                    操作
+                  </Button>
+                  <DropdownMenu className="min-w-28">
+                    <DropdownItem onClick={() => openEditModal(record)}>
+                      编辑角色
+                    </DropdownItem>
+                    <DropdownItem onClick={() => openPermModal(record)}>
+                      权限配置
+                    </DropdownItem>
+                  </DropdownMenu>
+                </Dropdown>
+              </Tooltip>
             )}
             {canDelete && (
-              <Button
-                size="sm"
-                variant="ghost"
-                color="danger"
-                onClick={() => handleDelete(record)}>
-                删除
-              </Button>
+              <Popconfirm
+                title="确认删除角色"
+                description={`将删除角色 ${record.name}，此操作不可撤销。`}
+                okText="删除"
+                cancelText="取消"
+                okType="danger"
+                placement="left"
+                onConfirm={() => handleDelete(record)}>
+                <Button size="sm" variant="ghost" color="danger">
+                  删除
+                </Button>
+              </Popconfirm>
             )}
           </div>
         ),
@@ -768,26 +766,6 @@ function RolesPage() {
             </div>
           </FormItem>
         </Form>
-      </Modal>
-
-      {/* Delete Confirm Modal */}
-      <Modal
-        open={deleteConfirmVisible}
-        title="确认删除"
-        okText="确认删除"
-        cancelText="取消"
-        onOk={confirmDelete}
-        onCancel={() => setDeleteConfirmVisible(false)}
-        role="alertdialog"
-        aria-label={`确认删除角色 ${deletingRole?.name ?? ''}`}>
-        <p className="text-slate-600">
-          确定要删除角色
-          <span className="font-semibold text-slate-800">
-            {' '}
-            {deletingRole?.name}{' '}
-          </span>
-          吗？此操作不可撤销。
-        </p>
       </Modal>
     </div>
   );
