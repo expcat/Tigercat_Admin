@@ -196,6 +196,21 @@ export const ChevronLeftIcon = (props: IconProps) => (
   </IconBase>
 );
 
+export const MenuIcon = (props: IconProps) => (
+  <IconBase {...props}>
+    <line x1="4" x2="20" y1="6" y2="6" />
+    <line x1="4" x2="20" y1="12" y2="12" />
+    <line x1="4" x2="20" y1="18" y2="18" />
+  </IconBase>
+);
+
+export const XIcon = (props: IconProps) => (
+  <IconBase {...props}>
+    <line x1="18" x2="6" y1="6" y2="18" />
+    <line x1="6" x2="18" y1="6" y2="18" />
+  </IconBase>
+);
+
 export const LinkIcon = (props: IconProps) => (
   <IconBase {...props}>
     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />

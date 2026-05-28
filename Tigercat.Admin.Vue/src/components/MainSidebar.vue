@@ -18,10 +18,13 @@ interface MenuItemDef {
   children?: MenuItemDef[]
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   collapsed: boolean
   activeMenu: string
-}>()
+  showCollapseToggle?: boolean
+}>(), {
+  showCollapseToggle: true
+})
 
 const emit = defineEmits<{
   (e: 'update:collapsed', value: boolean): void
@@ -64,6 +67,10 @@ const toggleCollapsed = () => {
   emit('update:collapsed', !props.collapsed)
 }
 
+const displayCollapsed = computed(() =>
+  props.showCollapseToggle ? props.collapsed : false
+)
+
 // ---- Permission-based menu filtering ----
 const { has: hasPerm } = usePermission()
 
@@ -93,7 +100,7 @@ const menuIcon = (name: string, size = 20) => h(Icon, { name, size })
 
 <template>
   <Sidebar
-    :collapsed="collapsed"
+    :collapsed="displayCollapsed"
     width="240px"
     collapsed-width="64px"
   >
@@ -101,7 +108,7 @@ const menuIcon = (name: string, size = 20) => h(Icon, { name, size })
     <div class="flex h-16 items-center justify-center border-b border-[var(--tiger-border,#e2e8f0)]">
       <div class="flex items-center gap-3">
         <AppLogo :size="36" />
-        <span v-if="!collapsed" class="font-bold text-lg text-[var(--tiger-text,#1f2937)] tracking-wide whitespace-nowrap">Tigercat</span>
+        <span v-if="!displayCollapsed" class="font-bold text-lg text-[var(--tiger-text,#1f2937)] tracking-wide whitespace-nowrap">Tigercat</span>
       </div>
     </div>
 
@@ -111,7 +118,7 @@ const menuIcon = (name: string, size = 20) => h(Icon, { name, size })
         <Menu
           :selected-keys="[activeMenu]"
           :open-keys="expandedKeys"
-          :collapsed="collapsed"
+          :collapsed="displayCollapsed"
           @select="handleMenuSelect"
           @update:open-keys="(keys: (string | number)[]) => expandedKeys = keys"
         >
@@ -145,7 +152,7 @@ const menuIcon = (name: string, size = 20) => h(Icon, { name, size })
         <div class="mt-auto pt-2">
           <Menu
             :selected-keys="[activeMenu]"
-            :collapsed="collapsed"
+            :collapsed="displayCollapsed"
             @select="handleMenuSelect"
           >
             <MenuItem
@@ -162,15 +169,15 @@ const menuIcon = (name: string, size = 20) => h(Icon, { name, size })
     </nav>
     
     <!-- 折叠按钮 -->
-    <div class="p-3 border-t border-[var(--tiger-border,#e2e8f0)]">
+    <div v-if="props.showCollapseToggle" class="p-3 border-t border-[var(--tiger-border,#e2e8f0)]">
       <button 
         @click="toggleCollapsed" 
         class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)] transition-all duration-200"
       >
         <span class="shrink-0">
-          <Icon :name="collapsed ? 'chevronRight' : 'chevronLeft'" :size="18" />
+          <Icon :name="props.collapsed ? 'chevronRight' : 'chevronLeft'" :size="18" />
         </span>
-        <span v-if="!collapsed" class="whitespace-nowrap">收起菜单</span>
+        <span v-if="!props.collapsed" class="whitespace-nowrap">收起菜单</span>
       </button>
     </div>
   </Sidebar>

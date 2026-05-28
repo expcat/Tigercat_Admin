@@ -29,6 +29,7 @@ interface MenuItemDef {
 interface MainSidebarProps {
   collapsed: boolean;
   activeMenu: string;
+  showCollapseToggle?: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
   onMenuSelect: (key: string) => void;
 }
@@ -73,6 +74,7 @@ const BOTTOM_MENU_ITEMS: MenuItemDef[] = [
 export function MainSidebar({
   collapsed,
   activeMenu,
+  showCollapseToggle = true,
   onCollapsedChange,
   onMenuSelect,
 }: MainSidebarProps) {
@@ -105,13 +107,15 @@ export function MainSidebar({
     onMenuSelect(String(key));
   };
 
+  const displayCollapsed = showCollapseToggle ? collapsed : false;
+
   return (
-    <Sidebar collapsed={collapsed} width="240px" collapsedWidth="64px">
+    <Sidebar collapsed={displayCollapsed} width="240px" collapsedWidth="64px">
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b border-[var(--tiger-border,#e2e8f0)]">
         <div className="flex items-center gap-3">
           <LogoIcon />
-          {!collapsed && (
+          {!displayCollapsed && (
             <span className="font-bold text-lg text-[var(--tiger-text,#1f2937)] tracking-wide whitespace-nowrap">
               Tigercat
             </span>
@@ -125,7 +129,7 @@ export function MainSidebar({
           <Menu
             selectedKeys={[activeMenu]}
             openKeys={expandedKeys}
-            collapsed={collapsed}
+            collapsed={displayCollapsed}
             onSelect={handleSelect}
             onOpenChange={(_key, info) => setExpandedKeys(info.openKeys)}>
             {filteredMenuItems.map((item) =>
@@ -156,7 +160,7 @@ export function MainSidebar({
           <div className="mt-auto pt-2">
             <Menu
               selectedKeys={[activeMenu]}
-              collapsed={collapsed}
+              collapsed={displayCollapsed}
               onSelect={handleSelect}>
               {BOTTOM_MENU_ITEMS.map((item) => (
                 <MenuItem key={item.key} itemKey={item.key} icon={item.icon}>
@@ -169,20 +173,22 @@ export function MainSidebar({
       </nav>
 
       {/* 折叠按钮 */}
-      <div className="p-3 border-t border-[var(--tiger-border,#e2e8f0)]">
-        <button
-          onClick={() => onCollapsedChange(!collapsed)}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)] transition-all duration-200">
-          <span className="shrink-0">
-            {collapsed ? (
-              <ChevronRightIcon size={18} />
-            ) : (
-              <ChevronLeftIcon size={18} />
-            )}
-          </span>
-          {!collapsed && <span className="whitespace-nowrap">收起菜单</span>}
-        </button>
-      </div>
+      {showCollapseToggle && (
+        <div className="p-3 border-t border-[var(--tiger-border,#e2e8f0)]">
+          <button
+            onClick={() => onCollapsedChange(!collapsed)}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)] transition-all duration-200">
+            <span className="shrink-0">
+              {collapsed ? (
+                <ChevronRightIcon size={18} />
+              ) : (
+                <ChevronLeftIcon size={18} />
+              )}
+            </span>
+            {!collapsed && <span className="whitespace-nowrap">收起菜单</span>}
+          </button>
+        </div>
+      )}
     </Sidebar>
   );
 }

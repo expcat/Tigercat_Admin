@@ -21,12 +21,15 @@ const props = defineProps<{
   session: Session | null
   pageTitle: string
   themeMode: ThemeMode
+  showSidebarToggle?: boolean
+  sidebarOpen?: boolean
 }>()
 
 defineEmits<{
   (e: 'logout'): void
   (e: 'change-password'): void
   (e: 'toggle-theme'): void
+  (e: 'toggle-sidebar'): void
 }>()
 
 function getThemeIcon(mode: ThemeMode): string {
@@ -48,6 +51,17 @@ function getAccountLabel(session: Session | null): string {
 <template>
   <Header class="flex items-center justify-between px-6 shadow-sm z-10">
     <div class="flex min-w-0 flex-col gap-1 py-3">
+      <button
+        v-if="props.showSidebarToggle"
+        type="button"
+        aria-controls="main-sidebar"
+        :aria-expanded="props.sidebarOpen"
+        :aria-label="props.sidebarOpen ? '关闭导航菜单' : '打开导航菜单'"
+        class="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--tiger-border,#e2e8f0)] text-[var(--tiger-text-secondary,#64748b)] transition-colors hover:border-[var(--tiger-primary,#3b82f6)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)] md:hidden"
+        @click="$emit('toggle-sidebar')"
+      >
+        <Icon :name="props.sidebarOpen ? 'x' : 'menu'" :size="18" />
+      </button>
       <Text size="lg" weight="bold" class="text-[var(--tiger-text,#1f2937)]">管理中心</Text>
       <Breadcrumb class-name="text-sm text-[var(--tiger-text-secondary,#64748b)]">
         <BreadcrumbItem>管理中心</BreadcrumbItem>

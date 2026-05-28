@@ -9,7 +9,15 @@ import {
   DropdownMenu,
   DropdownItem,
 } from '@expcat/tigercat-react';
-import { LockIcon, LogOutIcon, SunIcon, MoonIcon, MonitorIcon } from './Icons';
+import {
+  LockIcon,
+  LogOutIcon,
+  SunIcon,
+  MoonIcon,
+  MonitorIcon,
+  MenuIcon,
+  XIcon,
+} from './Icons';
 import type { ThemeMode } from '../utils/types';
 import { resolveEffectiveMode } from '../utils/theme';
 
@@ -17,9 +25,12 @@ interface MainHeaderProps {
   session: { username: string } | null;
   pageTitle: string;
   themeMode: ThemeMode;
+  showSidebarToggle?: boolean;
+  sidebarOpen?: boolean;
   onLogout: () => void;
   onChangePassword: () => void;
   onToggleTheme: () => void;
+  onToggleSidebar?: () => void;
 }
 
 function ThemeIcon({ mode }: { mode: ThemeMode }) {
@@ -41,15 +52,29 @@ export function MainHeader({
   session,
   pageTitle,
   themeMode,
+  showSidebarToggle,
+  sidebarOpen,
   onLogout,
   onChangePassword,
   onToggleTheme,
+  onToggleSidebar,
 }: MainHeaderProps) {
   const accountLabel = session?.username ?? '账户';
 
   return (
     <Header className="flex items-center justify-between px-6 shadow-sm z-10">
       <div className="flex min-w-0 flex-col gap-1 py-3">
+        {showSidebarToggle && (
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            aria-controls="main-sidebar"
+            aria-expanded={sidebarOpen}
+            aria-label={sidebarOpen ? '关闭导航菜单' : '打开导航菜单'}
+            className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--tiger-border,#e2e8f0)] text-[var(--tiger-text-secondary,#64748b)] transition-colors hover:border-[var(--tiger-primary,#3b82f6)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)] md:hidden">
+            {sidebarOpen ? <XIcon size={18} /> : <MenuIcon size={18} />}
+          </button>
+        )}
         <Text
           size="lg"
           weight="bold"
