@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, h } from 'vue'
+import { ref, computed, h, watch } from 'vue'
 import { Sidebar, Menu, MenuItem, SubMenu } from '@expcat/tigercat-vue'
 import Icon from './Icon.vue'
 import AppLogo from './AppLogo.vue'
@@ -7,7 +7,8 @@ import { usePermission } from '../utils/permission'
 import {
   SHELL_BOTTOM_MENU_ITEMS,
   SHELL_MENU_ITEMS,
-  type ShellMenuItemDef
+  filterShellMenuItems,
+  getShellExpandedKeys,
 } from '../utils/shell-navigation'
 
 const props = withDefaults(defineProps<{
@@ -44,30 +45,19 @@ const displayCollapsed = computed(() =>
   props.showCollapseToggle ? props.collapsed : false
 )
 
-// ---- Permission-based menu filtering ----
 const { has: hasPerm } = usePermission()
-
-function isPermitted(item: ShellMenuItemDef): boolean {
-  if (!item.permission) return true
-  const codes = Array.isArray(item.permission) ? item.permission : [item.permission]
-  return codes.every((c) => hasPerm(c))
-}
-
-/** Top-level menu items filtered by permission (groups kept only if they have visible children). */
 const filteredMenuItems = computed(() =>
-  SHELL_MENU_ITEMS
-    .map((item) => {
-      if (item.children) {
-        const visibleChildren = item.children.filter(isPermitted)
-        if (visibleChildren.length === 0) return null
-        return { ...item, children: visibleChildren }
-      }
-      return isPermitted(item) ? item : null
-    })
-    .filter(Boolean) as ShellMenuItemDef[]
+  filterShellMenuItems(SHELL_MENU_ITEMS, hasPerm)
 )
 
-/** Helper to create an Icon VNode for menu icon props */
+watch(
+  [() => props.activeMenu, filteredMenuItems],
+  ([activeMenu, items]) => {
+    expandedKeys.value = getShellExpandedKeys(activeMenu, items)
+  },
+  { immediate: true }
+)
+
 const menuIcon = (name: string, size = 20) => h(Icon, { name, size })
 </script>
 

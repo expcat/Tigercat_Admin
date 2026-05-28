@@ -68,6 +68,69 @@ export const SHELL_BOTTOM_MENU_ITEMS: ShellMenuItemDef[] = [
   pageMenuItems.about,
 ];
 
+function isShellMenuItemPermitted(
+  item: ShellMenuItemDef,
+  hasPermission: (permission: string) => boolean,
+): boolean {
+  if (!item.permission) {
+    return true;
+  }
+
+  const codes = Array.isArray(item.permission)
+    ? item.permission
+    : [item.permission];
+  return codes.every((code) => hasPermission(code));
+}
+
+export function filterShellMenuItems(
+  items: ShellMenuItemDef[],
+  hasPermission: (permission: string) => boolean,
+): ShellMenuItemDef[] {
+  return items
+    .map((item) => {
+      if (item.children) {
+        const visibleChildren = filterShellMenuItems(
+          item.children,
+          hasPermission,
+        );
+        if (visibleChildren.length === 0) {
+          return null;
+        }
+
+        return {
+          ...item,
+          children: visibleChildren,
+        };
+      }
+
+      return isShellMenuItemPermitted(item, hasPermission) ? item : null;
+    })
+    .filter(Boolean) as ShellMenuItemDef[];
+}
+
+function findShellMenuTrail(
+  items: ShellMenuItemDef[],
+  key: string,
+  trail: ShellMenuItemDef[] = [],
+): ShellMenuItemDef[] | undefined {
+  for (const item of items) {
+    const nextTrail = [...trail, item];
+
+    if (item.key === key) {
+      return nextTrail;
+    }
+
+    if (item.children) {
+      const matchedTrail = findShellMenuTrail(item.children, key, nextTrail);
+      if (matchedTrail) {
+        return matchedTrail;
+      }
+    }
+  }
+
+  return undefined;
+}
+
 function findShellMenuItem(
   items: ShellMenuItemDef[],
   key: string,
@@ -86,6 +149,21 @@ function findShellMenuItem(
   }
 
   return undefined;
+}
+
+export function getShellBreadcrumbItems(
+  key: string,
+  items: ShellMenuItemDef[] = [...SHELL_MENU_ITEMS, ...SHELL_BOTTOM_MENU_ITEMS],
+): string[] {
+  return findShellMenuTrail(items, key)?.map((item) => item.label) ?? [];
+}
+
+export function getShellExpandedKeys(
+  key: string,
+  items: ShellMenuItemDef[] = SHELL_MENU_ITEMS,
+): (string | number)[] {
+  const trail = findShellMenuTrail(items, key) ?? [];
+  return trail.slice(0, -1).map((item) => item.key);
 }
 
 export function getShellPageTitle(key: string): string {

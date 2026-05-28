@@ -73,7 +73,7 @@
 
 - [x] 双端 `MainLayout` 已把移动端侧边栏隐藏宽度收敛到 `Sidebar collapsedWidth`，移除外层手写宽度切换。
 - [x] 双端导航标题、菜单结构与路由映射已抽到 `shell-navigation` 工具，`MainLayout` / `MainSidebar` 改为消费统一配置。
-- [ ] 用最新版 `Layout` / `Sidebar` / `Menu` / `SubMenu` 复核并重构 `MainLayout`、`MainSidebar`、`MainHeader`。
+- [x] 用最新版 `Layout` / `Sidebar` / `Menu` / `SubMenu` 复核并重构 `MainLayout`、`MainSidebar`、`MainHeader`，并把侧栏展开态与面包屑层级统一收敛到 `shell-navigation` 派生结果。
 - [x] 增加 `Breadcrumb`，让用户、角色、设置、关于页拥有一致导航层级。
 - [x] 引入 `Dropdown` 或 `Popover` 统一用户菜单、主题切换、快捷操作入口。
 - [x] 处理移动端侧边栏折叠、遮罩关闭与键盘可访问性。

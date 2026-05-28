@@ -24,6 +24,7 @@ import { resolveEffectiveMode } from '../utils/theme';
 interface MainHeaderProps {
   session: { username: string } | null;
   pageTitle: string;
+  breadcrumbItems: string[];
   themeMode: ThemeMode;
   showSidebarToggle?: boolean;
   sidebarOpen?: boolean;
@@ -51,6 +52,7 @@ function getThemeLabel(mode: ThemeMode): string {
 export function MainHeader({
   session,
   pageTitle,
+  breadcrumbItems,
   themeMode,
   showSidebarToggle,
   sidebarOpen,
@@ -60,6 +62,8 @@ export function MainHeader({
   onToggleSidebar,
 }: MainHeaderProps) {
   const accountLabel = session?.username ?? '账户';
+  const currentBreadcrumbItems =
+    breadcrumbItems.length > 0 ? breadcrumbItems : [pageTitle];
 
   return (
     <Header className="flex items-center justify-between px-6 shadow-sm z-10">
@@ -83,7 +87,13 @@ export function MainHeader({
         </Text>
         <Breadcrumb className="text-sm text-[var(--tiger-text-secondary,#64748b)]">
           <BreadcrumbItem>管理中心</BreadcrumbItem>
-          <BreadcrumbItem current>{pageTitle}</BreadcrumbItem>
+          {currentBreadcrumbItems.map((item, index) => (
+            <BreadcrumbItem
+              key={`${item}-${index}`}
+              current={index === currentBreadcrumbItems.length - 1}>
+              {item}
+            </BreadcrumbItem>
+          ))}
         </Breadcrumb>
       </div>
 

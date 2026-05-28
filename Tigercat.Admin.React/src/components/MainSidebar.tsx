@@ -1,11 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Sidebar, Menu, MenuItem, SubMenu } from '@expcat/tigercat-react';
 import { LogoIcon, ChevronRightIcon, ChevronLeftIcon } from './Icons';
 import { usePermission } from '../utils/permission';
 import {
   SHELL_BOTTOM_MENU_ITEMS,
   SHELL_MENU_ITEMS,
-  type ShellMenuItemDef,
+  filterShellMenuItems,
+  getShellExpandedKeys,
 } from '../utils/shell-navigation';
 
 interface MainSidebarProps {
@@ -32,25 +33,17 @@ export function MainSidebar({
   ]);
   const { has: hasPerm } = usePermission();
 
-  // ---- Permission-based menu filtering ----
   const filteredMenuItems = useMemo(() => {
-    function isPermitted(item: ShellMenuItemDef): boolean {
-      if (!item.permission) return true;
-      const codes = Array.isArray(item.permission)
-        ? item.permission
-        : [item.permission];
-      return codes.every((c) => hasPerm(c));
-    }
-
-    return SHELL_MENU_ITEMS.map((item) => {
-      if (item.children) {
-        const visibleChildren = item.children.filter(isPermitted);
-        if (visibleChildren.length === 0) return null;
-        return { ...item, children: visibleChildren };
-      }
-      return isPermitted(item) ? item : null;
-    }).filter(Boolean) as ShellMenuItemDef[];
+    return filterShellMenuItems(SHELL_MENU_ITEMS, hasPerm);
   }, [hasPerm]);
+  const requiredOpenKeys = useMemo(
+    () => getShellExpandedKeys(activeMenu, filteredMenuItems),
+    [activeMenu, filteredMenuItems],
+  );
+
+  useEffect(() => {
+    setExpandedKeys(requiredOpenKeys);
+  }, [requiredOpenKeys]);
 
   const handleSelect = (key: string | number) => {
     onMenuSelect(String(key));

@@ -20,6 +20,7 @@ interface Session {
 const props = defineProps<{
   session: Session | null
   pageTitle: string
+  breadcrumbItems: string[]
   themeMode: ThemeMode
   showSidebarToggle?: boolean
   sidebarOpen?: boolean
@@ -46,6 +47,10 @@ function getThemeLabel(mode: ThemeMode): string {
 function getAccountLabel(session: Session | null): string {
   return session?.username ?? '账户'
 }
+
+function isCurrentBreadcrumb(index: number, items: string[]): boolean {
+  return index === items.length - 1
+}
 </script>
 
 <template>
@@ -65,7 +70,13 @@ function getAccountLabel(session: Session | null): string {
       <Text size="lg" weight="bold" class="text-[var(--tiger-text,#1f2937)]">管理中心</Text>
       <Breadcrumb class-name="text-sm text-[var(--tiger-text-secondary,#64748b)]">
         <BreadcrumbItem>管理中心</BreadcrumbItem>
-        <BreadcrumbItem current>{{ pageTitle }}</BreadcrumbItem>
+        <BreadcrumbItem
+          v-for="(item, index) in (props.breadcrumbItems.length ? props.breadcrumbItems : [props.pageTitle])"
+          :key="`${item}-${index}`"
+          :current="isCurrentBreadcrumb(index, props.breadcrumbItems.length ? props.breadcrumbItems : [props.pageTitle])"
+        >
+          {{ item }}
+        </BreadcrumbItem>
       </Breadcrumb>
     </div>
     
