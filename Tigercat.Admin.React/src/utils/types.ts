@@ -107,6 +107,25 @@ export interface AuditLogItem {
   data: Record<string, string | null>;
 }
 
+export type AdminNotificationGroupKey = 'ops' | 'security' | 'release';
+
+export type AdminNotificationToastType =
+  | 'success'
+  | 'warning'
+  | 'error'
+  | 'info';
+
+export interface AdminNotificationItem {
+  id: string;
+  groupKey: AdminNotificationGroupKey;
+  title: string;
+  description: string;
+  time: string;
+  read: boolean;
+  toastType: AdminNotificationToastType;
+  meta: Record<string, string>;
+}
+
 // ---- Theme types ----
 
 export type ThemeMode = 'light' | 'dark' | 'system';
