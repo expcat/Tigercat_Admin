@@ -551,6 +551,14 @@ function RolesPage() {
     [keyword],
   );
 
+  const serverPaginationHint = useMemo(() => {
+    if (total > pageSize) {
+      return `列表采用服务端分页，当前页仅加载 ${pageSize} / ${total} 条结果。后端每页最多返回 100 条记录，请通过翻页或缩小筛选范围查看更多数据。`;
+    }
+
+    return '列表采用服务端分页，当前仅加载本页数据。后端每页最多返回 100 条记录。';
+  }, [pageSize, total]);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -608,6 +616,10 @@ function RolesPage() {
             </span>
           </Button>
         </PermissionGuard>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        {serverPaginationHint}
       </div>
 
       <DataTableWithToolbar

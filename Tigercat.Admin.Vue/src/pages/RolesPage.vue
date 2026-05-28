@@ -410,6 +410,14 @@ const tableToolbar = computed(() => ({
   searchPlaceholder: '搜索角色名称或描述...',
 }))
 
+const serverPaginationHint = computed(() => {
+  if (total.value > pageSize.value) {
+    return `列表采用服务端分页，当前页仅加载 ${pageSize.value} / ${total.value} 条结果。后端每页最多返回 100 条记录，请通过翻页或缩小筛选范围查看更多数据。`
+  }
+
+  return '列表采用服务端分页，当前仅加载本页数据。后端每页最多返回 100 条记录。'
+})
+
 // Permission group helpers
 const permissionGroups = computed(() => buildPermissionGroups(allPermissions.value))
 
@@ -514,6 +522,10 @@ onMounted(() => {
           新增角色
         </span>
       </Button>
+    </div>
+
+    <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+      {{ serverPaginationHint }}
     </div>
 
     <DataTableWithToolbar

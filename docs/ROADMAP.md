@@ -83,7 +83,7 @@
 目标：让用户和角色模块成为 Tigercat 表格高级能力的主验证场景。
 
 - [x] 用户页、角色页已用 `DataTableWithToolbar` 替代手写 Card + Toolbar + Table 组合，分别承接搜索、筛选、分页、排序与批量操作入口。
-- [ ] 对大数据列表引入 `VirtualTable` 或服务端分页边界提示，避免前端误用大数组渲染。
+- [x] 用户页、角色页已补充服务端分页边界提示：当前仅渲染本页数据，前端页大小选项维持 10/20/50，后端统一把 `pageSize` 限制在 100 以内。
 - [x] 用户页、角色页已把列显隐保留在 `Popover`，把行内编辑/权限操作收敛到 `Dropdown`，并用 `Popconfirm` 替代单条删除确认模态框。
 - [x] 已复核双端 `DataTableWithToolbar` 对固定列、列显隐、排序、选择、分页的接线；修正 Vue 角色页分页事件为 `current` / `pageSize` 签名，避免混用旧事件形态。
 
