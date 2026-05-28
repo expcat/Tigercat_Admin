@@ -31,28 +31,33 @@ builder.Services.AddSingleton<IEventPublisher, RedisStreamPublisher>();
 builder.Services.AddSingleton<IIdempotencyService, RedisIdempotencyService>();
 builder.Services.AddHostedService<RedisStreamConsumer>();
 
-// Database provider: when a "DefaultConnection" connection string is configured the app
-// uses SQLite (recommended for production); otherwise it falls back to the EF Core
-// InMemory provider (development / CI only — data is lost on restart).
-// Configuration is read at service-resolution time so that test hosts can override it.
+// Database provider selection is explicit via Database:Provider when configured.
+// If omitted, the app keeps backward-compatible behavior: SQLite when a
+// DefaultConnection exists, otherwise EF Core InMemory.
+// Configuration is resolved at service-resolution time so that test hosts can
+// override provider and connection string independently.
 builder.Services.AddDbContext<AdminDbContext>((sp, options) =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
-    var connStr = config.GetConnectionString("DefaultConnection");
-    if (!string.IsNullOrEmpty(connStr))
+    var databaseOptions = DatabaseProviderResolver.Resolve(config);
+
+    switch (databaseOptions.Provider)
     {
-        options.UseSqlite(connStr);
-    }
-    else
-    {
-        options.UseInMemoryDatabase("TigercatAdmin");
+        case AdminDatabaseProvider.Sqlite:
+            options.UseSqlite(databaseOptions.ConnectionString);
+            break;
+        case AdminDatabaseProvider.PostgreSql:
+            options.UseNpgsql(databaseOptions.ConnectionString);
+            break;
+        default:
+            options.UseInMemoryDatabase("TigercatAdmin");
+            break;
     }
 });
 
 // When a relational provider is configured, use the EF-backed stores so that auth
-// operations share the same database as the rest of the application.  For the
-// InMemory provider (development / CI) the lightweight in-memory stores are used.
-// Resolved lazily via factory so that test-time configuration overrides take effect.
+// operations share the same database as the rest of the application. For the
+// InMemory provider (CI / isolated tests) the lightweight in-memory stores are used.
 builder.Services.AddSingleton<InMemoryUserStore>();
 builder.Services.AddSingleton<InMemorySessionStore>();
 builder.Services.AddScoped<EfUserStore>();
@@ -61,8 +66,8 @@ builder.Services.AddScoped<EfSessionStore>();
 builder.Services.AddScoped<IUserStore>(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
-    var connStr = config.GetConnectionString("DefaultConnection");
-    return !string.IsNullOrEmpty(connStr)
+    var databaseOptions = DatabaseProviderResolver.Resolve(config);
+    return databaseOptions.UsesRelationalStores
         ? sp.GetRequiredService<EfUserStore>()
         : sp.GetRequiredService<InMemoryUserStore>();
 });
@@ -70,8 +75,8 @@ builder.Services.AddScoped<IUserStore>(sp =>
 builder.Services.AddScoped<ISessionStore>(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
-    var connStr = config.GetConnectionString("DefaultConnection");
-    return !string.IsNullOrEmpty(connStr)
+    var databaseOptions = DatabaseProviderResolver.Resolve(config);
+    return databaseOptions.UsesRelationalStores
         ? sp.GetRequiredService<EfSessionStore>()
         : sp.GetRequiredService<InMemorySessionStore>();
 });

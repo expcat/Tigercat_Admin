@@ -17,13 +17,13 @@
 
 ## 当前基线
 
-| 项目 | 当前状态                                                                                                    |
-| ---- | ----------------------------------------------------------------------------------------------------------- |
-| 后端 | .NET 10 Minimal API，Aspire 编排，EF Core InMemory / SQLite Provider，Redis 缓存与 Streams 事件总线         |
-| 前端 | Vue 3.5 与 React 19 双实现，Vite 构建，React Router / Vue Router 路由懒加载                                 |
-| UI   | `@expcat/tigercat-core` / `@expcat/tigercat-vue` / `@expcat/tigercat-react` 升级到 `1.2.0`                  |
-| 样式 | Tailwind CSS v4，CSS 入口使用 `@plugin "@expcat/tigercat-core/tailwind/modern"` 与 `@source` 扫描组件库产物 |
-| 文档 | API 文档覆盖认证、用户、角色、统计、导出、设置接口；Roadmap 改为活跃计划文档                                |
+| 项目 | 当前状态                                                                                                         |
+| ---- | ---------------------------------------------------------------------------------------------------------------- |
+| 后端 | .NET 10 Minimal API，Aspire 编排，EF Core InMemory / SQLite / PostgreSQL Provider，Redis 缓存与 Streams 事件总线 |
+| 前端 | Vue 3.5 与 React 19 双实现，Vite 构建，React Router / Vue Router 路由懒加载                                      |
+| UI   | `@expcat/tigercat-core` / `@expcat/tigercat-vue` / `@expcat/tigercat-react` 升级到 `1.2.0`                       |
+| 样式 | Tailwind CSS v4，CSS 入口使用 `@plugin "@expcat/tigercat-core/tailwind/modern"` 与 `@source` 扫描组件库产物      |
+| 文档 | API 文档覆盖认证、用户、角色、统计、导出、设置接口；Roadmap 改为活跃计划文档                                     |
 
 ### Tigercat 1.2.0 对齐项
 
@@ -103,7 +103,7 @@
 - [x] 新增审计日志页面，使用 `Timeline` / `ActivityFeed` 展示认证与用户管理事件：后端新增 `/api/audit-logs` 聚合读取 `stream:auth` 与 `stream:admin`，并补齐用户创建、更新、删除、批量删除的审计事件发布；React / Vue 双端新增审计日志页与导航入口。
 - [x] 新增通知中心，验证 `Notification` / `NotificationCenter` / `Badge`：React / Vue 双端新增通知中心页面与导航入口，使用 `NotificationCenter` 承载分组通知、用 `Badge` 展示未读概览，并在点击通知、切换已读与全部已读时触发 `Notification` 浮层反馈。
 - [x] 新增任务面板，验证 `TaskBoard` 作为后续异步任务入口：React / Vue 双端新增任务面板页与导航入口，使用 `TaskBoard` 承载本地异步任务看板，验证拖拽换列、增列、加卡片、WIP 限制、搜索过滤与阻塞任务移动规则。
-- [ ] 完成 SQLite 开发持久化与 PostgreSQL 生产配置文档，补充数据库切换回归测试。
+- [x] 完成 SQLite 开发持久化与 PostgreSQL 生产配置文档，补充数据库切换回归测试。
 
 ---
 

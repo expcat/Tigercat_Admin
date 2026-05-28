@@ -122,6 +122,21 @@ pnpm dev
 
 ## 📝 开发说明
 
+### 数据库提供程序
+
+后端现在支持三种数据库提供程序切换：
+
+- `Sqlite`：默认开发配置，使用 `tigercat_admin.db` 作为本地持久化文件。
+- `InMemory`：仅用于测试或一次性验证，进程退出后数据会丢失。
+- `PostgreSql`：用于生产或独立部署，通过 `Database__Provider=PostgreSql` 显式启用。
+
+配置键统一为：
+
+- `Database:Provider`
+- `ConnectionStrings:DefaultConnection`
+
+完整说明、环境变量示例和回归步骤见 [docs/database.md](docs/database.md)。
+
 ### 添加新功能
 
 1. 在对应的前端项目中添加组件和页面
