@@ -100,7 +100,7 @@
 
 目标：把 Redis Streams、审计事件和导出能力扩展为真实后台常见工作流。
 
-- [ ] 新增审计日志页面，使用 `Timeline` / `ActivityFeed` 展示认证与用户管理事件。
+- [x] 新增审计日志页面，使用 `Timeline` / `ActivityFeed` 展示认证与用户管理事件：后端新增 `/api/audit-logs` 聚合读取 `stream:auth` 与 `stream:admin`，并补齐用户创建、更新、删除、批量删除的审计事件发布；React / Vue 双端新增审计日志页与导航入口。
 - [ ] 新增通知中心，验证 `Notification` / `NotificationCenter` / `Badge`。
 - [ ] 新增任务面板，验证 `TaskBoard` 或 `Kanban` 作为后续异步任务入口。
 - [ ] 完成 SQLite 开发持久化与 PostgreSQL 生产配置文档，补充数据库切换回归测试。

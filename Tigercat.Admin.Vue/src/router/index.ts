@@ -59,6 +59,11 @@ const router = createRouter({
           component: () => import('../pages/SettingsPage.vue'),
         },
         {
+          path: 'audit-logs',
+          name: 'audit',
+          component: () => import('../pages/AuditLogsPage.vue'),
+        },
+        {
           path: 'about',
           name: 'about',
           component: () => import('../pages/AboutPage.vue'),

@@ -19,8 +19,12 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(ApiResponse<MessageResponse>))]
 [JsonSerializable(typeof(ApiResponse<HealthResponse>))]
 [JsonSerializable(typeof(ApiResponse<InfoResponse>))]
+[JsonSerializable(typeof(Dictionary<string, string?>))]
 [JsonSerializable(typeof(UserResponse))]
 [JsonSerializable(typeof(EventEnvelope))]
+[JsonSerializable(typeof(AuditLogItemResponse))]
+[JsonSerializable(typeof(AuditLogItemResponse[]))]
+[JsonSerializable(typeof(ApiResponse<AuditLogItemResponse[]>))]
 // Users CRUD types
 [JsonSerializable(typeof(CreateUserRequest))]
 [JsonSerializable(typeof(UpdateUserRequest))]

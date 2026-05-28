@@ -295,6 +295,9 @@
   - `400`：用户名或密码为空 / 用户名格式不合法（长度 2-50，仅字母数字及 `_-.`）/ 密码长度不足 6 位 / 显示名称超过 100 字符 / 角色 ID 无效
   - `409`：用户已存在
 
+- **事件**：
+  - 成功创建后发布 `admin.user.created` 到 Redis Stream `stream:admin`（包含 `targetUserId`、`targetUsername`、`operator`、`roleCount`）。
+
 示例请求体：
 
 ```json
@@ -336,6 +339,7 @@
   - `404`：用户不存在
 
 - **事件**：
+  - 若修改了显示名称、状态或角色，发布 `admin.user.updated` 到 Redis Stream `stream:admin`（包含 `targetUserId`、`targetUsername`、`operator`、`status`、`roleCount`）。
   - 若修改了密码，发布 `admin.user.password.reset` 到 Redis Stream `stream:auth`（包含 `targetUserId`、`targetUsername`、`operator`）。
 
 示例请求体：
@@ -373,6 +377,9 @@
   - `400`：不能删除自己 / 不能删除最后一个管理员用户
   - `404`：用户不存在
 
+- **事件**：
+  - 成功删除后发布 `admin.user.deleted` 到 Redis Stream `stream:admin`（包含 `targetUserId`、`targetUsername`、`operator`）。
+
 错误示例（不能删除自己）：
 
 ```json
@@ -397,6 +404,9 @@
 - **可能错误码**：
   - `400`：请选择要删除的用户 / 不能删除当前登录用户 / 不能删除最后一个管理员用户
   - `404`：未找到任何要删除的用户
+
+- **事件**：
+  - 成功批量删除后发布 `admin.user.batch.deleted` 到 Redis Stream `stream:admin`（包含 `deletedCount`、`deletedIds`、`targetUsernames`、`operator`）。
 
 示例请求体：
 
@@ -888,15 +898,74 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 
 ## 审计事件汇总
 
-以下 API 操作在成功后会发布异步审计事件至 Redis Stream（`stream:auth`）：
+以下 API 操作在成功后会发布异步审计事件至 Redis Stream（`stream:auth` / `stream:admin`）：
 
-| 事件类型                     | 触发操作                            | 载荷字段                                     |
-| ---------------------------- | ----------------------------------- | -------------------------------------------- |
-| `auth.user.registered`       | POST `/api/auth/register`           | `username`                                   |
-| `auth.user.login`            | POST `/api/auth/login`              | `username`、`expiresAt`                      |
-| `auth.user.password.changed` | POST `/api/auth/change-password`    | `username`                                   |
-| `auth.user.logout`           | POST `/api/auth/logout`             | `username`                                   |
-| `admin.user.password.reset`  | PUT `/api/users/{id}`（修改密码时） | `targetUserId`、`targetUsername`、`operator` |
+| 事件类型                     | 触发操作                                      | 载荷字段                                                            |
+| ---------------------------- | --------------------------------------------- | ------------------------------------------------------------------- |
+| `auth.user.registered`       | POST `/api/auth/register`                     | `username`                                                          |
+| `auth.user.login`            | POST `/api/auth/login`                        | `username`、`expiresAt`                                             |
+| `auth.user.password.changed` | POST `/api/auth/change-password`              | `username`                                                          |
+| `auth.user.logout`           | POST `/api/auth/logout`                       | `username`                                                          |
+| `admin.user.created`         | POST `/api/users`                             | `targetUserId`、`targetUsername`、`operator`、`roleCount`           |
+| `admin.user.updated`         | PUT `/api/users/{id}`（资料/状态/角色变更时） | `targetUserId`、`targetUsername`、`operator`、`status`、`roleCount` |
+| `admin.user.deleted`         | DELETE `/api/users/{id}`                      | `targetUserId`、`targetUsername`、`operator`                        |
+| `admin.user.batch.deleted`   | POST `/api/users/batch-delete`                | `deletedCount`、`deletedIds`、`targetUsernames`、`operator`         |
+| `admin.user.password.reset`  | PUT `/api/users/{id}`（修改密码时）           | `targetUserId`、`targetUsername`、`operator`                        |
+
+### 22.1 获取审计日志
+
+- **方法**：GET
+- **路径**：`/api/audit-logs`
+- **认证**：是
+- **权限**：仅需登录
+- **查询参数**：
+  - `limit`：返回条数（默认 `30`，范围 `1-100`）
+- **返回 data**：审计日志数组
+
+**审计日志对象结构**：
+
+| 字段            | 类型           | 说明                                                 |
+| --------------- | -------------- | ---------------------------------------------------- |
+| `id`            | string         | 审计事件 ID                                          |
+| `stream`        | string         | Redis Stream 名称，如 `stream:auth` / `stream:admin` |
+| `category`      | string         | 事件分类，当前可能为 `auth`、`user`、`system`        |
+| `eventType`     | string         | 原始事件类型                                         |
+| `occurredAtUtc` | string         | 事件发生时间（UTC）                                  |
+| `traceId`       | string \| null | 请求跟踪 ID                                          |
+| `title`         | string         | 前端直接可用的事件标题                               |
+| `description`   | string         | 前端直接可用的事件描述                               |
+| `actor`         | string \| null | 事件操作者；优先取 `operator`，其次取 `username`     |
+| `data`          | object         | 原始事件载荷，值已统一转为字符串或 `null`            |
+
+示例：
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "success": true,
+  "data": [
+    {
+      "id": "9a13d0ebd8ae4f1da0f05e0a1eb9d8fb",
+      "stream": "stream:admin",
+      "category": "user",
+      "eventType": "admin.user.updated",
+      "occurredAtUtc": "2026-05-28T13:05:00Z",
+      "traceId": "0HN8L6QK6M7B1:00000001",
+      "title": "更新用户",
+      "description": "admin 更新了用户 editor 的资料或角色配置。",
+      "actor": "admin",
+      "data": {
+        "targetUserId": "2",
+        "targetUsername": "editor",
+        "operator": "admin",
+        "status": "0",
+        "roleCount": "2"
+      }
+    }
+  ]
+}
+```
 
 ---
 

@@ -1,4 +1,10 @@
-export type ShellPageKey = 'home' | 'users' | 'roles' | 'settings' | 'about';
+export type ShellPageKey =
+  | 'home'
+  | 'users'
+  | 'roles'
+  | 'settings'
+  | 'audit'
+  | 'about';
 export type ShellMenuKey = ShellPageKey | 'system';
 
 export interface ShellMenuItemDef {
@@ -38,6 +44,12 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     icon: 'settings',
     routeName: 'settings',
   },
+  audit: {
+    key: 'audit',
+    label: '审计日志',
+    icon: 'activity',
+    routeName: 'audit',
+  },
   about: {
     key: 'about',
     label: '关于',
@@ -56,6 +68,7 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
       pageMenuItems.users,
       pageMenuItems.roles,
       pageMenuItems.settings,
+      pageMenuItems.audit,
     ],
   },
 ];
@@ -69,6 +82,7 @@ export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   users: 'users',
   roles: 'roles',
   settings: 'settings',
+  audit: 'audit',
   about: 'about',
 };
 
@@ -77,6 +91,7 @@ export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> = {
   users: 'users',
   roles: 'roles',
   settings: 'settings',
+  audit: 'audit',
   about: 'about',
 };
 

@@ -94,6 +94,19 @@ export interface SettingItem {
   updatedAt: string | null;
 }
 
+export interface AuditLogItem {
+  id: string;
+  stream: string;
+  category: 'auth' | 'user' | 'system';
+  eventType: string;
+  occurredAtUtc: string;
+  traceId: string | null;
+  title: string;
+  description: string;
+  actor: string | null;
+  data: Record<string, string | null>;
+}
+
 // ---- Theme types ----
 
 export type ThemeMode = 'light' | 'dark' | 'system';

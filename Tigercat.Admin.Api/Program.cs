@@ -124,6 +124,7 @@ catch (Exception ex)
 
 // Map Endpoints Explicitly (AOT compatible)
 app.MapEndpoint<AuthEndpoints>();
+app.MapEndpoint<AuditEndpoints>();
 app.MapEndpoint<HomeEndpoints>();
 app.MapEndpoint<UsersEndpoints>();
 app.MapEndpoint<RolesEndpoints>();
