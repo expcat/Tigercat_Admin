@@ -4,19 +4,11 @@ import { Sidebar, Menu, MenuItem, SubMenu } from '@expcat/tigercat-vue'
 import Icon from './Icon.vue'
 import AppLogo from './AppLogo.vue'
 import { usePermission } from '../utils/permission'
-
-interface MenuItemDef {
-  key: string
-  label: string
-  icon: string
-  /**
-   * Permission code required to see this menu item.
-   * - `string` — must have this single permission
-   * - `string[]` — must have **ALL** listed permissions (same semantics as v-permission)
-   */
-  permission?: string | string[]
-  children?: MenuItemDef[]
-}
+import {
+  SHELL_BOTTOM_MENU_ITEMS,
+  SHELL_MENU_ITEMS,
+  type ShellMenuItemDef
+} from '../utils/shell-navigation'
 
 const props = withDefaults(defineProps<{
   collapsed: boolean
@@ -35,29 +27,6 @@ const emit = defineEmits<{
   (e: 'update:activeMenu', value: string): void
   (e: 'select', key: string): void
 }>()
-
-const menuItems: MenuItemDef[] = [
-  { 
-    key: 'home', 
-    label: '仪表盘', 
-    icon: 'dashboard',
-    permission: 'dashboard:view',
-  },
-  { 
-    key: 'system', 
-    label: '系统管理', 
-    icon: 'server',
-    children: [
-      { key: 'users', label: '用户管理', icon: 'users', permission: 'user:view' },
-      { key: 'roles', label: '角色管理', icon: 'shield', permission: 'role:view' },
-      { key: 'settings', label: '系统设置', icon: 'settings' }
-    ]
-  }
-]
-
-const bottomMenuItems: MenuItemDef[] = [
-  { key: 'about', label: '关于', icon: 'info' }
-]
 
 const expandedKeys = ref<(string | number)[]>(['system'])
 
@@ -78,7 +47,7 @@ const displayCollapsed = computed(() =>
 // ---- Permission-based menu filtering ----
 const { has: hasPerm } = usePermission()
 
-function isPermitted(item: MenuItemDef): boolean {
+function isPermitted(item: ShellMenuItemDef): boolean {
   if (!item.permission) return true
   const codes = Array.isArray(item.permission) ? item.permission : [item.permission]
   return codes.every((c) => hasPerm(c))
@@ -86,7 +55,7 @@ function isPermitted(item: MenuItemDef): boolean {
 
 /** Top-level menu items filtered by permission (groups kept only if they have visible children). */
 const filteredMenuItems = computed(() =>
-  menuItems
+  SHELL_MENU_ITEMS
     .map((item) => {
       if (item.children) {
         const visibleChildren = item.children.filter(isPermitted)
@@ -95,7 +64,7 @@ const filteredMenuItems = computed(() =>
       }
       return isPermitted(item) ? item : null
     })
-    .filter(Boolean) as MenuItemDef[]
+    .filter(Boolean) as ShellMenuItemDef[]
 )
 
 /** Helper to create an Icon VNode for menu icon props */
@@ -160,7 +129,7 @@ const menuIcon = (name: string, size = 20) => h(Icon, { name, size })
             @select="handleMenuSelect"
           >
             <MenuItem
-              v-for="item in bottomMenuItems"
+              v-for="item in SHELL_BOTTOM_MENU_ITEMS"
               :key="item.key"
               :item-key="item.key"
               :icon="menuIcon(item.icon)"

@@ -1,30 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { Sidebar, Menu, MenuItem, SubMenu } from '@expcat/tigercat-react';
-import {
-  DashboardIcon,
-  ServerIcon,
-  UsersIcon,
-  ShieldIcon,
-  SettingsIcon,
-  InfoIcon,
-  LogoIcon,
-  ChevronRightIcon,
-  ChevronLeftIcon,
-} from './Icons';
+import { LogoIcon, ChevronRightIcon, ChevronLeftIcon } from './Icons';
 import { usePermission } from '../utils/permission';
-
-interface MenuItemDef {
-  key: string;
-  label: string;
-  icon: React.ReactNode;
-  /**
-   * Permission code required to see this menu item.
-   * - `string` — must have this single permission
-   * - `string[]` — must have **ALL** listed permissions
-   */
-  permission?: string | string[];
-  children?: MenuItemDef[];
-}
+import {
+  SHELL_BOTTOM_MENU_ITEMS,
+  SHELL_MENU_ITEMS,
+  type ShellMenuItemDef,
+} from '../utils/shell-navigation';
 
 interface MainSidebarProps {
   collapsed: boolean;
@@ -35,43 +17,6 @@ interface MainSidebarProps {
   onCollapsedChange: (collapsed: boolean) => void;
   onMenuSelect: (key: string) => void;
 }
-
-const MENU_ITEMS: MenuItemDef[] = [
-  {
-    key: 'home',
-    label: '仪表盘',
-    icon: <DashboardIcon size={20} />,
-    permission: 'dashboard:view',
-  },
-  {
-    key: 'system',
-    label: '系统管理',
-    icon: <ServerIcon size={20} />,
-    children: [
-      {
-        key: 'users',
-        label: '用户管理',
-        icon: <UsersIcon size={18} />,
-        permission: 'user:view',
-      },
-      {
-        key: 'roles',
-        label: '角色管理',
-        icon: <ShieldIcon size={18} />,
-        permission: 'role:view',
-      },
-      { key: 'settings', label: '系统设置', icon: <SettingsIcon size={18} /> },
-    ],
-  },
-];
-
-const BOTTOM_MENU_ITEMS: MenuItemDef[] = [
-  {
-    key: 'about',
-    label: '关于',
-    icon: <InfoIcon size={20} />,
-  },
-];
 
 export function MainSidebar({
   collapsed,
@@ -89,7 +34,7 @@ export function MainSidebar({
 
   // ---- Permission-based menu filtering ----
   const filteredMenuItems = useMemo(() => {
-    function isPermitted(item: MenuItemDef): boolean {
+    function isPermitted(item: ShellMenuItemDef): boolean {
       if (!item.permission) return true;
       const codes = Array.isArray(item.permission)
         ? item.permission
@@ -97,14 +42,14 @@ export function MainSidebar({
       return codes.every((c) => hasPerm(c));
     }
 
-    return MENU_ITEMS.map((item) => {
+    return SHELL_MENU_ITEMS.map((item) => {
       if (item.children) {
         const visibleChildren = item.children.filter(isPermitted);
         if (visibleChildren.length === 0) return null;
         return { ...item, children: visibleChildren };
       }
       return isPermitted(item) ? item : null;
-    }).filter(Boolean) as MenuItemDef[];
+    }).filter(Boolean) as ShellMenuItemDef[];
   }, [hasPerm]);
 
   const handleSelect = (key: string | number) => {
@@ -169,7 +114,7 @@ export function MainSidebar({
               selectedKeys={[activeMenu]}
               collapsed={displayCollapsed}
               onSelect={handleSelect}>
-              {BOTTOM_MENU_ITEMS.map((item) => (
+              {SHELL_BOTTOM_MENU_ITEMS.map((item) => (
                 <MenuItem key={item.key} itemKey={item.key} icon={item.icon}>
                   {item.label}
                 </MenuItem>

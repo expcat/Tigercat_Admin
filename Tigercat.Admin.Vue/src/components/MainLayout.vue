@@ -5,16 +5,14 @@ import { Layout, Content } from '@expcat/tigercat-vue'
 import MainHeader from './MainHeader.vue'
 import MainSidebar from './MainSidebar.vue'
 import type { ThemeMode } from '../utils/types'
+import {
+  SHELL_MENU_ROUTES,
+  SHELL_ROUTE_TO_MENU,
+  getShellPageTitle,
+  type ShellPageKey
+} from '../utils/shell-navigation'
 
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)'
-
-const PAGE_TITLES: Record<string, string> = {
-  home: '仪表盘',
-  users: '用户管理',
-  roles: '角色管理',
-  settings: '系统设置',
-  about: '关于'
-}
 
 interface Session {
   username: string
@@ -39,30 +37,17 @@ const collapsed = ref(props.compactMode ?? false)
 const isMobile = ref(false)
 const sidebarOpen = ref(false)
 
-const MENU_ROUTES = {
-  home: 'dashboard',
-  users: 'users',
-  roles: 'roles',
-  settings: 'settings',
-  about: 'about'
-} as const
+const activeMenu = ref<ShellPageKey>('home')
 
-type MenuKey = keyof typeof MENU_ROUTES
+const pageTitle = computed(() => getShellPageTitle(activeMenu.value))
 
-const activeMenu = ref<MenuKey>('home')
-
-const pageTitle = computed(() => PAGE_TITLES[activeMenu.value] ?? '仪表盘')
-
-const ROUTE_TO_MENU = Object.fromEntries(
-  Object.entries(MENU_ROUTES).map(([key, value]) => [value, key as MenuKey])
-) as Record<string, MenuKey | undefined>
-
-const handleMenuSelect = (key: MenuKey) => {
-  activeMenu.value = key
+const handleMenuSelect = (key: string) => {
+  const menuKey = key as ShellPageKey
+  activeMenu.value = menuKey
   if (isMobile.value) {
     sidebarOpen.value = false
   }
-  router.push({ name: MENU_ROUTES[key] })
+  router.push({ name: SHELL_MENU_ROUTES[menuKey] })
 }
 
 const handleSidebarToggle = () => {
@@ -106,7 +91,7 @@ watch(
   () => route.name,
   (name) => {
     if (typeof name === 'string') {
-      activeMenu.value = ROUTE_TO_MENU[name] ?? 'home'
+      activeMenu.value = SHELL_ROUTE_TO_MENU[name] ?? 'home'
     } else {
       activeMenu.value = 'home'
     }

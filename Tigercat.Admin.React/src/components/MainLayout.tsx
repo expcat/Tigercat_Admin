@@ -3,16 +3,9 @@ import { Layout, Content } from '@expcat/tigercat-react';
 import { MainHeader } from './MainHeader';
 import { MainSidebar } from './MainSidebar';
 import type { ThemeMode } from '../utils/types';
+import { getShellPageTitle } from '../utils/shell-navigation';
 
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)';
-
-const PAGE_TITLES: Record<string, string> = {
-  home: '仪表盘',
-  users: '用户管理',
-  roles: '角色管理',
-  settings: '系统设置',
-  about: '关于',
-};
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -106,7 +99,7 @@ export function MainLayout({
     setSidebarOpen(false);
   };
 
-  const pageTitle = PAGE_TITLES[currentActiveMenu] ?? '仪表盘';
+  const pageTitle = getShellPageTitle(currentActiveMenu);
 
   return (
     <Layout className="h-screen w-full overflow-hidden">
