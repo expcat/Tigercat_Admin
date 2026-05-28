@@ -4,6 +4,7 @@ export type ShellPageKey =
   | 'roles'
   | 'settings'
   | 'notifications'
+  | 'tasks'
   | 'audit'
   | 'about';
 export type ShellMenuKey = ShellPageKey | 'system';
@@ -51,6 +52,12 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     icon: 'bell',
     routeName: 'notifications',
   },
+  tasks: {
+    key: 'tasks',
+    label: '任务面板',
+    icon: 'clipboard',
+    routeName: 'tasks',
+  },
   audit: {
     key: 'audit',
     label: '审计日志',
@@ -76,6 +83,7 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
       pageMenuItems.roles,
       pageMenuItems.settings,
       pageMenuItems.notifications,
+      pageMenuItems.tasks,
       pageMenuItems.audit,
     ],
   },
@@ -91,6 +99,7 @@ export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   roles: 'roles',
   settings: 'settings',
   notifications: 'notifications',
+  tasks: 'tasks',
   audit: 'audit',
   about: 'about',
 };
@@ -101,6 +110,7 @@ export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> = {
   roles: 'roles',
   settings: 'settings',
   notifications: 'notifications',
+  tasks: 'tasks',
   audit: 'audit',
   about: 'about',
 };

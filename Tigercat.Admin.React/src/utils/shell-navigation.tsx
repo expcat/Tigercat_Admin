@@ -2,6 +2,7 @@ import React from 'react';
 import {
   ActivityIcon,
   BellIcon,
+  ClipboardIcon,
   DashboardIcon,
   InfoIcon,
   ServerIcon,
@@ -16,6 +17,7 @@ export type ShellPageKey =
   | 'roles'
   | 'settings'
   | 'notifications'
+  | 'tasks'
   | 'audit'
   | 'about';
 export type ShellMenuKey = ShellPageKey | 'system';
@@ -57,6 +59,11 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     label: '通知中心',
     icon: <BellIcon size={18} />,
   },
+  tasks: {
+    key: 'tasks',
+    label: '任务面板',
+    icon: <ClipboardIcon size={18} />,
+  },
   audit: {
     key: 'audit',
     label: '审计日志',
@@ -80,6 +87,7 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
       pageMenuItems.roles,
       pageMenuItems.settings,
       pageMenuItems.notifications,
+      pageMenuItems.tasks,
       pageMenuItems.audit,
     ],
   },

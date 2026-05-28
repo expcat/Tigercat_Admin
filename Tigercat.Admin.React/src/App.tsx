@@ -48,6 +48,7 @@ const UsersPage = lazy(() => import('./pages/UsersPage'));
 const RolesPage = lazy(() => import('./pages/RolesPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const TasksPage = lazy(() => import('./pages/TasksPage'));
 const AuditLogsPage = lazy(() => import('./pages/AuditLogsPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 
@@ -57,6 +58,7 @@ const MENU_ROUTES = {
   roles: '/roles',
   settings: '/settings',
   notifications: '/notifications',
+  tasks: '/tasks',
   audit: '/audit-logs',
   about: '/about',
 } as const;
@@ -389,6 +391,7 @@ function App() {
           <Route path="/roles" element={<RolesPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/tasks" element={<TasksPage />} />
           <Route path="/audit-logs" element={<AuditLogsPage />} />
           <Route path="/about" element={<AboutPage />} />
         </Route>

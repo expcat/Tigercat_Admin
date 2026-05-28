@@ -126,6 +126,30 @@ export interface AdminNotificationItem {
   meta: Record<string, string>;
 }
 
+export type AdminTaskPriority = 'low' | 'medium' | 'high';
+
+export type AdminTaskStatus = 'backlog' | 'todo' | 'doing' | 'review' | 'done';
+
+export interface AdminTaskBoardCard {
+  id: string;
+  title: string;
+  description?: string;
+  assignee: string;
+  priority: AdminTaskPriority;
+  status: AdminTaskStatus;
+  dueAt: string;
+  estimateHours: number;
+  blocked?: boolean;
+}
+
+export interface AdminTaskBoardColumn {
+  id: AdminTaskStatus | string;
+  title: string;
+  description?: string;
+  wipLimit?: number;
+  cards: AdminTaskBoardCard[];
+}
+
 // ---- Theme types ----
 
 export type ThemeMode = 'light' | 'dark' | 'system';

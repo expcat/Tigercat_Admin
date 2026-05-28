@@ -102,7 +102,7 @@
 
 - [x] 新增审计日志页面，使用 `Timeline` / `ActivityFeed` 展示认证与用户管理事件：后端新增 `/api/audit-logs` 聚合读取 `stream:auth` 与 `stream:admin`，并补齐用户创建、更新、删除、批量删除的审计事件发布；React / Vue 双端新增审计日志页与导航入口。
 - [x] 新增通知中心，验证 `Notification` / `NotificationCenter` / `Badge`：React / Vue 双端新增通知中心页面与导航入口，使用 `NotificationCenter` 承载分组通知、用 `Badge` 展示未读概览，并在点击通知、切换已读与全部已读时触发 `Notification` 浮层反馈。
-- [ ] 新增任务面板，验证 `TaskBoard` 或 `Kanban` 作为后续异步任务入口。
+- [x] 新增任务面板，验证 `TaskBoard` 作为后续异步任务入口：React / Vue 双端新增任务面板页与导航入口，使用 `TaskBoard` 承载本地异步任务看板，验证拖拽换列、增列、加卡片、WIP 限制、搜索过滤与阻塞任务移动规则。
 - [ ] 完成 SQLite 开发持久化与 PostgreSQL 生产配置文档，补充数据库切换回归测试。
 
 ---
