@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, inject, onMounted, h } from 'vue'
-import { Card, Table, Button, Input, Modal, Form, FormItem, Select, Tag, Message, Checkbox, Popover } from '@expcat/tigercat-vue'
+import { DataTableWithToolbar, Button, Input, Modal, Form, FormItem, Select, Tag, Message, Checkbox, Popover } from '@expcat/tigercat-vue'
 import type { TableColumn, SortState } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
@@ -368,11 +368,17 @@ const paginationConfig = computed(() => ({
 }))
 
 function handlePageChange(e: any) {
-  if (e.current !== undefined) currentPage.value = e.current
-  if (e.pageSize !== undefined) {
-    pageSize.value = e.pageSize
-    currentPage.value = 1
+  if (e[1] !== undefined && e[1] !== pageSize.value) {
+    return
   }
+
+  currentPage.value = e[0]
+  loadRoles()
+}
+
+function handlePageSizeChange(_current: number, nextPageSize: number) {
+  pageSize.value = nextPageSize
+  currentPage.value = 1
   loadRoles()
 }
 
@@ -393,6 +399,11 @@ function handleSearch(val: string) {
   keyword.value = val
   debouncedLoad()
 }
+
+const tableToolbar = computed(() => ({
+  searchValue: keyword.value,
+  searchPlaceholder: '搜索角色名称或描述...',
+}))
 
 // Permission group helpers
 const permissionGroups = computed(() => buildPermissionGroups(allPermissions.value))
@@ -454,82 +465,70 @@ onMounted(() => {
       ]"
     />
 
-    <!-- Toolbar -->
-    <Card>
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-3 flex-wrap">
-          <Input
-            :model-value="keyword"
-            placeholder="搜索角色名称或描述..."
-            @update:model-value="handleSearch"
-            class="w-64"
-          />
-          <Popover trigger="click" placement="bottom-end" :width="180">
-            <template #reference>
-              <Button variant="outline" size="sm">
-                <span class="flex items-center gap-1">
-                  <Icon name="settings" :size="14" />
-                  列显隐
-                </span>
-              </Button>
-            </template>
-            <div class="space-y-2">
-              <label
-                v-for="key in ALL_COLUMN_KEYS.filter(k => k !== 'actions' || canEdit || canDelete)"
-                :key="key"
-                class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800"
-              >
-                <Checkbox
-                  :model-value="!hiddenColumns.has(key)"
-                  @update:model-value="() => toggleColumn(key)"
-                />
-                <span>{{ columnLabels[key] || key }}</span>
-              </label>
-            </div>
-          </Popover>
-        </div>
-        <div class="flex items-center gap-2">
-          <Button
-            v-permission="'role:view'"
-            variant="outline"
-            @click="openExportModal"
-          >
+    <div class="flex flex-wrap justify-end gap-2">
+      <Popover trigger="click" placement="bottom-end" :width="180">
+        <template #reference>
+          <Button variant="outline" size="sm">
             <span class="flex items-center gap-1">
-              <Icon name="download" :size="16" />
-              导出
+              <Icon name="settings" :size="14" />
+              列显隐
             </span>
           </Button>
-          <Button
-            v-permission="'role:create'"
-            color="primary"
-            @click="openCreateModal"
+        </template>
+        <div class="space-y-2">
+          <label
+            v-for="key in ALL_COLUMN_KEYS.filter(k => k !== 'actions' || canEdit || canDelete)"
+            :key="key"
+            class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800"
           >
-            <span class="flex items-center gap-1">
-              <Icon name="shield" :size="16" />
-              新增角色
-            </span>
-          </Button>
+            <Checkbox
+              :model-value="!hiddenColumns.has(key)"
+              @update:model-value="() => toggleColumn(key)"
+            />
+            <span>{{ columnLabels[key] || key }}</span>
+          </label>
         </div>
-      </div>
-    </Card>
+      </Popover>
+      <Button
+        v-permission="'role:view'"
+        variant="outline"
+        @click="openExportModal"
+      >
+        <span class="flex items-center gap-1">
+          <Icon name="download" :size="16" />
+          导出
+        </span>
+      </Button>
+      <Button
+        v-permission="'role:create'"
+        color="primary"
+        @click="openCreateModal"
+      >
+        <span class="flex items-center gap-1">
+          <Icon name="shield" :size="16" />
+          新增角色
+        </span>
+      </Button>
+    </div>
 
-    <!-- Roles Table -->
-    <Card>
-      <Table
-        :columns="columns"
-        :data-source="roles as any"
-        :loading="loading"
-        :pagination="paginationConfig"
-        :sort="sortState"
-        column-lockable
-        row-key="id"
-        :hoverable="true"
-        :striped="true"
-        empty-text="暂无角色数据"
-        @page-change="handlePageChange"
-        @sort-change="handleSortChange"
-      />
-    </Card>
+    <DataTableWithToolbar
+      :columns="columns"
+      :data-source="roles as any"
+      :loading="loading"
+      :pagination="paginationConfig"
+      :sort="sortState"
+      column-lockable
+      row-key="id"
+      :hoverable="true"
+      :striped="true"
+      empty-text="暂无角色数据"
+      :toolbar="tableToolbar"
+      @search-change="handleSearch"
+      @search="handleSearch"
+      @page-change="handlePageChange"
+      @page-size-change="handlePageSizeChange"
+      @sort-change="handleSortChange"
+    />
 
     <!-- Create / Edit Modal -->
     <Modal

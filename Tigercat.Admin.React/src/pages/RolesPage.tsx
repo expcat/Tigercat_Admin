@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
-  Card,
-  Table,
+  DataTableWithToolbar,
   Button,
   Input,
   Modal,
@@ -510,14 +509,19 @@ function RolesPage() {
 
   const handlePageChange = (page: { current: number; pageSize: number }) => {
     if (page.pageSize !== queryRef.current.pageSize) {
-      queryRef.current.pageSize = page.pageSize;
-      queryRef.current.page = 1;
-      setPageSize(page.pageSize);
-      setCurrentPage(1);
-    } else {
-      queryRef.current.page = page.current;
-      setCurrentPage(page.current);
+      return;
     }
+
+    queryRef.current.page = page.current;
+    setCurrentPage(page.current);
+    loadRoles();
+  };
+
+  const handlePageSizeChange = (_current: number, nextPageSize: number) => {
+    queryRef.current.pageSize = nextPageSize;
+    queryRef.current.page = 1;
+    setPageSize(nextPageSize);
+    setCurrentPage(1);
     loadRoles();
   };
 
@@ -541,6 +545,14 @@ function RolesPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const tableToolbar = useMemo(
+    () => ({
+      searchValue: keyword,
+      searchPlaceholder: '搜索角色名称或描述...',
+    }),
+    [keyword],
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -553,83 +565,73 @@ function RolesPage() {
         ]}
       />
 
-      {/* Toolbar */}
-      <Card>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3 flex-wrap">
-            <Input
-              value={keyword}
-              placeholder="搜索角色名称或描述..."
-              onChange={(val) => handleSearch(val)}
-              className="w-64"
-            />
-            <Popover
-              trigger="click"
-              placement="bottom-end"
-              width={180}
-              contentContent={
-                <div className="space-y-2">
-                  {ALL_COLUMN_KEYS.filter(
-                    (k) => k !== 'actions' || canEdit || canDelete,
-                  ).map((key) => (
-                    <label
-                      key={key}
-                      className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
-                      <Checkbox
-                        checked={!hiddenColumns.has(key)}
-                        onChange={() => toggleColumn(key)}
-                      />
-                      <span>{COLUMN_LABELS[key] || key}</span>
-                    </label>
-                  ))}
-                </div>
-              }>
-              <Button variant="outline" size="sm">
-                <span className="flex items-center gap-1">
-                  <SettingsIcon size={14} />
-                  列显隐
-                </span>
-              </Button>
-            </Popover>
-          </div>
-          <div className="flex items-center gap-2">
-            <PermissionGuard code="role:view">
-              <Button variant="outline" onClick={openExportModal}>
-                <span className="flex items-center gap-1">
-                  <DownloadIcon size={16} />
-                  导出
-                </span>
-              </Button>
-            </PermissionGuard>
-            <PermissionGuard code="role:create">
-              <Button color="primary" onClick={openCreateModal}>
-                <span className="flex items-center gap-1">
-                  <UserPlusIcon size={16} />
-                  新增角色
-                </span>
-              </Button>
-            </PermissionGuard>
-          </div>
-        </div>
-      </Card>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Popover
+          trigger="click"
+          placement="bottom-end"
+          width={180}
+          contentContent={
+            <div className="space-y-2">
+              {ALL_COLUMN_KEYS.filter(
+                (k) => k !== 'actions' || canEdit || canDelete,
+              ).map((key) => (
+                <label
+                  key={key}
+                  className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
+                  <Checkbox
+                    checked={!hiddenColumns.has(key)}
+                    onChange={() => toggleColumn(key)}
+                  />
+                  <span>{COLUMN_LABELS[key] || key}</span>
+                </label>
+              ))}
+            </div>
+          }>
+          <Button variant="outline" size="sm">
+            <span className="flex items-center gap-1">
+              <SettingsIcon size={14} />
+              列显隐
+            </span>
+          </Button>
+        </Popover>
+        <PermissionGuard code="role:view">
+          <Button variant="outline" onClick={openExportModal}>
+            <span className="flex items-center gap-1">
+              <DownloadIcon size={16} />
+              导出
+            </span>
+          </Button>
+        </PermissionGuard>
+        <PermissionGuard code="role:create">
+          <Button color="primary" onClick={openCreateModal}>
+            <span className="flex items-center gap-1">
+              <UserPlusIcon size={16} />
+              新增角色
+            </span>
+          </Button>
+        </PermissionGuard>
+      </div>
 
-      {/* Roles Table */}
-      <Card>
-        <Table
-          columns={columns}
-          dataSource={roles}
-          loading={loading}
-          pagination={paginationConfig}
-          sort={sortState}
-          columnLockable
-          rowKey="id"
-          hoverable
-          striped
-          emptyText="暂无角色数据"
-          onPageChange={handlePageChange}
-          onSortChange={handleSortChange}
-        />
-      </Card>
+      <DataTableWithToolbar
+        columns={columns}
+        dataSource={roles}
+        loading={loading}
+        pagination={paginationConfig}
+        sort={sortState}
+        columnLockable
+        rowKey="id"
+        hoverable
+        striped
+        emptyText="暂无角色数据"
+        toolbar={tableToolbar}
+        onSearchChange={handleSearch}
+        onSearch={handleSearch}
+        onPageChange={(current, nextPageSize) =>
+          handlePageChange({ current, pageSize: nextPageSize })
+        }
+        onPageSizeChange={handlePageSizeChange}
+        onSortChange={handleSortChange}
+      />
 
       {/* Create / Edit Modal */}
       <Modal
