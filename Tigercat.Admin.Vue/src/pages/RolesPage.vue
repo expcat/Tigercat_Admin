@@ -372,12 +372,12 @@ const paginationConfig = computed(() => ({
   pageSizeOptions: [10, 20, 50],
 }))
 
-function handlePageChange(e: any) {
-  if (e[1] !== undefined && e[1] !== pageSize.value) {
+function handlePageChange(current: number, nextPageSize: number) {
+  if (nextPageSize !== pageSize.value) {
     return
   }
 
-  currentPage.value = e[0]
+  currentPage.value = current
   loadRoles()
 }
 
