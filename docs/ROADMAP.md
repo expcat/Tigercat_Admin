@@ -71,6 +71,7 @@
 
 目标：把自定义布局逻辑逐步迁移到 Tigercat 1.2.0 原生组件能力上。
 
+- [x] 双端 `MainLayout` 已把移动端侧边栏隐藏宽度收敛到 `Sidebar collapsedWidth`，移除外层手写宽度切换。
 - [ ] 用最新版 `Layout` / `Sidebar` / `Menu` / `SubMenu` 复核并重构 `MainLayout`、`MainSidebar`、`MainHeader`。
 - [x] 增加 `Breadcrumb`，让用户、角色、设置、关于页拥有一致导航层级。
 - [x] 引入 `Dropdown` 或 `Popover` 统一用户菜单、主题切换、快捷操作入口。

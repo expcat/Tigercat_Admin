@@ -30,6 +30,8 @@ interface MainSidebarProps {
   collapsed: boolean;
   activeMenu: string;
   showCollapseToggle?: boolean;
+  sidebarWidth?: string;
+  collapsedWidth?: string;
   onCollapsedChange: (collapsed: boolean) => void;
   onMenuSelect: (key: string) => void;
 }
@@ -75,6 +77,8 @@ export function MainSidebar({
   collapsed,
   activeMenu,
   showCollapseToggle = true,
+  sidebarWidth = '240px',
+  collapsedWidth = '64px',
   onCollapsedChange,
   onMenuSelect,
 }: MainSidebarProps) {
@@ -110,7 +114,10 @@ export function MainSidebar({
   const displayCollapsed = showCollapseToggle ? collapsed : false;
 
   return (
-    <Sidebar collapsed={displayCollapsed} width="240px" collapsedWidth="64px">
+    <Sidebar
+      collapsed={displayCollapsed}
+      width={sidebarWidth}
+      collapsedWidth={collapsedWidth}>
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b border-[var(--tiger-border,#e2e8f0)]">
         <div className="flex items-center gap-3">

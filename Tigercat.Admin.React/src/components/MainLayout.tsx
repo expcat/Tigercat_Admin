@@ -127,12 +127,13 @@ export function MainLayout({
           isMobile
             ? `fixed inset-y-0 left-0 z-40 shrink-0 transform transition-transform duration-200 ease-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
             : 'relative shrink-0'
-        }
-        style={{ width: isMobile ? '240px' : collapsed ? '64px' : '240px' }}>
+        }>
         <MainSidebar
-          collapsed={collapsed}
+          collapsed={isMobile ? !sidebarOpen : collapsed}
           activeMenu={currentActiveMenu}
           showCollapseToggle={!isMobile}
+          sidebarWidth="240px"
+          collapsedWidth={isMobile ? '0px' : '64px'}
           onCollapsedChange={setCollapsed}
           onMenuSelect={handleMenuSelect}
         />

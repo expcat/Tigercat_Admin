@@ -22,8 +22,12 @@ const props = withDefaults(defineProps<{
   collapsed: boolean
   activeMenu: string
   showCollapseToggle?: boolean
+  sidebarWidth?: string
+  collapsedWidth?: string
 }>(), {
-  showCollapseToggle: true
+  showCollapseToggle: true,
+  sidebarWidth: '240px',
+  collapsedWidth: '64px'
 })
 
 const emit = defineEmits<{
@@ -101,8 +105,8 @@ const menuIcon = (name: string, size = 20) => h(Icon, { name, size })
 <template>
   <Sidebar
     :collapsed="displayCollapsed"
-    width="240px"
-    collapsed-width="64px"
+    :width="props.sidebarWidth"
+    :collapsed-width="props.collapsedWidth"
   >
     <!-- Logo -->
     <div class="flex h-16 items-center justify-center border-b border-[var(--tiger-border,#e2e8f0)]">

@@ -139,12 +139,14 @@ watch(
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           ]
         : 'relative shrink-0'"
-      :style="{ width: isMobile ? '240px' : collapsed ? '64px' : '240px' }"
     >
       <MainSidebar 
-        v-model:collapsed="collapsed"
+        :collapsed="isMobile ? !sidebarOpen : collapsed"
         v-model:active-menu="activeMenu"
         :show-collapse-toggle="!isMobile"
+        sidebar-width="240px"
+        :collapsed-width="isMobile ? '0px' : '64px'"
+        @update:collapsed="(value) => collapsed = value"
         @select="handleMenuSelect" 
       />
     </div>
