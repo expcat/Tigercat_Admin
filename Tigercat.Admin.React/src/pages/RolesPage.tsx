@@ -43,9 +43,7 @@ import type {
   PagedResult,
   MessageResult,
 } from '../utils/types';
-import {
-  buildPermissionTreeData,
-} from '../utils/permission-helpers';
+import { buildPermissionTreeData } from '../utils/permission-helpers';
 
 type RoleFormData = {
   name: string;

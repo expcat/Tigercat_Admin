@@ -30,7 +30,9 @@ export function buildPermissionTreeData(
       label: GROUP_LABELS[group] || group,
       children: groupPerms.map((perm) => ({
         key: perm.id,
-        label: perm.description ? `${perm.description} (${perm.code})` : perm.code,
+        label: perm.description
+          ? `${perm.description} (${perm.code})`
+          : perm.code,
         isLeaf: true,
       })),
     }),
