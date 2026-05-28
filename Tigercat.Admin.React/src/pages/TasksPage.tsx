@@ -254,7 +254,7 @@ function TasksPage() {
       </div>
 
       <Card title="任务流转验证">
-        <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-[var(--tiger-border,#e2e8f0)] bg-[var(--tiger-bg-hover,#f8fafc)] p-4">
+        <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-hover,#f8fafc) p-4">
           <Text weight="bold">最近动作</Text>
           <Text size="sm" color="secondary">
             {lastAction}

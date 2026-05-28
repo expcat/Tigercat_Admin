@@ -75,17 +75,14 @@ export function MainHeader({
             aria-controls="main-sidebar"
             aria-expanded={sidebarOpen}
             aria-label={sidebarOpen ? '关闭导航菜单' : '打开导航菜单'}
-            className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--tiger-border,#e2e8f0)] text-[var(--tiger-text-secondary,#64748b)] transition-colors hover:border-[var(--tiger-primary,#3b82f6)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)] md:hidden">
+            className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-(--tiger-border,#e2e8f0) text-(--tiger-text-secondary,#64748b) transition-colors hover:border-(--tiger-primary,#3b82f6) hover:bg-(--tiger-bg-hover,#f3f4f6) hover:text-(--tiger-text,#1f2937) md:hidden">
             {sidebarOpen ? <XIcon size={18} /> : <MenuIcon size={18} />}
           </button>
         )}
-        <Text
-          size="lg"
-          weight="bold"
-          className="text-[var(--tiger-text,#1f2937)]">
+        <Text size="lg" weight="bold" className="text-(--tiger-text,#1f2937)">
           管理中心
         </Text>
-        <Breadcrumb className="text-sm text-[var(--tiger-text-secondary,#64748b)]">
+        <Breadcrumb className="text-sm text-(--tiger-text-secondary,#64748b)">
           <BreadcrumbItem>管理中心</BreadcrumbItem>
           {currentBreadcrumbItems.map((item, index) => (
             <BreadcrumbItem
@@ -101,13 +98,13 @@ export function MainHeader({
       <div className="flex items-center gap-3">
         <Dropdown trigger="click" placement="bottom-end">
           <button
-            className="flex items-center gap-3 rounded-full border border-[var(--tiger-border,#e2e8f0)] bg-[var(--tiger-bg-hover,#f3f4f6)] px-3 py-1.5 text-left transition-colors hover:border-[var(--tiger-primary,#3b82f6)] hover:text-[var(--tiger-text,#1f2937)]"
+            className="flex items-center gap-3 rounded-full border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-hover,#f3f4f6) px-3 py-1.5 text-left transition-colors hover:border-(--tiger-primary,#3b82f6) hover:text-(--tiger-text,#1f2937)"
             title={accountLabel}
             aria-label={accountLabel}>
-            <Avatar className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm">
+            <Avatar className="bg-linear-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm">
               {accountLabel.charAt(0).toUpperCase()}
             </Avatar>
-            <span className="text-sm font-medium text-[var(--tiger-text,#1f2937)]">
+            <span className="text-sm font-medium text-(--tiger-text,#1f2937)">
               {accountLabel}
             </span>
           </button>

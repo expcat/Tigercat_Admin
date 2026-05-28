@@ -220,7 +220,7 @@ function AboutPage() {
           {highlights.map((item) => (
             <div
               key={item.title}
-              className={`flex items-start gap-3 p-4 rounded-xl border border-slate-200 bg-gradient-to-br ${item.className}`}>
+              className={`flex items-start gap-3 p-4 rounded-xl border border-slate-200 bg-linear-to-br ${item.className}`}>
               <div className="w-10 h-10 rounded-lg bg-white/70 flex items-center justify-center text-xl">
                 {item.icon}
               </div>

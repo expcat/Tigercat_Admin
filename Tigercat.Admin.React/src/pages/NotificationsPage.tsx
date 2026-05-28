@@ -275,7 +275,7 @@ function NotificationsPage() {
           {notifications.slice(0, 2).map((item) => (
             <div
               key={item.id}
-              className="rounded-2xl border border-[var(--tiger-border,#e2e8f0)] bg-[var(--tiger-bg-hover,#f8fafc)] p-4">
+              className="rounded-2xl border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-hover,#f8fafc) p-4">
               <div className="flex items-center justify-between gap-3">
                 <Text weight="bold">{item.title}</Text>
                 <Text size="sm" color="secondary">

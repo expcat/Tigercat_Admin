@@ -7,7 +7,7 @@
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.NodeJs" Version="9.5.2" />
     <PackageReference Include="Aspire.Hosting.Redis" Version="9.5.2" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.NodeJS.Extensions" Version="9.5.2" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.NodeJS.Extensions" Version="9.6.0" />
   </ItemGroup>
 
   <PropertyGroup>

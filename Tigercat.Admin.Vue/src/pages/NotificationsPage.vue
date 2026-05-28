@@ -227,7 +227,7 @@ const handleMarkAllRead = (groupKey: string | number | undefined, items: Notific
         <div
           v-for="item in notifications.slice(0, 2)"
           :key="item.id"
-          class="rounded-2xl border border-[var(--tiger-border,#e2e8f0)] bg-[var(--tiger-bg-hover,#f8fafc)] p-4"
+          class="rounded-2xl border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-hover,#f8fafc) p-4"
         >
           <div class="flex items-center justify-between gap-3">
             <Text weight="bold">{{ item.title }}</Text>

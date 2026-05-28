@@ -57,11 +57,11 @@ export function MainSidebar({
       width={sidebarWidth}
       collapsedWidth={collapsedWidth}>
       {/* Logo */}
-      <div className="flex h-16 items-center justify-center border-b border-[var(--tiger-border,#e2e8f0)]">
+      <div className="flex h-16 items-center justify-center border-b border-(--tiger-border,#e2e8f0)">
         <div className="flex items-center gap-3">
           <LogoIcon />
           {!displayCollapsed && (
-            <span className="font-bold text-lg text-[var(--tiger-text,#1f2937)] tracking-wide whitespace-nowrap">
+            <span className="font-bold text-lg text-(--tiger-text,#1f2937) tracking-wide whitespace-nowrap">
               Tigercat
             </span>
           )}
@@ -119,10 +119,10 @@ export function MainSidebar({
 
       {/* 折叠按钮 */}
       {showCollapseToggle && (
-        <div className="p-3 border-t border-[var(--tiger-border,#e2e8f0)]">
+        <div className="p-3 border-t border-(--tiger-border,#e2e8f0)">
           <button
             onClick={() => onCollapsedChange(!collapsed)}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm text-[var(--tiger-text-secondary,#64748b)] hover:bg-[var(--tiger-bg-hover,#f3f4f6)] hover:text-[var(--tiger-text,#1f2937)] transition-all duration-200">
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm text-(--tiger-text-secondary,#64748b) hover:bg-(--tiger-bg-hover,#f3f4f6) hover:text-(--tiger-text,#1f2937) transition-all duration-200">
             <span className="shrink-0">
               {collapsed ? (
                 <ChevronRightIcon size={18} />

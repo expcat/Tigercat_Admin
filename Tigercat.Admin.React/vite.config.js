@@ -1,5 +1,6 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import process from 'node:process';
 
 export default defineConfig({
   plugins: [react()],
@@ -9,10 +10,11 @@ export default defineConfig({
       '/api': {
         target: process.env.VITE_API_URL,
         changeOrigin: true,
-      }
-    }
+      },
+    },
   },
   build: {
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -22,4 +24,4 @@ export default defineConfig({
       },
     },
   },
-})
+});
