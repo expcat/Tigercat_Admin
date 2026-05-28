@@ -20,7 +20,7 @@ import {
 import type { UploadRequestOptions } from '@expcat/tigercat-core';
 import { LogoIcon, SettingsIcon } from '../components/Icons';
 import { PageHeader } from '../components/PageHeader';
-import { apiRequest, getAuthHeaders } from '../utils';
+import { apiRequest, getAuthHeaders, normalizeInput } from '../utils';
 import { usePermission } from '../utils/permission';
 import {
   SETTINGS_GROUP_LABELS,
@@ -343,10 +343,10 @@ function SettingsPage() {
                         ) : (
                           <Input
                             value={editValues[item.key] ?? ''}
-                            onChange={(val) =>
+                            onChange={(event) =>
                               setEditValues((prev) => ({
                                 ...prev,
-                                [item.key]: val,
+                                [item.key]: normalizeInput(event),
                               }))
                             }
                             placeholder={`输入 ${item.key} 的值`}

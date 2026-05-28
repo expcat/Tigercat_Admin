@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, provide, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ConfigProvider, Message } from '@expcat/tigercat-vue'
+import { ConfigProvider, Message, MessageContainer } from '@expcat/tigercat-vue'
 import {
   SESSION_KEY,
   safeParse,
@@ -150,5 +150,6 @@ provide('updateTheme', updateTheme)
     <RouterView v-slot="{ Component }">
       <component :is="Component" @success="onLoginSuccess" />
     </RouterView>
+    <MessageContainer />
   </ConfigProvider>
 </template>

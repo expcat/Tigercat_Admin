@@ -29,6 +29,7 @@ import {
   getTaskPriorityColor,
   getTaskPriorityLabel,
 } from '../utils/task-board';
+import { normalizeInput } from '../utils';
 import type { AdminTaskBoardColumn } from '../utils/types';
 
 const formatDateTime = (value: string) =>
@@ -200,7 +201,7 @@ function TasksPage() {
             <Input
               value={filterText}
               placeholder="搜索任务标题或说明"
-              onChange={(value) => setFilterText(String(value ?? ''))}
+              onChange={(event) => setFilterText(normalizeInput(event))}
             />
             <Button variant="outline" onClick={handleResetBoard}>
               重置看板
