@@ -24,13 +24,11 @@ Tigercat_Admin/
 ### 安装依赖
 
 ```bash
-# 安装前端依赖（使用 workspace）
+# 在仓库根目录安装 workspace 依赖
 pnpm install
-
-# 或者单独安装
-cd Tigercat.Admin.Vue && pnpm install
-cd ../Tigercat.Admin.React && pnpm install
 ```
+
+请优先使用仓库根目录的 `pnpm-lock.yaml` 安装依赖，不要在 `Tigercat.Admin.Vue` 或 `Tigercat.Admin.React` 目录单独执行安装并提交漂移后的 lockfile。
 
 ### 运行项目
 

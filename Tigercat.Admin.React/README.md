@@ -13,8 +13,7 @@ Tigercat Admin React 前端实现，使用 Vite 构建。
 ## 运行
 
 ```bash
-# 安装依赖
-pnpm install
+# 先在仓库根目录执行 pnpm install
 
 # 开发模式
 pnpm dev
@@ -28,6 +27,8 @@ pnpm lint
 # 预览构建结果
 pnpm preview
 ```
+
+依赖安装以仓库根目录的 workspace lockfile 为准，避免在当前目录单独安装后产生版本漂移。
 
 ## 项目结构
 

@@ -25,6 +25,8 @@ pnpm install
 dotnet build Tigercat.Admin.sln
 ```
 
+前端依赖以仓库根目录的 `pnpm-lock.yaml` 为准；不要在子项目目录单独执行 `pnpm install` 并提交与 workspace 不一致的安装结果。
+
 ## 日常开发
 
 ### 使用 Aspire 开发（推荐）
@@ -77,7 +79,7 @@ pnpm build:all                    # 所有前端
 
 ```bash
 pnpm store prune
-rm -rf node_modules pnpm-lock.yaml
+rm -rf node_modules
 pnpm install
 ```
 
@@ -104,6 +106,8 @@ dotnet clean             # 清理构建产物
 # Aspire
 cd Tigercat.Aspire && dotnet run
 ```
+
+说明：默认只维护仓库根目录的 workspace lockfile；若子项目出现旧依赖残留，回到仓库根目录重新执行 `pnpm install`。
 
 ## 参考资源
 
