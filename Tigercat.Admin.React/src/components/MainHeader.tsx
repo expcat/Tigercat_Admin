@@ -82,7 +82,9 @@ export function MainHeader({
         <Text size="lg" weight="bold" className="text-(--tiger-text,#1f2937)">
           管理中心
         </Text>
-        <Breadcrumb className="text-sm text-(--tiger-text-secondary,#64748b)">
+        <Breadcrumb
+          className="text-sm text-(--tiger-text-secondary,#64748b)"
+          maxItems={4}>
           <BreadcrumbItem>管理中心</BreadcrumbItem>
           {currentBreadcrumbItems.map((item, index) => (
             <BreadcrumbItem

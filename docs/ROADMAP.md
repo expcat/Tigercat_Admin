@@ -17,7 +17,7 @@
 
 ## 规划基线
 
-当前代码库已经具备后端 API、React / Vue 双端后台、Tigercat 1.2.0 组件接入、SQLite / PostgreSQL provider、Redis 缓存与事件通道，以及 Playwright 工作区基座。后续计划不再重复记录历史完成项，只围绕可继续推进的能力建设展开。
+当前代码库已经具备后端 API、React / Vue 双端后台、Tigercat 1.2.14 组件接入、SQLite / PostgreSQL provider、Redis 缓存与事件通道，以及 Playwright 工作区基座。后续计划不再重复记录历史完成项，只围绕可继续推进的能力建设展开。
 
 ## 推进原则
 

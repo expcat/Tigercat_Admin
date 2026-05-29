@@ -117,7 +117,7 @@ pnpm dev
 - Vue3 和 React 两套独立实现
 - 使用 Vite 作为构建工具
 - 配置 API 代理
-- Tigercat UI 1.2.0 管理后台界面
+- Tigercat UI 1.2.14 管理后台界面
 - Tailwind CSS v4 modern 插件接入
 
 ## 📝 开发说明
@@ -145,7 +145,7 @@ pnpm dev
 
 ### Tigercat UI 集成
 
-当前已集成 `@expcat/tigercat-vue`、`@expcat/tigercat-react` 与 `@expcat/tigercat-core` 1.2.0。前端样式入口通过 Tailwind CSS v4 的 `@plugin "@expcat/tigercat-core/tailwind/modern"` 接入 Tigercat 现代主题，并通过 `@source` 扫描组件库产物。
+当前已集成 `@expcat/tigercat-vue`、`@expcat/tigercat-react` 与 `@expcat/tigercat-core` 1.2.14。前端样式入口通过 Tailwind CSS v4 的 `@plugin "@expcat/tigercat-core/tailwind/modern"` 接入 Tigercat 现代主题，并通过 `@source` 扫描组件库产物。
 
 ## 📄 许可证
 

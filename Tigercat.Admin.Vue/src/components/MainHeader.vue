@@ -68,7 +68,7 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
         <Icon :name="props.sidebarOpen ? 'x' : 'menu'" :size="18" />
       </button>
       <Text size="lg" weight="bold" class="text-(--tiger-text,#1f2937)">管理中心</Text>
-      <Breadcrumb class-name="text-sm text-(--tiger-text-secondary,#64748b)">
+      <Breadcrumb class-name="text-sm text-(--tiger-text-secondary,#64748b)" :max-items="4">
         <BreadcrumbItem>管理中心</BreadcrumbItem>
         <BreadcrumbItem
           v-for="(item, index) in (props.breadcrumbItems.length ? props.breadcrumbItems : [props.pageTitle])"

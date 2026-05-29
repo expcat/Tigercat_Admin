@@ -76,9 +76,9 @@ const INITIAL_NOTIFICATIONS: AdminNotificationItem[] = [
   {
     id: 'release-ui-upgrade',
     groupKey: 'release',
-    title: 'Tigercat 1.2.0 UI 基线已经完成收口',
+    title: 'Tigercat 1.2.14 UI 基线已经完成收口',
     description:
-      'Layout、DataTableWithToolbar、ActivityFeed 等组件已在双端生产构建通过，可继续推进任务面板验证。',
+      'Breadcrumb、DataTableWithToolbar、ActivityFeed 等组件已在双端生产构建通过，可继续推进任务面板验证。',
     time: '2026-05-27T11:00:00+08:00',
     read: true,
     toastType: 'info',
