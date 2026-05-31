@@ -275,6 +275,7 @@ onBeforeUnmount(() => {
       <Modal
         :open="saveConfirmOpen"
         title="确认保存设置"
+        show-default-footer
         :ok-text="saving ? '保存中…' : '确认保存'"
         cancel-text="取消"
         @ok="handleSave"

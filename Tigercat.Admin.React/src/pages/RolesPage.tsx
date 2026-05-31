@@ -656,6 +656,7 @@ function RolesPage() {
       <Modal
         open={modalVisible}
         title={modalTitle}
+        showDefaultFooter
         okText="确定"
         cancelText="取消"
         onOk={handleSubmit}
@@ -693,6 +694,7 @@ function RolesPage() {
       <Modal
         open={permModalVisible}
         title={`权限配置 — ${permConfigRole?.name ?? ''}`}
+        showDefaultFooter
         okText="保存"
         cancelText="取消"
         onOk={handlePermSubmit}
@@ -725,6 +727,7 @@ function RolesPage() {
       <Modal
         open={exportModalVisible}
         title="导出角色数据"
+        showDefaultFooter
         okText="导出"
         cancelText="取消"
         confirmLoading={exporting}

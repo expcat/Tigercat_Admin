@@ -550,6 +550,7 @@ onMounted(() => {
     <Modal
       :open="modalVisible"
       :title="modalTitle"
+      show-default-footer
       ok-text="确定"
       cancel-text="取消"
       @ok="handleSubmit"
@@ -584,6 +585,7 @@ onMounted(() => {
     <Modal
       :open="permModalVisible"
       :title="`权限配置 - ${permConfigRole?.name || ''}`"
+      show-default-footer
       ok-text="保存"
       cancel-text="取消"
       @ok="handlePermSubmit"
@@ -618,6 +620,7 @@ onMounted(() => {
     <Modal
       :open="exportModalVisible"
       title="导出角色数据"
+      show-default-footer
       ok-text="导出"
       cancel-text="取消"
       @ok="handleExport"

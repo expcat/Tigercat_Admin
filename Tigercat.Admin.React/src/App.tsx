@@ -148,6 +148,7 @@ function ProtectedLayout({
       <Modal
         open={changeOpen}
         title="修改密码"
+        showDefaultFooter
         okText="确认修改"
         cancelText="取消"
         onOk={onChangePasswordSubmit}

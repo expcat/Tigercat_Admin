@@ -87,6 +87,7 @@ function SettingsPage() {
         headers: getAuthHeaders(),
         body: JSON.stringify({ settings: entries }),
       });
+      setSaveConfirmOpen(false);
       Message.success({ content: '设置已保存', duration: 3000 });
       await fetchSettings();
     } catch (e: any) {
@@ -388,6 +389,7 @@ function SettingsPage() {
           <Modal
             open={saveConfirmOpen}
             title="确认保存设置"
+            showDefaultFooter
             okText={saving ? '保存中…' : '确认保存'}
             cancelText="取消"
             onOk={handleSave}

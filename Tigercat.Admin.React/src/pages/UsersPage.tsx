@@ -717,6 +717,7 @@ function UsersPage() {
       <Modal
         open={modalVisible}
         title={modalTitle}
+        showDefaultFooter
         okText="确定"
         cancelText="取消"
         onOk={handleSubmit}
@@ -774,6 +775,7 @@ function UsersPage() {
       <Modal
         open={exportModalVisible}
         title="导出用户数据"
+        showDefaultFooter
         okText="导出"
         cancelText="取消"
         confirmLoading={exporting}
@@ -809,6 +811,7 @@ function UsersPage() {
       <Modal
         open={batchDeleteConfirmVisible}
         title="确认批量删除"
+        showDefaultFooter
         okText="确认删除"
         cancelText="取消"
         onOk={confirmBatchDelete}

@@ -9,12 +9,13 @@ export const apiRequest = async <T = any>(
   path: string,
   options: RequestInit = {},
 ): Promise<ApiResponse<T>> => {
+  const { headers: optionHeaders, ...restOptions } = options;
   const response = await fetch(path, {
+    ...restOptions,
     headers: {
       'Content-Type': 'application/json',
-      ...(options.headers || {}),
+      ...(optionHeaders || {}),
     },
-    ...options,
   });
 
   const rawText = await response.text();
