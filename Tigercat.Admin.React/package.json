@@ -11,8 +11,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@expcat/tigercat-core": "^1.2.14",
-    "@expcat/tigercat-react": "^1.2.14",
+    "@expcat/tigercat-core": "^1.2.16",
+    "@expcat/tigercat-react": "^1.2.16",
     "autoprefixer": "^10.5.0",
     "postcss": "^8.5.15",
     "react": "^19.2.6",
