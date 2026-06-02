@@ -18,11 +18,11 @@ const props = defineProps<{
 <template>
   <Card class="overflow-hidden">
     <div class="relative">
-      <div class="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4"></div>
+      <div class="absolute inset-0 bg-linear-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4"></div>
       <div class="relative flex items-center justify-between">
         <div>
           <div class="flex items-center gap-3 mb-2">
-            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg text-white">
+            <div class="w-12 h-12 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg text-white">
               <Icon :name="props.icon" :size="24" class="text-white" />
             </div>
             <div>

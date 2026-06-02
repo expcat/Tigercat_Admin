@@ -206,7 +206,7 @@ onMounted(() => {
         <div
           v-for="item in highlights"
           :key="item.title"
-          class="flex items-start gap-3 p-4 rounded-xl border border-slate-200 bg-gradient-to-br"
+          class="flex items-start gap-3 p-4 rounded-xl border border-slate-200 bg-linear-to-br"
           :class="item.className"
         >
           <div class="w-10 h-10 rounded-lg bg-white/70 flex items-center justify-center text-xl">

@@ -601,6 +601,7 @@ onMounted(() => {
     <Modal
       :open="modalVisible"
       :title="modalTitle"
+      show-default-footer
       ok-text="确定"
       cancel-text="取消"
       @ok="handleSubmit"
@@ -653,6 +654,7 @@ onMounted(() => {
     <Modal
       :open="batchDeleteConfirmVisible"
       title="确认批量删除"
+      show-default-footer
       ok-text="确认删除"
       cancel-text="取消"
       @ok="confirmBatchDelete"
@@ -670,6 +672,7 @@ onMounted(() => {
     <Modal
       :open="exportModalVisible"
       title="导出用户数据"
+      show-default-footer
       ok-text="导出"
       cancel-text="取消"
       @ok="handleExport"

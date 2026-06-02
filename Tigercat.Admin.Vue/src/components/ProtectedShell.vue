@@ -38,6 +38,7 @@ const toggleThemeMode = inject<() => void>('toggleThemeMode')!
     <Modal
       v-model="changeOpen"
       title="修改密码"
+      show-default-footer
       ok-text="确认修改"
       cancel-text="取消"
       @ok="handleChangePassword"

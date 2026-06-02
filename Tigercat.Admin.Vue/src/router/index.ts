@@ -59,6 +59,21 @@ const router = createRouter({
           component: () => import('../pages/SettingsPage.vue'),
         },
         {
+          path: 'notifications',
+          name: 'notifications',
+          component: () => import('../pages/NotificationsPage.vue'),
+        },
+        {
+          path: 'tasks',
+          name: 'tasks',
+          component: () => import('../pages/TasksPage.vue'),
+        },
+        {
+          path: 'audit-logs',
+          name: 'audit',
+          component: () => import('../pages/AuditLogsPage.vue'),
+        },
+        {
           path: 'about',
           name: 'about',
           component: () => import('../pages/AboutPage.vue'),

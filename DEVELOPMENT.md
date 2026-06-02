@@ -64,6 +64,35 @@ pnpm build:all                    # 所有前端
 
 构建产物：.NET → `bin/Debug/net10.0/`，Vue/React → `dist/`
 
+## 数据库配置
+
+后端通过 `Database:Provider` 显式选择数据库提供程序：
+
+- `Sqlite`：默认本地开发模式，数据落在 `Tigercat.Admin.Api/tigercat_admin.db`。
+- `InMemory`：仅建议用于自动化测试、临时演示或需要无状态启动的场景。
+- `PostgreSql`：用于生产或独立环境部署，需同时配置 `ConnectionStrings:DefaultConnection`。
+
+默认配置已经写在 [Tigercat.Admin.Api/appsettings.json](Tigercat.Admin.Api/appsettings.json)。
+
+常见切换方式：
+
+```bash
+# 切换到 InMemory
+export Database__Provider=InMemory
+
+# 切回 SQLite 本地持久化
+export Database__Provider=Sqlite
+export ConnectionStrings__DefaultConnection="Data Source=tigercat_admin.db"
+
+# 使用 PostgreSQL
+export Database__Provider=PostgreSql
+export ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=tigercat_admin;Username=postgres;Password=postgres"
+```
+
+SQLite 会在启动时自动应用现有迁移；PostgreSQL 在当前样例中使用启动时建表，适合配置验证与样例部署。如需严格迁移治理，请在后续迭代补齐独立的 PostgreSQL migration pipeline。
+
+完整说明见 [docs/database.md](docs/database.md)。
+
 ## 端口分配
 
 | 服务             | 端口 | 说明             |
@@ -97,9 +126,13 @@ pnpm install              # 安装所有依赖
 pnpm dev:vue             # 运行 Vue 开发服务器
 pnpm dev:react           # 运行 React 开发服务器
 pnpm build:all           # 构建所有前端项目
+pnpm e2e                 # 运行 React + Vue 首批 E2E 烟测
+pnpm e2e:react           # 仅运行 React E2E 烟测
+pnpm e2e:vue             # 仅运行 Vue E2E 烟测
 
 # .NET
 dotnet build             # 构建解决方案
+dotnet test Tigercat.Admin.sln  # 运行后端回归测试
 dotnet run               # 运行当前项目
 dotnet clean             # 清理构建产物
 

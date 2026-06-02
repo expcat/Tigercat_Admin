@@ -71,13 +71,14 @@ public abstract class AdminApiFactory : WebApplicationFactory<Program>
 
 /// <summary>
 /// Factory that uses the EF Core <b>InMemory</b> provider.
-/// <c>DefaultConnection</c> is explicitly empty so that <c>Program.cs</c> selects
-/// <c>UseInMemoryDatabase</c> and registers <c>InMemoryUserStore / InMemorySessionStore</c>.
+/// <c>Database:Provider</c> is explicitly set to <c>InMemory</c> and
+/// <c>DefaultConnection</c> is cleared so that the API keeps all state in process.
 /// </summary>
 public class InMemoryApiFactory : AdminApiFactory
 {
     protected override Dictionary<string, string?> ConfigurationOverrides => new()
     {
+        ["Database:Provider"] = "InMemory",
         ["ConnectionStrings:Redis"] = "localhost:1",
         ["ConnectionStrings:DefaultConnection"] = "",
     };
@@ -85,8 +86,8 @@ public class InMemoryApiFactory : AdminApiFactory
 
 /// <summary>
 /// Factory that uses the EF Core <b>SQLite</b> provider with a temporary database file.
-/// <c>DefaultConnection</c> is set so that <c>Program.cs</c> chooses <c>UseSqlite</c>
-/// and registers <c>EfUserStore / EfSessionStore</c>.
+/// <c>Database:Provider</c> is set to <c>Sqlite</c> so that the API uses
+/// the relational EF-backed stores and applies SQLite migrations.
 /// </summary>
 public class SqliteApiFactory : AdminApiFactory
 {
@@ -96,6 +97,7 @@ public class SqliteApiFactory : AdminApiFactory
 
     protected override Dictionary<string, string?> ConfigurationOverrides => new()
     {
+        ["Database:Provider"] = "Sqlite",
         ["ConnectionStrings:Redis"] = "localhost:1",
         ["ConnectionStrings:DefaultConnection"] = $"Data Source={_dbPath}",
     };

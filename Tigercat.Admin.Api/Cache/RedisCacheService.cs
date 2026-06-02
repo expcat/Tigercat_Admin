@@ -60,7 +60,8 @@ public class RedisCacheService : ICacheService
         {
             var database = _multiplexer.GetDatabase();
             var payload = JsonSerializer.Serialize(value, SerializerOptions);
-            await database.StringSetAsync(key, payload, ttl).WaitAsync(ct);
+            var expiration = ttl.HasValue ? new Expiration(ttl.Value) : Expiration.Default;
+            await database.StringSetAsync(key, payload, expiration).WaitAsync(ct);
         }
         catch (Exception ex) when (ex is RedisConnectionException or RedisTimeoutException)
         {

@@ -6,6 +6,7 @@ import MainHeader from './MainHeader.vue'
 import MainSidebar from './MainSidebar.vue'
 import type { ThemeMode } from '../utils/types'
 import {
+  getShellBreadcrumbItems,
   SHELL_MENU_ROUTES,
   SHELL_ROUTE_TO_MENU,
   getShellPageTitle,
@@ -40,6 +41,7 @@ const sidebarOpen = ref(false)
 const activeMenu = ref<ShellPageKey>('home')
 
 const pageTitle = computed(() => getShellPageTitle(activeMenu.value))
+const breadcrumbItems = computed(() => getShellBreadcrumbItems(activeMenu.value))
 
 const handleMenuSelect = (key: string) => {
   const menuKey = key as ShellPageKey
@@ -142,6 +144,7 @@ watch(
       <MainHeader 
         :session="session"
         :page-title="pageTitle"
+        :breadcrumb-items="breadcrumbItems"
         :theme-mode="themeMode"
         :show-sidebar-toggle="isMobile"
         :sidebar-open="sidebarOpen"

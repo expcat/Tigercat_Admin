@@ -105,6 +105,8 @@ public class RolesEndpoints : IEndpointDefinition
         };
 
         var roles = await ordered
+            .AsNoTracking()
+            .AsSplitQuery()
             .Skip((p - 1) * ps)
             .Take(ps)
             .Select(r => new RoleDetailResponse(
@@ -349,6 +351,7 @@ public class RolesEndpoints : IEndpointDefinition
         var role = await db.Roles
             .Include(r => r.UserRoles)
             .Include(r => r.RolePermissions)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(r => r.Id == id, ct);
 
         if (role is null)
@@ -501,6 +504,8 @@ public class RolesEndpoints : IEndpointDefinition
     private static Task<RoleDetailResponse?> ProjectRole(AdminDbContext db, int roleId, CancellationToken ct)
     {
         return db.Roles
+            .AsNoTracking()
+            .AsSplitQuery()
             .Where(r => r.Id == roleId)
             .Select(r => new RoleDetailResponse(
                 r.Id,

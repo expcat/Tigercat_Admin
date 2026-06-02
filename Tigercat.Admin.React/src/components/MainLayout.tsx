@@ -3,7 +3,10 @@ import { Layout, Content } from '@expcat/tigercat-react';
 import { MainHeader } from './MainHeader';
 import { MainSidebar } from './MainSidebar';
 import type { ThemeMode } from '../utils/types';
-import { getShellPageTitle } from '../utils/shell-navigation';
+import {
+  getShellBreadcrumbItems,
+  getShellPageTitle,
+} from '../utils/shell-navigation';
 
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)';
 
@@ -100,6 +103,7 @@ export function MainLayout({
   };
 
   const pageTitle = getShellPageTitle(currentActiveMenu);
+  const breadcrumbItems = getShellBreadcrumbItems(currentActiveMenu);
 
   return (
     <Layout className="h-screen w-full overflow-hidden">
@@ -138,6 +142,7 @@ export function MainLayout({
         <MainHeader
           session={user}
           pageTitle={pageTitle}
+          breadcrumbItems={breadcrumbItems}
           themeMode={themeMode}
           showSidebarToggle={isMobile}
           sidebarOpen={sidebarOpen}

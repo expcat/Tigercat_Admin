@@ -20,6 +20,9 @@ public static class DbInitializer
         ("theme.compactMode",   "false",             "紧凑模式（侧边栏默认折叠）"),
     ];
 
+    public static IReadOnlyDictionary<string, string> DefaultSettingValues { get; } =
+        SeedSettings.ToDictionary(setting => setting.Key, setting => setting.Value, StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Seed permission definitions. Each entry: (Code, Description).
     /// </summary>
@@ -56,9 +59,10 @@ public static class DbInitializer
     /// </summary>
     public static async Task InitializeAsync(AdminDbContext context, CancellationToken ct = default)
     {
-        // Use migrations for relational providers (e.g. SQLite); fall back to
-        // EnsureCreated for the InMemory provider which does not support migrations.
-        if (context.Database.IsRelational())
+        // Use migrations for SQLite so local development keeps schema history.
+        // Other providers in this sample use EnsureCreated to avoid coupling
+        // startup to provider-specific migration artifacts.
+        if (context.Database.ProviderName?.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) == true)
         {
             await context.Database.MigrateAsync(ct);
         }

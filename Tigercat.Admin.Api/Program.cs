@@ -14,45 +14,62 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
-    ?? throw new InvalidOperationException("Redis connection string is not configured.");
+var useInMemoryInfrastructure = builder.Configuration.GetValue<bool>("Infrastructure:UseInMemory");
 
-// Redis clients: StackExchange.Redis for general cache operations, FreeRedis for stream-style workloads and blocking commands.
-builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+if (useInMemoryInfrastructure)
 {
-    var options = ConfigurationOptions.Parse(redisConnectionString);
-    options.AbortOnConnectFail = false;
-    return ConnectionMultiplexer.Connect(options);
-});
+    builder.Services.AddMemoryCache();
+    builder.Services.AddSingleton<ICacheService, InMemoryCacheService>();
+    builder.Services.AddSingleton<IEventPublisher, NullEventPublisher>();
+    builder.Services.AddSingleton<IIdempotencyService, InMemoryIdempotencyService>();
+}
+else
+{
+    var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
+        ?? throw new InvalidOperationException("Redis connection string is not configured.");
 
-builder.Services.AddSingleton<IRedisClient>(_ => new RedisClient(redisConnectionString));
-builder.Services.AddSingleton<ICacheService, RedisCacheService>();
-builder.Services.AddSingleton<IEventPublisher, RedisStreamPublisher>();
-builder.Services.AddSingleton<IIdempotencyService, RedisIdempotencyService>();
-builder.Services.AddHostedService<RedisStreamConsumer>();
+    // Redis clients: StackExchange.Redis for general cache operations, FreeRedis for stream-style workloads and blocking commands.
+    builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+    {
+        var options = ConfigurationOptions.Parse(redisConnectionString);
+        options.AbortOnConnectFail = false;
+        return ConnectionMultiplexer.Connect(options);
+    });
 
-// Database provider: when a "DefaultConnection" connection string is configured the app
-// uses SQLite (recommended for production); otherwise it falls back to the EF Core
-// InMemory provider (development / CI only — data is lost on restart).
-// Configuration is read at service-resolution time so that test hosts can override it.
+    builder.Services.AddSingleton<IRedisClient>(_ => new RedisClient(redisConnectionString));
+    builder.Services.AddSingleton<ICacheService, RedisCacheService>();
+    builder.Services.AddSingleton<IEventPublisher, RedisStreamPublisher>();
+    builder.Services.AddSingleton<IIdempotencyService, RedisIdempotencyService>();
+    builder.Services.AddHostedService<RedisStreamConsumer>();
+}
+
+// Database provider selection is explicit via Database:Provider when configured.
+// If omitted, the app keeps backward-compatible behavior: SQLite when a
+// DefaultConnection exists, otherwise EF Core InMemory.
+// Configuration is resolved at service-resolution time so that test hosts can
+// override provider and connection string independently.
 builder.Services.AddDbContext<AdminDbContext>((sp, options) =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
-    var connStr = config.GetConnectionString("DefaultConnection");
-    if (!string.IsNullOrEmpty(connStr))
+    var databaseOptions = DatabaseProviderResolver.Resolve(config);
+
+    switch (databaseOptions.Provider)
     {
-        options.UseSqlite(connStr);
-    }
-    else
-    {
-        options.UseInMemoryDatabase("TigercatAdmin");
+        case AdminDatabaseProvider.Sqlite:
+            options.UseSqlite(databaseOptions.ConnectionString);
+            break;
+        case AdminDatabaseProvider.PostgreSql:
+            options.UseNpgsql(databaseOptions.ConnectionString);
+            break;
+        default:
+            options.UseInMemoryDatabase("TigercatAdmin");
+            break;
     }
 });
 
 // When a relational provider is configured, use the EF-backed stores so that auth
-// operations share the same database as the rest of the application.  For the
-// InMemory provider (development / CI) the lightweight in-memory stores are used.
-// Resolved lazily via factory so that test-time configuration overrides take effect.
+// operations share the same database as the rest of the application. For the
+// InMemory provider (CI / isolated tests) the lightweight in-memory stores are used.
 builder.Services.AddSingleton<InMemoryUserStore>();
 builder.Services.AddSingleton<InMemorySessionStore>();
 builder.Services.AddScoped<EfUserStore>();
@@ -61,8 +78,8 @@ builder.Services.AddScoped<EfSessionStore>();
 builder.Services.AddScoped<IUserStore>(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
-    var connStr = config.GetConnectionString("DefaultConnection");
-    return !string.IsNullOrEmpty(connStr)
+    var databaseOptions = DatabaseProviderResolver.Resolve(config);
+    return databaseOptions.UsesRelationalStores
         ? sp.GetRequiredService<EfUserStore>()
         : sp.GetRequiredService<InMemoryUserStore>();
 });
@@ -70,8 +87,8 @@ builder.Services.AddScoped<IUserStore>(sp =>
 builder.Services.AddScoped<ISessionStore>(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
-    var connStr = config.GetConnectionString("DefaultConnection");
-    return !string.IsNullOrEmpty(connStr)
+    var databaseOptions = DatabaseProviderResolver.Resolve(config);
+    return databaseOptions.UsesRelationalStores
         ? sp.GetRequiredService<EfSessionStore>()
         : sp.GetRequiredService<InMemorySessionStore>();
 });
@@ -124,6 +141,10 @@ catch (Exception ex)
 
 // Map Endpoints Explicitly (AOT compatible)
 app.MapEndpoint<AuthEndpoints>();
+if (!useInMemoryInfrastructure)
+{
+    app.MapEndpoint<AuditEndpoints>();
+}
 app.MapEndpoint<HomeEndpoints>();
 app.MapEndpoint<UsersEndpoints>();
 app.MapEndpoint<RolesEndpoints>();
@@ -137,8 +158,11 @@ app.MapGet("/api/health", GetHealth)
 app.MapGet("/api/info", GetInfo)
     .WithName("GetInfo");
 
-app.MapGet("/api/health/redis", GetRedisHealth)
-    .WithName("RedisHealthCheck");
+if (!useInMemoryInfrastructure)
+{
+    app.MapGet("/api/health/redis", GetRedisHealth)
+        .WithName("RedisHealthCheck");
+}
 
 await app.RunAsync();
 

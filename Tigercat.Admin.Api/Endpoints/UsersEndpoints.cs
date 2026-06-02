@@ -241,6 +241,20 @@ public class UsersEndpoints : IEndpointDefinition
                 statusCode: 409);
         }
 
+        await eventPublisher.PublishAsync(
+            EventEnvelope.Create(
+                "admin.user.created",
+                new Dictionary<string, object?>
+                {
+                    ["targetUserId"] = user.Id,
+                    ["targetUsername"] = user.Username,
+                    ["operator"] = GetOperatorUsername(httpContext),
+                    ["roleCount"] = request.RoleIds?.Length ?? 0
+                },
+                httpContext.TraceIdentifier),
+            EventBusConstants.AdminStream,
+            ct);
+
         var response = await ProjectUser(db, user.Id, ct);
 
         return Results.Json(
@@ -324,6 +338,8 @@ public class UsersEndpoints : IEndpointDefinition
             await eventPublisher.PublishAsync(envelope, EventBusConstants.AuthStream, ct);
         }
 
+        var hasUserChanges = request.DisplayName is not null || request.Status.HasValue || request.RoleIds is not null;
+
         user.UpdatedAt = DateTime.UtcNow;
 
         // Update roles if provided — validate all IDs exist before removing old roles
@@ -353,6 +369,24 @@ public class UsersEndpoints : IEndpointDefinition
 
         await db.SaveChangesAsync(ct);
 
+        if (hasUserChanges)
+        {
+            await eventPublisher.PublishAsync(
+                EventEnvelope.Create(
+                    "admin.user.updated",
+                    new Dictionary<string, object?>
+                    {
+                        ["targetUserId"] = user.Id,
+                        ["targetUsername"] = user.Username,
+                        ["operator"] = GetOperatorUsername(httpContext),
+                        ["status"] = (int)user.Status,
+                        ["roleCount"] = request.RoleIds?.Length ?? user.UserRoles.Count
+                    },
+                    httpContext.TraceIdentifier),
+                EventBusConstants.AdminStream,
+                ct);
+        }
+
         var response = await ProjectUser(db, id, ct);
 
         return Results.Json(
@@ -364,6 +398,7 @@ public class UsersEndpoints : IEndpointDefinition
     private static async Task<IResult> DeleteUser(
         int id,
         AdminDbContext db,
+        IEventPublisher eventPublisher,
         HttpContext httpContext,
         CancellationToken ct)
     {
@@ -407,9 +442,25 @@ public class UsersEndpoints : IEndpointDefinition
             }
         }
 
+        var deletedUserId = user.Id;
+        var deletedUsername = user.Username;
+
         db.UserRoles.RemoveRange(user.UserRoles);
         db.Users.Remove(user);
         await db.SaveChangesAsync(ct);
+
+        await eventPublisher.PublishAsync(
+            EventEnvelope.Create(
+                "admin.user.deleted",
+                new Dictionary<string, object?>
+                {
+                    ["targetUserId"] = deletedUserId,
+                    ["targetUsername"] = deletedUsername,
+                    ["operator"] = GetOperatorUsername(httpContext)
+                },
+                httpContext.TraceIdentifier),
+            EventBusConstants.AdminStream,
+            ct);
 
         return Results.Json(
             ApiResult.Ok(new MessageResponse("删除成功")),
@@ -420,6 +471,7 @@ public class UsersEndpoints : IEndpointDefinition
     private static async Task<IResult> BatchDeleteUsers(
         BatchDeleteUsersRequest request,
         AdminDbContext db,
+        IEventPublisher eventPublisher,
         HttpContext httpContext,
         CancellationToken ct)
     {
@@ -476,8 +528,26 @@ public class UsersEndpoints : IEndpointDefinition
         {
             db.UserRoles.RemoveRange(u.UserRoles);
         }
+
+        var deletedIds = users.Select(static user => user.Id).ToArray();
+        var deletedUsernames = users.Select(static user => user.Username).ToArray();
+
         db.Users.RemoveRange(users);
         await db.SaveChangesAsync(ct);
+
+        await eventPublisher.PublishAsync(
+            EventEnvelope.Create(
+                "admin.user.batch.deleted",
+                new Dictionary<string, object?>
+                {
+                    ["deletedCount"] = users.Count,
+                    ["deletedIds"] = string.Join(",", deletedIds),
+                    ["targetUsernames"] = string.Join(",", deletedUsernames),
+                    ["operator"] = GetOperatorUsername(httpContext)
+                },
+                httpContext.TraceIdentifier),
+            EventBusConstants.AdminStream,
+            ct);
 
         return Results.Json(
             ApiResult.Ok(new MessageResponse($"成功删除 {users.Count} 个用户")),
@@ -500,5 +570,13 @@ public class UsersEndpoints : IEndpointDefinition
                 u.UpdatedAt,
                 u.UserRoles.Select(ur => new RoleInfoResponse(ur.Role.Id, ur.Role.Name)).ToArray()))
             .FirstOrDefaultAsync(ct);
+    }
+
+    private static string GetOperatorUsername(HttpContext httpContext)
+    {
+        return httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var operatorObj) &&
+            operatorObj is string operatorName
+            ? operatorName
+            : "unknown";
     }
 }

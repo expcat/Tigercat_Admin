@@ -1,5 +1,6 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import process from 'node:process';
 
 export default defineConfig({
   plugins: [react()],
@@ -9,17 +10,26 @@ export default defineConfig({
       '/api': {
         target: process.env.VITE_API_URL,
         changeOrigin: true,
-      }
-    }
+      },
+    },
   },
   build: {
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-framework': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-ui': ['@expcat/tigercat-react', '@expcat/tigercat-core'],
+        manualChunks(id) {
+          if (id.includes('node_modules/@expcat/tigercat-')) {
+            return 'vendor-ui';
+          }
+          if (
+            id.includes('node_modules/react') ||
+            id.includes('node_modules/react-router-dom')
+          ) {
+            return 'vendor-framework';
+          }
+          return undefined;
         },
       },
     },
   },
-})
+});

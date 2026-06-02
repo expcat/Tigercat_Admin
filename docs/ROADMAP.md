@@ -1,154 +1,131 @@
-# Tigercat Admin 路线图
+# Tigercat Admin 后续路线图
 
-> 项目定位：以 .NET 10 Aspire + Tigercat UI 为基础，验证 Vue 3 与 React 双端后台管理体验，并持续把真实业务场景中的组件诉求反馈给上游。
+> 项目定位：以 .NET 10 Aspire + Tigercat UI 为基础，持续验证 Vue 3 与 React 双端后台管理体验，并把真实业务场景中的组件诉求反馈给上游。
 
-最后更新：2026-05-28
+最后更新：2026-05-31
 
 ---
 
-## 文档职责边界
+## 文档边界
 
-- 本文只记录当前基线、已完成模块的升级计划、后续重建计划和验证门禁。
+- 本文只维护尚未完成的后续计划、执行优先级和验证门禁。
 - API 细节以 [api.md](api.md) 为准。
+- 数据库 provider、连接串和回归方式以 [database.md](database.md) 为准。
 - 组件缺口与上游诉求以 [upstream-requirements.md](upstream-requirements.md) 为准。
+- E2E 回归规划已合并到本文，不再单独维护独立 Roadmap 类文档。
 - Tigercat UI 最新使用方式以官方文档为准：[Vue 3](https://expcat.github.io/Tigercat/vue/) / [React](https://expcat.github.io/Tigercat/react/) / [迁移指南](https://raw.githubusercontent.com/expcat/Tigercat/main/docs/MIGRATION.md)。
 
----
+## 规划基线
 
-## 当前基线
+当前代码库已经具备后端 API、React / Vue 双端后台、Tigercat 1.2.14 组件接入、SQLite / PostgreSQL provider、Redis 缓存与事件通道，以及 Playwright 工作区基座。后续计划不再重复记录历史完成项，只围绕可继续推进的能力建设展开。
 
-| 项目 | 当前状态                                                                                                    |
-| ---- | ----------------------------------------------------------------------------------------------------------- |
-| 后端 | .NET 10 Minimal API，Aspire 编排，EF Core InMemory / SQLite Provider，Redis 缓存与 Streams 事件总线         |
-| 前端 | Vue 3.5 与 React 19 双实现，Vite 构建，React Router / Vue Router 路由懒加载                                 |
-| UI   | `@expcat/tigercat-core` / `@expcat/tigercat-vue` / `@expcat/tigercat-react` 升级到 `1.2.0`                  |
-| 样式 | Tailwind CSS v4，CSS 入口使用 `@plugin "@expcat/tigercat-core/tailwind/modern"` 与 `@source` 扫描组件库产物 |
-| 文档 | API 文档覆盖认证、用户、角色、统计、导出、设置接口；Roadmap 改为活跃计划文档                                |
+## 推进原则
 
-### Tigercat 1.2.0 对齐项
+1. 双端一致：新增页面、交互、状态变量和工具函数应在 React 与 Vue 中保持语义一致。
+2. 后端优先定契约：涉及持久化、权限、审计、任务或文件能力时，先明确 API 与数据模型，再接前端。
+3. 组件库优先：优先使用 Tigercat UI 原生能力；确认为上游缺口时，记录到 [upstream-requirements.md](upstream-requirements.md)。
+4. 回归先行：核心流程扩展前先补自动化用例或明确手工验证门禁，避免双端行为漂移。
+5. 文档瘦身：Roadmap 只保留未来计划；完成后的条目应从本文移除，必要经验沉淀到对应专题文档。
 
-| 项目                 | 状态   | 说明                                                                                                |
-| -------------------- | ------ | --------------------------------------------------------------------------------------------------- |
-| 依赖升级             | 已完成 | 两端 UI 包与 core 包升级到 `^1.2.0`                                                                 |
-| Tailwind modern 接入 | 已完成 | 两端 CSS 入口接入官方 modern 插件；保留 `@source` 以覆盖组件库 class 扫描                           |
-| Modal 可见性语义     | 已完成 | Vue 端从 `visible` 迁移到 `open` / `update:open`；React 端已使用 `open`                             |
-| Button 原生类型      | 已完成 | 双端登录/注册按钮使用 `htmlType` / `html-type`                                                      |
-| 文档链接             | 已完成 | Roadmap、README、子项目 README 与仓库指令均指向最新官方文档入口                                     |
-| 组件缺口复核         | 已完成 | 已完成首轮 1.2.0 复核，`InputNumber`、`Layout`、`Sidebar`、`SubMenu` 已在双端源码导入并通过生产构建 |
+## 后续路线
 
----
+### Milestone G：文件与媒体资源
 
-## 已完成模块升级规划
+目标：把当前 Logo / 头像的本地预览占位升级为可持久化的后台媒体能力。
 
-已完成模块不再继续按旧 Phase 展开，而是按“升级目标 + 回归验证 + 可替换组件”管理。
+范围：
 
-| 模块       | 当前完成内容                                         | 1.2.0 升级重点                                                                    | 验证要求                                                       |
-| ---------- | ---------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| 认证与会话 | 注册、登录、退出、修改密码、权限获取、Redis 审计事件 | 保持表单控件、按钮 loading 与错误反馈 API 对齐；补充会话过期体验                  | 双端登录/注册构建通过；后续补 E2E 登录流                       |
-| 主布局     | Header、Sidebar、路由保护、权限过滤菜单              | 复核 `Layout`、`Sidebar`、`Menu`、`SubMenu` 最新能力，减少自定义布局逻辑          | 桌面与窄屏菜单可用；权限过滤后不出现空分组                     |
-| 用户管理   | 分页、搜索、状态筛选、排序、行选择、批量删除、导出   | 尝试用 `DataTableWithToolbar` 或 `VirtualTable` 收敛表格组合逻辑；保留权限守卫    | 用户 CRUD、批量删除、导出 CSV/JSON/XLSX 回归                   |
-| 角色与权限 | 角色 CRUD、权限分组配置、角色导出                    | 复核 `Tree` / `TreeSelect` 是否更适合权限配置；保留扁平权限数据兼容               | 权限保存、Admin 保护规则、导出回归                             |
-| 仪表板     | 统计概览、趋势图、用户状态分布派生图表               | 引入更多 1.2.0 图表能力时优先复用现有 API 数据，不先扩接口                        | `/api/stats/overview`、`/api/stats/trend` 可用；图表空状态清晰 |
-| 系统设置   | 设置读取、批量更新、主题/安全/站点配置表单           | 用 `InputNumber`、`ColorPicker`、`Segmented` 等新版组件替换临时 Select/Input 方案 | 设置保存后双端状态一致，非法值提示清楚                         |
-| 数据导出   | 用户/角色导出，支持 `csv`、`json`、`xlsx` 与字段选择 | 评估 `@expcat/tigercat-core/utils/table-export` 是否能减少本地导出辅助逻辑        | 文件名、内容类型、字段过滤和权限校验回归                       |
+- 设计媒体资源接口：上传、列表、详情、删除、引用关系和基础权限控制。
+- 增加本地开发存储 provider，并为后续对象存储接入保留清晰边界。
+- 在设置页接入真实站点 Logo 保存、预览和恢复默认值流程。
+- 在用户资料或用户管理中接入头像上传与裁剪后的持久化回显。
+- 新增文件管理页，验证 Tigercat `FileManager` 在双端的列表、筛选、删除和空状态体验。
+- 同步更新 [api.md](api.md) 与必要的上游需求记录。
 
----
+验证：
 
-## 后续重建路线
+- `dotnet test Tigercat.Admin.sln`
+- `pnpm --filter tigercat-admin-react build`
+- `pnpm --filter tigercat-admin-vue build`
+- 手工确认上传、预览、删除和刷新回显流程。
 
-### Milestone A：1.2.0 升级收口
+### Milestone H：运维工作流后端化
 
-目标：完成依赖升级后的兼容性回归，把旧版“上游缺失”判断全部重新审计。
+目标：让审计日志、通知中心和任务面板从演示型页面变成可持续使用的运维工作流。
 
-- [x] 升级 `@expcat/tigercat-core`、`@expcat/tigercat-vue`、`@expcat/tigercat-react` 到 `1.2.0`。
-- [x] 按迁移指南处理 `Modal visible -> open` 与 `Button type -> htmlType`。
-- [x] 按最新文档接入 Tailwind v4 modern 插件。
-- [x] 更新 README、子项目 README 与仓库 Copilot 指南中的 Tigercat 文档链接。
-- [x] 基于 1.2.0 重跑组件覆盖清单，关闭已不再成立的上游需求。
-- [x] 整理构建产物与 lockfile 策略，明确根 workspace lockfile 为准还是保留子项目 lockfile。
+范围：
 
-### Milestone B：后台骨架重建
+- 审计日志增加分页、筛选、详情查看、导出和保留策略配置。
+- 通知中心接入后端数据源，支持未读状态持久化、按类型分组和批量已读。
+- 任务面板接入后端任务模型，支持任务创建、状态流转、负责人、截止时间和审计事件。
+- 将 Redis Streams 事件消费与 API 查询边界整理清楚，避免页面直接依赖临时本地状态。
+- 增加失败重试、空状态和权限不足状态的双端一致体验。
 
-目标：把自定义布局逻辑逐步迁移到 Tigercat 1.2.0 原生组件能力上。
+验证：
 
-- [x] 双端 `MainLayout` 已把移动端侧边栏隐藏宽度收敛到 `Sidebar collapsedWidth`，移除外层手写宽度切换。
-- [x] 双端导航标题、菜单结构与路由映射已抽到 `shell-navigation` 工具，`MainLayout` / `MainSidebar` 改为消费统一配置。
-- [ ] 用最新版 `Layout` / `Sidebar` / `Menu` / `SubMenu` 复核并重构 `MainLayout`、`MainSidebar`、`MainHeader`。
-- [x] 增加 `Breadcrumb`，让用户、角色、设置、关于页拥有一致导航层级。
-- [x] 引入 `Dropdown` 或 `Popover` 统一用户菜单、主题切换、快捷操作入口。
-- [x] 处理移动端侧边栏折叠、遮罩关闭与键盘可访问性。
+- `dotnet test Tigercat.Admin.sln`
+- `pnpm build`
+- 针对审计、通知、任务各补一条关键 E2E 或手工回归脚本。
 
-### Milestone C：数据工作台重建
+### Milestone I：权限、安全与会话体验
 
-目标：让用户和角色模块成为 Tigercat 表格高级能力的主验证场景。
+目标：降低后台管理的权限误配风险，并补齐长期使用时的会话与安全体验。
 
-- [x] 用户页、角色页已用 `DataTableWithToolbar` 替代手写 Card + Toolbar + Table 组合，分别承接搜索、筛选、分页、排序与批量操作入口。
-- [x] 用户页、角色页已补充服务端分页边界提示：当前仅渲染本页数据，前端页大小选项维持 10/20/50，后端统一把 `pageSize` 限制在 100 以内。
-- [x] 用户页、角色页已把列显隐保留在 `Popover`，把行内编辑/权限操作收敛到 `Dropdown`，并用 `Popconfirm` 替代单条删除确认模态框。
-- [x] 已复核双端 `DataTableWithToolbar` 对固定列、列显隐、排序、选择、分页的接线；修正 Vue 角色页分页事件为 `current` / `pageSize` 签名，避免混用旧事件形态。
+范围：
 
-### Milestone D：权限与设置体验重建
+- 明确权限种子数据版本策略，避免新增权限后旧数据库缺项。
+- 为系统角色、危险操作和批量操作补充后端测试与前端权限守卫回归。
+- 完善会话过期提示、重新登录后返回原目标页、跨标签页退出同步。
+- 增加密码策略、修改密码错误提示和登录失败节流的配置化能力。
+- 梳理审计事件中的敏感字段，避免记录密码、令牌或不必要的个人信息。
 
-目标：让权限配置和系统设置从“能用”升级为“可长期维护”。
+验证：
 
-- [x] 角色页权限配置弹窗已改为 `Tree`：保留扁平 `permissionIds` 提交，同时提供按模块分组、搜索与整组勾选视图；`TreeSelect` / `Transfer` 暂不引入到该场景。
-- [x] 双端设置页已保留 `InputNumber` 管理数值配置，并把 `theme.primaryColor` 改为 `ColorPicker`、`theme.mode` 改为 `Segmented`，减少通用 `Select` 占位实现。
-- [ ] 增加设置变更确认与恢复默认值流程，优先使用 `Popconfirm` / `Modal`。
-- [ ] 为站点 Logo 与头像预留 `Upload` / `CropUpload` 场景。
+- `dotnet test Tigercat.Admin.sln`
+- `pnpm e2e:react`
+- `pnpm e2e:vue`
 
-### Milestone E：可观测与运维扩展
+### Milestone J：发布与生产化基线
 
-目标：把 Redis Streams、审计事件和导出能力扩展为真实后台常见工作流。
+目标：把项目从本地验证样板推进到可部署、可配置、可观测的后台基线。
 
-- [ ] 新增审计日志页面，使用 `Timeline` / `ActivityFeed` 展示认证与用户管理事件。
-- [ ] 新增通知中心，验证 `Notification` / `NotificationCenter` / `Badge`。
-- [ ] 新增任务面板，验证 `TaskBoard` 或 `Kanban` 作为后续异步任务入口。
-- [ ] 完成 SQLite 开发持久化与 PostgreSQL 生产配置文档，补充数据库切换回归测试。
+范围：
 
----
+- 补充生产环境配置样例：PostgreSQL、Redis、前端 API 地址、CORS、日志级别和密钥来源。
+- 增加 Docker 或部署文档，明确 Aspire、本地开发和独立部署的差异。
+- 完善健康检查：数据库、Redis、事件通道和关键配置缺失的可诊断输出。
+- 建立最小 CI 门禁：后端测试、双端构建、E2E 烟测和 Markdown 链接检查。
+- 明确数据库迁移、种子数据和回滚策略。
 
-## 组件覆盖重审清单
+验证：
 
-Tigercat 1.2.0 已提供 133+ 组件，Roadmap 不再维护完整组件字典，只保留本项目近期需要优先验证的组件集合。
+- 干净环境按文档启动成功。
+- `dotnet test Tigercat.Admin.sln`
+- `pnpm build`
+- `pnpm e2e`
 
-| 场景       | 优先组件                                                                            | 目标                               |
-| ---------- | ----------------------------------------------------------------------------------- | ---------------------------------- |
-| 应用骨架   | `Layout`、`Sidebar`、`Menu`、`SubMenu`、`Breadcrumb`、`Dropdown`                    | 减少自定义后台框架代码             |
-| 表格工作台 | `Table`、`VirtualTable`、`DataTableWithToolbar`、`Popover`、`Tooltip`、`Popconfirm` | 统一用户/角色列表交互              |
-| 表单设置   | `Form`、`Input`、`InputNumber`、`ColorPicker`、`Segmented`、`Switch`、`Slider`      | 设置页从临时控件升级到语义化控件   |
-| 权限配置   | `Tree`、`TreeSelect`、`Transfer`、`Checkbox`、`Tabs`                                | 支持复杂权限分组与批量配置         |
-| 仪表板     | `Statistic`、`LineChart`、`BarChart`、`PieChart`、`DonutChart`、`GaugeChart`        | 扩展统计展示，不重复造图表封装     |
-| 运维扩展   | `Timeline`、`ActivityFeed`、`NotificationCenter`、`TaskBoard`、`FileManager`        | 支撑审计、通知、任务、文件管理计划 |
+## 近期执行队列
 
----
-
-## 上游需求处理规则
-
-1. 先用 Tigercat 1.2.0 官方文档和本地构建验证确认缺口是否仍存在。
-2. 若组件已提供能力，优先改造本项目实现并关闭旧需求。
-3. 若组件存在但 API 不满足后台场景，在 [upstream-requirements.md](upstream-requirements.md) 记录具体平台、期望 API、业务场景和替代方案。
-4. 涉及上游 breaking change 时，同步检查官方 [迁移指南](https://raw.githubusercontent.com/expcat/Tigercat/main/docs/MIGRATION.md) 与本项目双端代码。
-
----
+1. 设计媒体资源 API 与数据模型，同步更新 [api.md](api.md)。
+2. 接入站点 Logo 与用户头像的真实持久化流程，替换当前本地预览占位。
+3. 将任务面板从本地看板状态迁移到后端任务模型。
 
 ## 验证门禁
 
-| 改动类型             | 最小验证                                                           |
-| -------------------- | ------------------------------------------------------------------ |
-| Tigercat UI 依赖升级 | `pnpm install`、`pnpm build`                                       |
-| React 前端改动       | `pnpm --filter tigercat-admin-react build`                         |
-| Vue 前端改动         | `pnpm --filter tigercat-admin-vue build`                           |
-| API 改动             | `dotnet test Tigercat.Admin.sln`，并确认 [api.md](api.md) 同步更新 |
-| Roadmap / docs only  | 检查链接、状态与当前代码一致，必要时运行 Markdown 格式检查         |
-| 组件覆盖重审         | 记录组件是否真实导入、构建通过、双端交互一致，以及是否需要上游需求 |
+| 改动类型            | 最小验证                                                      |
+| ------------------- | ------------------------------------------------------------- |
+| Roadmap / docs only | 检查链接、状态与当前代码一致；确认无重复 Roadmap 类文档       |
+| React 前端改动      | `pnpm --filter tigercat-admin-react build`                    |
+| Vue 前端改动        | `pnpm --filter tigercat-admin-vue build`                      |
+| 双端前端改动        | `pnpm build`                                                  |
+| API 改动            | `dotnet test Tigercat.Admin.sln`，并同步更新 [api.md](api.md) |
+| 核心流程改动        | 对应补充或更新 `pnpm e2e:react` / `pnpm e2e:vue` 覆盖         |
+| 数据库或部署改动    | 同步更新 [database.md](database.md) 或部署说明，并跑后端测试  |
+| 组件能力复核或缺口  | 记录真实导入、构建结果、双端一致性；必要时更新上游需求文档    |
 
----
+## 维护规则
 
-## 近期任务看板
-
-- [x] 升级 Tigercat UI 到 `1.2.0` 并完成前端生产构建验证。
-- [x] 重写 Roadmap，按最新 Tigercat 文档规划已完成模块升级与后续重建。
-- [x] 更新 README 与 `.github/copilot-instructions.md` 中的 Tigercat 官方文档链接。
-- [x] 重审 [upstream-requirements.md](upstream-requirements.md)，移除或更新 1.2.0 已解决的历史缺口。
-- [x] 明确根 workspace lockfile 为唯一安装基线，并清理子项目 lockfile 漂移风险。
-- [ ] 补充用户/角色/设置核心流程的 E2E 回归计划。
+- 本文不保留已完成清单；完成后的计划项应删除或沉淀到对应专题文档。
+- 新增计划应写清目标、范围和验证方式，避免只写宽泛方向。
+- 若新增独立专题文档，应说明它不是 Roadmap 的替代入口，并在本文保留唯一优先级来源。
+- 计划涉及 API、数据库、上游组件诉求时，必须同步更新对应专题文档。

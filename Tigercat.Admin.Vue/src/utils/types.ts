@@ -88,9 +88,66 @@ export interface SettingItem {
   id: number;
   key: string;
   value: string;
+  defaultValue: string;
   description: string | null;
   createdAt: string;
   updatedAt: string | null;
+}
+
+export interface AuditLogItem {
+  id: string;
+  stream: string;
+  category: 'auth' | 'user' | 'system';
+  eventType: string;
+  occurredAtUtc: string;
+  traceId: string | null;
+  title: string;
+  description: string;
+  actor: string | null;
+  data: Record<string, string | null>;
+}
+
+export type AdminNotificationGroupKey = 'ops' | 'security' | 'release';
+
+export type AdminNotificationToastType =
+  | 'success'
+  | 'warning'
+  | 'error'
+  | 'info';
+
+export interface AdminNotificationItem {
+  id: string;
+  groupKey: AdminNotificationGroupKey;
+  title: string;
+  description: string;
+  time: string;
+  read: boolean;
+  toastType: AdminNotificationToastType;
+  meta: Record<string, string>;
+}
+
+export type AdminTaskPriority = 'low' | 'medium' | 'high';
+
+export type AdminTaskStatus = 'backlog' | 'todo' | 'doing' | 'review' | 'done';
+
+export interface AdminTaskBoardCard {
+  id: string;
+  title: string;
+  description?: string;
+  assignee: string;
+  priority: AdminTaskPriority;
+  status: AdminTaskStatus;
+  dueAt: string;
+  estimateHours: number;
+  blocked?: boolean;
+}
+
+export interface AdminTaskBoardColumn {
+  id: AdminTaskStatus | string;
+  title: string;
+  description?: string;
+  wipLimit?: number;
+  cards: AdminTaskBoardCard[];
 }
 
 // ---- Theme types ----
