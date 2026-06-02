@@ -4,7 +4,7 @@
 
 Tigercat Admin 是一个现代化的管理后台基础架构，采用 .NET Aspire 编排，支持 Vue3 和 React 两套前端实现。
 
-> 项目结构、开发规范与代码复用约定见 [.github/copilot-instructions.md](.github/copilot-instructions.md)。
+> 项目结构、开发规范与代码复用约定见 [AGENT.md](AGENT.md)。
 
 ## 开发环境设置
 
