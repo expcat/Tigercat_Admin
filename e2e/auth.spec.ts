@@ -26,6 +26,20 @@ test.describe('认证与受保护路由烟测', () => {
     await expect(page.getByText('用户管理').first()).toBeVisible();
   });
 
+  test('登录后返回原目标页', async ({ page, expectSessionStored }) => {
+    await page.goto('/roles');
+
+    await expect(page).toHaveURL(/\/login/);
+
+    await page.getByPlaceholder('请输入用户名').fill('admin');
+    await page.getByPlaceholder('请输入密码').fill('admin123');
+    await page.getByRole('button', { name: '登录' }).click();
+
+    await expect(page).toHaveURL(/\/roles$/);
+    await expectSessionStored();
+    await expect(page.getByText('角色管理').first()).toBeVisible();
+  });
+
   test('退出登录后清除会话并拦截受保护路由', async ({
     page,
     loginAsAdmin,
@@ -44,5 +58,20 @@ test.describe('认证与受保护路由烟测', () => {
     await page.goto('/users');
     await expect(page).toHaveURL(/\/login$/);
     await expect(page.getByRole('heading', { name: '欢迎回来' })).toBeVisible();
+  });
+
+  test('跨标签页退出后同步回到登录页', async ({ page, loginAsAdmin, logout }) => {
+    await loginAsAdmin();
+
+    const secondPage = await page.context().newPage();
+    await secondPage.goto('/users');
+    await expect(secondPage).toHaveURL(/\/users$/);
+
+    await logout();
+
+    await expect(secondPage).toHaveURL(/\/login$/);
+    await expect(secondPage.getByRole('heading', { name: '欢迎回来' })).toBeVisible();
+
+    await secondPage.close();
   });
 });

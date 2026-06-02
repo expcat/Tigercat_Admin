@@ -21,6 +21,7 @@ import {
   Form,
   FormItem,
   Input,
+  Message,
 } from '@expcat/tigercat-react';
 import { MainLayout } from './components/MainLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -76,12 +77,28 @@ const PATH_TO_MENU = Object.fromEntries(
 type ChangePasswordForm = { oldPassword: string; newPassword: string };
 type ChangePasswordField = keyof ChangePasswordForm;
 
+type LocationState = {
+  returnTo?: string;
+};
+
 function PageLoader() {
   return (
     <div className="flex items-center justify-center h-full min-h-50">
       <div className="text-slate-500">加载中...</div>
     </div>
   );
+}
+
+function getSafeReturnTo(value: unknown): string {
+  if (typeof value !== 'string' || !value.startsWith('/')) {
+    return '/dashboard';
+  }
+
+  if (value.startsWith('//') || value === '/login' || value === '/register') {
+    return '/dashboard';
+  }
+
+  return value;
 }
 
 function GuestLayout({ children }: { children: React.ReactNode }) {
@@ -236,14 +253,14 @@ function App() {
     return { Authorization: `Bearer ${session.token}` } as HeadersInit;
   }, [session?.token]);
 
-  const persistSession = (nextSession: Session | null) => {
+  const persistSession = useCallback((nextSession: Session | null) => {
     if (!nextSession) {
       localStorage.removeItem(SESSION_KEY);
     } else {
       localStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
     }
     setSession(nextSession);
-  };
+  }, []);
 
   const onLoginSuccess = async (nextSession: Session) => {
     persistSession(nextSession);
@@ -251,7 +268,9 @@ function App() {
       loadHome(nextSession.token),
       permission.load(nextSession.token),
     ]);
-    navigate('/dashboard');
+    navigate(getSafeReturnTo((location.state as LocationState | null)?.returnTo), {
+      replace: true,
+    });
   };
 
   const loadHome = useCallback(
@@ -288,13 +307,53 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleLogout = () => {
+  const clearAuthenticatedState = useCallback(() => {
     persistSession(null);
     permission.clear();
     setHomeMessage('');
     setHomeError('');
+  }, [permission, persistSession]);
+
+  const handleLogout = () => {
+    clearAuthenticatedState();
     navigate('/login');
   };
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== SESSION_KEY || event.newValue !== null) return;
+      clearAuthenticatedState();
+      if (location.pathname !== '/login') {
+        navigate('/login', { replace: true });
+      }
+    };
+
+    const handleSessionExpired = () => {
+      const returnTo = `${location.pathname}${location.search}${location.hash}`;
+      clearAuthenticatedState();
+      Message.warning({
+        content: '会话已过期，请重新登录',
+        duration: 3000,
+      });
+      navigate('/login', {
+        replace: true,
+        state: { returnTo },
+      });
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('tigercat:session-expired', handleSessionExpired);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('tigercat:session-expired', handleSessionExpired);
+    };
+  }, [
+    clearAuthenticatedState,
+    location.hash,
+    location.pathname,
+    location.search,
+    navigate,
+  ]);
 
   const handleChangePassword = async () => {
     setNotice({ type: '', message: '' });

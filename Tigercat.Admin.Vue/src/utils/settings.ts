@@ -15,6 +15,7 @@ export type SettingControl =
 export const SETTINGS_GROUP_LABELS: Record<string, string> = {
   site: '站点设置',
   auth: '认证安全',
+  security: '安全基线',
   theme: '主题与个性化',
 };
 
@@ -31,6 +32,21 @@ export const SETTING_CONTROLS: Record<string, SettingControl> = {
     min: 1,
     max: 50,
     step: 1,
+  },
+  'auth.loginLockoutMinutes': {
+    type: 'number',
+    min: 1,
+    max: 1440,
+    step: 1,
+  },
+  'auth.passwordMinLength': {
+    type: 'number',
+    min: 6,
+    max: 128,
+    step: 1,
+  },
+  'auth.requireComplexPassword': {
+    type: 'switch',
   },
   'theme.mode': {
     type: 'segmented',

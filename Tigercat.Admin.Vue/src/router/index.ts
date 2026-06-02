@@ -99,7 +99,7 @@ router.beforeEach((to, _from, next) => {
   const requiresGuest = to.matched.some((record) => record.meta.requiresGuest);
 
   if (requiresAuth && !isAuthed) {
-    next({ name: 'login' });
+    next({ name: 'login', query: { redirect: to.fullPath } });
   } else if (requiresGuest && isAuthed) {
     next({ name: 'dashboard' });
   } else {

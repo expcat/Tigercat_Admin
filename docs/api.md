@@ -113,7 +113,7 @@
 - **返回 data**：
   - `username`：注册成功的用户名
 - **可能错误码**：
-  - `400`：用户名或密码为空
+  - `400`：用户名或密码为空 / 密码不满足系统密码策略（`auth.passwordMinLength` / `auth.requireComplexPassword`）
   - `409`：用户已存在
 
 - **事件**：
@@ -129,10 +129,11 @@
   - `password`：密码（必填）
 - **返回 data**：
   - `token`：会话 Token
-  - `expiresAt`：过期时间（UTC）
+  - `expiresAt`：过期时间（UTC，受系统设置 `auth.sessionTimeout` 控制）
   - `username`：用户名
 - **可能错误码**：
   - `401`：账号或密码错误
+  - `429`：登录失败次数过多，需等待 `auth.loginLockoutMinutes` 后重试
 
 - **事件**：
   - 成功登录后发布 `auth.user.login` 到 Redis Stream `stream:auth`（异步审计事件）。
@@ -148,6 +149,7 @@
 - **返回 data**：
   - `message`：`"密码修改成功"`
 - **可能错误码**：
+  - `400`：新密码不满足系统密码策略（`auth.passwordMinLength` / `auth.requireComplexPassword`）
   - `401`：未登录或旧密码错误
 
 - **事件**：
@@ -296,7 +298,7 @@
   - `roleIds`：角色 ID 数组（可选）
 - **返回 data**：创建后的用户对象
 - **可能错误码**：
-  - `400`：用户名或密码为空 / 用户名格式不合法（长度 2-50，仅字母数字及 `_-.`）/ 密码长度不足 6 位 / 显示名称超过 100 字符 / 角色 ID 无效
+  - `400`：用户名或密码为空 / 用户名格式不合法（长度 2-50，仅字母数字及 `_-.`）/ 密码不满足系统密码策略 / 显示名称超过 100 字符 / 角色 ID 无效
   - `409`：用户已存在
 
 - **事件**：
@@ -335,7 +337,7 @@
 - **请求体**（所有字段均为可选，仅提供的字段会被更新）：
   - `displayName`：显示名称（最长 100 字符）
   - `status`：状态（`0`=Active，`1`=Disabled）
-  - `password`：新密码（如需重置密码，最短 6 位；会发布审计事件）
+  - `password`：新密码（如需重置密码，需满足系统密码策略；会发布审计事件）
   - `roleIds`：角色 ID 数组（提供时会替换现有角色，所有 ID 须有效）
   - `avatarMediaId`：头像媒体资源 ID；传正数设置头像，传 `0` 清空头像，省略则不修改
 - **返回 data**：更新后的用户对象
@@ -1110,16 +1112,21 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 
 #### 预置系统设置项
 
-| Key                   | 默认值           | 描述                                        |
-| --------------------- | ---------------- | ------------------------------------------- |
-| `site.name`           | `Tigercat Admin` | 站点名称                                    |
-| `site.logo`           | _(空)_           | 站点 Logo URL                               |
-| `auth.sessionTimeout` | `1440`           | 会话超时时间（分钟）                        |
-| `auth.maxAttempts`    | `5`              | 最大登录失败次数                            |
-| `theme.mode`          | `system`         | 默认主题模式（`light` / `dark` / `system`） |
-| `theme.primaryColor`  | `#2563eb`        | 默认主色调（HEX 色值）                      |
-| `theme.compactMode`   | `false`          | 紧凑模式（侧边栏默认折叠）                  |
-| `ops.auditRetentionDays` | `90`          | 审计日志保留天数                            |
+| Key                               | 默认值           | 描述                                        |
+| --------------------------------- | ---------------- | ------------------------------------------- |
+| `site.name`                       | `Tigercat Admin` | 站点名称                                    |
+| `site.logo`                       | _(空)_           | 站点 Logo URL                               |
+| `auth.sessionTimeout`             | `1440`           | 会话超时时间（分钟）                        |
+| `auth.maxAttempts`                | `5`              | 最大登录失败次数                            |
+| `auth.loginLockoutMinutes`        | `5`              | 登录失败锁定时长（分钟）                    |
+| `auth.passwordMinLength`          | `6`              | 密码最小长度                                |
+| `auth.requireComplexPassword`     | `false`          | 是否要求密码同时包含字母和数字              |
+| `theme.mode`                      | `system`         | 默认主题模式（`light` / `dark` / `system`） |
+| `theme.primaryColor`              | `#2563eb`        | 默认主色调（HEX 色值）                      |
+| `theme.compactMode`               | `false`          | 紧凑模式（侧边栏默认折叠）                  |
+| `ops.auditRetentionDays`          | `90`             | 审计日志保留天数                            |
+| `security.permissionSeedVersion`  | `2026.06.02.1`   | 权限种子数据版本                            |
+| `security.permissionSeedChecksum` | 自动生成         | 权限种子数据摘要，用于识别权限目录漂移      |
 
 ### 23. 获取所有系统设置
 

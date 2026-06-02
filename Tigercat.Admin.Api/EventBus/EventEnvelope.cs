@@ -8,6 +8,14 @@ public record EventEnvelope(
     string? TraceId,
     Dictionary<string, object?> Data)
 {
+    private static readonly string[] SensitiveKeyParts =
+    [
+        "password",
+        "token",
+        "authorization",
+        "secret",
+    ];
+
     public static EventEnvelope Create(
         string eventType,
         Dictionary<string, object?> data,
@@ -20,6 +28,14 @@ public record EventEnvelope(
             schemaVersion,
             DateTime.UtcNow,
             traceId,
-            data);
+            SanitizeData(data));
+    }
+
+    private static Dictionary<string, object?> SanitizeData(Dictionary<string, object?> data)
+    {
+        return data
+            .Where(entry => !SensitiveKeyParts.Any(part =>
+                entry.Key.Contains(part, StringComparison.OrdinalIgnoreCase)))
+            .ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal);
     }
 }

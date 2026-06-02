@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
@@ -9,7 +10,7 @@ namespace Tigercat.Admin.Api.Endpoints;
 
 public class AuthEndpoints : IEndpointDefinition
 {
-    private static readonly TimeSpan SessionTtl = TimeSpan.FromHours(2);
+    private static readonly ConcurrentDictionary<string, LoginAttemptState> LoginAttempts = new(StringComparer.Ordinal);
 
     public void DefineEndpoints(IEndpointRouteBuilder app)
     {
@@ -39,6 +40,7 @@ public class AuthEndpoints : IEndpointDefinition
         RegisterRequest request,
         IUserStore userStore,
         IEventPublisher eventPublisher,
+        AdminDbContext db,
         HttpContext httpContext,
         CancellationToken ct)
     {
@@ -51,6 +53,15 @@ public class AuthEndpoints : IEndpointDefinition
         }
 
         var username = NormalizeUsername(request.Username);
+        var policy = await AuthPolicySettings.LoadAsync(db, ct);
+        var passwordError = policy.ValidatePassword(request.Password);
+        if (passwordError is not null)
+        {
+            return Results.Json(
+                ApiResult.Fail<UserResponse>(passwordError, 400),
+                AppJsonContext.Default.ApiResponseUserResponse,
+                statusCode: 400);
+        }
 
         if (await userStore.ExistsAsync(username, ct))
         {
@@ -87,6 +98,7 @@ public class AuthEndpoints : IEndpointDefinition
         IUserStore userStore,
         ISessionStore sessionStore,
         IEventPublisher eventPublisher,
+        AdminDbContext db,
         HttpContext httpContext,
         CancellationToken ct)
     {
@@ -99,16 +111,28 @@ public class AuthEndpoints : IEndpointDefinition
         }
 
         var username = NormalizeUsername(request.Username);
+        var policy = await AuthPolicySettings.LoadAsync(db, ct);
+        var attemptKey = GetLoginAttemptKey(username, httpContext);
+        if (IsLockedOut(attemptKey, policy, out var retryAfter))
+        {
+            return Results.Json(
+                ApiResult.Fail<LoginResponse>($"登录失败次数过多，请 {Math.Max(1, (int)Math.Ceiling(retryAfter.TotalMinutes))} 分钟后再试", 429),
+                AppJsonContext.Default.ApiResponseLoginResponse,
+                statusCode: 429);
+        }
+
         var passwordHash = PasswordHasher.Hash(request.Password);
         if (!await userStore.ValidateUserAsync(username, passwordHash, ct))
         {
+            RecordLoginFailure(attemptKey);
             return Results.Json(
                 ApiResult.Fail<LoginResponse>("用户名或密码错误", 401),
                 AppJsonContext.Default.ApiResponseLoginResponse,
                 statusCode: 401);
         }
 
-        var session = await sessionStore.CreateSessionAsync(username, SessionTtl, ct);
+        ClearLoginFailures(attemptKey);
+        var session = await sessionStore.CreateSessionAsync(username, policy.SessionTtl, ct);
         var envelope = EventEnvelope.Create(
             "auth.user.login",
             new Dictionary<string, object?>
@@ -126,6 +150,7 @@ public class AuthEndpoints : IEndpointDefinition
         HttpContext httpContext,
         IUserStore userStore,
         IEventPublisher eventPublisher,
+        AdminDbContext db,
         CancellationToken ct)
     {
         if (!httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var userObj) || userObj is not string username)
@@ -143,6 +168,16 @@ public class AuthEndpoints : IEndpointDefinition
                 ApiResult.Fail<MessageResponse>("旧密码错误", 401),
                 AppJsonContext.Default.ApiResponseMessageResponse,
                 statusCode: 401);
+        }
+
+        var policy = await AuthPolicySettings.LoadAsync(db, ct);
+        var passwordError = policy.ValidatePassword(request.NewPassword);
+        if (passwordError is not null)
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>(passwordError, 400),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 400);
         }
 
         var newHash = PasswordHasher.Hash(request.NewPassword);
@@ -232,4 +267,46 @@ public class AuthEndpoints : IEndpointDefinition
     {
         return username.Trim().ToLowerInvariant();
     }
+
+    private static string GetLoginAttemptKey(string username, HttpContext httpContext)
+    {
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return $"{username}@{ip}";
+    }
+
+    private static bool IsLockedOut(string key, AuthPolicySettings policy, out TimeSpan retryAfter)
+    {
+        retryAfter = TimeSpan.Zero;
+
+        if (!LoginAttempts.TryGetValue(key, out var state) ||
+            state.FailureCount < policy.MaxLoginAttempts)
+        {
+            return false;
+        }
+
+        var elapsed = DateTimeOffset.UtcNow - state.LastFailureAt;
+        if (elapsed >= policy.LoginLockout)
+        {
+            LoginAttempts.TryRemove(key, out _);
+            return false;
+        }
+
+        retryAfter = policy.LoginLockout - elapsed;
+        return true;
+    }
+
+    private static void RecordLoginFailure(string key)
+    {
+        LoginAttempts.AddOrUpdate(
+            key,
+            _ => new LoginAttemptState(1, DateTimeOffset.UtcNow),
+            (_, current) => new LoginAttemptState(current.FailureCount + 1, DateTimeOffset.UtcNow));
+    }
+
+    private static void ClearLoginFailures(string key)
+    {
+        LoginAttempts.TryRemove(key, out _);
+    }
+
+    private sealed record LoginAttemptState(int FailureCount, DateTimeOffset LastFailureAt);
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, provide, onUnmounted } from 'vue'
+import { computed, ref, watch, provide, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ConfigProvider, Message, MessageContainer } from '@expcat/tigercat-vue'
 import {
@@ -54,6 +54,18 @@ onUnmounted(() => unwatchSystem())
 
 const authHeaders = computed(() => (session.value?.token ? { Authorization: `Bearer ${session.value.token}` } : {}))
 
+function getSafeReturnTo(value: unknown): string {
+  if (typeof value !== 'string' || !value.startsWith('/')) {
+    return '/dashboard'
+  }
+
+  if (value.startsWith('//') || value === '/login' || value === '/register') {
+    return '/dashboard'
+  }
+
+  return value
+}
+
 const persistSession = (nextSession: Session | null) => {
   if (!nextSession) {
     localStorage.removeItem(SESSION_KEY)
@@ -69,7 +81,7 @@ const onLoginSuccess = async (nextSession: Session) => {
     loadHome(nextSession.token),
     permission.load(nextSession.token),
   ])
-  router.push({ name: 'dashboard' })
+  router.push(getSafeReturnTo(route.query.redirect))
 }
 
 const loadHome = async (tokenOverride?: string) => {
@@ -84,13 +96,45 @@ const loadHome = async (tokenOverride?: string) => {
   }
 }
 
-const handleLogout = () => {
+const clearAuthenticatedState = () => {
   persistSession(null)
   permission.clear()
   homeMessage.value = ''
   homeError.value = ''
+}
+
+const handleLogout = () => {
+  clearAuthenticatedState()
   router.push({ name: 'login' })
 }
+
+function handleStorage(event: StorageEvent) {
+  if (event.key !== SESSION_KEY || event.newValue !== null) return
+  clearAuthenticatedState()
+  if (route.name !== 'login') {
+    router.replace({ name: 'login' })
+  }
+}
+
+function handleSessionExpired() {
+  const redirect = route.fullPath
+  clearAuthenticatedState()
+  Message.warning({
+    content: '会话已过期，请重新登录',
+    duration: 3000
+  })
+  router.replace({ name: 'login', query: { redirect } })
+}
+
+onMounted(() => {
+  window.addEventListener('storage', handleStorage)
+  window.addEventListener('tigercat:session-expired', handleSessionExpired)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('storage', handleStorage)
+  window.removeEventListener('tigercat:session-expired', handleSessionExpired)
+})
 
 const handleChangePassword = async () => {
   loading.value = true

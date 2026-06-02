@@ -13,7 +13,6 @@ public class UsersEndpoints : IEndpointDefinition
 {
     private const int UsernameMinLength = 2;
     private const int UsernameMaxLength = 50;
-    private const int PasswordMinLength = 6;
     private const int DisplayNameMaxLength = 100;
     private const string AdminRoleName = "Admin";
 
@@ -181,11 +180,12 @@ public class UsersEndpoints : IEndpointDefinition
                 statusCode: 400);
         }
 
-        // Validate password length
-        if (request.Password.Length < PasswordMinLength)
+        var policy = await AuthPolicySettings.LoadAsync(db, ct);
+        var passwordError = policy.ValidatePassword(request.Password);
+        if (passwordError is not null)
         {
             return Results.Json(
-                ApiResult.Fail<UserItemResponse>($"密码长度不能少于 {PasswordMinLength} 位", 400),
+                ApiResult.Fail<UserItemResponse>(passwordError, 400),
                 AppJsonContext.Default.ApiResponseUserItemResponse,
                 statusCode: 400);
         }
@@ -317,13 +317,15 @@ public class UsersEndpoints : IEndpointDefinition
             user.Status = (UserStatus)request.Status.Value;
         }
 
-        // Validate password length and publish audit event for admin password reset
+        // Validate password policy and publish audit event for admin password reset
         if (!string.IsNullOrWhiteSpace(request.Password))
         {
-            if (request.Password.Length < PasswordMinLength)
+            var policy = await AuthPolicySettings.LoadAsync(db, ct);
+            var passwordError = policy.ValidatePassword(request.Password);
+            if (passwordError is not null)
             {
                 return Results.Json(
-                    ApiResult.Fail<UserItemResponse>($"密码长度不能少于 {PasswordMinLength} 位", 400),
+                    ApiResult.Fail<UserItemResponse>(passwordError, 400),
                     AppJsonContext.Default.ApiResponseUserItemResponse,
                     statusCode: 400);
             }

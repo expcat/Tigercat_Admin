@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Data.Entities;
@@ -6,6 +8,10 @@ namespace Tigercat.Admin.Api.Data;
 
 public static class DbInitializer
 {
+    public const string PermissionSeedVersion = "2026.06.02.1";
+    public const string PermissionSeedVersionKey = "security.permissionSeedVersion";
+    public const string PermissionSeedChecksumKey = "security.permissionSeedChecksum";
+
     /// <summary>
     /// Seed system setting definitions. Each entry: (Key, Value, Description).
     /// </summary>
@@ -15,14 +21,16 @@ public static class DbInitializer
         ("site.logo",           "",                 "站点 Logo URL"),
         ("auth.sessionTimeout", "1440",             "会话超时时间（分钟）"),
         ("auth.maxAttempts",    "5",                "最大登录失败次数"),
+        ("auth.loginLockoutMinutes", "5",            "登录失败锁定时长（分钟）"),
+        ("auth.passwordMinLength", "6",              "密码最小长度"),
+        ("auth.requireComplexPassword", "false",     "是否要求密码同时包含字母和数字"),
         ("theme.mode",          "system",            "默认主题模式（light / dark / system）"),
         ("theme.primaryColor",  "#2563eb",           "默认主色调"),
         ("theme.compactMode",   "false",             "紧凑模式（侧边栏默认折叠）"),
         ("ops.auditRetentionDays", "90",              "审计日志保留天数"),
+        (PermissionSeedVersionKey, PermissionSeedVersion, "权限种子数据版本"),
+        (PermissionSeedChecksumKey, "", "权限种子数据摘要"),
     ];
-
-    public static IReadOnlyDictionary<string, string> DefaultSettingValues { get; } =
-        SeedSettings.ToDictionary(setting => setting.Key, setting => setting.Value, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Seed permission definitions. Each entry: (Code, Description).
@@ -51,6 +59,11 @@ public static class DbInitializer
         ("task:create",    "创建运维任务"),
         ("task:edit",      "编辑运维任务"),
     ];
+
+    public static string PermissionSeedChecksum { get; } = BuildPermissionSeedChecksum();
+
+    public static IReadOnlyDictionary<string, string> DefaultSettingValues { get; } =
+        BuildDefaultSettingValues();
 
     /// <summary>
     /// Seed role definitions. Each entry: (Name, Description, PermissionCodes).
@@ -185,7 +198,12 @@ public static class DbInitializer
 
         var newSettings = SeedSettings
             .Where(s => !existingSettingKeys.Contains(s.Key))
-            .Select(s => new SystemSettingEntity { Key = s.Key, Value = s.Value, Description = s.Description })
+            .Select(s => new SystemSettingEntity
+            {
+                Key = s.Key,
+                Value = s.Key == PermissionSeedChecksumKey ? PermissionSeedChecksum : s.Value,
+                Description = s.Description
+            })
             .ToList();
 
         if (newSettings.Count > 0)
@@ -193,6 +211,8 @@ public static class DbInitializer
             context.SystemSettings.AddRange(newSettings);
             await context.SaveChangesAsync(ct);
         }
+
+        await UpsertPermissionSeedMetadataAsync(context, ct);
 
         var existingNotificationIds = await context.AdminNotifications
             .Select(n => n.PublicId)
@@ -278,5 +298,82 @@ public static class DbInitializer
                 await context.SaveChangesAsync(ct);
             }
         }
+    }
+
+    private static async Task UpsertPermissionSeedMetadataAsync(AdminDbContext context, CancellationToken ct)
+    {
+        var metadata = await context.SystemSettings
+            .Where(s => s.Key == PermissionSeedVersionKey || s.Key == PermissionSeedChecksumKey)
+            .ToDictionaryAsync(s => s.Key, StringComparer.OrdinalIgnoreCase, ct);
+
+        UpsertMetadataValue(
+            context,
+            metadata,
+            PermissionSeedVersionKey,
+            PermissionSeedVersion,
+            "权限种子数据版本");
+
+        UpsertMetadataValue(
+            context,
+            metadata,
+            PermissionSeedChecksumKey,
+            PermissionSeedChecksum,
+            "权限种子数据摘要");
+
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static void UpsertMetadataValue(
+        AdminDbContext context,
+        IReadOnlyDictionary<string, SystemSettingEntity> metadata,
+        string key,
+        string value,
+        string description)
+    {
+        if (metadata.TryGetValue(key, out var setting))
+        {
+            if (!string.Equals(setting.Value, value, StringComparison.Ordinal) ||
+                setting.Description != description)
+            {
+                setting.Value = value;
+                setting.Description = description;
+                setting.UpdatedAt = DateTime.UtcNow;
+            }
+
+            return;
+        }
+
+        context.SystemSettings.Add(new SystemSettingEntity
+        {
+            Key = key,
+            Value = value,
+            Description = description
+        });
+    }
+
+    private static string BuildPermissionSeedChecksum()
+    {
+        var catalog = string.Join(
+            '\n',
+            SeedPermissions
+                .OrderBy(p => p.Code, StringComparer.Ordinal)
+                .Select(p => $"{p.Code}:{p.Description}"));
+
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(catalog));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    private static IReadOnlyDictionary<string, string> BuildDefaultSettingValues()
+    {
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var setting in SeedSettings)
+        {
+            values[setting.Key] = setting.Key == PermissionSeedChecksumKey
+                ? PermissionSeedChecksum
+                : setting.Value;
+        }
+
+        return values;
     }
 }

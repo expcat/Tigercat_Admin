@@ -3,7 +3,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
+using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Endpoints;
+using Tigercat.Admin.Api.EventBus;
 using Tigercat.Admin.Api.Tests.Fixtures;
 using Xunit;
 
@@ -69,6 +71,18 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         return request;
     }
 
+    private async Task UpdateSettingAsync(string token, string key, string value)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Put, "/api/settings")
+        {
+            Content = JsonContent.Create(new UpdateSettingsRequest([new SettingEntry(key, value)])),
+        };
+        request.Headers.Add("X-Token", token);
+
+        var response = await _client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
     // ── 1. Login / Logout Flow ──────────────────────────────────────────
 
     [Fact]
@@ -89,6 +103,49 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         var body = await response.ReadApiResponseAsync<LoginResponse>();
         Assert.NotNull(body);
         Assert.False(body.Success);
+    }
+
+    [Fact]
+    public async Task Login_WithRepeatedFailures_IsThrottled()
+    {
+        var username = $"missing-{Guid.NewGuid():N}";
+
+        for (var i = 0; i < 5; i++)
+        {
+            var failed = await _client.PostAsJsonAsync("/api/auth/login",
+                new LoginRequest(username, "wrong_password"));
+
+            Assert.Equal(HttpStatusCode.Unauthorized, failed.StatusCode);
+        }
+
+        var throttled = await _client.PostAsJsonAsync("/api/auth/login",
+            new LoginRequest(username, "wrong_password"));
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, throttled.StatusCode);
+        var body = await throttled.ReadApiResponseAsync<LoginResponse>();
+        Assert.NotNull(body);
+        Assert.False(body.Success);
+        Assert.Equal(429, body.Code);
+    }
+
+    [Fact]
+    public async Task Login_UsesConfiguredSessionTimeout()
+    {
+        var token = await LoginAsAdminAsync();
+        await UpdateSettingAsync(token, "auth.sessionTimeout", "30");
+
+        var beforeLogin = DateTime.UtcNow;
+        var response = await _client.PostAsJsonAsync("/api/auth/login",
+            new LoginRequest("admin", "admin123"));
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<LoginResponse>();
+
+        Assert.NotNull(body?.Data);
+        Assert.InRange(
+            body.Data.ExpiresAt,
+            beforeLogin.AddMinutes(25),
+            beforeLogin.AddMinutes(35));
     }
 
     [Fact]
@@ -135,6 +192,27 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         Assert.NotEmpty(body.Data.Permissions);
     }
 
+    [Fact]
+    public async Task ChangePassword_UsesConfiguredPasswordPolicy()
+    {
+        var token = await LoginAsAdminAsync();
+        await UpdateSettingAsync(token, "auth.passwordMinLength", "12");
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/change-password")
+        {
+            Content = JsonContent.Create(new ChangePasswordRequest("admin123", "short123")),
+        };
+        request.Headers.Add("X-Token", token);
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.ReadApiResponseAsync<MessageResponse>();
+        Assert.NotNull(body);
+        Assert.False(body.Success);
+        Assert.Contains("密码长度不能少于 12 位", body.Message);
+    }
+
     // ── 2. System Settings Read / Write ─────────────────────────────────
 
     [Fact]
@@ -153,6 +231,27 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
 
         // Verify a known seeded setting
         Assert.Contains(body.Data, s => s.Key == "site.name");
+    }
+
+    [Fact]
+    public async Task GetSettings_ReturnsPermissionSeedMetadata()
+    {
+        var token = await LoginAsAdminAsync();
+
+        var request = AuthRequest(HttpMethod.Get, "/api/settings", token);
+        var response = await _client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<SettingItemResponse[]>();
+
+        Assert.NotNull(body?.Data);
+        Assert.Contains(body.Data, s =>
+            s.Key == DbInitializer.PermissionSeedVersionKey &&
+            s.Value == DbInitializer.PermissionSeedVersion);
+        Assert.Contains(body.Data, s =>
+            s.Key == DbInitializer.PermissionSeedChecksumKey &&
+            s.Value == DbInitializer.PermissionSeedChecksum &&
+            s.Value.Length == 64);
     }
 
     [Fact]
@@ -254,6 +353,83 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         Assert.Contains(body.Data, p => p.Code == "dashboard:view");
         Assert.Contains(body.Data, p => p.Code == "user:view");
         Assert.Contains(body.Data, p => p.Code == "setting:view");
+    }
+
+    [Fact]
+    public async Task AdminRole_DangerousMutationsAreRejected()
+    {
+        var token = await LoginAsAdminAsync();
+
+        var rolesRequest = AuthRequest(HttpMethod.Get, "/api/roles?page=1&pageSize=10", token);
+        var rolesResponse = await _client.SendAsync(rolesRequest);
+        rolesResponse.EnsureSuccessStatusCode();
+        var roles = await rolesResponse.ReadApiResponseAsync<PagedResponse<RoleDetailResponse>>();
+        var adminRole = Assert.Single(roles!.Data!.Items, r => r.Name == "Admin");
+
+        var deleteRequest = AuthRequest(HttpMethod.Delete, $"/api/roles/{adminRole.Id}", token);
+        var deleteResponse = await _client.SendAsync(deleteRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, deleteResponse.StatusCode);
+
+        var permissionRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/roles/{adminRole.Id}/permissions")
+        {
+            Content = JsonContent.Create(new SetRolePermissionsRequest([])),
+        };
+        permissionRequest.Headers.Add("X-Token", token);
+        var permissionResponse = await _client.SendAsync(permissionRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, permissionResponse.StatusCode);
+
+        var usersRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/roles/{adminRole.Id}/users")
+        {
+            Content = JsonContent.Create(new SetRoleUsersRequest([])),
+        };
+        usersRequest.Headers.Add("X-Token", token);
+        var usersResponse = await _client.SendAsync(usersRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, usersResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task BatchDeleteUsers_PreventsDeletingCurrentAdmin()
+    {
+        var token = await LoginAsAdminAsync();
+
+        var usersRequest = AuthRequest(HttpMethod.Get, "/api/users?page=1&pageSize=10", token);
+        var usersResponse = await _client.SendAsync(usersRequest);
+        usersResponse.EnsureSuccessStatusCode();
+        var users = await usersResponse.ReadApiResponseAsync<PagedResponse<UserItemResponse>>();
+        var adminUser = Assert.Single(users!.Data!.Items, u => u.Username == "admin");
+
+        var deleteRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/batch-delete")
+        {
+            Content = JsonContent.Create(new BatchDeleteUsersRequest([adminUser.Id])),
+        };
+        deleteRequest.Headers.Add("X-Token", token);
+
+        var deleteResponse = await _client.SendAsync(deleteRequest);
+
+        Assert.Equal(HttpStatusCode.BadRequest, deleteResponse.StatusCode);
+        var body = await deleteResponse.ReadApiResponseAsync<MessageResponse>();
+        Assert.NotNull(body);
+        Assert.False(body.Success);
+        Assert.Contains("不能删除当前登录用户", body.Message);
+    }
+
+    [Fact]
+    public void EventEnvelope_RemovesSensitiveAuditFields()
+    {
+        var envelope = EventEnvelope.Create(
+            "security.test",
+            new Dictionary<string, object?>
+            {
+                ["username"] = "admin",
+                ["password"] = "secret",
+                ["accessToken"] = "token",
+                ["authorizationHeader"] = "Bearer token",
+            });
+
+        Assert.Contains("username", envelope.Data.Keys);
+        Assert.DoesNotContain("password", envelope.Data.Keys);
+        Assert.DoesNotContain("accessToken", envelope.Data.Keys);
+        Assert.DoesNotContain("authorizationHeader", envelope.Data.Keys);
     }
 
     [Fact]
