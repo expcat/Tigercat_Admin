@@ -18,6 +18,7 @@ public static class DbInitializer
         ("theme.mode",          "system",            "默认主题模式（light / dark / system）"),
         ("theme.primaryColor",  "#2563eb",           "默认主色调"),
         ("theme.compactMode",   "false",             "紧凑模式（侧边栏默认折叠）"),
+        ("ops.auditRetentionDays", "90",              "审计日志保留天数"),
     ];
 
     public static IReadOnlyDictionary<string, string> DefaultSettingValues { get; } =
@@ -42,6 +43,13 @@ public static class DbInitializer
         ("media:view",     "查看媒体资源"),
         ("media:upload",   "上传媒体资源"),
         ("media:delete",   "删除媒体资源"),
+        ("audit:view",     "查看审计日志"),
+        ("audit:export",   "导出审计日志"),
+        ("notification:view", "查看通知中心"),
+        ("notification:edit", "更新通知状态"),
+        ("task:view",      "查看任务面板"),
+        ("task:create",    "创建运维任务"),
+        ("task:edit",      "编辑运维任务"),
     ];
 
     /// <summary>
@@ -51,9 +59,26 @@ public static class DbInitializer
     [
         ("Admin",  "超级管理员，拥有所有权限", SeedPermissions.Select(p => p.Code).ToArray()),
         ("Editor", "编辑员，可查看和编辑",
-            ["dashboard:view", "user:view", "user:edit", "role:view", "role:edit", "setting:view", "setting:edit", "media:view", "media:upload"]),
+            ["dashboard:view", "user:view", "user:edit", "role:view", "role:edit", "setting:view", "setting:edit", "media:view", "media:upload", "audit:view", "notification:view", "notification:edit", "task:view", "task:create", "task:edit"]),
         ("Viewer", "只读用户，仅可查看",
-            ["dashboard:view", "user:view", "role:view", "setting:view", "media:view"]),
+            ["dashboard:view", "user:view", "role:view", "setting:view", "media:view", "audit:view", "notification:view", "task:view"]),
+    ];
+
+    private static readonly (string PublicId, string GroupKey, string Title, string Description, string ToastType, bool Read, string MetadataJson)[] SeedNotifications =
+    [
+        ("release-window", "ops", "发布窗口确认", "今晚 20:00 的发布窗口已创建，请确认导出任务与健康检查状态。", "warning", false, """{"source":"deployment","severity":"medium"}"""),
+        ("security-session-review", "security", "会话策略复核", "检测到会话超时时间仍为默认值，建议在生产前完成安全策略确认。", "info", false, """{"source":"security","severity":"low"}"""),
+        ("release-audit-ready", "release", "审计日志已接入", "后台审计日志支持分页、筛选、详情和导出，可进入审计页继续核对。", "success", true, """{"source":"audit","severity":"low"}"""),
+    ];
+
+    private static readonly (string PublicId, string Title, string Description, string Assignee, string Priority, string Status, DateTime DueAt, double EstimateHours, bool Blocked)[] SeedTasks =
+    [
+        ("task-asset-review", "补齐媒体资源持久化方案", "为 Logo 与头像预留真实存储方案，明确对象存储与权限校验边界。", "王一哲", "high", "backlog", new DateTime(2026, 6, 3, 10, 0, 0, DateTimeKind.Utc), 6, false),
+        ("task-e2e-plan", "梳理用户与设置核心流程 E2E 用例", "覆盖登录、用户 CRUD、设置保存与权限保护的最小回归集合。", "平台测试", "medium", "backlog", new DateTime(2026, 6, 5, 4, 0, 0, DateTimeKind.Utc), 4, false),
+        ("task-postgres-docs", "整理 PostgreSQL 生产配置文档", "补齐连接串、迁移、备份策略与 Aspire 环境变量示例。", "后端组", "high", "todo", new DateTime(2026, 5, 30, 10, 0, 0, DateTimeKind.Utc), 5, false),
+        ("task-cache-observe", "定位导出缓存命中率下降原因", "需要结合 Redis 指标与导出模板变更记录继续排查。", "平台运维", "high", "doing", new DateTime(2026, 5, 28, 9, 30, 0, DateTimeKind.Utc), 4, true),
+        ("task-notification-review", "通知中心交互复核", "确认分组筛选、已读切换与浮层反馈在双端一致。", "产品验收", "medium", "review", new DateTime(2026, 5, 29, 7, 0, 0, DateTimeKind.Utc), 2, false),
+        ("task-audit-page", "审计日志页联调完成", "后端聚合 Redis Streams，双端页面已完成 ActivityFeed 与 Timeline 验证。", "管理后台", "medium", "done", new DateTime(2026, 5, 28, 6, 0, 0, DateTimeKind.Utc), 3, false),
     ];
 
     /// <summary>
@@ -166,6 +191,61 @@ public static class DbInitializer
         if (newSettings.Count > 0)
         {
             context.SystemSettings.AddRange(newSettings);
+            await context.SaveChangesAsync(ct);
+        }
+
+        var existingNotificationIds = await context.AdminNotifications
+            .Select(n => n.PublicId)
+            .ToHashSetAsync(ct);
+
+        var newNotifications = SeedNotifications
+            .Where(n => !existingNotificationIds.Contains(n.PublicId))
+            .Select(n => new AdminNotificationEntity
+            {
+                PublicId = n.PublicId,
+                GroupKey = n.GroupKey,
+                Title = n.Title,
+                Description = n.Description,
+                ToastType = n.ToastType,
+                Read = n.Read,
+                ReadAt = n.Read ? DateTime.UtcNow : null,
+                MetadataJson = n.MetadataJson,
+                CreatedAt = DateTime.UtcNow.AddHours(-SeedNotifications.Length + Array.FindIndex(SeedNotifications, item => item.PublicId == n.PublicId))
+            })
+            .ToList();
+
+        if (newNotifications.Count > 0)
+        {
+            context.AdminNotifications.AddRange(newNotifications);
+            await context.SaveChangesAsync(ct);
+        }
+
+        var existingTaskIds = await context.AdminTasks
+            .Select(t => t.PublicId)
+            .ToHashSetAsync(ct);
+
+        var newTasks = SeedTasks
+            .Where(t => !existingTaskIds.Contains(t.PublicId))
+            .Select(t => new AdminTaskEntity
+            {
+                PublicId = t.PublicId,
+                Title = t.Title,
+                Description = t.Description,
+                Assignee = t.Assignee,
+                Priority = t.Priority,
+                Status = t.Status,
+                DueAt = t.DueAt,
+                EstimateHours = t.EstimateHours,
+                Blocked = t.Blocked,
+                CreatedBy = "system",
+                CreatedAt = DateTime.UtcNow,
+                CompletedAt = t.Status == "done" ? DateTime.UtcNow : null
+            })
+            .ToList();
+
+        if (newTasks.Count > 0)
+        {
+            context.AdminTasks.AddRange(newTasks);
             await context.SaveChangesAsync(ct);
         }
 

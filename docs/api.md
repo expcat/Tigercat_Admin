@@ -918,15 +918,21 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 | `admin.user.batch.deleted`   | POST `/api/users/batch-delete`                | `deletedCount`、`deletedIds`、`targetUsernames`、`operator`         |
 | `admin.user.password.reset`  | PUT `/api/users/{id}`（修改密码时）           | `targetUserId`、`targetUsername`、`operator`                        |
 
-### 22.1 获取审计日志
+### 22.1 获取审计日志（分页 + 筛选）
 
 - **方法**：GET
 - **路径**：`/api/audit-logs`
 - **认证**：是
-- **权限**：仅需登录
+- **权限**：`audit:view`
 - **查询参数**：
-  - `limit`：返回条数（默认 `30`，范围 `1-100`）
-- **返回 data**：审计日志数组
+  - `page`：页码（默认 `1`）
+  - `pageSize`：每页数量（默认 `30`，范围 `1-100`）
+  - `category`：分类筛选（可选，`auth` / `user` / `task` / `system`）
+  - `eventType`：事件类型筛选（可选）
+  - `actor`：操作者模糊筛选（可选）
+  - `keyword`：按标题、说明或事件类型搜索（可选）
+  - `from` / `to`：UTC 时间范围（可选）
+- **返回 data**：分页审计日志对象
 
 **审计日志对象结构**：
 
@@ -934,7 +940,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 | --------------- | -------------- | ---------------------------------------------------- |
 | `id`            | string         | 审计事件 ID                                          |
 | `stream`        | string         | Redis Stream 名称，如 `stream:auth` / `stream:admin` |
-| `category`      | string         | 事件分类，当前可能为 `auth`、`user`、`system`        |
+| `category`      | string         | 事件分类，当前可能为 `auth`、`user`、`task`、`system` |
 | `eventType`     | string         | 原始事件类型                                         |
 | `occurredAtUtc` | string         | 事件发生时间（UTC）                                  |
 | `traceId`       | string \| null | 请求跟踪 ID                                          |
@@ -950,28 +956,139 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
   "code": 200,
   "message": "Success",
   "success": true,
-  "data": [
-    {
-      "id": "9a13d0ebd8ae4f1da0f05e0a1eb9d8fb",
-      "stream": "stream:admin",
-      "category": "user",
-      "eventType": "admin.user.updated",
-      "occurredAtUtc": "2026-05-28T13:05:00Z",
-      "traceId": "0HN8L6QK6M7B1:00000001",
-      "title": "更新用户",
-      "description": "admin 更新了用户 editor 的资料或角色配置。",
-      "actor": "admin",
-      "data": {
-        "targetUserId": "2",
-        "targetUsername": "editor",
-        "operator": "admin",
-        "status": "0",
-        "roleCount": "2"
+  "data": {
+    "items": [
+      {
+        "id": "9a13d0ebd8ae4f1da0f05e0a1eb9d8fb",
+        "stream": "stream:admin",
+        "category": "user",
+        "eventType": "admin.user.updated",
+        "occurredAtUtc": "2026-05-28T13:05:00Z",
+        "traceId": "0HN8L6QK6M7B1:00000001",
+        "title": "更新用户",
+        "description": "admin 更新了用户 editor 的资料或角色配置。",
+        "actor": "admin",
+        "data": {
+          "targetUserId": "2",
+          "targetUsername": "editor",
+          "operator": "admin"
+        }
       }
-    }
-  ]
+    ],
+    "total": 1,
+    "page": 1,
+    "pageSize": 30
+  }
 }
 ```
+
+### 22.2 获取审计详情
+
+- **方法**：GET
+- **路径**：`/api/audit-logs/{id}`
+- **认证**：是
+- **权限**：`audit:view`
+- **返回 data**：单条审计日志对象
+- **可能错误码**：`404`：审计日志不存在；`503`：Redis 不可用
+
+### 22.3 导出审计日志
+
+- **方法**：GET
+- **路径**：`/api/audit-logs/export`
+- **认证**：是
+- **权限**：`audit:export`
+- **查询参数**：同审计列表筛选参数
+- **返回**：CSV 文件（`text/csv; charset=utf-8`，带 UTF-8 BOM）
+
+### 22.4 审计保留策略
+
+- **方法**：GET / PUT
+- **路径**：`/api/audit-logs/retention-policy`
+- **认证**：是
+- **权限**：GET 需要 `audit:view`；PUT 需要 `setting:edit`
+- **PUT 请求体**：
+  - `retentionDays`：保留天数，范围 `1-3650`
+- **返回 data**：
+  - `retentionDays`：当前保留天数
+  - `updatedAtUtc`：策略读取或更新时间
+
+---
+
+## 通知中心接口 (`/api/notifications`)
+
+> 以下接口均需登录且需要对应权限。
+
+### 22.5 获取通知列表
+
+- **方法**：GET
+- **路径**：`/api/notifications`
+- **权限**：`notification:view`
+- **查询参数**：
+  - `page` / `pageSize`：分页参数（默认 `1` / `50`）
+  - `groupKey`：分组筛选（`ops` / `security` / `release`）
+  - `unread`：传 `true` 时只看未读
+- **返回 data**：分页通知对象，通知字段包含 `id`、`groupKey`、`title`、`description`、`time`、`read`、`toastType`、`meta`、`linkUrl`。
+
+### 22.6 更新单条通知已读状态
+
+- **方法**：PUT
+- **路径**：`/api/notifications/{id}/read`
+- **权限**：`notification:edit`
+- **请求体**：`{ "read": true }`
+- **返回 data**：更新后的通知对象
+
+### 22.7 批量标记已读
+
+- **方法**：POST
+- **路径**：`/api/notifications/mark-read`
+- **权限**：`notification:edit`
+- **请求体**：`{ "groupKey": "ops" }`；`groupKey` 为 `null` 或省略时处理全部未读通知
+- **返回 data**：消息对象
+
+---
+
+## 任务面板接口 (`/api/tasks`)
+
+> 以下接口均需登录且需要对应权限。任务状态固定为 `backlog` / `todo` / `doing` / `review` / `done`，优先级为 `low` / `medium` / `high`。
+
+### 22.8 获取任务列表
+
+- **方法**：GET
+- **路径**：`/api/tasks`
+- **权限**：`task:view`
+- **查询参数**：
+  - `page` / `pageSize`：分页参数（默认 `1` / `100`）
+  - `status`：状态筛选
+  - `keyword`：按标题、说明或负责人搜索
+- **返回 data**：分页任务对象，任务字段包含 `id`、`title`、`description`、`assignee`、`priority`、`status`、`dueAt`、`estimateHours`、`blocked`、`createdBy`、`createdAt`、`updatedAt`、`completedAt`。
+
+### 22.9 创建任务
+
+- **方法**：POST
+- **路径**：`/api/tasks`
+- **权限**：`task:create`
+- **请求体**：`title` 必填，`description`、`assignee`、`priority`、`status`、`dueAt`、`estimateHours`、`blocked` 可选
+- **返回 data**：创建后的任务对象
+- **事件**：成功后发布 `admin.task.created` 到 `stream:admin`
+
+### 22.10 更新任务
+
+- **方法**：PUT
+- **路径**：`/api/tasks/{id}`
+- **权限**：`task:edit`
+- **请求体**：同创建任务，所有字段可选
+- **返回 data**：更新后的任务对象
+- **事件**：成功后发布 `admin.task.updated` 到 `stream:admin`
+
+### 22.11 流转任务状态
+
+- **方法**：PUT
+- **路径**：`/api/tasks/{id}/status`
+- **权限**：`task:edit`
+- **请求体**：`{ "status": "doing" }`
+- **返回 data**：更新后的任务对象
+- **说明**：阻塞任务不能直接流转到 `done`
+- **事件**：成功后发布 `admin.task.moved` 到 `stream:admin`
 
 ---
 
@@ -1002,6 +1119,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 | `theme.mode`          | `system`         | 默认主题模式（`light` / `dark` / `system`） |
 | `theme.primaryColor`  | `#2563eb`        | 默认主色调（HEX 色值）                      |
 | `theme.compactMode`   | `false`          | 紧凑模式（侧边栏默认折叠）                  |
+| `ops.auditRetentionDays` | `90`          | 审计日志保留天数                            |
 
 ### 23. 获取所有系统设置
 

@@ -123,7 +123,7 @@ export interface MediaDetail extends Omit<MediaItem, 'referenceCount'> {
 export interface AuditLogItem {
   id: string;
   stream: string;
-  category: 'auth' | 'user' | 'system';
+  category: 'auth' | 'user' | 'task' | 'system';
   eventType: string;
   occurredAtUtc: string;
   traceId: string | null;
@@ -150,6 +150,7 @@ export interface AdminNotificationItem {
   read: boolean;
   toastType: AdminNotificationToastType;
   meta: Record<string, string>;
+  linkUrl?: string | null;
 }
 
 export type AdminTaskPriority = 'low' | 'medium' | 'high';
@@ -174,6 +175,11 @@ export interface AdminTaskBoardColumn {
   description?: string;
   wipLimit?: number;
   cards: AdminTaskBoardCard[];
+}
+
+export interface AuditRetentionPolicy {
+  retentionDays: number;
+  updatedAtUtc: string;
 }
 
 // ---- Theme types ----

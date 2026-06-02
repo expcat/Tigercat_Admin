@@ -145,10 +145,7 @@ catch (Exception ex)
 
 // Map Endpoints Explicitly (AOT compatible)
 app.MapEndpoint<AuthEndpoints>();
-if (!useInMemoryInfrastructure)
-{
-    app.MapEndpoint<AuditEndpoints>();
-}
+app.MapEndpoint<AuditEndpoints>();
 app.MapEndpoint<HomeEndpoints>();
 app.MapEndpoint<UsersEndpoints>();
 app.MapEndpoint<RolesEndpoints>();
@@ -156,6 +153,8 @@ app.MapEndpoint<StatsEndpoints>();
 app.MapEndpoint<ExportEndpoints>();
 app.MapEndpoint<SettingsEndpoints>();
 app.MapEndpoint<MediaEndpoints>();
+app.MapEndpoint<NotificationsEndpoints>();
+app.MapEndpoint<TasksEndpoints>();
 
 app.MapGet("/api/health", GetHealth)
     .WithName("HealthCheck");

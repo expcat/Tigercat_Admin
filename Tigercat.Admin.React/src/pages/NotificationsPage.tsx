@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { NotificationItem } from '@expcat/tigercat-core';
 import {
   Badge,
@@ -18,16 +18,16 @@ import {
 import {
   buildNotificationGroups,
   countUnreadNotifications,
-  createInitialNotifications,
   findNotificationById,
   getNotificationGroupLabel,
-  markNotificationsRead,
   setNotificationReadState,
 } from '../utils/notifications';
+import { apiRequest, getAuthHeaders } from '../utils';
 import type {
   AdminNotificationGroupKey,
   AdminNotificationItem,
   AdminNotificationToastType,
+  PagedResult,
 } from '../utils/types';
 
 const formatDateTime = (value: string) =>
@@ -61,9 +61,35 @@ function showNotification(
 }
 
 function NotificationsPage() {
-  const [notifications, setNotifications] = useState<AdminNotificationItem[]>(
-    () => createInitialNotifications(),
-  );
+  const [notifications, setNotifications] = useState<AdminNotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const loadNotifications = useCallback(async () => {
+    setLoading(true);
+    setErrorMessage('');
+
+    try {
+      const payload = await apiRequest<PagedResult<AdminNotificationItem>>(
+        '/api/notifications?page=1&pageSize=100',
+        { headers: getAuthHeaders() },
+      );
+      setNotifications(payload.data.items);
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : '通知加载失败，请稍后重试。';
+      setErrorMessage(message);
+      showNotification('error', '通知加载失败', message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
 
   const notificationGroups = useMemo(
     () => buildNotificationGroups(notifications),
@@ -86,14 +112,6 @@ function NotificationsPage() {
     [notifications],
   );
 
-  const handleTriggerPreview = useCallback(() => {
-    showNotification(
-      'info',
-      '通知中心已准备就绪',
-      `当前还有 ${unreadCount} 条未读通知，可继续验证筛选、已读切换和分组浏览。`,
-    );
-  }, [unreadCount]);
-
   const handleItemClick = useCallback(
     (item: NotificationItem) => {
       const currentItem = findNotificationById(notifications, item.id);
@@ -111,9 +129,30 @@ function NotificationsPage() {
   );
 
   const handleItemReadChange = useCallback(
-    (item: NotificationItem, read: boolean) => {
+    async (item: NotificationItem, read: boolean) => {
       const currentItem = findNotificationById(notifications, item.id);
       setNotifications((prev) => setNotificationReadState(prev, item.id, read));
+
+      try {
+        await apiRequest<AdminNotificationItem>(
+          `/api/notifications/${item.id}/read`,
+          {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ read }),
+          },
+        );
+      } catch (error) {
+        setNotifications((prev) =>
+          setNotificationReadState(prev, item.id, !read),
+        );
+        showNotification(
+          'error',
+          '通知状态保存失败',
+          error instanceof Error ? error.message : '请稍后重试。',
+        );
+        return;
+      }
 
       if (currentItem) {
         showNotification(
@@ -127,8 +166,24 @@ function NotificationsPage() {
   );
 
   const handleMarkAllRead = useCallback(
-    (groupKey: string | number | undefined, items: NotificationItem[]) => {
-      setNotifications((prev) => markNotificationsRead(prev, groupKey));
+    async (groupKey: string | number | undefined, items: NotificationItem[]) => {
+      try {
+        await apiRequest('/api/notifications/mark-read', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            groupKey: groupKey ? String(groupKey) : null,
+          }),
+        });
+        await loadNotifications();
+      } catch (error) {
+        showNotification(
+          'error',
+          '批量已读失败',
+          error instanceof Error ? error.message : '请稍后重试。',
+        );
+        return;
+      }
 
       const groupTitle = groupKey
         ? getNotificationGroupLabel(groupKey as AdminNotificationGroupKey)
@@ -139,7 +194,7 @@ function NotificationsPage() {
         `本次共处理 ${items.length} 条通知。`,
       );
     },
-    [],
+    [loadNotifications],
   );
 
   return (
@@ -160,15 +215,25 @@ function NotificationsPage() {
           <div>
             <Text weight="bold">通知收件箱</Text>
             <Text size="sm" color="secondary">
-              当前使用前端本地数据模拟通知流，后续可直接替换成 Redis Streams
-              或异步任务事件源。
+              通知来自后端数据源，未读状态、分组和批量已读会持久化保存。
             </Text>
           </div>
-          <Button variant="outline" onClick={handleTriggerPreview}>
-            触发示例通知
+          <Button variant="outline" onClick={loadNotifications}>
+            刷新通知
           </Button>
         </div>
       </Card>
+
+      {errorMessage && (
+        <Card>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Text color="danger">{errorMessage}</Text>
+            <Button variant="outline" onClick={loadNotifications}>
+              重试
+            </Button>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-4">
         <Card>
@@ -257,7 +322,7 @@ function NotificationsPage() {
         <NotificationCenter
           title="后台通知"
           groups={notificationGroups}
-          emptyText="暂无通知"
+          emptyText={loading ? '正在加载通知...' : '暂无通知'}
           markAllReadText="全部标记为已读"
           markReadText="设为已读"
           markUnreadText="恢复未读"
@@ -286,7 +351,8 @@ function NotificationsPage() {
                 {item.description}
               </Text>
               <Text size="sm" color="secondary" className="mt-3">
-                来源：{item.meta.owner} · 通道：{item.meta.channel}
+                来源：{item.meta.source ?? 'backend'} · 级别：
+                {item.meta.severity ?? 'normal'}
               </Text>
             </div>
           ))}

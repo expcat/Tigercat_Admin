@@ -24,7 +24,13 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(EventEnvelope))]
 [JsonSerializable(typeof(AuditLogItemResponse))]
 [JsonSerializable(typeof(AuditLogItemResponse[]))]
+[JsonSerializable(typeof(ApiResponse<AuditLogItemResponse>))]
 [JsonSerializable(typeof(ApiResponse<AuditLogItemResponse[]>))]
+[JsonSerializable(typeof(PagedResponse<AuditLogItemResponse>))]
+[JsonSerializable(typeof(ApiResponse<PagedResponse<AuditLogItemResponse>>))]
+[JsonSerializable(typeof(AuditRetentionPolicyResponse))]
+[JsonSerializable(typeof(UpdateAuditRetentionPolicyRequest))]
+[JsonSerializable(typeof(ApiResponse<AuditRetentionPolicyResponse>))]
 // Users CRUD types
 [JsonSerializable(typeof(CreateUserRequest))]
 [JsonSerializable(typeof(UpdateUserRequest))]
@@ -79,6 +85,23 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(ApiResponse<MediaDetailResponse>))]
 [JsonSerializable(typeof(ApiResponse<MediaReferenceResponse[]>))]
 [JsonSerializable(typeof(ApiResponse<PagedResponse<MediaItemResponse>>))]
+// Operations workflow types
+[JsonSerializable(typeof(NotificationItemResponse))]
+[JsonSerializable(typeof(NotificationItemResponse[]))]
+[JsonSerializable(typeof(PagedResponse<NotificationItemResponse>))]
+[JsonSerializable(typeof(UpdateNotificationReadRequest))]
+[JsonSerializable(typeof(MarkNotificationsReadRequest))]
+[JsonSerializable(typeof(ApiResponse<NotificationItemResponse>))]
+[JsonSerializable(typeof(ApiResponse<PagedResponse<NotificationItemResponse>>))]
+[JsonSerializable(typeof(Dictionary<string, string>))]
+[JsonSerializable(typeof(AdminTaskResponse))]
+[JsonSerializable(typeof(AdminTaskResponse[]))]
+[JsonSerializable(typeof(PagedResponse<AdminTaskResponse>))]
+[JsonSerializable(typeof(CreateAdminTaskRequest))]
+[JsonSerializable(typeof(UpdateAdminTaskRequest))]
+[JsonSerializable(typeof(MoveAdminTaskRequest))]
+[JsonSerializable(typeof(ApiResponse<AdminTaskResponse>))]
+[JsonSerializable(typeof(ApiResponse<PagedResponse<AdminTaskResponse>>))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }

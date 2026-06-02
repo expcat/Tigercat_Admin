@@ -18,6 +18,8 @@ public class AdminDbContext : DbContext
     public DbSet<SystemSettingEntity> SystemSettings => Set<SystemSettingEntity>();
     public DbSet<MediaResourceEntity> MediaResources => Set<MediaResourceEntity>();
     public DbSet<MediaReferenceEntity> MediaReferences => Set<MediaReferenceEntity>();
+    public DbSet<AdminNotificationEntity> AdminNotifications => Set<AdminNotificationEntity>();
+    public DbSet<AdminTaskEntity> AdminTasks => Set<AdminTaskEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -129,6 +131,36 @@ public class AdminDbContext : DbContext
                 .WithMany(m => m.References)
                 .HasForeignKey(e => e.MediaResourceId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // AdminNotification
+        modelBuilder.Entity<AdminNotificationEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => new { e.GroupKey, e.Read, e.CreatedAt });
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.GroupKey).IsRequired().HasMaxLength(30);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(120);
+            entity.Property(e => e.Description).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.ToastType).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.LinkUrl).HasMaxLength(500);
+            entity.Property(e => e.MetadataJson).IsRequired().HasMaxLength(2000);
+        });
+
+        // AdminTask
+        modelBuilder.Entity<AdminTaskEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => new { e.Status, e.DueAt });
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(120);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.Assignee).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.Priority).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.CreatedBy).HasMaxLength(50);
         });
     }
 }

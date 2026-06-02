@@ -8,6 +8,37 @@ import type {
   AdminTaskStatus,
 } from './types';
 
+const TASK_BOARD_COLUMN_DEFINITIONS: Omit<AdminTaskBoardColumn, 'cards'>[] = [
+  {
+    id: 'backlog',
+    title: '需求池',
+    description: '记录已经确认但还未排期的事项。',
+  },
+  {
+    id: 'todo',
+    title: '待执行',
+    description: '已经进入当前迭代，等待领取执行。',
+    wipLimit: 4,
+  },
+  {
+    id: 'doing',
+    title: '执行中',
+    description: '需要持续推进的当前异步任务。',
+    wipLimit: 3,
+  },
+  {
+    id: 'review',
+    title: '待验收',
+    description: '功能已完成，等待验收或联调确认。',
+    wipLimit: 2,
+  },
+  {
+    id: 'done',
+    title: '已完成',
+    description: '已完成并可回看结果的任务。',
+  },
+];
+
 const INITIAL_TASK_BOARD_COLUMNS: AdminTaskBoardColumn[] = [
   {
     id: 'backlog',
@@ -150,6 +181,17 @@ export function createInitialTaskBoardColumns(): AdminTaskBoardColumn[] {
   return INITIAL_TASK_BOARD_COLUMNS.map((column) => ({
     ...column,
     cards: column.cards.map((card) => ({ ...card })),
+  }));
+}
+
+export function buildTaskBoardColumnsFromTasks(
+  tasks: AdminTaskBoardCard[],
+): AdminTaskBoardColumn[] {
+  return TASK_BOARD_COLUMN_DEFINITIONS.map((column) => ({
+    ...column,
+    cards: tasks
+      .filter((task) => task.status === column.id)
+      .map((task) => ({ ...task })),
   }));
 }
 

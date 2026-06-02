@@ -256,6 +256,108 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         Assert.Contains(body.Data, p => p.Code == "setting:view");
     }
 
+    [Fact]
+    public async Task GetNotifications_ReturnsSeededInbox()
+    {
+        var token = await LoginAsAdminAsync();
+
+        var request = AuthRequest(HttpMethod.Get, "/api/notifications?page=1&pageSize=10", token);
+        var response = await _client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<PagedResponse<NotificationItemResponse>>();
+
+        Assert.NotNull(body?.Data);
+        Assert.True(body.Data.Total >= 3);
+        Assert.Contains(body.Data.Items, n => n.Id == "release-window");
+    }
+
+    [Fact]
+    public async Task MarkNotificationsRead_UpdatesUnreadState()
+    {
+        var token = await LoginAsAdminAsync();
+
+        var updateRequest = new HttpRequestMessage(HttpMethod.Post, "/api/notifications/mark-read")
+        {
+            Content = JsonContent.Create(new MarkNotificationsReadRequest("ops")),
+        };
+        updateRequest.Headers.Add("X-Token", token);
+
+        var updateResponse = await _client.SendAsync(updateRequest);
+        updateResponse.EnsureSuccessStatusCode();
+
+        var readRequest = AuthRequest(HttpMethod.Get, "/api/notifications?groupKey=ops&unread=true", token);
+        var readResponse = await _client.SendAsync(readRequest);
+        readResponse.EnsureSuccessStatusCode();
+
+        var body = await readResponse.ReadApiResponseAsync<PagedResponse<NotificationItemResponse>>();
+        Assert.NotNull(body?.Data);
+        Assert.Equal(0, body.Data.Total);
+    }
+
+    [Fact]
+    public async Task CreateAndMoveTask_PersistsWorkflowState()
+    {
+        var token = await LoginAsAdminAsync();
+
+        var createRequest = new HttpRequestMessage(HttpMethod.Post, "/api/tasks")
+        {
+            Content = JsonContent.Create(new CreateAdminTaskRequest(
+                "验证运维任务后端化",
+                "来自 API 回归测试的任务",
+                "测试账号",
+                "high",
+                "todo",
+                DateTime.UtcNow.AddDays(1),
+                2,
+                false)),
+        };
+        createRequest.Headers.Add("X-Token", token);
+
+        var createResponse = await _client.SendAsync(createRequest);
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.ReadApiResponseAsync<AdminTaskResponse>();
+
+        Assert.NotNull(created?.Data);
+        Assert.Equal("todo", created.Data.Status);
+
+        var moveRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/tasks/{created.Data.Id}/status")
+        {
+            Content = JsonContent.Create(new MoveAdminTaskRequest("doing")),
+        };
+        moveRequest.Headers.Add("X-Token", token);
+
+        var moveResponse = await _client.SendAsync(moveRequest);
+        moveResponse.EnsureSuccessStatusCode();
+        var moved = await moveResponse.ReadApiResponseAsync<AdminTaskResponse>();
+
+        Assert.NotNull(moved?.Data);
+        Assert.Equal("doing", moved.Data.Status);
+    }
+
+    [Fact]
+    public async Task AuditRetentionPolicy_CanBeUpdated()
+    {
+        var token = await LoginAsAdminAsync();
+
+        var updateRequest = new HttpRequestMessage(HttpMethod.Put, "/api/audit-logs/retention-policy")
+        {
+            Content = JsonContent.Create(new UpdateAuditRetentionPolicyRequest(120)),
+        };
+        updateRequest.Headers.Add("X-Token", token);
+
+        var updateResponse = await _client.SendAsync(updateRequest);
+        updateResponse.EnsureSuccessStatusCode();
+
+        var readRequest = AuthRequest(HttpMethod.Get, "/api/audit-logs/retention-policy", token);
+        var readResponse = await _client.SendAsync(readRequest);
+        readResponse.EnsureSuccessStatusCode();
+
+        var body = await readResponse.ReadApiResponseAsync<AuditRetentionPolicyResponse>();
+        Assert.NotNull(body?.Data);
+        Assert.Equal(120, body.Data.RetentionDays);
+    }
+
     // ── 4. Health Endpoints ─────────────────────────────────────────────
 
     [Fact]

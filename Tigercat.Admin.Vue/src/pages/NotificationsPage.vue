@@ -8,25 +8,27 @@ import {
   Text,
   notification
 } from '@expcat/tigercat-vue'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
 import {
   buildNotificationGroups,
   countUnreadNotifications,
-  createInitialNotifications,
   findNotificationById,
   getNotificationGroupLabel,
-  markNotificationsRead,
   setNotificationReadState
 } from '../utils/notifications'
+import { apiRequest, getAuthHeaders } from '../utils'
 import type {
   AdminNotificationGroupKey,
   AdminNotificationItem,
-  AdminNotificationToastType
+  AdminNotificationToastType,
+  PagedResult
 } from '../utils/types'
 
-const notifications = ref<AdminNotificationItem[]>(createInitialNotifications())
+const notifications = ref<AdminNotificationItem[]>([])
+const loading = ref(true)
+const errorMessage = ref('')
 
 const notificationGroups = computed(() => buildNotificationGroups(notifications.value))
 const unreadCount = computed(() => countUnreadNotifications(notifications.value))
@@ -64,12 +66,24 @@ function showNotification(
   }
 }
 
-const handleTriggerPreview = () => {
-  showNotification(
-    'info',
-    '通知中心已准备就绪',
-    `当前还有 ${unreadCount.value} 条未读通知，可继续验证筛选、已读切换和分组浏览。`
-  )
+const loadNotifications = async () => {
+  loading.value = true
+  errorMessage.value = ''
+
+  try {
+    const payload = await apiRequest<PagedResult<AdminNotificationItem>>('/api/notifications?page=1&pageSize=100', {
+      headers: getAuthHeaders()
+    })
+    notifications.value = payload.data.items
+  } catch (error: unknown) {
+    const message = error instanceof Error && error.message
+      ? error.message
+      : '通知加载失败，请稍后重试。'
+    errorMessage.value = message
+    showNotification('error', '通知加载失败', message)
+  } finally {
+    loading.value = false
+  }
 }
 
 const handleItemClick = (item: NotificationItem) => {
@@ -85,9 +99,25 @@ const handleItemClick = (item: NotificationItem) => {
   )
 }
 
-const handleItemReadChange = (item: NotificationItem, read: boolean) => {
+const handleItemReadChange = async (item: NotificationItem, read: boolean) => {
   const currentItem = findNotificationById(notifications.value, item.id)
   notifications.value = setNotificationReadState(notifications.value, item.id, read)
+
+  try {
+    await apiRequest<AdminNotificationItem>(`/api/notifications/${item.id}/read`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ read })
+    })
+  } catch (error: unknown) {
+    notifications.value = setNotificationReadState(notifications.value, item.id, !read)
+    showNotification(
+      'error',
+      '通知状态保存失败',
+      error instanceof Error ? error.message : '请稍后重试。'
+    )
+    return
+  }
 
   if (currentItem) {
     showNotification(
@@ -98,8 +128,24 @@ const handleItemReadChange = (item: NotificationItem, read: boolean) => {
   }
 }
 
-const handleMarkAllRead = (groupKey: string | number | undefined, items: NotificationItem[]) => {
-  notifications.value = markNotificationsRead(notifications.value, groupKey)
+const handleMarkAllRead = async (groupKey: string | number | undefined, items: NotificationItem[]) => {
+  try {
+    await apiRequest('/api/notifications/mark-read', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        groupKey: groupKey ? String(groupKey) : null
+      })
+    })
+    await loadNotifications()
+  } catch (error: unknown) {
+    showNotification(
+      'error',
+      '批量已读失败',
+      error instanceof Error ? error.message : '请稍后重试。'
+    )
+    return
+  }
 
   const groupTitle = groupKey
     ? getNotificationGroupLabel(groupKey as AdminNotificationGroupKey)
@@ -110,6 +156,8 @@ const handleMarkAllRead = (groupKey: string | number | undefined, items: Notific
     `本次共处理 ${items.length} 条通知。`
   )
 }
+
+onMounted(loadNotifications)
 </script>
 
 <template>
@@ -130,11 +178,20 @@ const handleMarkAllRead = (groupKey: string | number | undefined, items: Notific
         <div>
           <Text weight="bold">通知收件箱</Text>
           <Text size="sm" color="secondary">
-            当前使用前端本地数据模拟通知流，后续可直接替换成 Redis Streams 或异步任务事件源。
+            通知来自后端数据源，未读状态、分组和批量已读会持久化保存。
           </Text>
         </div>
-        <Button variant="outline" @click="handleTriggerPreview">
-          触发示例通知
+        <Button variant="outline" @click="loadNotifications">
+          刷新通知
+        </Button>
+      </div>
+    </Card>
+
+    <Card v-if="errorMessage">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Text color="secondary">{{ errorMessage }}</Text>
+        <Button variant="outline" @click="loadNotifications">
+          重试
         </Button>
       </div>
     </Card>
@@ -209,7 +266,7 @@ const handleMarkAllRead = (groupKey: string | number | undefined, items: Notific
       <NotificationCenter
         title="后台通知"
         :groups="notificationGroups"
-        empty-text="暂无通知"
+        :empty-text="loading ? '正在加载通知...' : '暂无通知'"
         mark-all-read-text="全部标记为已读"
         mark-read-text="设为已读"
         mark-unread-text="恢复未读"
@@ -239,7 +296,7 @@ const handleMarkAllRead = (groupKey: string | number | undefined, items: Notific
             {{ item.description }}
           </Text>
           <Text size="sm" color="secondary" class="mt-3">
-            来源：{{ item.meta.owner }} · 通道：{{ item.meta.channel }}
+            来源：{{ item.meta.source ?? 'backend' }} · 级别：{{ item.meta.severity ?? 'normal' }}
           </Text>
         </div>
       </div>

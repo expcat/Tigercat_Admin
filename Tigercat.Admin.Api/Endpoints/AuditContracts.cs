@@ -11,3 +11,7 @@ public record AuditLogItemResponse(
     string Description,
     string? Actor,
     Dictionary<string, string?> Data);
+
+public record AuditRetentionPolicyResponse(int RetentionDays, DateTime UpdatedAtUtc);
+
+public record UpdateAuditRetentionPolicyRequest(int RetentionDays);

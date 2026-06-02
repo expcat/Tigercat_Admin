@@ -14,27 +14,27 @@ import {
   Text,
   notification
 } from '@expcat/tigercat-vue'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
 import {
-  addTaskBoardCard,
-  addTaskBoardColumn,
+  buildTaskBoardColumnsFromTasks,
   coerceTaskBoardColumns,
   countBlockedTaskBoardCards,
   countOverdueTaskBoardCards,
   countTaskBoardCards,
-  createInitialTaskBoardColumns,
   describeTaskMove,
   findTaskBoardCard,
   getTaskPriorityColor,
   getTaskPriorityLabel
 } from '../utils/task-board'
-import type { AdminTaskBoardColumn } from '../utils/types'
+import { apiRequest, getAuthHeaders } from '../utils'
+import type { AdminTaskBoardCard, AdminTaskBoardColumn, PagedResult } from '../utils/types'
 
 const filterText = ref('')
-const columns = ref<AdminTaskBoardColumn[]>(createInitialTaskBoardColumns())
-const lastAction = ref('当前使用本地任务数据验证后续异步任务入口。')
+const columns = ref<AdminTaskBoardColumn[]>([])
+const loading = ref(true)
+const lastAction = ref('任务面板正在读取后端工作流数据。')
 
 const totalCount = computed(() => countTaskBoardCards(columns.value))
 const blockedCount = computed(() => countBlockedTaskBoardCards(columns.value))
@@ -53,31 +53,87 @@ const handleColumnsChange = (nextColumns: TaskBoardColumn[]) => {
   columns.value = coerceTaskBoardColumns(nextColumns)
 }
 
-const handleCardAdd = (columnId: string | number) => {
-  columns.value = addTaskBoardCard(columns.value, columnId)
-  lastAction.value = `已在 ${columnId} 阶段新增任务卡片。`
-  notification.success({
-    title: '已新增任务卡片',
-    description: '你可以继续拖拽到其他阶段，验证异步任务流转。'
-  })
+const loadTasks = async () => {
+  loading.value = true
+
+  try {
+    const payload = await apiRequest<PagedResult<AdminTaskBoardCard>>('/api/tasks?page=1&pageSize=200', {
+      headers: getAuthHeaders()
+    })
+    columns.value = buildTaskBoardColumnsFromTasks(payload.data.items)
+    lastAction.value = `已同步 ${payload.data.total} 个后端任务。`
+  } catch (error: unknown) {
+    const message = error instanceof Error && error.message
+      ? error.message
+      : '任务加载失败，请稍后重试。'
+    lastAction.value = message
+    notification.error({
+      title: '任务加载失败',
+      description: message
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleCardAdd = async (columnId: string | number) => {
+  try {
+    await apiRequest<AdminTaskBoardCard>('/api/tasks', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        title: '新建运维任务',
+        description: '来自任务面板的后端持久化任务。',
+        assignee: '待分配',
+        priority: 'medium',
+        status: String(columnId),
+        dueAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2).toISOString(),
+        estimateHours: 2,
+        blocked: false
+      })
+    })
+    await loadTasks()
+    lastAction.value = `已在 ${columnId} 阶段新增后端任务。`
+    notification.success({
+      title: '已新增任务',
+      description: '任务已保存到后端工作流。'
+    })
+  } catch (error: unknown) {
+    notification.error({
+      title: '新增任务失败',
+      description: error instanceof Error ? error.message : '请稍后重试。'
+    })
+  }
 }
 
 const handleColumnAdd = () => {
-  columns.value = addTaskBoardColumn(columns.value)
-  lastAction.value = '已新增临时阶段，可用于后续任务分流。'
   notification.info({
-    title: '已新增阶段',
-    description: 'TaskBoard 已成功验证增列能力。'
+    title: '阶段由后端模型固定',
+    description: '当前任务状态包含需求池、待执行、执行中、待验收和已完成。'
   })
 }
 
-const handleCardMove = (event: TaskBoardCardMoveEvent) => {
+const handleCardMove = async (event: TaskBoardCardMoveEvent) => {
   const description = describeTaskMove(event, columns.value)
   lastAction.value = description
-  notification.info({
-    title: '任务阶段已更新',
-    description
-  })
+  try {
+    await apiRequest<AdminTaskBoardCard>(`/api/tasks/${event.cardId}/status`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status: String(event.toColumnId) })
+    })
+    await loadTasks()
+    notification.info({
+      title: '任务阶段已更新',
+      description
+    })
+  } catch (error: unknown) {
+    await loadTasks()
+    notification.error({
+      title: '任务流转失败',
+      description: error instanceof Error ? error.message : '请稍后重试。'
+    })
+  }
 }
 
 const handleColumnMove = (event: TaskBoardColumnMoveEvent) => {
@@ -90,9 +146,8 @@ const handleColumnMove = (event: TaskBoardColumnMoveEvent) => {
 }
 
 const handleResetBoard = () => {
-  columns.value = createInitialTaskBoardColumns()
   filterText.value = ''
-  lastAction.value = '任务面板已重置到初始状态。'
+  void loadTasks()
 }
 
 const beforeCardMove = (event: TaskBoardCardMoveEvent) => {
@@ -178,6 +233,8 @@ const renderCard = (card: TaskBoardCard) => {
     }
   ]
 }
+
+onMounted(loadTasks)
 </script>
 
 <template>
@@ -198,7 +255,7 @@ const renderCard = (card: TaskBoardCard) => {
         <div>
           <Text weight="bold">异步任务入口</Text>
           <Text size="sm" color="secondary">
-            当前仍是前端本地任务数据，后续可以直接替换成导出任务、审计处理或系统巡检的真实后端任务源。
+            当前任务来自后端模型，创建、负责人、截止时间和状态流转会持久化并写入审计事件。
           </Text>
         </div>
         <div class="flex flex-col gap-3 sm:flex-row">
@@ -208,7 +265,7 @@ const renderCard = (card: TaskBoardCard) => {
             @change="(value) => filterText = String(value ?? '')"
           />
           <Button variant="outline" @click="handleResetBoard">
-            重置看板
+            刷新看板
           </Button>
         </div>
       </div>
@@ -262,7 +319,7 @@ const renderCard = (card: TaskBoardCard) => {
       <div class="mb-4 flex flex-col gap-2 rounded-2xl border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-hover,#f8fafc) p-4">
         <Text weight="bold">最近动作</Text>
         <Text size="sm" color="secondary">
-          {{ lastAction }}
+          {{ loading ? '正在同步后端任务...' : lastAction }}
         </Text>
       </div>
 
@@ -271,7 +328,7 @@ const renderCard = (card: TaskBoardCard) => {
         :filter-text="filterText"
         show-card-count
         allow-add-card
-        allow-add-column
+        :allow-add-column="false"
         enforce-wip-limit
         :before-card-move="beforeCardMove"
         @update:columns="handleColumnsChange"

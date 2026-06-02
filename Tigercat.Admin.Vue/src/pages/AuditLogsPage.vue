@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { ActivityFeed, Alert, Button, Card, Tag, Text, Timeline } from '@expcat/tigercat-vue'
+import { ActivityFeed, Alert, Button, Card, Input, Tag, Text, Timeline } from '@expcat/tigercat-vue'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
 import { apiRequest, getAuthHeaders } from '../utils'
-import type { AuditLogItem } from '../utils/types'
+import type { AuditLogItem, AuditRetentionPolicy, PagedResult } from '../utils/types'
 
 const logs = ref<AuditLogItem[]>([])
+const selectedLog = ref<AuditLogItem | null>(null)
+const keyword = ref('')
+const retentionDays = ref('90')
 const loading = ref(true)
 const errorMessage = ref('')
 
@@ -56,14 +59,75 @@ const loadAuditLogs = async () => {
   errorMessage.value = ''
 
   try {
-    const payload = await apiRequest<AuditLogItem[]>('/api/audit-logs?limit=60', {
+    const params = new URLSearchParams({
+      page: '1',
+      pageSize: '60'
+    })
+    if (keyword.value.trim()) {
+      params.set('keyword', keyword.value.trim())
+    }
+
+    const payload = await apiRequest<PagedResult<AuditLogItem>>(`/api/audit-logs?${params}`, {
       headers: getAuthHeaders()
     })
-    logs.value = payload.data
+    logs.value = payload.data.items
+    selectedLog.value = selectedLog.value && logs.value.some(log => log.id === selectedLog.value?.id)
+      ? selectedLog.value
+      : logs.value[0] ?? null
   } catch (error: unknown) {
     errorMessage.value = getFriendlyErrorMessage(error)
   } finally {
     loading.value = false
+  }
+}
+
+const loadRetentionPolicy = async () => {
+  try {
+    const payload = await apiRequest<AuditRetentionPolicy>('/api/audit-logs/retention-policy', {
+      headers: getAuthHeaders()
+    })
+    retentionDays.value = String(payload.data.retentionDays)
+  } catch {
+    retentionDays.value = '90'
+  }
+}
+
+const handleExport = async () => {
+  const params = new URLSearchParams()
+  if (keyword.value.trim()) {
+    params.set('keyword', keyword.value.trim())
+  }
+
+  try {
+    const response = await fetch(`/api/audit-logs/export?${params}`, {
+      headers: getAuthHeaders()
+    })
+    if (!response.ok) {
+      throw new Error(response.statusText || '导出失败')
+    }
+
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `audit-logs-${Date.now()}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : '导出失败'
+  }
+}
+
+const handleSaveRetention = async () => {
+  try {
+    await apiRequest<AuditRetentionPolicy>('/api/audit-logs/retention-policy', {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ retentionDays: Number(retentionDays.value) })
+    })
+    await loadRetentionPolicy()
+  } catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : '保留策略保存失败'
   }
 }
 
@@ -93,7 +157,9 @@ const timelineItems = computed(() =>
 const authCount = computed(() => logs.value.filter(log => log.category === 'auth').length)
 const userCount = computed(() => logs.value.filter(log => log.category === 'user').length)
 
-onMounted(loadAuditLogs)
+onMounted(async () => {
+  await Promise.all([loadAuditLogs(), loadRetentionPolicy()])
+})
 </script>
 
 <template>
@@ -120,17 +186,25 @@ onMounted(loadAuditLogs)
     <Card>
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <Text weight="bold">最近 60 条审计事件</Text>
+          <Text weight="bold">审计事件查询</Text>
           <Text size="sm" color="secondary">
-            数据直接来自 Redis Streams，按时间倒序聚合认证流与管理流。
+            页面通过 API 查询 Redis Streams 聚合结果，支持分页、筛选、详情和导出。
           </Text>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+          <Input
+            :value="keyword"
+            placeholder="筛选标题、说明或事件类型"
+            @change="(value) => keyword = String(value ?? '')"
+          />
           <Tag color="blue" size="sm">认证事件 {{ authCount }}</Tag>
           <Tag color="green" size="sm">用户事件 {{ userCount }}</Tag>
           <Tag color="purple" size="sm">总计 {{ logs.length }}</Tag>
           <Button variant="outline" @click="loadAuditLogs">
             刷新日志
+          </Button>
+          <Button variant="outline" @click="handleExport">
+            导出 CSV
           </Button>
         </div>
       </div>
@@ -150,6 +224,45 @@ onMounted(loadAuditLogs)
         <Text v-if="loading" color="secondary">正在读取最新事件...</Text>
         <Text v-else-if="timelineItems.length === 0" color="secondary">暂无可展示的时间线数据。</Text>
         <Timeline v-else :items="timelineItems" />
+      </Card>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+      <Card title="保留策略">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Input
+            :value="retentionDays"
+            placeholder="保留天数"
+            @change="(value) => retentionDays = String(value ?? '')"
+          />
+          <Button variant="outline" @click="handleSaveRetention">
+            保存策略
+          </Button>
+        </div>
+      </Card>
+
+      <Card title="事件详情">
+        <div v-if="selectedLog" class="space-y-3">
+          <div class="flex flex-wrap gap-2">
+            <Button
+              v-for="log in logs.slice(0, 5)"
+              :key="log.id"
+              variant="outline"
+              @click="selectedLog = log"
+            >
+              {{ selectedLog.id === log.id ? `当前：${log.title}` : log.title }}
+            </Button>
+          </div>
+          <Text weight="bold">{{ selectedLog.title }}</Text>
+          <Text size="sm" color="secondary">
+            {{ selectedLog.description }}
+          </Text>
+          <Text size="sm" color="secondary">
+            {{ selectedLog.eventType }} · {{ selectedLog.actor ?? '系统' }} · {{ formatDateTime(selectedLog.occurredAtUtc) }}
+          </Text>
+          <pre class="max-h-72 overflow-auto rounded bg-(--tiger-bg-hover,#f8fafc) p-3 text-sm">{{ JSON.stringify(selectedLog.data, null, 2) }}</pre>
+        </div>
+        <Text v-else color="secondary">暂无可查看的审计详情。</Text>
       </Card>
     </div>
 

@@ -24,6 +24,12 @@ type ServerDefinition = {
   readyUrl: string;
 };
 
+function pnpmDefinitionArgs(args: string[]): Pick<ServerDefinition, 'command' | 'args'> {
+  return process.platform === 'win32'
+    ? { command: 'cmd.exe', args: ['/d', '/s', '/c', 'pnpm', ...args] }
+    : { command: 'pnpm', args };
+}
+
 export function getManagedServers(): ServerDefinition[] {
   return [
     {
@@ -46,8 +52,7 @@ export function getManagedServers(): ServerDefinition[] {
     },
     {
       name: 'react',
-      command: 'pnpm',
-      args: [
+      ...pnpmDefinitionArgs([
         '--filter',
         'tigercat-admin-react',
         'exec',
@@ -56,7 +61,7 @@ export function getManagedServers(): ServerDefinition[] {
         host,
         '--port',
         String(reactPort),
-      ],
+      ]),
       readyUrl: `http://${host}:${reactPort}/`,
       env: {
         ...process.env,
@@ -65,8 +70,7 @@ export function getManagedServers(): ServerDefinition[] {
     },
     {
       name: 'vue',
-      command: 'pnpm',
-      args: [
+      ...pnpmDefinitionArgs([
         '--filter',
         'tigercat-admin-vue',
         'exec',
@@ -75,7 +79,7 @@ export function getManagedServers(): ServerDefinition[] {
         host,
         '--port',
         String(vuePort),
-      ],
+      ]),
       readyUrl: `http://${host}:${vuePort}/`,
       env: {
         ...process.env,
@@ -95,7 +99,7 @@ export async function startManagedServers(): Promise<void> {
       const child = spawn(definition.command, definition.args, {
         cwd: repoRoot,
         env: definition.env,
-        detached: true,
+        detached: process.platform !== 'win32',
         stdio: 'ignore',
       });
 
@@ -122,13 +126,27 @@ export async function stopManagedServers(
 
   for (const server of managedServers.reverse()) {
     try {
-      process.kill(-server.pid, 'SIGTERM');
+      if (process.platform === 'win32') {
+        await killWindowsProcessTree(server.pid);
+      } else {
+        process.kill(-server.pid, 'SIGTERM');
+      }
     } catch {
       // Ignore already-terminated processes.
     }
   }
 
   await rm(stateFile, { force: true });
+}
+
+async function killWindowsProcessTree(pid: number): Promise<void> {
+  await new Promise<void>((resolve) => {
+    const child = spawn('taskkill', ['/PID', String(pid), '/T', '/F'], {
+      stdio: 'ignore',
+    });
+    child.on('exit', () => resolve());
+    child.on('error', () => resolve());
+  });
 }
 
 async function readManagedServerState(): Promise<ManagedServer[]> {

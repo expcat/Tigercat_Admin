@@ -4,6 +4,7 @@ import {
   Alert,
   Button,
   Card,
+  Input,
   Tag,
   Text,
   Timeline,
@@ -16,8 +17,12 @@ import {
   ShieldCheckIcon,
   UsersIcon,
 } from '../components/Icons';
-import { apiRequest, getAuthHeaders } from '../utils';
-import type { AuditLogItem } from '../utils/types';
+import { apiRequest, getAuthHeaders, normalizeInput } from '../utils';
+import type {
+  AuditLogItem,
+  AuditRetentionPolicy,
+  PagedResult,
+} from '../utils/types';
 
 const CONTAINS_CHINESE_CHAR_REGEX = /[\u4e00-\u9fa5]/;
 
@@ -62,6 +67,9 @@ const getTimelineColor = (category: AuditLogItem['category']) => {
 
 function AuditLogsPage() {
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
+  const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
+  const [keyword, setKeyword] = useState('');
+  const [retentionDays, setRetentionDays] = useState('90');
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -70,23 +78,91 @@ function AuditLogsPage() {
     setErrorMessage('');
 
     try {
-      const payload = await apiRequest<AuditLogItem[]>(
-        '/api/audit-logs?limit=60',
+      const params = new URLSearchParams({
+        page: '1',
+        pageSize: '60',
+      });
+      if (keyword.trim()) {
+        params.set('keyword', keyword.trim());
+      }
+
+      const payload = await apiRequest<PagedResult<AuditLogItem>>(
+        `/api/audit-logs?${params}`,
         {
           headers: getAuthHeaders(),
         },
       );
-      setLogs(payload.data);
+      setLogs(payload.data.items);
+      setSelectedLog((current) => {
+        if (current && payload.data.items.some((log) => log.id === current.id)) {
+          return current;
+        }
+
+        return payload.data.items[0] ?? null;
+      });
     } catch (error: unknown) {
       setErrorMessage(getFriendlyErrorMessage(error));
     } finally {
       setLoading(false);
     }
+  }, [keyword]);
+
+  const loadRetentionPolicy = useCallback(async () => {
+    try {
+      const payload = await apiRequest<AuditRetentionPolicy>(
+        '/api/audit-logs/retention-policy',
+        { headers: getAuthHeaders() },
+      );
+      setRetentionDays(String(payload.data.retentionDays));
+    } catch {
+      setRetentionDays('90');
+    }
   }, []);
 
   useEffect(() => {
     loadAuditLogs();
-  }, [loadAuditLogs]);
+    loadRetentionPolicy();
+  }, [loadAuditLogs, loadRetentionPolicy]);
+
+  const handleExport = useCallback(async () => {
+    const params = new URLSearchParams();
+    if (keyword.trim()) {
+      params.set('keyword', keyword.trim());
+    }
+
+    try {
+      const response = await fetch(`/api/audit-logs/export?${params}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error(response.statusText || '导出失败');
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `audit-logs-${Date.now()}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '导出失败');
+    }
+  }, [keyword]);
+
+  const handleSaveRetention = useCallback(async () => {
+    const nextRetentionDays = Number(retentionDays);
+    try {
+      await apiRequest<AuditRetentionPolicy>('/api/audit-logs/retention-policy', {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ retentionDays: nextRetentionDays }),
+      });
+      await loadRetentionPolicy();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '保留策略保存失败');
+    }
+  }, [loadRetentionPolicy, retentionDays]);
 
   const activityItems = useMemo<ActivityItem[]>(
     () =>
@@ -143,12 +219,17 @@ function AuditLogsPage() {
       <Card>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <Text weight="bold">最近 60 条审计事件</Text>
+            <Text weight="bold">审计事件查询</Text>
             <Text size="sm" color="secondary">
-              数据直接来自 Redis Streams，按时间倒序聚合认证流与管理流。
+              页面通过 API 查询 Redis Streams 聚合结果，支持分页、筛选、详情和导出。
             </Text>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={keyword}
+              placeholder="筛选标题、说明或事件类型"
+              onChange={(event) => setKeyword(normalizeInput(event))}
+            />
             <Tag color="blue" size="sm">
               认证事件 {authCount}
             </Tag>
@@ -160,6 +241,9 @@ function AuditLogsPage() {
             </Tag>
             <Button variant="outline" onClick={loadAuditLogs}>
               刷新日志
+            </Button>
+            <Button variant="outline" onClick={handleExport}>
+              导出 CSV
             </Button>
           </div>
         </div>
@@ -182,6 +266,51 @@ function AuditLogsPage() {
             <Text color="secondary">暂无可展示的时间线数据。</Text>
           ) : (
             <Timeline items={timelineItems} />
+          )}
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+        <Card title="保留策略">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Input
+              value={retentionDays}
+              placeholder="保留天数"
+              onChange={(event) => setRetentionDays(normalizeInput(event))}
+            />
+            <Button variant="outline" onClick={handleSaveRetention}>
+              保存策略
+            </Button>
+          </div>
+        </Card>
+
+        <Card title="事件详情">
+          {selectedLog ? (
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {logs.slice(0, 5).map((log) => (
+                  <Button
+                    key={log.id}
+                    variant="outline"
+                    onClick={() => setSelectedLog(log)}>
+                    {selectedLog.id === log.id ? `当前：${log.title}` : log.title}
+                  </Button>
+                ))}
+              </div>
+              <Text weight="bold">{selectedLog.title}</Text>
+              <Text size="sm" color="secondary">
+                {selectedLog.description}
+              </Text>
+              <Text size="sm" color="secondary">
+                {selectedLog.eventType} · {selectedLog.actor ?? '系统'} ·{' '}
+                {formatDateTime(selectedLog.occurredAtUtc)}
+              </Text>
+              <pre className="max-h-72 overflow-auto rounded bg-(--tiger-bg-hover,#f8fafc) p-3 text-sm">
+                {JSON.stringify(selectedLog.data, null, 2)}
+              </pre>
+            </div>
+          ) : (
+            <Text color="secondary">暂无可查看的审计详情。</Text>
           )}
         </Card>
       </div>
