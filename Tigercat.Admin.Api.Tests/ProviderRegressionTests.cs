@@ -65,6 +65,23 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         return body.Data.Token;
     }
 
+    private async Task<string> RegisterAndLoginAsync(string username, string password)
+    {
+        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register",
+            new RegisterRequest(username, password));
+        registerResponse.EnsureSuccessStatusCode();
+
+        var loginResponse = await _client.PostAsJsonAsync("/api/auth/login",
+            new LoginRequest(username, password));
+        loginResponse.EnsureSuccessStatusCode();
+
+        var body = await loginResponse.ReadApiResponseAsync<LoginResponse>();
+        Assert.NotNull(body?.Data);
+        Assert.False(string.IsNullOrWhiteSpace(body.Data.Token));
+
+        return body.Data.Token;
+    }
+
     /// <summary>Build a request message with the session token attached.</summary>
     private static HttpRequestMessage AuthRequest(HttpMethod method, string url, string token)
     {
@@ -464,6 +481,43 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         Assert.NotNull(body);
         Assert.False(body.Success);
         Assert.Contains("不能删除当前登录用户", body.Message);
+    }
+
+    [Fact]
+    public async Task PermissionFilter_BlocksDangerousAndBatchOperationsForUnprivilegedUser()
+    {
+        var adminToken = await LoginAsAdminAsync();
+        var username = $"limited-{Guid.NewGuid():N}";
+        var userToken = await RegisterAndLoginAsync(username, "limited123");
+
+        var usersRequest = AuthRequest(HttpMethod.Get, "/api/users?page=1&pageSize=10", adminToken);
+        var usersResponse = await _client.SendAsync(usersRequest);
+        usersResponse.EnsureSuccessStatusCode();
+        var users = await usersResponse.ReadApiResponseAsync<PagedResponse<UserItemResponse>>();
+        var adminUser = Assert.Single(users!.Data!.Items, u => u.Username == "admin");
+
+        var rolesRequest = AuthRequest(HttpMethod.Get, "/api/roles?page=1&pageSize=10", adminToken);
+        var rolesResponse = await _client.SendAsync(rolesRequest);
+        rolesResponse.EnsureSuccessStatusCode();
+        var roles = await rolesResponse.ReadApiResponseAsync<PagedResponse<RoleDetailResponse>>();
+        var adminRole = Assert.Single(roles!.Data!.Items, r => r.Name == "Admin");
+
+        var batchDeleteRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/batch-delete")
+        {
+            Content = JsonContent.Create(new BatchDeleteUsersRequest([adminUser.Id])),
+        };
+        batchDeleteRequest.Headers.Add("X-Token", userToken);
+
+        var deleteRoleRequest = AuthRequest(HttpMethod.Delete, $"/api/roles/{adminRole.Id}", userToken);
+        var updateSettingsRequest = new HttpRequestMessage(HttpMethod.Put, "/api/settings")
+        {
+            Content = JsonContent.Create(new UpdateSettingsRequest([new SettingEntry("site.name", "blocked")])),
+        };
+        updateSettingsRequest.Headers.Add("X-Token", userToken);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await _client.SendAsync(batchDeleteRequest)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await _client.SendAsync(deleteRoleRequest)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await _client.SendAsync(updateSettingsRequest)).StatusCode);
     }
 
     [Fact]

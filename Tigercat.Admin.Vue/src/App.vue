@@ -117,7 +117,7 @@ function handleStorage(event: StorageEvent) {
 }
 
 function handleSessionExpired() {
-  const redirect = route.fullPath
+  const redirect = `${window.location.pathname}${window.location.search}${window.location.hash}`
   clearAuthenticatedState()
   Message.warning({
     content: '会话已过期，请重新登录',
