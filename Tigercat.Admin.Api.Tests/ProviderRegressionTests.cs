@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
+using Tigercat.Admin.Api.Data.Entities;
 using Tigercat.Admin.Api.Endpoints;
 using Tigercat.Admin.Api.EventBus;
 using Tigercat.Admin.Api.Tests.Fixtures;
@@ -356,6 +358,57 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
     }
 
     [Fact]
+    public async Task InitializeAsync_BackfillsMissingPermissionsForExistingAdminRole()
+    {
+        var options = new DbContextOptionsBuilder<AdminDbContext>()
+            .UseInMemoryDatabase($"legacy-permissions-{Guid.NewGuid():N}")
+            .Options;
+
+        await using var db = new AdminDbContext(options);
+
+        var adminRole = new RoleEntity
+        {
+            Name = "Admin",
+            Description = "Legacy admin role"
+        };
+        var legacyPermission = new PermissionEntity
+        {
+            Code = "dashboard:view",
+            Description = "查看仪表盘"
+        };
+
+        db.Roles.Add(adminRole);
+        db.Permissions.Add(legacyPermission);
+        await db.SaveChangesAsync();
+
+        db.RolePermissions.Add(new RolePermissionEntity
+        {
+            RoleId = adminRole.Id,
+            PermissionId = legacyPermission.Id
+        });
+        await db.SaveChangesAsync();
+
+        await DbInitializer.InitializeAsync(db);
+
+        var allPermissionCodes = await db.Permissions
+            .Select(p => p.Code)
+            .ToArrayAsync();
+        var adminPermissionCodes = await db.RolePermissions
+            .Where(rp => rp.RoleId == adminRole.Id)
+            .Join(db.Permissions, rp => rp.PermissionId, p => p.Id, (_, p) => p.Code)
+            .ToArrayAsync();
+        var seedVersion = await db.SystemSettings
+            .Where(s => s.Key == DbInitializer.PermissionSeedVersionKey)
+            .Select(s => s.Value)
+            .SingleAsync();
+
+        Assert.Equal(DbInitializer.PermissionSeedVersion, seedVersion);
+        Assert.Equal(allPermissionCodes.Length, adminPermissionCodes.Length);
+        Assert.Contains("audit:export", adminPermissionCodes);
+        Assert.Contains("task:edit", adminPermissionCodes);
+    }
+
+    [Fact]
     public async Task AdminRole_DangerousMutationsAreRejected()
     {
         var token = await LoginAsAdminAsync();
@@ -430,6 +483,39 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         Assert.DoesNotContain("password", envelope.Data.Keys);
         Assert.DoesNotContain("accessToken", envelope.Data.Keys);
         Assert.DoesNotContain("authorizationHeader", envelope.Data.Keys);
+    }
+
+    [Fact]
+    public void EventEnvelope_RemovesNestedSensitiveAuditFields()
+    {
+        var envelope = EventEnvelope.Create(
+            "security.test",
+            new Dictionary<string, object?>
+            {
+                ["username"] = "admin",
+                ["profile"] = new Dictionary<string, object?>
+                {
+                    ["displayName"] = "管理员",
+                    ["refreshToken"] = "secret"
+                },
+                ["items"] = new object?[]
+                {
+                    new Dictionary<string, object?>
+                    {
+                        ["name"] = "safe",
+                        ["clientSecret"] = "secret"
+                    }
+                }
+            });
+
+        var profile = Assert.IsType<Dictionary<string, object?>>(envelope.Data["profile"]);
+        var items = Assert.IsType<object?[]>(envelope.Data["items"]);
+        var firstItem = Assert.IsType<Dictionary<string, object?>>(items[0]);
+
+        Assert.Contains("displayName", profile.Keys);
+        Assert.DoesNotContain("refreshToken", profile.Keys);
+        Assert.Contains("name", firstItem.Keys);
+        Assert.DoesNotContain("clientSecret", firstItem.Keys);
     }
 
     [Fact]
