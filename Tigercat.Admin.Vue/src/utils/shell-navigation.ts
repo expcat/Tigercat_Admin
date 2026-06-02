@@ -3,6 +3,7 @@ export type ShellPageKey =
   | 'users'
   | 'roles'
   | 'settings'
+  | 'files'
   | 'notifications'
   | 'tasks'
   | 'audit'
@@ -46,6 +47,13 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     icon: 'settings',
     routeName: 'settings',
   },
+  files: {
+    key: 'files',
+    label: '文件管理',
+    icon: 'fileText',
+    permission: 'media:view',
+    routeName: 'files',
+  },
   notifications: {
     key: 'notifications',
     label: '通知中心',
@@ -82,6 +90,7 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
       pageMenuItems.users,
       pageMenuItems.roles,
       pageMenuItems.settings,
+      pageMenuItems.files,
       pageMenuItems.notifications,
       pageMenuItems.tasks,
       pageMenuItems.audit,
@@ -98,6 +107,7 @@ export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   users: 'users',
   roles: 'roles',
   settings: 'settings',
+  files: 'files',
   notifications: 'notifications',
   tasks: 'tasks',
   audit: 'audit',
@@ -109,6 +119,7 @@ export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> = {
   users: 'users',
   roles: 'roles',
   settings: 'settings',
+  files: 'files',
   notifications: 'notifications',
   tasks: 'tasks',
   audit: 'audit',

@@ -63,5 +63,16 @@ internal record ApiContracts(
     UpdateSettingsRequest? UpdateSettingsRequest,
     SettingEntry? SettingEntry,
     ApiResponse<SettingItemResponse>? ApiResponseSettingItemResponse,
-    ApiResponse<SettingItemResponse[]>? ApiResponseSettingItemResponseArray
+    ApiResponse<SettingItemResponse[]>? ApiResponseSettingItemResponseArray,
+    // Media
+    MediaItemResponse? MediaItemResponse,
+    MediaItemResponse[]? MediaItemResponseArray,
+    MediaDetailResponse? MediaDetailResponse,
+    MediaReferenceResponse? MediaReferenceResponse,
+    MediaReferenceResponse[]? MediaReferenceResponseArray,
+    PagedResponse<MediaItemResponse>? PagedResponseMediaItemResponse,
+    ApiResponse<MediaItemResponse>? ApiResponseMediaItemResponse,
+    ApiResponse<MediaDetailResponse>? ApiResponseMediaDetailResponse,
+    ApiResponse<MediaReferenceResponse[]>? ApiResponseMediaReferenceResponseArray,
+    ApiResponse<PagedResponse<MediaItemResponse>>? ApiResponsePagedResponseMediaItemResponse
 );

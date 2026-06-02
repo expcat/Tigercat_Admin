@@ -39,6 +39,9 @@ public static class DbInitializer
         ("role:delete",    "删除角色"),
         ("setting:view",   "查看系统设置"),
         ("setting:edit",   "编辑系统设置"),
+        ("media:view",     "查看媒体资源"),
+        ("media:upload",   "上传媒体资源"),
+        ("media:delete",   "删除媒体资源"),
     ];
 
     /// <summary>
@@ -48,9 +51,9 @@ public static class DbInitializer
     [
         ("Admin",  "超级管理员，拥有所有权限", SeedPermissions.Select(p => p.Code).ToArray()),
         ("Editor", "编辑员，可查看和编辑",
-            ["dashboard:view", "user:view", "user:edit", "role:view", "role:edit", "setting:view", "setting:edit"]),
+            ["dashboard:view", "user:view", "user:edit", "role:view", "role:edit", "setting:view", "setting:edit", "media:view", "media:upload"]),
         ("Viewer", "只读用户，仅可查看",
-            ["dashboard:view", "user:view", "role:view", "setting:view"]),
+            ["dashboard:view", "user:view", "role:view", "setting:view", "media:view"]),
     ];
 
     /// <summary>
@@ -88,8 +91,11 @@ public static class DbInitializer
         }
 
         // Build a lookup of all permissions by Code (including pre-existing ones)
-        var permLookup = await context.Permissions
-            .ToDictionaryAsync(p => p.Code, p => p.Id, ct);
+        var permLookup = (await context.Permissions
+            .Select(p => new { p.Code, p.Id })
+            .ToListAsync(ct))
+            .GroupBy(p => p.Code)
+            .ToDictionary(g => g.Key, g => g.First().Id);
 
         // --- Seed roles (idempotent: skip existing by Name) ---
         var existingRoleNames = await context.Roles
@@ -108,8 +114,11 @@ public static class DbInitializer
         }
 
         // Build a lookup of all roles by Name
-        var roleLookup = await context.Roles
-            .ToDictionaryAsync(r => r.Name, r => r.Id, ct);
+        var roleLookup = (await context.Roles
+            .Select(r => new { r.Name, r.Id })
+            .ToListAsync(ct))
+            .GroupBy(r => r.Name)
+            .ToDictionary(g => g.Key, g => g.First().Id);
 
         // --- Seed role-permission mappings (idempotent: skip existing pairs) ---
         var existingRolePermSet = (await context.RolePermissions

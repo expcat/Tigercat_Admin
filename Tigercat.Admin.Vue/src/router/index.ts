@@ -59,6 +59,11 @@ const router = createRouter({
           component: () => import('../pages/SettingsPage.vue'),
         },
         {
+          path: 'files',
+          name: 'files',
+          component: () => import('../pages/FilesPage.vue'),
+        },
+        {
           path: 'notifications',
           name: 'notifications',
           component: () => import('../pages/NotificationsPage.vue'),

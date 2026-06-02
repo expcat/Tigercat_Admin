@@ -4,7 +4,7 @@ namespace Tigercat.Admin.Api.Endpoints;
 
 public record CreateUserRequest(string Username, string Password, string? DisplayName, int[]? RoleIds);
 
-public record UpdateUserRequest(string? DisplayName, int? Status, string? Password, int[]? RoleIds);
+public record UpdateUserRequest(string? DisplayName, int? Status, string? Password, int[]? RoleIds, int? AvatarMediaId);
 
 public record BatchDeleteUsersRequest(int[] Ids);
 
@@ -15,6 +15,8 @@ public record UserItemResponse(
     string Username,
     string? DisplayName,
     int Status,
+    int? AvatarMediaId,
+    string? AvatarUrl,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
     RoleInfoResponse[] Roles);

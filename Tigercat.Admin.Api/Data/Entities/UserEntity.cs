@@ -13,8 +13,10 @@ public class UserEntity
     public required string PasswordHash { get; set; }
     public string? DisplayName { get; set; }
     public UserStatus Status { get; set; } = UserStatus.Active;
+    public int? AvatarMediaId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
     public ICollection<UserRoleEntity> UserRoles { get; set; } = [];
+    public MediaResourceEntity? AvatarMedia { get; set; }
 }

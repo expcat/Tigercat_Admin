@@ -4,6 +4,7 @@ using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Data.Entities;
 using Tigercat.Admin.Api.EventBus;
+using Tigercat.Admin.Api.Media;
 using Tigercat.Admin.Api.Serialization;
 
 namespace Tigercat.Admin.Api.Endpoints;
@@ -110,6 +111,8 @@ public class UsersEndpoints : IEndpointDefinition
                 u.Username,
                 u.DisplayName,
                 (int)u.Status,
+                u.AvatarMediaId,
+                u.AvatarMedia == null ? null : MediaUrl.Content(u.AvatarMedia.PublicId),
                 u.CreatedAt,
                 u.UpdatedAt,
                 u.UserRoles.Select(ur => new RoleInfoResponse(ur.Role.Id, ur.Role.Name)).ToArray()))
@@ -146,6 +149,7 @@ public class UsersEndpoints : IEndpointDefinition
     private static async Task<IResult> CreateUser(
         CreateUserRequest request,
         AdminDbContext db,
+        IMediaReferenceService mediaReferenceService,
         IEventPublisher eventPublisher,
         HttpContext httpContext,
         CancellationToken ct)
@@ -268,6 +272,7 @@ public class UsersEndpoints : IEndpointDefinition
         int id,
         UpdateUserRequest request,
         AdminDbContext db,
+        IMediaReferenceService mediaReferenceService,
         IEventPublisher eventPublisher,
         HttpContext httpContext,
         CancellationToken ct)
@@ -338,7 +343,38 @@ public class UsersEndpoints : IEndpointDefinition
             await eventPublisher.PublishAsync(envelope, EventBusConstants.AuthStream, ct);
         }
 
-        var hasUserChanges = request.DisplayName is not null || request.Status.HasValue || request.RoleIds is not null;
+        if (request.AvatarMediaId.HasValue)
+        {
+            if (request.AvatarMediaId.Value <= 0)
+            {
+                user.AvatarMediaId = null;
+            }
+            else
+            {
+                var media = await db.MediaResources
+                    .FirstOrDefaultAsync(m => m.Id == request.AvatarMediaId.Value, ct);
+
+                if (media is null)
+                {
+                    return Results.Json(
+                        ApiResult.Fail<UserItemResponse>("头像媒体资源不存在", 400),
+                        AppJsonContext.Default.ApiResponseUserItemResponse,
+                        statusCode: 400);
+                }
+
+                if (!MediaFileRules.IsImageContentType(media.ContentType))
+                {
+                    return Results.Json(
+                        ApiResult.Fail<UserItemResponse>("头像只能使用图片媒体资源", 400),
+                        AppJsonContext.Default.ApiResponseUserItemResponse,
+                        statusCode: 400);
+                }
+
+                user.AvatarMediaId = media.Id;
+            }
+        }
+
+        var hasUserChanges = request.DisplayName is not null || request.Status.HasValue || request.RoleIds is not null || request.AvatarMediaId.HasValue;
 
         user.UpdatedAt = DateTime.UtcNow;
 
@@ -369,6 +405,15 @@ public class UsersEndpoints : IEndpointDefinition
 
         await db.SaveChangesAsync(ct);
 
+        if (request.AvatarMediaId.HasValue)
+        {
+            await mediaReferenceService.SyncUserAvatarReferenceAsync(
+                user.Id,
+                user.Username,
+                user.AvatarMediaId,
+                ct);
+        }
+
         if (hasUserChanges)
         {
             await eventPublisher.PublishAsync(
@@ -380,7 +425,8 @@ public class UsersEndpoints : IEndpointDefinition
                         ["targetUsername"] = user.Username,
                         ["operator"] = GetOperatorUsername(httpContext),
                         ["status"] = (int)user.Status,
-                        ["roleCount"] = request.RoleIds?.Length ?? user.UserRoles.Count
+                        ["roleCount"] = request.RoleIds?.Length ?? user.UserRoles.Count,
+                        ["avatarMediaId"] = user.AvatarMediaId
                     },
                     httpContext.TraceIdentifier),
                 EventBusConstants.AdminStream,
@@ -398,6 +444,7 @@ public class UsersEndpoints : IEndpointDefinition
     private static async Task<IResult> DeleteUser(
         int id,
         AdminDbContext db,
+        IMediaReferenceService mediaReferenceService,
         IEventPublisher eventPublisher,
         HttpContext httpContext,
         CancellationToken ct)
@@ -445,6 +492,7 @@ public class UsersEndpoints : IEndpointDefinition
         var deletedUserId = user.Id;
         var deletedUsername = user.Username;
 
+        await mediaReferenceService.SyncUserAvatarReferenceAsync(user.Id, user.Username, null, ct);
         db.UserRoles.RemoveRange(user.UserRoles);
         db.Users.Remove(user);
         await db.SaveChangesAsync(ct);
@@ -531,7 +579,12 @@ public class UsersEndpoints : IEndpointDefinition
 
         var deletedIds = users.Select(static user => user.Id).ToArray();
         var deletedUsernames = users.Select(static user => user.Username).ToArray();
+        var deletedAvatarKeys = deletedIds.Select(MediaReferences.UserAvatarKey).ToArray();
+        var avatarReferences = await db.MediaReferences
+            .Where(r => r.ReferenceType == MediaReferences.UserAvatarType && deletedAvatarKeys.Contains(r.ReferenceKey))
+            .ToListAsync(ct);
 
+        db.MediaReferences.RemoveRange(avatarReferences);
         db.Users.RemoveRange(users);
         await db.SaveChangesAsync(ct);
 
@@ -566,6 +619,8 @@ public class UsersEndpoints : IEndpointDefinition
                 u.Username,
                 u.DisplayName,
                 (int)u.Status,
+                u.AvatarMediaId,
+                u.AvatarMedia == null ? null : MediaUrl.Content(u.AvatarMedia.PublicId),
                 u.CreatedAt,
                 u.UpdatedAt,
                 u.UserRoles.Select(ur => new RoleInfoResponse(ur.Role.Id, ur.Role.Name)).ToArray()))

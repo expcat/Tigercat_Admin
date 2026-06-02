@@ -4,6 +4,7 @@ import {
   BellIcon,
   ClipboardIcon,
   DashboardIcon,
+  FileTextIcon,
   InfoIcon,
   ServerIcon,
   SettingsIcon,
@@ -16,6 +17,7 @@ export type ShellPageKey =
   | 'users'
   | 'roles'
   | 'settings'
+  | 'files'
   | 'notifications'
   | 'tasks'
   | 'audit'
@@ -54,6 +56,12 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     label: '系统设置',
     icon: <SettingsIcon size={18} />,
   },
+  files: {
+    key: 'files',
+    label: '文件管理',
+    icon: <FileTextIcon size={18} />,
+    permission: 'media:view',
+  },
   notifications: {
     key: 'notifications',
     label: '通知中心',
@@ -86,6 +94,7 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
       pageMenuItems.users,
       pageMenuItems.roles,
       pageMenuItems.settings,
+      pageMenuItems.files,
       pageMenuItems.notifications,
       pageMenuItems.tasks,
       pageMenuItems.audit,

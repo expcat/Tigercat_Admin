@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Avatar,
   Card,
   Button,
-  CropUpload,
   ColorPicker,
   Input,
   InputNumber,
@@ -30,6 +28,7 @@ import {
   groupSettings,
 } from '../utils/settings';
 import type { SettingItem } from '../utils/types';
+import { uploadMediaFile } from '../utils/media';
 
 function SettingsPage() {
   const [settings, setSettings] = useState<SettingItem[]>([]);
@@ -37,8 +36,6 @@ function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
-  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
-  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const { has: hasPerm } = usePermission();
   const canEdit = hasPerm('setting:edit');
 
@@ -62,17 +59,6 @@ function SettingsPage() {
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
-
-  useEffect(() => {
-    return () => {
-      if (logoPreviewUrl?.startsWith('blob:')) {
-        URL.revokeObjectURL(logoPreviewUrl);
-      }
-      if (avatarPreviewUrl?.startsWith('blob:')) {
-        URL.revokeObjectURL(avatarPreviewUrl);
-      }
-    };
-  }, [logoPreviewUrl, avatarPreviewUrl]);
 
   const handleSave = async () => {
     if (!canEdit) return;
@@ -118,42 +104,28 @@ function SettingsPage() {
     });
   };
 
-  const currentLogoUrl = logoPreviewUrl || editValues['site.logo'] || '';
+  const currentLogoUrl = editValues['site.logo'] || '';
 
-  const updatePreviewUrl = (
-    nextUrl: string,
-    currentUrl: string | null,
-    setUrl: (value: string | null) => void,
-  ) => {
-    if (currentUrl?.startsWith('blob:')) {
-      URL.revokeObjectURL(currentUrl);
-    }
-    setUrl(nextUrl);
-  };
-
-  const handleLogoUpload = ({
+  const handleLogoUpload = async ({
     file,
     onProgress,
     onSuccess,
+    onError,
   }: UploadRequestOptions) => {
-    const nextUrl = URL.createObjectURL(file);
-    updatePreviewUrl(nextUrl, logoPreviewUrl, setLogoPreviewUrl);
-    onProgress?.(100);
-    onSuccess?.({ previewUrl: nextUrl });
-    Message.success({
-      content:
-        'Logo 上传场景已预留为本地预览，待接入媒体存储后可自动回填站点配置。',
-      duration: 3000,
-    });
-  };
-
-  const handleAvatarCropComplete = (result: { blob: Blob }) => {
-    const nextUrl = URL.createObjectURL(result.blob);
-    updatePreviewUrl(nextUrl, avatarPreviewUrl, setAvatarPreviewUrl);
-    Message.success({
-      content: '头像裁剪场景已预留为本地预览，待补用户头像字段后可持久化保存。',
-      duration: 3000,
-    });
+    try {
+      onProgress?.(20);
+      const media = await uploadMediaFile(file, 'logo');
+      onProgress?.(100);
+      onSuccess?.(media);
+      setEditValues((prev) => ({ ...prev, 'site.logo': media.url }));
+      Message.success({
+        content: 'Logo 已上传，请保存设置以持久化引用',
+        duration: 3000,
+      });
+    } catch (error: any) {
+      onError?.(error);
+      Message.error({ content: error.message || 'Logo 上传失败', duration: 3000 });
+    }
   };
 
   return (
@@ -171,28 +143,27 @@ function SettingsPage() {
         </Card>
       ) : (
         <>
-          <Card title="媒体资源预留" className="overflow-hidden">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <div className="space-y-4 rounded-2xl border border-dashed border-slate-300 p-5">
+          <Card title="站点 Logo" className="overflow-hidden">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+              <div className="space-y-4 rounded-lg border border-dashed border-slate-300 p-5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <Text weight="bold">站点 Logo</Text>
                     <Text size="sm" color="secondary">
-                      预留 Upload 场景，当前仍以 site.logo URL
-                      作为持久化配置来源。
+                      上传后会写入 site.logo 表单值，保存设置后建立媒体引用。
                     </Text>
                   </div>
                   <Tag color="blue" size="sm">
-                    Upload
+                    Media
                   </Tag>
                 </div>
 
-                <div className="flex min-h-44 items-center justify-center rounded-2xl bg-slate-50 p-6">
+                <div className="flex min-h-44 items-center justify-center rounded-lg bg-slate-50 p-6">
                   {currentLogoUrl ? (
                     <img
                       src={currentLogoUrl}
                       alt="站点 Logo 预览"
-                      className="max-h-28 max-w-full rounded-2xl object-contain"
+                      className="max-h-28 max-w-full rounded-lg object-contain"
                     />
                   ) : (
                     <div className="flex flex-col items-center gap-3 text-slate-500">
@@ -218,42 +189,8 @@ function SettingsPage() {
                 </div>
               </div>
 
-              <div className="space-y-4 rounded-2xl border border-dashed border-slate-300 p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <Text weight="bold">用户头像</Text>
-                    <Text size="sm" color="secondary">
-                      预留 CropUpload
-                      场景，当前仅做本地裁剪预览，后续再接用户头像字段。
-                    </Text>
-                  </div>
-                  <Tag color="cyan" size="sm">
-                    CropUpload
-                  </Tag>
-                </div>
-
-                <div className="flex min-h-44 items-center justify-center rounded-2xl bg-slate-50 p-6">
-                  <Avatar
-                    src={avatarPreviewUrl ?? undefined}
-                    className="h-24 w-24 text-lg">
-                    管理
-                  </Avatar>
-                </div>
-
-                <CropUpload
-                  accept="image/*"
-                  disabled={!canEdit}
-                  maxSize={2 * 1024 * 1024}
-                  modalTitle="裁剪头像"
-                  onCropComplete={handleAvatarCropComplete}>
-                  <Button variant="outline" disabled={!canEdit}>
-                    选择头像并裁剪
-                  </Button>
-                </CropUpload>
-
-                <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  当前头像仍使用用户名首字母回退展示，本次仅预留裁剪上传入口。
-                </div>
+              <div className="flex items-center rounded-lg bg-slate-50 p-5 text-sm text-slate-600">
+                Logo 媒体被设置引用后，文件管理页会阻止直接删除；恢复默认值并保存后会解除引用。
               </div>
             </div>
           </Card>

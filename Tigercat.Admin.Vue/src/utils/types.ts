@@ -32,6 +32,8 @@ export interface UserItem {
   username: string;
   displayName: string | null;
   status: number;
+  avatarMediaId: number | null;
+  avatarUrl: string | null;
   createdAt: string;
   updatedAt: string | null;
   roles: RoleInfo[];
@@ -92,6 +94,30 @@ export interface SettingItem {
   description: string | null;
   createdAt: string;
   updatedAt: string | null;
+}
+
+export interface MediaReference {
+  id: number;
+  referenceType: string;
+  referenceKey: string;
+  displayName: string | null;
+}
+
+export interface MediaItem {
+  id: number;
+  publicId: string;
+  originalFileName: string;
+  contentType: string;
+  extension: string | null;
+  sizeBytes: number;
+  url: string;
+  uploadedBy: string | null;
+  createdAt: string;
+  referenceCount: number;
+}
+
+export interface MediaDetail extends Omit<MediaItem, 'referenceCount'> {
+  references: MediaReference[];
 }
 
 export interface AuditLogItem {

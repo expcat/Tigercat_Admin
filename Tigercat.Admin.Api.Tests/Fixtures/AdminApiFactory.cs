@@ -79,6 +79,7 @@ public class InMemoryApiFactory : AdminApiFactory
     protected override Dictionary<string, string?> ConfigurationOverrides => new()
     {
         ["Database:Provider"] = "InMemory",
+        ["Database:InMemoryName"] = $"TigercatAdminTests_{Guid.NewGuid():N}",
         ["ConnectionStrings:Redis"] = "localhost:1",
         ["ConnectionStrings:DefaultConnection"] = "",
     };

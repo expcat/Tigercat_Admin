@@ -14,6 +14,7 @@ obj/
 *.db
 *.db-shm
 *.db-wal
+/Tigercat.Admin.Api/App_Data/
 
 # Aspire
 .aspire/
@@ -50,6 +51,7 @@ Thumbs.db
 
 # Logs
 logs/
+.tmp/
 *.log
 
 # Playwright

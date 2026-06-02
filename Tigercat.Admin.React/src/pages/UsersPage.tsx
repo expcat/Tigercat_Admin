@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
+  Avatar,
   DataTableWithToolbar,
   Button,
+  CropUpload,
   Dropdown,
   DropdownMenu,
   DropdownItem,
@@ -37,6 +39,7 @@ import {
   getAuthHeaders,
   exportData,
 } from '../utils';
+import { uploadMediaBlob } from '../utils/media';
 import type { ExportFormat } from '../utils/export';
 import { usePermission } from '../utils/permission';
 import type {
@@ -51,6 +54,8 @@ type UserFormData = {
   password: string;
   displayName: string;
   status: number;
+  avatarMediaId: number | null;
+  avatarUrl: string | null;
   roleIds: number[];
 };
 
@@ -59,6 +64,8 @@ const INITIAL_FORM: UserFormData = {
   password: '',
   displayName: '',
   status: 0,
+  avatarMediaId: null,
+  avatarUrl: null,
   roleIds: [],
 };
 
@@ -131,7 +138,9 @@ function UsersPage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalTitle, setModalTitle] = useState('新增用户');
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingAvatarId, setEditingAvatarId] = useState<number | null>(null);
   const [formData, setFormData] = useState<UserFormData>({ ...INITIAL_FORM });
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   const [batchDeleteConfirmVisible, setBatchDeleteConfirmVisible] =
     useState(false);
@@ -248,6 +257,9 @@ function UsersPage() {
           status: formData.status,
           roleIds: formData.roleIds,
         };
+        if (formData.avatarMediaId !== editingAvatarId) {
+          body.avatarMediaId = formData.avatarMediaId ?? 0;
+        }
         if (formData.password) {
           body.password = formData.password;
         }
@@ -360,6 +372,7 @@ function UsersPage() {
   // ---- Modal helpers ----
   const openCreateModal = () => {
     setEditingId(null);
+    setEditingAvatarId(null);
     setModalTitle('新增用户');
     setFormData({ ...INITIAL_FORM });
     setModalVisible(true);
@@ -367,15 +380,40 @@ function UsersPage() {
 
   const openEditModal = (user: UserItem) => {
     setEditingId(user.id);
+    setEditingAvatarId(user.avatarMediaId);
     setModalTitle('编辑用户');
     setFormData({
       username: user.username,
       password: '',
       displayName: user.displayName || '',
       status: user.status,
+      avatarMediaId: user.avatarMediaId,
+      avatarUrl: user.avatarUrl,
       roleIds: user.roles.map((r) => r.id),
     });
     setModalVisible(true);
+  };
+
+  const handleAvatarCropComplete = async (result: { blob: Blob }) => {
+    if (!editingId) return;
+    try {
+      setAvatarUploading(true);
+      const media = await uploadMediaBlob(
+        result.blob,
+        `avatar-${editingId}.png`,
+        'avatar',
+      );
+      setFormData((prev) => ({
+        ...prev,
+        avatarMediaId: media.id,
+        avatarUrl: media.url,
+      }));
+      Message.success({ content: '头像已上传，请保存用户资料', duration: 3000 });
+    } catch (e: any) {
+      Message.error({ content: e.message || '头像上传失败', duration: 3000 });
+    } finally {
+      setAvatarUploading(false);
+    }
   };
 
   // ---- Search with debounce ----
@@ -413,7 +451,20 @@ function UsersPage() {
   const columns = useMemo<TableColumn<UserItem>[]>(() => {
     const cols: TableColumn<UserItem>[] = [
       { key: 'id', title: 'ID', width: 70, align: 'center', sortable: true },
-      { key: 'username', title: '用户名', width: 150, sortable: true },
+      {
+        key: 'username',
+        title: '用户名',
+        width: 190,
+        sortable: true,
+        render: (record) => (
+          <div className="flex items-center gap-2">
+            <Avatar src={record.avatarUrl ?? undefined} className="h-8 w-8">
+              {record.username.charAt(0).toUpperCase()}
+            </Avatar>
+            <span>{record.username}</span>
+          </div>
+        ),
+      },
       { key: 'displayName', title: '显示名', width: 150, sortable: true },
       {
         key: 'status',
@@ -757,6 +808,39 @@ function UsersPage() {
                 placeholder="请选择状态"
                 onChange={(val) => setField('status', (val as number) ?? 0)}
               />
+            </FormItem>
+          )}
+          {editingId && (
+            <FormItem label="头像" name="avatarMediaId">
+              <div className="flex flex-wrap items-center gap-3">
+                <Avatar src={formData.avatarUrl ?? undefined} className="h-14 w-14">
+                  {formData.username.charAt(0).toUpperCase()}
+                </Avatar>
+                <CropUpload
+                  accept="image/*"
+                  maxSize={2 * 1024 * 1024}
+                  modalTitle="裁剪头像"
+                  onCropComplete={handleAvatarCropComplete}>
+                  <Button variant="outline" disabled={avatarUploading}>
+                    {avatarUploading ? '上传中…' : '选择头像并裁剪'}
+                  </Button>
+                </CropUpload>
+                {formData.avatarMediaId && (
+                  <Button
+                    variant="ghost"
+                    color="danger"
+                    disabled={avatarUploading}
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        avatarMediaId: null,
+                        avatarUrl: null,
+                      }))
+                    }>
+                    移除头像
+                  </Button>
+                )}
+              </div>
             </FormItem>
           )}
           <FormItem label="角色" name="roleIds">

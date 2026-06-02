@@ -8,6 +8,7 @@ using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Endpoints;
 using Tigercat.Admin.Api.EventBus;
+using Tigercat.Admin.Api.Media;
 using Tigercat.Admin.Api.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -62,7 +63,7 @@ builder.Services.AddDbContext<AdminDbContext>((sp, options) =>
             options.UseNpgsql(databaseOptions.ConnectionString);
             break;
         default:
-            options.UseInMemoryDatabase("TigercatAdmin");
+            options.UseInMemoryDatabase(config["Database:InMemoryName"] ?? "TigercatAdmin");
             break;
     }
 });
@@ -94,6 +95,9 @@ builder.Services.AddScoped<ISessionStore>(sp =>
 });
 
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.Configure<MediaOptions>(builder.Configuration.GetSection("Media"));
+builder.Services.AddSingleton<IMediaStorageProvider, LocalMediaStorageProvider>();
+builder.Services.AddScoped<IMediaReferenceService, MediaReferenceService>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -151,6 +155,7 @@ app.MapEndpoint<RolesEndpoints>();
 app.MapEndpoint<StatsEndpoints>();
 app.MapEndpoint<ExportEndpoints>();
 app.MapEndpoint<SettingsEndpoints>();
+app.MapEndpoint<MediaEndpoints>();
 
 app.MapGet("/api/health", GetHealth)
     .WithName("HealthCheck");

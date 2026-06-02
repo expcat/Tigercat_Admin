@@ -26,6 +26,16 @@
 | Modal    | Vue / React | 默认 `showDefaultFooter` / `show-default-footer` 为 `false`，不会渲染包含 `okText` / `cancelText` / `onOk` / `onCancel` 的默认底部按钮区；本项目原有提交类弹窗未显式开启，导致没有“确定 / 取消”按钮，无法提交。 | 已在双端所有提交类弹窗显式设置 `showDefaultFooter` / `show-default-footer`。 | 否，属既有 API 设计，记录为使用约定         |
 | Message  | Vue         | 同一条 `Message.success` 文案在 DOM 中渲染为 2 个相同文本节点，导致 Playwright `getByText` 命中 2 个元素触发 strict mode 冲突（React 仅渲染 1 个）。                                                            | E2E 断言改用 `.first()` 规避；双端节点数量不一致建议上游对齐。               | 疑似，待上游确认 Vue Message 是否多渲染节点 |
 
+## 2026-06-02 FileManager 媒体资源接入观察
+
+基于 Tigercat 1.2.16，`FileManager` 已在 React / Vue 文件管理页接入，用于展示后端媒体资源列表、搜索、选择和空状态。上传、删除、类型筛选由页面工具栏承载。
+
+| 组件名称    | Vue    | React  | 当前结论                               | 验证方式                                                                                         |
+| :---------- | :----- | :----- | :------------------------------------- | :----------------------------------------------------------------------------------------------- |
+| FileManager | 已接入 | 已接入 | 可用于媒体资源浏览、搜索、选择和空状态 | 源码导入 + `pnpm --filter tigercat-admin-react build` + `pnpm --filter tigercat-admin-vue build` |
+
+当前未发现需要向上游登记的 FileManager 新缺口；若后续需要内置删除、上传或服务端分页事件，再补充到需求列表。
+
 ## 📋 需求列表
 
 | 组件名称 | 平台 (Vue/React) | 需求描述                                                   | 优先级 | 状态   |

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
+using Tigercat.Admin.Api.Media;
 using Tigercat.Admin.Api.Serialization;
 
 namespace Tigercat.Admin.Api.Endpoints;
@@ -89,6 +90,7 @@ public class SettingsEndpoints : IEndpointDefinition
     private static async Task<IResult> UpdateSettings(
         UpdateSettingsRequest request,
         AdminDbContext db,
+        IMediaReferenceService mediaReferenceService,
         CancellationToken ct)
     {
         if (request.Settings is null || request.Settings.Length == 0)
@@ -150,6 +152,31 @@ public class SettingsEndpoints : IEndpointDefinition
                 statusCode: 404);
         }
 
+        var logoEntry = normalized.FirstOrDefault(s => string.Equals(s.Key, "site.logo", StringComparison.OrdinalIgnoreCase));
+        if (logoEntry is not null)
+        {
+            var publicId = MediaUrl.TryGetPublicId(logoEntry.Value);
+            if (publicId is not null)
+            {
+                var logoMedia = await db.MediaResources.FirstOrDefaultAsync(m => m.PublicId == publicId, ct);
+                if (logoMedia is null)
+                {
+                    return Results.Json(
+                        ApiResult.Fail<SettingItemResponse[]>("站点 Logo 媒体资源不存在", 400),
+                        AppJsonContext.Default.ApiResponseSettingItemResponseArray,
+                        statusCode: 400);
+                }
+
+                if (!MediaFileRules.IsImageContentType(logoMedia.ContentType))
+                {
+                    return Results.Json(
+                        ApiResult.Fail<SettingItemResponse[]>("站点 Logo 只能使用图片媒体资源", 400),
+                        AppJsonContext.Default.ApiResponseSettingItemResponseArray,
+                        statusCode: 400);
+                }
+            }
+        }
+
         foreach (var entry in normalized)
         {
             var entity = entityMap[entry.Key];
@@ -158,6 +185,11 @@ public class SettingsEndpoints : IEndpointDefinition
         }
 
         await db.SaveChangesAsync(ct);
+
+        if (logoEntry is not null)
+        {
+            await mediaReferenceService.SyncSiteLogoReferenceAsync(logoEntry.Value, ct);
+        }
 
         var updated = entities
             .OrderBy(s => s.Key)

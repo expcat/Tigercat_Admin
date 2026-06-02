@@ -237,6 +237,8 @@
 | `username`    | string         | 用户名                                 |
 | `displayName` | string \| null | 显示名称                               |
 | `status`      | number         | 状态（0=Active 活跃，1=Disabled 禁用） |
+| `avatarMediaId` | number \| null | 头像媒体资源 ID                      |
+| `avatarUrl`   | string \| null | 头像访问 URL                           |
 | `createdAt`   | string         | 创建时间（UTC）                        |
 | `updatedAt`   | string \| null | 更新时间（UTC）                        |
 | `roles`       | array          | 角色列表，包含 `id` 和 `name`          |
@@ -255,6 +257,8 @@
         "username": "admin",
         "displayName": "管理员",
         "status": 0,
+        "avatarMediaId": null,
+        "avatarUrl": null,
         "createdAt": "2026-01-01T00:00:00Z",
         "updatedAt": null,
         "roles": [{ "id": 1, "name": "Admin" }]
@@ -333,13 +337,15 @@
   - `status`：状态（`0`=Active，`1`=Disabled）
   - `password`：新密码（如需重置密码，最短 6 位；会发布审计事件）
   - `roleIds`：角色 ID 数组（提供时会替换现有角色，所有 ID 须有效）
+  - `avatarMediaId`：头像媒体资源 ID；传正数设置头像，传 `0` 清空头像，省略则不修改
 - **返回 data**：更新后的用户对象
 - **可能错误码**：
   - `400`：无效的用户状态 / 密码过短（最短 6 位）/ 显示名称过长（最长 100 字符）/ 角色 ID 无效
+    / 头像媒体资源不存在 / 头像不是图片
   - `404`：用户不存在
 
 - **事件**：
-  - 若修改了显示名称、状态或角色，发布 `admin.user.updated` 到 Redis Stream `stream:admin`（包含 `targetUserId`、`targetUsername`、`operator`、`status`、`roleCount`）。
+  - 若修改了显示名称、状态、角色或头像，发布 `admin.user.updated` 到 Redis Stream `stream:admin`（包含 `targetUserId`、`targetUsername`、`operator`、`status`、`roleCount`、`avatarMediaId`）。
   - 若修改了密码，发布 `admin.user.password.reset` 到 Redis Stream `stream:auth`（包含 `targetUserId`、`targetUsername`、`operator`）。
 
 示例请求体：
@@ -866,7 +872,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 | `401`  | 未授权         | 未登录或 Token 无效/过期                                           |
 | `403`  | 权限不足       | 已登录但没有对应操作权限                                           |
 | `404`  | 资源不存在     | 请求的用户、角色等不存在                                           |
-| `409`  | 冲突           | 资源已存在（用户名/角色名重复）                                    |
+| `409`  | 冲突           | 资源已存在（用户名/角色名重复）/ 媒体资源正在被引用                 |
 | `500`  | 服务器内部错误 | 服务端异常                                                         |
 | `503`  | 服务不可用     | 依赖服务不可用（如 Redis 故障）                                    |
 
@@ -907,7 +913,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 | `auth.user.password.changed` | POST `/api/auth/change-password`              | `username`                                                          |
 | `auth.user.logout`           | POST `/api/auth/logout`                       | `username`                                                          |
 | `admin.user.created`         | POST `/api/users`                             | `targetUserId`、`targetUsername`、`operator`、`roleCount`           |
-| `admin.user.updated`         | PUT `/api/users/{id}`（资料/状态/角色变更时） | `targetUserId`、`targetUsername`、`operator`、`status`、`roleCount` |
+| `admin.user.updated`         | PUT `/api/users/{id}`（资料/状态/角色/头像变更时） | `targetUserId`、`targetUsername`、`operator`、`status`、`roleCount`、`avatarMediaId` |
 | `admin.user.deleted`         | DELETE `/api/users/{id}`                      | `targetUserId`、`targetUsername`、`operator`                        |
 | `admin.user.batch.deleted`   | POST `/api/users/batch-delete`                | `deletedCount`、`deletedIds`、`targetUsernames`、`operator`         |
 | `admin.user.password.reset`  | PUT `/api/users/{id}`（修改密码时）           | `targetUserId`、`targetUsername`、`operator`                        |
@@ -1199,3 +1205,83 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
   "data": null
 }
 ```
+
+---
+
+## 媒体资源接口 (`/api/media`)
+
+> 管理接口均需登录且需要对应权限。内容读取接口使用不可预测 `publicId`，便于 Logo / 头像直接以 `<img>` URL 渲染。
+
+**媒体对象结构**：
+
+| 字段               | 类型           | 说明                                  |
+| ------------------ | -------------- | ------------------------------------- |
+| `id`               | number         | 媒体资源 ID                           |
+| `publicId`         | string         | 公开访问标识                          |
+| `originalFileName` | string         | 原始文件名                            |
+| `contentType`      | string         | MIME 类型                             |
+| `extension`        | string \| null | 文件扩展名                            |
+| `sizeBytes`        | number         | 文件大小（字节）                      |
+| `url`              | string         | 内容访问 URL，如 `/api/media/.../content` |
+| `uploadedBy`       | string \| null | 上传人                                |
+| `createdAt`        | string         | 创建时间（UTC）                       |
+| `referenceCount`   | number         | 引用数量                              |
+
+### 26. 上传媒体资源
+
+- **方法**：POST
+- **路径**：`/api/media`
+- **认证**：是
+- **权限**：`media:upload`
+- **请求体**：`multipart/form-data`
+  - `file`：文件（必填）
+  - `usage`：用途（可选，`logo` / `avatar` / `file`；`logo` 和 `avatar` 仅允许图片）
+- **返回 data**：媒体对象
+- **可能错误码**：
+  - `400`：未使用 multipart / 未选择文件 / 空文件 / 文件过大 / 不支持的类型 / Logo 或头像不是图片
+
+### 27. 获取媒体列表
+
+- **方法**：GET
+- **路径**：`/api/media`
+- **认证**：是
+- **权限**：`media:view`
+- **查询参数**：
+  - `page`：页码（默认 `1`）
+  - `pageSize`：每页数量（默认 `20`，范围 `1-100`）
+  - `keyword`：按文件名搜索（可选）
+  - `contentType`：MIME 前缀或完整值筛选（可选，如 `image/`）
+  - `sortBy`：`name` / `size` / `type` / `createdAt`（默认 `createdAt`）
+  - `sortOrder`：`asc` / `desc`
+- **返回 data**：分页媒体对象
+
+### 28. 获取媒体详情
+
+- **方法**：GET
+- **路径**：`/api/media/{id}`
+- **认证**：是
+- **权限**：`media:view`
+- **返回 data**：媒体对象，额外包含 `references` 数组
+- **可能错误码**：
+  - `404`：媒体资源不存在
+
+### 29. 读取媒体内容
+
+- **方法**：GET
+- **路径**：`/api/media/{publicId}/content`
+- **认证**：否
+- **返回**：文件内容流
+- **可能错误码**：
+  - `404`：媒体资源或本地文件不存在
+
+### 30. 删除媒体资源
+
+- **方法**：DELETE
+- **路径**：`/api/media/{id}`
+- **认证**：是
+- **权限**：`media:delete`
+- **返回 data**：
+  - `message`：`"删除成功"`
+- **可能错误码**：
+  - `404`：媒体资源不存在
+  - `409`：媒体资源正在被 `site.logo` 或 `user.avatar` 引用，返回引用数组

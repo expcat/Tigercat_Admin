@@ -11,3 +11,4 @@ export * from './export';
 export * from './theme';
 export * from './settings';
 export * from './shell-navigation';
+export * from './media';

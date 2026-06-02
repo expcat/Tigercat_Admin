@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { Avatar, Card, Button, ColorPicker, CropUpload, Input, InputNumber, Modal, Popconfirm, Select, Segmented, Switch, Message, Text, Tag, Upload } from '@expcat/tigercat-vue'
+import { ref, computed, onMounted } from 'vue'
+import { Card, Button, ColorPicker, Input, InputNumber, Modal, Popconfirm, Select, Segmented, Switch, Message, Text, Tag, Upload } from '@expcat/tigercat-vue'
 import type { UploadRequestOptions } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import AppLogo from '../components/AppLogo.vue'
@@ -8,6 +8,7 @@ import { apiRequest, getAuthHeaders } from '../utils'
 import { usePermission } from '../utils/permission'
 import { SETTINGS_GROUP_LABELS, getColorPresets, getControl, getControlOptions, groupSettings } from '../utils/settings'
 import type { SettingItem } from '../utils/types'
+import { uploadMediaFile } from '../utils/media'
 
 /* ── 状态 ────────────────────────────────────── */
 const settings = ref<SettingItem[]>([])
@@ -15,8 +16,6 @@ const editValues = ref<Record<string, string>>({})
 const loading = ref(true)
 const saving = ref(false)
 const saveConfirmOpen = ref(false)
-const logoPreviewUrl = ref<string | null>(null)
-const avatarPreviewUrl = ref<string | null>(null)
 const { has: hasPerm } = usePermission()
 const canEdit = computed(() => hasPerm('setting:edit'))
 const groups = computed(() => groupSettings(settings.value))
@@ -27,7 +26,7 @@ const hasChanges = computed(() => changedSettings.value.length > 0)
 const hasDefaultOverrides = computed(() =>
   settings.value.some(s => editValues.value[s.key] !== s.defaultValue)
 )
-const currentLogoUrl = computed(() => logoPreviewUrl.value || editValues.value['site.logo'] || '')
+const currentLogoUrl = computed(() => editValues.value['site.logo'] || '')
 
 /* ── API 操作 ────────────────────────────────── */
 async function fetchSettings() {
@@ -76,36 +75,21 @@ function handleRestoreDefaults() {
   Message.success({ content: '已恢复默认值，请确认保存修改', duration: 3000 })
 }
 
-function revokePreviewUrl(url: string | null) {
-  if (url?.startsWith('blob:')) {
-    URL.revokeObjectURL(url)
+async function handleLogoUpload(options: UploadRequestOptions) {
+  try {
+    options.onProgress?.(20)
+    const media = await uploadMediaFile(options.file, 'logo')
+    options.onProgress?.(100)
+    options.onSuccess?.(media)
+    editValues.value = { ...editValues.value, 'site.logo': media.url }
+    Message.success({ content: 'Logo 已上传，请保存设置以持久化引用', duration: 3000 })
+  } catch (e: any) {
+    options.onError?.(e)
+    Message.error({ content: e.message || 'Logo 上传失败', duration: 3000 })
   }
 }
 
-function updatePreviewUrl(nextUrl: string, currentUrl: string | null, setter: typeof logoPreviewUrl) {
-  revokePreviewUrl(currentUrl)
-  setter.value = nextUrl
-}
-
-function handleLogoUpload(options: UploadRequestOptions) {
-  const nextUrl = URL.createObjectURL(options.file)
-  updatePreviewUrl(nextUrl, logoPreviewUrl.value, logoPreviewUrl)
-  options.onProgress?.(100)
-  options.onSuccess?.({ previewUrl: nextUrl })
-  Message.success({ content: 'Logo 上传场景已预留为本地预览，待接入媒体存储后可自动回填站点配置。', duration: 3000 })
-}
-
-function handleAvatarCropComplete(result: { blob: Blob }) {
-  const nextUrl = URL.createObjectURL(result.blob)
-  updatePreviewUrl(nextUrl, avatarPreviewUrl.value, avatarPreviewUrl)
-  Message.success({ content: '头像裁剪场景已预留为本地预览，待补用户头像字段后可持久化保存。', duration: 3000 })
-}
-
 onMounted(fetchSettings)
-onBeforeUnmount(() => {
-  revokePreviewUrl(logoPreviewUrl.value)
-  revokePreviewUrl(avatarPreviewUrl.value)
-})
 </script>
 
 <template>
@@ -122,25 +106,25 @@ onBeforeUnmount(() => {
     </Card>
 
     <template v-else>
-      <Card title="媒体资源预留" class="overflow-hidden">
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div class="space-y-4 rounded-2xl border border-dashed border-slate-300 p-5">
+      <Card title="站点 Logo" class="overflow-hidden">
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+          <div class="space-y-4 rounded-lg border border-dashed border-slate-300 p-5">
             <div class="flex items-center justify-between gap-3">
               <div>
                 <Text weight="bold">站点 Logo</Text>
                 <Text size="sm" color="secondary">
-                  预留 Upload 场景，当前仍以 site.logo URL 作为持久化配置来源。
+                  上传后会写入 site.logo 表单值，保存设置后建立媒体引用。
                 </Text>
               </div>
-              <Tag color="blue" size="sm">Upload</Tag>
+              <Tag color="blue" size="sm">Media</Tag>
             </div>
 
-            <div class="flex min-h-44 items-center justify-center rounded-2xl bg-slate-50 p-6">
+            <div class="flex min-h-44 items-center justify-center rounded-lg bg-slate-50 p-6">
               <img
                 v-if="currentLogoUrl"
                 :src="currentLogoUrl"
                 alt="站点 Logo 预览"
-                class="max-h-28 max-w-full rounded-2xl object-contain"
+                class="max-h-28 max-w-full rounded-lg object-contain"
               />
               <div v-else class="flex flex-col items-center gap-3 text-slate-500">
                 <AppLogo :size="56" />
@@ -162,34 +146,8 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <div class="space-y-4 rounded-2xl border border-dashed border-slate-300 p-5">
-            <div class="flex items-center justify-between gap-3">
-              <div>
-                <Text weight="bold">用户头像</Text>
-                <Text size="sm" color="secondary">
-                  预留 CropUpload 场景，当前仅做本地裁剪预览，后续再接用户头像字段。
-                </Text>
-              </div>
-              <Tag color="cyan" size="sm">CropUpload</Tag>
-            </div>
-
-            <div class="flex min-h-44 items-center justify-center rounded-2xl bg-slate-50 p-6">
-              <Avatar :src="avatarPreviewUrl || undefined" class="h-24 w-24 text-lg">
-                管理
-              </Avatar>
-            </div>
-
-            <CropUpload
-              accept="image/*"
-              :disabled="!canEdit"
-              :max-size="2 * 1024 * 1024"
-              modal-title="裁剪头像"
-              @crop-complete="handleAvatarCropComplete"
-            />
-
-            <div class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              当前头像仍使用用户名首字母回退展示，本次仅预留裁剪上传入口。
-            </div>
+          <div class="flex items-center rounded-lg bg-slate-50 p-5 text-sm text-slate-600">
+            Logo 媒体被设置引用后，文件管理页会阻止直接删除；恢复默认值并保存后会解除引用。
           </div>
         </div>
       </Card>

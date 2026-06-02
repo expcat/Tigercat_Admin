@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, inject, onMounted, h } from 'vue'
-import { DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tooltip, Message, Popover, Checkbox } from '@expcat/tigercat-vue'
+import { Avatar, DataTableWithToolbar, Button, CropUpload, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tooltip, Message, Popover, Checkbox } from '@expcat/tigercat-vue'
 import type { TableColumn, SortState, TableToolbarFilterValue } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
@@ -8,6 +8,7 @@ import { apiRequest, debounce, type Session } from '../utils'
 import { exportData, type ExportFormat } from '../utils/export'
 import type { RoleInfo, UserItem, PagedResult, MessageResult } from '../utils/types'
 import { usePermission } from '../utils/permission'
+import { uploadMediaBlob } from '../utils/media'
 
 // ---- Permission ----
 const { has: hasPerm } = usePermission()
@@ -42,11 +43,15 @@ const hiddenColumns = ref<Set<string>>(new Set())
 const modalVisible = ref(false)
 const modalTitle = ref('新增用户')
 const editingId = ref<number | null>(null)
+const editingAvatarId = ref<number | null>(null)
+const avatarUploading = ref(false)
 const formData = ref({
   username: '',
   password: '',
   displayName: '',
   status: 0,
+  avatarMediaId: null as number | null,
+  avatarUrl: null as string | null,
   roleIds: [] as number[],
 })
 
@@ -148,6 +153,9 @@ async function handleSubmit() {
         status: formData.value.status,
         roleIds: formData.value.roleIds,
       }
+      if (formData.value.avatarMediaId !== editingAvatarId.value) {
+        body.avatarMediaId = formData.value.avatarMediaId ?? 0
+      }
       if (formData.value.password) {
         body.password = formData.value.password
       }
@@ -221,22 +229,44 @@ async function confirmBatchDelete() {
 
 function openCreateModal() {
   editingId.value = null
+  editingAvatarId.value = null
   modalTitle.value = '新增用户'
-  formData.value = { username: '', password: '', displayName: '', status: 0, roleIds: [] }
+  formData.value = { username: '', password: '', displayName: '', status: 0, avatarMediaId: null, avatarUrl: null, roleIds: [] }
   modalVisible.value = true
 }
 
 function openEditModal(user: UserItem) {
   editingId.value = user.id
+  editingAvatarId.value = user.avatarMediaId
   modalTitle.value = '编辑用户'
   formData.value = {
     username: user.username,
     password: '',
     displayName: user.displayName || '',
     status: user.status,
+    avatarMediaId: user.avatarMediaId,
+    avatarUrl: user.avatarUrl,
     roleIds: user.roles.map(r => r.id),
   }
   modalVisible.value = true
+}
+
+async function handleAvatarCropComplete(result: { blob: Blob }) {
+  if (!editingId.value) return
+  try {
+    avatarUploading.value = true
+    const media = await uploadMediaBlob(result.blob, `avatar-${editingId.value}.png`, 'avatar')
+    formData.value = {
+      ...formData.value,
+      avatarMediaId: media.id,
+      avatarUrl: media.url,
+    }
+    Message.success({ content: '头像已上传，请保存用户资料', duration: 3000 })
+  } catch (e: any) {
+    Message.error({ content: e.message || '头像上传失败', duration: 3000 })
+  } finally {
+    avatarUploading.value = false
+  }
 }
 
 // ---- Table columns ----
@@ -265,7 +295,20 @@ function toggleColumn(key: string) {
 const columns = computed<TableColumn[]>(() => {
   const cols: TableColumn[] = [
     { key: 'id', title: 'ID', width: 70, align: 'center', sortable: true },
-    { key: 'username', title: '用户名', width: 150, sortable: true },
+    {
+      key: 'username',
+      title: '用户名',
+      width: 190,
+      sortable: true,
+      render: (record: any) =>
+        h('div', { class: 'flex items-center gap-2' }, [
+          h(Avatar, {
+            src: record.avatarUrl || undefined,
+            class: 'h-8 w-8',
+          }, () => String(record.username).charAt(0).toUpperCase()),
+          h('span', String(record.username)),
+        ]),
+    },
     { key: 'displayName', title: '显示名', width: 150, sortable: true },
     {
       key: 'status',
@@ -638,6 +681,32 @@ onMounted(() => {
             ]"
             placeholder="请选择状态"
           />
+        </FormItem>
+        <FormItem v-if="editingId" label="头像" name="avatarMediaId">
+          <div class="flex flex-wrap items-center gap-3">
+            <Avatar :src="formData.avatarUrl || undefined" class="h-14 w-14">
+              {{ formData.username.charAt(0).toUpperCase() }}
+            </Avatar>
+            <CropUpload
+              accept="image/*"
+              :max-size="2 * 1024 * 1024"
+              modal-title="裁剪头像"
+              @crop-complete="handleAvatarCropComplete"
+            >
+              <Button variant="outline" :disabled="avatarUploading">
+                {{ avatarUploading ? '上传中…' : '选择头像并裁剪' }}
+              </Button>
+            </CropUpload>
+            <Button
+              v-if="formData.avatarMediaId"
+              variant="ghost"
+              color="danger"
+              :disabled="avatarUploading"
+              @click="formData.avatarMediaId = null; formData.avatarUrl = null"
+            >
+              移除头像
+            </Button>
+          </div>
         </FormItem>
         <FormItem label="角色" name="roleIds">
           <Select

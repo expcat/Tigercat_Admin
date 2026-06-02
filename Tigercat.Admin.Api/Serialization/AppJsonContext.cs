@@ -68,6 +68,17 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(SettingEntry))]
 [JsonSerializable(typeof(ApiResponse<SettingItemResponse>))]
 [JsonSerializable(typeof(ApiResponse<SettingItemResponse[]>))]
+// Media types
+[JsonSerializable(typeof(MediaItemResponse))]
+[JsonSerializable(typeof(MediaItemResponse[]))]
+[JsonSerializable(typeof(MediaDetailResponse))]
+[JsonSerializable(typeof(MediaReferenceResponse))]
+[JsonSerializable(typeof(MediaReferenceResponse[]))]
+[JsonSerializable(typeof(PagedResponse<MediaItemResponse>))]
+[JsonSerializable(typeof(ApiResponse<MediaItemResponse>))]
+[JsonSerializable(typeof(ApiResponse<MediaDetailResponse>))]
+[JsonSerializable(typeof(ApiResponse<MediaReferenceResponse[]>))]
+[JsonSerializable(typeof(ApiResponse<PagedResponse<MediaItemResponse>>))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }
