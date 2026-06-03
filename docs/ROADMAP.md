@@ -30,7 +30,62 @@
 
 ## 后续路线
 
-暂无已确认的下一阶段计划。前端静态演示部署能力已沉淀到 [deployment.md](deployment.md)。
+### P0 构建与验证基线恢复
+
+目标：先恢复前端构建门禁，避免后续显示修复无法被可靠验收。
+
+- 修复 `@tigercat-admin/mock-api` workspace 包在 React / Vite / Rolldown 构建中解析失败的问题。
+- 确认 API 数据模式与 mock/demo 数据模式均能完成 React / Vue 双端生产构建。
+- 将 `pnpm build:frontend`、`pnpm build:demo`、`pnpm e2e:react`、`pnpm e2e:vue` 作为后续组件优化的基线门禁。
+- 成功标准：`pnpm build:frontend` 与 `pnpm build:demo` 通过；若 E2E 存在非本阶段阻塞，需记录失败用例、失败原因和后续处理项。
+
+### P1 双端组件使用盘点
+
+目标：建立可执行的页面级组件清单，先确认真实问题，再做外科式优化。
+
+- 统计 React / Vue 中 `@expcat/tigercat-react`、`@expcat/tigercat-vue`、`@expcat/tigercat-core` 的真实导入和页面覆盖范围。
+- 按页面记录已用 Tigercat 组件、手写 UI、主题 token 使用、疑似可替换组件、显示风险和双端差异。
+- 当前优先盘点入口：
+  - `Users` / `Roles`：`DataTableWithToolbar`、`Modal`、`Popover`、`Dropdown`、`Tooltip`、`Tree`、批量操作与表格列渲染。
+  - `Files` / `Tasks` / `Notifications`：`FileManager`、`TaskBoard`、`NotificationCenter`、上传、删除、拖拽、通知统计。
+  - `Home` / `AuditLogs` / `Settings`：图表、统计块、筛选工具栏、设置表单、审计导出。
+  - `Login` / `Register` / `MainLayout` / `MainHeader` / `MainSidebar` / `PageHeader`：认证入口、布局、菜单、移动端导航和页面头部。
+- 对无法由现有组件库能力覆盖的场景，只在确认复现和影响后同步到 [upstream-requirements.md](upstream-requirements.md)。
+- 成功标准：每个页面都有明确的优化入口、验证方式和是否涉及上游缺口的结论，不留下“全局优化”这类不可验证条目。
+
+### P2 显示与交互修复
+
+目标：优先修复高频页面中的真实显示 bug 和双端交互漂移。
+
+- 优先处理移动端溢出、弹层遮挡、表格/菜单 detach、暗色模式错色、焦点丢失、按钮不可点击和文本换行异常。
+- 重点检查 `rounded-xl` / `rounded-2xl`、渐变背景、硬编码 `slate` / `blue` 色值、手写按钮、固定宽度菜单、移动端 sidebar 覆盖层和统计卡片。
+- Vue 按 Tigercat 约定使用 `v-model`、`@update:*`、kebab-case events；React 使用 controlled props 与 `onXxx` callbacks。
+- 弹层统一使用 `open` / `v-model:open`，不新增 `visible` 或 `onVisibleChange` 写法。
+- 样式优先使用 Tigercat token、组件 props 和已有页面模式；只有组件无法表达时才保留局部 Tailwind。
+- 成功标准：桌面与移动视口下无文本溢出、遮挡、不可点击、焦点丢失或暗色模式明显错色；双端同一业务页面的组件语义一致，差异仅限框架语法。
+
+### P3 组件库化与性能优化
+
+目标：在 P2 修复稳定后，收敛重复 UI，并控制重组件加载成本。
+
+- 将重复手写统计块、操作区、提示区、筛选区优先收敛为 Tigercat 原生组件组合或轻量共享页面片段。
+- 按 Tigercat performance 文档评估图表、文件、任务面板、弹层和编辑类重组件是否需要路由级懒加载或子路径导入。
+- 对涉及组件库能力边界的场景，记录真实导入、构建结果、双端一致性和上游反馈结论。
+- 成功标准：重复手写 UI 有明确减少，重组件加载策略有构建结果支撑，不引入与业务无关的抽象。
+
+### 实施任务清单
+
+1. 恢复构建基线：定位并修复 `@tigercat-admin/mock-api` workspace 导出解析问题，验证 API 模式与 mock/demo 模式构建。
+2. 组件盘点：输出 React / Vue 页面级组件使用清单，标记 Tigercat 组件、手写 UI、显示风险、双端差异和上游缺口。
+3. 显示 bug 修复：按登录/注册、主布局、Users/Roles、Files/Tasks/Notifications、Home/AuditLogs/Settings 的顺序处理高频风险。
+4. Tigercat 规范对齐：统一双端绑定、事件、弹层状态、主题 token 和组件 props 使用方式。
+5. 回归与上游反馈：补充或更新 Playwright 覆盖；确认组件库缺口后同步 [upstream-requirements.md](upstream-requirements.md)。
+
+### 公共接口与文档影响
+
+- 本阶段默认不新增后端 API、数据库 schema 或业务数据契约。
+- 前端组件优化若发现 API、数据库或部署前提变化，必须先更新对应专题文档，再进入实现。
+- 上游组件缺口只记录确认后的组件 API、交互或可访问性问题，不记录普通业务样式调整。
 
 ## 验证门禁
 
@@ -40,6 +95,10 @@
 | React 前端改动      | `pnpm --filter tigercat-admin-react build`                    |
 | Vue 前端改动        | `pnpm --filter tigercat-admin-vue build`                      |
 | 双端前端改动        | `pnpm build`                                                  |
+| 双端组件优化        | `pnpm build:frontend`；涉及主流程时补跑 `pnpm e2e:react` / `pnpm e2e:vue` |
+| 响应式或显示 bug    | 桌面与移动视口截图或 Playwright 断言；确认无溢出、遮挡和不可点击 |
+| 弹层/表单/菜单改动  | 键盘路径、焦点恢复、关闭行为和提交/取消路径检查                |
+| 拖拽/通知/图表改动  | 覆盖核心交互；确认状态提示、键盘替代路径或记录明确限制         |
 | 静态演示改动        | `pnpm build:demo`，必要时补跑 `pnpm e2e:demo`                 |
 | API 改动            | `dotnet test Tigercat.Admin.sln`，并同步更新 [api.md](api.md) |
 | 核心流程改动        | 对应补充或更新 `pnpm e2e:react` / `pnpm e2e:vue` 覆盖         |
