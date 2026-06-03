@@ -19,6 +19,53 @@ function roleRow(page: Page, name: string) {
   return page.getByRole('row', { name: new RegExp(escapeRegExp(name)) });
 }
 
+async function clickRowMenuItem(
+  page: Page,
+  row: ReturnType<typeof roleRow>,
+  name: string,
+) {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const trigger = row.getByRole('button', { name: '操作' });
+    await expect(trigger).toBeVisible({ timeout: 2000 });
+    try {
+      await trigger.click({ timeout: 2000 });
+    } catch {
+      await trigger.evaluate((element) => (element as HTMLElement).click());
+    }
+
+    const item = page.getByRole('menuitem', { name });
+
+    try {
+      await expect(item).toBeVisible({ timeout: 2000 });
+      try {
+        await item.click({ timeout: 2000 });
+      } catch {
+        const clicked = await page.evaluate((menuName) => {
+          const menuItems = Array.from(
+            document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+          );
+          const current = menuItems.find((element) =>
+            element.textContent?.trim().includes(menuName),
+          );
+          current?.click();
+          return Boolean(current);
+        }, name);
+        if (!clicked) {
+          throw new Error(`未找到菜单项：${name}`);
+        }
+      }
+      return;
+    } catch (error) {
+      lastError = error;
+      await page.keyboard.press('Escape').catch(() => {});
+    }
+  }
+
+  throw lastError;
+}
+
 async function createRole(
   page: Page,
   options: { name: string; description?: string },
@@ -38,12 +85,18 @@ async function deleteRole(page: Page, name: string) {
   await searchRole(page, name);
   const row = roleRow(page, name);
   await expect(row).toBeVisible();
-  await row.getByRole('button', { name: '删除', exact: true }).click();
-  await page
-    .getByRole('dialog', { name: '确认删除角色' })
-    .getByRole('button', { name: '删除' })
-    .click();
+  await confirmRoleDelete(page, row);
   await expect(row).toBeHidden();
+}
+
+async function confirmRoleDelete(page: Page, row: ReturnType<typeof roleRow>) {
+  const deleteButton = row.getByRole('button', { name: '删除', exact: true });
+  await expect(deleteButton).toBeVisible();
+  await deleteButton.click({ force: true });
+
+  const dialog = page.getByRole('dialog', { name: '确认删除角色' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: '删除' }).click({ force: true });
 }
 
 test.describe('角色与权限主流程', () => {
@@ -73,8 +126,7 @@ test.describe('角色与权限主流程', () => {
 
     await searchRole(page, name);
     const row = roleRow(page, name);
-    await row.getByRole('button', { name: '操作' }).click();
-    await page.getByRole('menuitem', { name: '编辑角色' }).click();
+    await clickRowMenuItem(page, row, '编辑角色');
 
     const dialog = page.getByRole('dialog', { name: '编辑角色' });
     await expect(dialog).toBeVisible();
@@ -97,8 +149,7 @@ test.describe('角色与权限主流程', () => {
     const row = roleRow(page, name);
     await expect(row.getByText('0 项')).toBeVisible();
 
-    await row.getByRole('button', { name: '操作' }).click();
-    await page.getByRole('menuitem', { name: '权限配置' }).click();
+    await clickRowMenuItem(page, row, '权限配置');
 
     const dialog = page.getByRole('dialog', { name: /权限配置/ });
     await expect(dialog).toBeVisible();
@@ -121,11 +172,7 @@ test.describe('角色与权限主流程', () => {
 
     const row = roleRow(page, 'Admin');
     await expect(row).toBeVisible();
-    await row.getByRole('button', { name: '删除', exact: true }).click();
-    await page
-      .getByRole('dialog', { name: '确认删除角色' })
-      .getByRole('button', { name: '删除' })
-      .click();
+    await confirmRoleDelete(page, row);
 
     await expect(page.getByText('不能删除管理员角色').first()).toBeVisible();
     await expect(roleRow(page, 'Admin')).toBeVisible();

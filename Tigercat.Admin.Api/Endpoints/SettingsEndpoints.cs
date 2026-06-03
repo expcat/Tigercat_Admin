@@ -127,6 +127,15 @@ public class SettingsEndpoints : IEndpointDefinition
                     AppJsonContext.Default.ApiResponseSettingItemResponseArray,
                     statusCode: 400);
             }
+
+            var policyError = AuthPolicySettings.ValidateSettingValue(entry.Key.Trim(), entry.Value);
+            if (policyError is not null)
+            {
+                return Results.Json(
+                    ApiResult.Fail<SettingItemResponse[]>(policyError, 400),
+                    AppJsonContext.Default.ApiResponseSettingItemResponseArray,
+                    statusCode: 400);
+            }
         }
 
         // Normalize keys: trim + deduplicate (last-write-wins for duplicate keys)

@@ -951,6 +951,8 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 | `actor`         | string \| null | 事件操作者；优先取 `operator`，其次取 `username`     |
 | `data`          | object         | 原始事件载荷，值已统一转为字符串或 `null`            |
 
+> 审计事件写入与读取时都会清理敏感字段。字段名包含 `password`、`pwd`、`token`、`authorization`、`secret`、`credential`、`apiKey` 或 `privateKey` 等片段时，不会出现在审计日志 `data`、详情或导出内容中；嵌套对象和数组同样适用。
+
 示例：
 
 ```json
@@ -1127,6 +1129,8 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 | `ops.auditRetentionDays`          | `90`             | 审计日志保留天数                            |
 | `security.permissionSeedVersion`  | `2026.06.02.1`   | 权限种子数据版本                            |
 | `security.permissionSeedChecksum` | 自动生成         | 权限种子数据摘要，用于识别权限目录漂移      |
+
+认证安全设置保存时会进行格式校验：`auth.sessionTimeout` 范围为 `5-43200` 分钟，`auth.maxAttempts` 范围为 `1-20`，`auth.loginLockoutMinutes` 范围为 `1-1440` 分钟，`auth.passwordMinLength` 范围为 `6-128`，`auth.requireComplexPassword` 只能为 `true` 或 `false`。
 
 ### 23. 获取所有系统设置
 

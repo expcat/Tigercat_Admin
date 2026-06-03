@@ -10,31 +10,46 @@ public sealed record AuthPolicySettings(
     int PasswordMinLength,
     bool RequireComplexPassword)
 {
-    private const int DefaultSessionTimeoutMinutes = 1440;
-    private const int DefaultMaxAttempts = 5;
-    private const int DefaultLoginLockoutMinutes = 5;
-    private const int DefaultPasswordMinLength = 6;
+    public const string SessionTimeoutKey = "auth.sessionTimeout";
+    public const string MaxAttemptsKey = "auth.maxAttempts";
+    public const string LoginLockoutMinutesKey = "auth.loginLockoutMinutes";
+    public const string PasswordMinLengthKey = "auth.passwordMinLength";
+    public const string RequireComplexPasswordKey = "auth.requireComplexPassword";
+
+    public const int DefaultSessionTimeoutMinutes = 1440;
+    public const int DefaultMaxAttempts = 5;
+    public const int DefaultLoginLockoutMinutes = 5;
+    public const int DefaultPasswordMinLength = 6;
+
+    public const int MinSessionTimeoutMinutes = 5;
+    public const int MaxSessionTimeoutMinutes = 60 * 24 * 30;
+    public const int MinLoginAttempts = 1;
+    public const int MaxLoginAttemptsLimit = 20;
+    public const int MinLoginLockoutMinutes = 1;
+    public const int MaxLoginLockoutMinutes = 60 * 24;
+    public const int MinPasswordLength = 6;
+    public const int MaxPasswordLength = 128;
 
     public static async Task<AuthPolicySettings> LoadAsync(AdminDbContext db, CancellationToken ct)
     {
         var values = await db.SystemSettings
             .Where(s =>
-                s.Key == "auth.sessionTimeout" ||
-                s.Key == "auth.maxAttempts" ||
-                s.Key == "auth.loginLockoutMinutes" ||
-                s.Key == "auth.passwordMinLength" ||
-                s.Key == "auth.requireComplexPassword")
+                s.Key == SessionTimeoutKey ||
+                s.Key == MaxAttemptsKey ||
+                s.Key == LoginLockoutMinutesKey ||
+                s.Key == PasswordMinLengthKey ||
+                s.Key == RequireComplexPasswordKey)
             .Select(s => new { s.Key, s.Value })
             .ToListAsync(ct);
 
         var map = values.ToDictionary(s => s.Key, s => s.Value, StringComparer.OrdinalIgnoreCase);
 
         return new AuthPolicySettings(
-            TimeSpan.FromMinutes(ParseInt(map, "auth.sessionTimeout", DefaultSessionTimeoutMinutes, 5, 60 * 24 * 30)),
-            ParseInt(map, "auth.maxAttempts", DefaultMaxAttempts, 1, 20),
-            TimeSpan.FromMinutes(ParseInt(map, "auth.loginLockoutMinutes", DefaultLoginLockoutMinutes, 1, 60 * 24)),
-            ParseInt(map, "auth.passwordMinLength", DefaultPasswordMinLength, 6, 128),
-            ParseBool(map, "auth.requireComplexPassword", false));
+            TimeSpan.FromMinutes(ParseInt(map, SessionTimeoutKey, DefaultSessionTimeoutMinutes, MinSessionTimeoutMinutes, MaxSessionTimeoutMinutes)),
+            ParseInt(map, MaxAttemptsKey, DefaultMaxAttempts, MinLoginAttempts, MaxLoginAttemptsLimit),
+            TimeSpan.FromMinutes(ParseInt(map, LoginLockoutMinutesKey, DefaultLoginLockoutMinutes, MinLoginLockoutMinutes, MaxLoginLockoutMinutes)),
+            ParseInt(map, PasswordMinLengthKey, DefaultPasswordMinLength, MinPasswordLength, MaxPasswordLength),
+            ParseBool(map, RequireComplexPasswordKey, false));
     }
 
     public string? ValidatePassword(string password)
@@ -51,6 +66,21 @@ public sealed record AuthPolicySettings(
         }
 
         return null;
+    }
+
+    public static string? ValidateSettingValue(string key, string value)
+    {
+        return key switch
+        {
+            SessionTimeoutKey => ValidateIntRange(value, key, MinSessionTimeoutMinutes, MaxSessionTimeoutMinutes),
+            MaxAttemptsKey => ValidateIntRange(value, key, MinLoginAttempts, MaxLoginAttemptsLimit),
+            LoginLockoutMinutesKey => ValidateIntRange(value, key, MinLoginLockoutMinutes, MaxLoginLockoutMinutes),
+            PasswordMinLengthKey => ValidateIntRange(value, key, MinPasswordLength, MaxPasswordLength),
+            RequireComplexPasswordKey => bool.TryParse(value, out _)
+                ? null
+                : $"{key} 只能为 true 或 false",
+            _ => null,
+        };
     }
 
     private static int ParseInt(
@@ -76,5 +106,17 @@ public sealed record AuthPolicySettings(
         return values.TryGetValue(key, out var raw) && bool.TryParse(raw, out var value)
             ? value
             : fallback;
+    }
+
+    private static string? ValidateIntRange(string raw, string key, int min, int max)
+    {
+        if (!int.TryParse(raw, out var value))
+        {
+            return $"{key} 必须为整数";
+        }
+
+        return value < min || value > max
+            ? $"{key} 需在 {min}-{max} 之间"
+            : null;
     }
 }

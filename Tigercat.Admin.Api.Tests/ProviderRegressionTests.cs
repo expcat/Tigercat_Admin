@@ -151,20 +151,56 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
     public async Task Login_UsesConfiguredSessionTimeout()
     {
         var token = await LoginAsAdminAsync();
-        await UpdateSettingAsync(token, "auth.sessionTimeout", "30");
+        try
+        {
+            await UpdateSettingAsync(token, "auth.sessionTimeout", "30");
 
-        var beforeLogin = DateTime.UtcNow;
-        var response = await _client.PostAsJsonAsync("/api/auth/login",
-            new LoginRequest("admin", "admin123"));
+            var beforeLogin = DateTime.UtcNow;
+            var response = await _client.PostAsJsonAsync("/api/auth/login",
+                new LoginRequest("admin", "admin123"));
 
-        response.EnsureSuccessStatusCode();
-        var body = await response.ReadApiResponseAsync<LoginResponse>();
+            response.EnsureSuccessStatusCode();
+            var body = await response.ReadApiResponseAsync<LoginResponse>();
 
-        Assert.NotNull(body?.Data);
-        Assert.InRange(
-            body.Data.ExpiresAt,
-            beforeLogin.AddMinutes(25),
-            beforeLogin.AddMinutes(35));
+            Assert.NotNull(body?.Data);
+            Assert.InRange(
+                body.Data.ExpiresAt,
+                beforeLogin.AddMinutes(25),
+                beforeLogin.AddMinutes(35));
+        }
+        finally
+        {
+            await UpdateSettingAsync(token, "auth.sessionTimeout", "1440");
+        }
+    }
+
+    [Fact]
+    public async Task Login_UsesConfiguredThrottleLimit()
+    {
+        var token = await LoginAsAdminAsync();
+        var username = $"throttle-{Guid.NewGuid():N}";
+
+        try
+        {
+            await UpdateSettingAsync(token, "auth.maxAttempts", "2");
+
+            for (var i = 0; i < 2; i++)
+            {
+                var failed = await _client.PostAsJsonAsync("/api/auth/login",
+                    new LoginRequest(username, "wrong_password"));
+
+                Assert.Equal(HttpStatusCode.Unauthorized, failed.StatusCode);
+            }
+
+            var throttled = await _client.PostAsJsonAsync("/api/auth/login",
+                new LoginRequest(username, "wrong_password"));
+
+            Assert.Equal(HttpStatusCode.TooManyRequests, throttled.StatusCode);
+        }
+        finally
+        {
+            await UpdateSettingAsync(token, "auth.maxAttempts", "5");
+        }
     }
 
     [Fact]
@@ -215,21 +251,28 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
     public async Task ChangePassword_UsesConfiguredPasswordPolicy()
     {
         var token = await LoginAsAdminAsync();
-        await UpdateSettingAsync(token, "auth.passwordMinLength", "12");
-
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/change-password")
+        try
         {
-            Content = JsonContent.Create(new ChangePasswordRequest("admin123", "short123")),
-        };
-        request.Headers.Add("X-Token", token);
+            await UpdateSettingAsync(token, "auth.passwordMinLength", "12");
 
-        var response = await _client.SendAsync(request);
+            var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/change-password")
+            {
+                Content = JsonContent.Create(new ChangePasswordRequest("admin123", "short123")),
+            };
+            request.Headers.Add("X-Token", token);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var body = await response.ReadApiResponseAsync<MessageResponse>();
-        Assert.NotNull(body);
-        Assert.False(body.Success);
-        Assert.Contains("密码长度不能少于 12 位", body.Message);
+            var response = await _client.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            var body = await response.ReadApiResponseAsync<MessageResponse>();
+            Assert.NotNull(body);
+            Assert.False(body.Success);
+            Assert.Contains("密码长度不能少于 12 位", body.Message);
+        }
+        finally
+        {
+            await UpdateSettingAsync(token, "auth.passwordMinLength", "6");
+        }
     }
 
     // ── 2. System Settings Read / Write ─────────────────────────────────
@@ -316,6 +359,30 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         var body = await readResponse.ReadApiResponseAsync<SettingItemResponse>();
         Assert.NotNull(body?.Data);
         Assert.Equal("#ff0000", body.Data.Value);
+    }
+
+    [Fact]
+    public async Task UpdateSettings_RejectsInvalidAuthPolicyValues()
+    {
+        var token = await LoginAsAdminAsync();
+
+        var updateRequest = new HttpRequestMessage(HttpMethod.Put, "/api/settings")
+        {
+            Content = JsonContent.Create(new UpdateSettingsRequest(
+                [
+                    new SettingEntry("auth.maxAttempts", "0"),
+                    new SettingEntry("auth.requireComplexPassword", "maybe")
+                ])),
+        };
+        updateRequest.Headers.Add("X-Token", token);
+
+        var updateResponse = await _client.SendAsync(updateRequest);
+
+        Assert.Equal(HttpStatusCode.BadRequest, updateResponse.StatusCode);
+        var body = await updateResponse.ReadApiResponseAsync<SettingItemResponse[]>();
+        Assert.NotNull(body);
+        Assert.False(body.Success);
+        Assert.Contains("auth.maxAttempts", body.Message);
     }
 
     // ── 3. Key List Pages Loading ───────────────────────────────────────
@@ -570,6 +637,60 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         Assert.DoesNotContain("refreshToken", profile.Keys);
         Assert.Contains("name", firstItem.Keys);
         Assert.DoesNotContain("clientSecret", firstItem.Keys);
+    }
+
+    [Fact]
+    public void EventDataSanitizer_RemovesJsonElementSensitiveAuditFields()
+    {
+        var payload = JsonSerializer.Deserialize<Dictionary<string, object?>>(
+            """
+            {
+              "username": "admin",
+              "authorization": "Bearer token",
+              "profile": {
+                "displayName": "管理员",
+                "refreshToken": "secret"
+              },
+              "items": [
+                {
+                  "name": "safe",
+                  "apiKey": "secret"
+                }
+              ]
+            }
+            """);
+
+        Assert.NotNull(payload);
+        var sanitized = EventDataSanitizer.SanitizeData(payload);
+        var profile = Assert.IsType<Dictionary<string, object?>>(sanitized["profile"]);
+        var items = Assert.IsType<object?[]>(sanitized["items"]);
+        var firstItem = Assert.IsType<Dictionary<string, object?>>(items[0]);
+
+        Assert.Contains("username", sanitized.Keys);
+        Assert.DoesNotContain("authorization", sanitized.Keys);
+        Assert.Contains("displayName", profile.Keys);
+        Assert.DoesNotContain("refreshToken", profile.Keys);
+        Assert.Contains("name", firstItem.Keys);
+        Assert.DoesNotContain("apiKey", firstItem.Keys);
+    }
+
+    [Fact]
+    public void EventDataSanitizer_RemovesLegacyDictionarySensitiveAuditFields()
+    {
+        var payload = new Dictionary<string, object?>
+        {
+            ["metadata"] = new System.Collections.Hashtable
+            {
+                ["name"] = "safe",
+                ["accessToken"] = "secret",
+            },
+        };
+
+        var sanitized = EventDataSanitizer.SanitizeData(payload);
+        var metadata = Assert.IsType<Dictionary<string, object?>>(sanitized["metadata"]);
+
+        Assert.Contains("name", metadata.Keys);
+        Assert.DoesNotContain("accessToken", metadata.Keys);
     }
 
     [Fact]

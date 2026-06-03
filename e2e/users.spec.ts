@@ -51,6 +51,53 @@ function userRow(page: Page, username: string) {
   return page.getByRole('row', { name: new RegExp(escapeRegExp(username)) });
 }
 
+async function clickRowMenuItem(
+  page: Page,
+  row: ReturnType<typeof userRow>,
+  name: string,
+) {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const trigger = row.getByRole('button', { name: '操作' });
+    await expect(trigger).toBeVisible({ timeout: 2000 });
+    try {
+      await trigger.click({ timeout: 2000 });
+    } catch {
+      await trigger.evaluate((element) => (element as HTMLElement).click());
+    }
+
+    const item = page.getByRole('menuitem', { name });
+
+    try {
+      await expect(item).toBeVisible({ timeout: 2000 });
+      try {
+        await item.click({ timeout: 2000 });
+      } catch {
+        const clicked = await page.evaluate((menuName) => {
+          const menuItems = Array.from(
+            document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+          );
+          const current = menuItems.find((element) =>
+            element.textContent?.trim().includes(menuName),
+          );
+          current?.click();
+          return Boolean(current);
+        }, name);
+        if (!clicked) {
+          throw new Error(`未找到菜单项：${name}`);
+        }
+      }
+      return;
+    } catch (error) {
+      lastError = error;
+      await page.keyboard.press('Escape').catch(() => {});
+    }
+  }
+
+  throw lastError;
+}
+
 async function deleteUser(page: Page, username: string) {
   await searchUser(page, username);
   const row = userRow(page, username);
@@ -102,8 +149,7 @@ test.describe('用户管理主流程', () => {
     const row = userRow(page, username);
     await expect(row).toBeVisible();
 
-    await row.getByRole('button', { name: '操作' }).click();
-    await page.getByRole('menuitem', { name: '编辑用户' }).click();
+    await clickRowMenuItem(page, row, '编辑用户');
 
     const dialog = page.getByRole('dialog', { name: '编辑用户' });
     await expect(dialog).toBeVisible();

@@ -308,7 +308,8 @@ public class AuditEndpoints : IEndpointDefinition
 
     private static AuditLogItemResponse ToAuditLogItem(EventEnvelope envelope, string stream)
     {
-        var data = envelope.Data.ToDictionary(static pair => pair.Key, static pair => FormatDataValue(pair.Value));
+        var sanitizedData = EventDataSanitizer.SanitizeData(envelope.Data);
+        var data = sanitizedData.ToDictionary(static pair => pair.Key, static pair => FormatDataValue(pair.Value));
         var actor = data.GetValueOrDefault("operator") ?? data.GetValueOrDefault("username");
         var category = GetCategory(envelope.EventType);
         var (title, description) = BuildContent(envelope.EventType, data);
@@ -423,6 +424,9 @@ public class AuditEndpoints : IEndpointDefinition
         {
             null => null,
             JsonElement element => element.ToString(),
+            IReadOnlyDictionary<string, object?> => JsonSerializer.Serialize(value, SerializerOptions),
+            IDictionary<string, object?> => JsonSerializer.Serialize(value, SerializerOptions),
+            System.Collections.IEnumerable enumerable and not string => JsonSerializer.Serialize(enumerable, SerializerOptions),
             DateTime dateTime => dateTime.ToString("O"),
             DateTimeOffset dateTimeOffset => dateTimeOffset.ToString("O"),
             _ => value.ToString(),

@@ -24,13 +24,13 @@ export const SETTING_CONTROLS: Record<string, SettingControl> = {
   'auth.sessionTimeout': {
     type: 'number',
     min: 5,
-    max: 1440,
+    max: 43200,
     step: 5,
   },
   'auth.maxAttempts': {
     type: 'number',
     min: 1,
-    max: 50,
+    max: 20,
     step: 1,
   },
   'auth.loginLockoutMinutes': {
