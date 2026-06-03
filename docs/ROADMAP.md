@@ -31,20 +31,9 @@
 
 ## 后续路线
 
-### P2 显示与交互修复
-
-目标：优先修复高频页面中的真实显示 bug 和双端交互漂移。
-
-- 优先处理移动端溢出、弹层遮挡、表格/菜单 detach、暗色模式错色、焦点丢失、按钮不可点击和文本换行异常。
-- 重点检查 `rounded-xl` / `rounded-2xl`、渐变背景、硬编码 `slate` / `blue` 色值、手写按钮、固定宽度菜单、移动端 sidebar 覆盖层和统计卡片。
-- Vue 按 Tigercat 约定使用 `v-model`、`@update:*`、kebab-case events；React 使用 controlled props 与 `onXxx` callbacks。
-- 弹层统一使用 `open` / `v-model:open`，不新增 `visible` 或 `onVisibleChange` 写法。
-- 样式优先使用 Tigercat token、组件 props 和已有页面模式；只有组件无法表达时才保留局部 Tailwind。
-- 成功标准：桌面与移动视口下无文本溢出、遮挡、不可点击、焦点丢失或暗色模式明显错色；双端同一业务页面的组件语义一致，差异仅限框架语法。
-
 ### P3 组件库化与性能优化
 
-目标：在 P2 修复稳定后，收敛重复 UI，并控制重组件加载成本。
+目标：在显示与交互基线稳定后，收敛重复 UI，并控制重组件加载成本。
 
 - 将重复手写统计块、操作区、提示区、筛选区优先收敛为 Tigercat 原生组件组合或轻量共享页面片段。
 - 按 Tigercat performance 文档评估图表、文件、任务面板、弹层和编辑类重组件是否需要路由级懒加载或子路径导入。
@@ -53,9 +42,9 @@
 
 ### 实施任务清单
 
-1. 显示 bug 修复：按登录/注册、主布局、Users/Roles、Files/Tasks/Notifications、Home/AuditLogs/Settings 的顺序处理高频风险。
-2. Tigercat 规范对齐：统一双端绑定、事件、弹层状态、主题 token 和组件 props 使用方式。
-3. 回归与上游反馈：补充或更新 Playwright 覆盖；确认组件库缺口后同步 [upstream-requirements.md](upstream-requirements.md)。
+1. 重复 UI 收敛：优先处理统计块、操作区、提示区和筛选区，避免继续扩散页面级手写布局。
+2. 重组件加载评估：检查图表、文件、任务面板、弹层和编辑类组件的导入与构建产物，必要时改为路由级懒加载或子路径导入。
+3. 上游反馈：确认组件库能力缺口后同步 [upstream-requirements.md](upstream-requirements.md)，普通业务样式调整不进入上游诉求。
 
 ### 公共接口与文档影响
 
