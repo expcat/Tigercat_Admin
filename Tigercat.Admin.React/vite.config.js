@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import process from 'node:process';
 
 export default defineConfig({
+  base: process.env.VITE_TIGERCAT_BASE_PATH || '/',
   plugins: [react()],
   server: {
     port: parseInt(process.env.PORT || '5174'),
@@ -14,6 +15,8 @@ export default defineConfig({
     },
   },
   build: {
+    outDir: process.env.VITE_TIGERCAT_OUT_DIR || 'dist',
+    emptyOutDir: true,
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {

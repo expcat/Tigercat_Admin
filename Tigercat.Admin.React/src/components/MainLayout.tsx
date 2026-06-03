@@ -9,6 +9,7 @@ import {
 } from '../utils/shell-navigation';
 
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)';
+const DEMO_MODE = import.meta.env.VITE_TIGERCAT_DEMO === 'true';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -150,6 +151,7 @@ export function MainLayout({
           onChangePassword={onChangePassword}
           onToggleTheme={onToggleTheme}
           onToggleSidebar={handleSidebarToggle}
+          demoMode={DEMO_MODE}
         />
 
         {/* Content */}

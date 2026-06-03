@@ -1,9 +1,16 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router';
 import { SESSION_KEY, safeParse } from '../utils';
 import type { Session } from '../utils';
 
+const routerMode = import.meta.env.VITE_TIGERCAT_ROUTER_MODE;
+const basePath = import.meta.env.VITE_TIGERCAT_BASE_PATH || '/';
+const routerBase = import.meta.env.VITE_TIGERCAT_ROUTER_BASE ?? basePath;
+
 const router = createRouter({
-  history: createWebHistory(),
+  history:
+    routerMode === 'hash'
+      ? createWebHashHistory(routerBase)
+      : createWebHistory(routerBase),
   routes: [
     {
       path: '/login',

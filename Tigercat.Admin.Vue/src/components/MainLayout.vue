@@ -14,6 +14,7 @@ import {
 } from '../utils/shell-navigation'
 
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)'
+const DEMO_MODE = import.meta.env.VITE_TIGERCAT_DEMO === 'true'
 
 interface Session {
   username: string
@@ -148,6 +149,7 @@ watch(
         :theme-mode="themeMode"
         :show-sidebar-toggle="isMobile"
         :sidebar-open="sidebarOpen"
+        :demo-mode="DEMO_MODE"
         @logout="$emit('logout')"
         @change-password="$emit('change-password')"
         @toggle-theme="$emit('toggle-theme')"

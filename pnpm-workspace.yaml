@@ -1,3 +1,4 @@
 packages:
   - 'Tigercat.Admin.Vue'
   - 'Tigercat.Admin.React'
+  - 'Tigercat.Admin.MockApi'

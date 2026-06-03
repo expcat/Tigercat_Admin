@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue';
 import process from 'node:process';
 
 export default defineConfig({
+  base: process.env.VITE_TIGERCAT_BASE_PATH || '/',
   plugins: [vue()],
   server: {
     port: parseInt(process.env.PORT || '5173'),
@@ -14,6 +15,8 @@ export default defineConfig({
     },
   },
   build: {
+    outDir: process.env.VITE_TIGERCAT_OUT_DIR || 'dist',
+    emptyOutDir: true,
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {

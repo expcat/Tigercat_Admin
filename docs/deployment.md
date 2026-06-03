@@ -30,7 +30,75 @@ export Logging__LogLevel__Default=Warning
 - [Tigercat.Admin.React/.env.production.sample](../Tigercat.Admin.React/.env.production.sample)
 - [Tigercat.Admin.Vue/.env.production.sample](../Tigercat.Admin.Vue/.env.production.sample)
 
-构建时设置 `VITE_API_URL=https://admin-api.example.com`。前端代码仍以 `/api` 为业务入口；独立部署时建议由反向代理把 `/api` 转发到 API 服务，或保持同源路径。
+前端发布统一通过参数选择数据源：
+
+```bash
+# 真实 API 发布，默认使用 history 路由
+pnpm build:frontend -- --data=api --api-url=https://admin-api.example.com --base=/
+
+# 静态 Mock 演示发布，默认使用 hash 路由
+pnpm build:frontend -- --data=mock --base=/
+
+# 单 Pages 根目录发布，同时包含入口页、React 和 Vue 演示
+pnpm build:pages
+```
+
+参数说明：
+
+- `--data=api|mock`：发布数据源。`api` 使用真实 API；`mock` 把前端静态 Mock API 打包进产物。
+- `--api-url=https://admin-api.example.com`：真实 API 发布时传入，供 Vite 开发代理或环境记录使用。
+- `--router=history|hash`：路由模式。未传时 `api` 默认 `history`，`mock` 默认 `hash`。
+- `--base=/admin/`：Vite 静态资源 base path；部署到子目录时传对应路径。
+- `--target=all|react|vue`：可选，默认同时构建 React 与 Vue。
+- `--deploy=pages`：构建单 Pages 根目录部署产物，默认输出到 `dist/pages`。
+- `--out=dist/pages`：`--deploy=pages` 时可选，指定统一输出目录。
+
+前端代码仍以 `/api` 为业务入口；真实 API 独立部署时建议由反向代理把 `/api` 转发到 API 服务，或保持同源路径。
+
+## 前端静态演示部署
+
+React 与 Vue 均支持纯前端静态演示模式。该模式把 Mock API 打包进前端产物，由浏览器侧拦截 `/api/*` 请求并返回会话级模拟数据；不需要启动 ASP.NET Core API、数据库、Redis 或 Aspire，也不会进行真实写入。
+
+```bash
+pnpm build:frontend -- --data=mock
+pnpm --filter tigercat-admin-react preview:demo
+pnpm --filter tigercat-admin-vue preview:demo
+```
+
+演示模式使用以下环境变量：
+
+- `VITE_TIGERCAT_DEMO=true`：启用前端 Mock API adapter，由 `--data=mock` 自动设置。
+- `VITE_TIGERCAT_ROUTER_MODE=hash`：使用 hash 路由，适配无 history fallback 的静态空间；可用 `--router` 覆盖。
+- `VITE_TIGERCAT_BASE_PATH=/`：控制 Vite 静态资源 base path；可用 `--base` 覆盖。
+
+静态演示产物可直接上传到对象存储、静态站点平台或 Nginx 静态目录。若目标平台已经配置 history fallback，也可以改用 history 路由；默认推荐 hash 路由，以避免刷新深链页面时 404。
+
+演示账号：
+
+- `admin / admin123`
+- `demo / demo`
+
+演示模式会覆盖登录、权限、用户、角色、设置、通知、任务、媒体、审计、统计和导出等核心展示接口。新增、编辑、删除、上传、标记已读和任务流转仅保存在浏览器 `sessionStorage` 中，刷新同一会话可保留，关闭会话后不承诺持久化。
+
+### 单 Pages 根目录部署
+
+若需要把 React 与 Vue 两个演示端发布到同一个 Pages 网址下，使用：
+
+```bash
+pnpm build:pages
+```
+
+默认输出结构：
+
+```text
+dist/pages/
+  index.html
+  404.html
+  react/
+  vue/
+```
+
+根目录 `index.html` 提供双端入口；React 演示路径为 `react/#/login`，Vue 演示路径为 `vue/#/login`。两个子应用都使用前端 Mock 数据、hash 路由和相对静态资源路径，因此可以直接把 `dist/pages` 作为 Pages 发布根目录，不需要 API 服务，也不会出现 React / Vue 路由和资源路径冲突。
 
 ## 健康检查
 
@@ -64,6 +132,8 @@ API 暴露两个无需认证的健康入口：
 ```bash
 dotnet test Tigercat.Admin.sln
 pnpm build
+pnpm build:demo
+pnpm e2e:demo
 pnpm e2e
 pnpm dlx markdown-link-check README.md DEVELOPMENT.md AGENT.md docs/*.md
 ```

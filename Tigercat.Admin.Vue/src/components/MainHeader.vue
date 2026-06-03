@@ -24,6 +24,7 @@ const props = defineProps<{
   themeMode: ThemeMode
   showSidebarToggle?: boolean
   sidebarOpen?: boolean
+  demoMode?: boolean
 }>()
 
 defineEmits<{
@@ -82,6 +83,12 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
     
     <!-- 右侧操作区 -->
     <div class="flex items-center gap-3">
+      <span
+        v-if="props.demoMode"
+        class="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700"
+      >
+        演示模式
+      </span>
       <Dropdown trigger="click" placement="bottom-end">
         <button 
           class="flex items-center gap-3 rounded-full border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-hover,#f3f4f6) px-3 py-1.5 text-left transition-colors hover:border-(--tiger-primary,#3b82f6) hover:text-(--tiger-text,#1f2937)"
