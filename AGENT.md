@@ -2,7 +2,7 @@
 
 本文件约束支持 `AGENT.md` 的代码代理在本仓库内的工作方式。开始任何编码、审查或重构任务前，先阅读相关文件，理解当前项目结构、既有风格和已有实现，再开始修改。
 
-如果当前代理支持 skills 或类似的可加载规则集，开始任何编码、审查或重构任务前，请优先使用 `karpathy-guidelines`。如果不支持该机制，则遵循下方的通用工作原则。
+如果当前代理支持 skills 或类似的可加载规则集，开始任何编码、审查或重构任务前，请优先使用 `karpathy-guidelines`。涉及 Tigercat UI 组件、主题、跨框架迁移、属性映射或显示问题时，请同时使用 `skill:tigercat`，并按该 skill 的文档路由查阅对应 reference。若代理不支持 skills，则遵循下方的通用工作原则，并优先参考本仓库已有实现与 Tigercat 官方文档。
 
 ## 项目结构
 
@@ -86,7 +86,11 @@ Tigercat_Admin/
 - React 项目优先使用 `@expcat/tigercat-react`。
 - Tailwind CSS v4 通过 CSS 入口接入 `@plugin "@expcat/tigercat-core/tailwind/modern"`，并使用 `@source` 扫描组件库产物。
 - 尽量使用 Tigercat UI 组件库原生能力，不添加过多冗余样式。
-- 涉及 Tigercat UI 组件、属性、跨框架映射或最佳实践时，优先读取本仓库已有实现和本地文档；只有缺少信息或需要核对最新 breaking change、迁移说明时，再查阅官方在线文档。
+- 涉及 Tigercat UI 组件、属性、跨框架映射或最佳实践时，优先使用 `skill:tigercat`：
+  - 查组件时先看 `component-index.md`，再按组件分类打开对应 examples、props 和类型来源。
+  - 写 React / Vue 双端实现时，先看 `shared/patterns/common.md` 与 `shared/glossary.md`，确认 `v-model` / controlled props、事件命名、`open` 状态和 `class` / `className` 差异。
+  - 涉及主题、token、可访问性、性能、SSR、i18n 或 release 事项时，打开 `skill:tigercat` 中对应 topic reference。
+- 若当前环境不能加载 `skill:tigercat`，则优先读取本仓库已有实现和本地 Tigercat 文档；只有缺少信息或需要核对最新 breaking change、迁移说明时，再查阅官方在线文档。
 
 ## 运行与调试
 
