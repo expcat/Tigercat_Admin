@@ -31,15 +31,6 @@
 
 ## 后续路线
 
-### P0 构建与验证基线恢复
-
-目标：先恢复前端构建门禁，避免后续显示修复无法被可靠验收。
-
-- 修复 `@tigercat-admin/mock-api` workspace 包在 React / Vite / Rolldown 构建中解析失败的问题。
-- 确认 API 数据模式与 mock/demo 数据模式均能完成 React / Vue 双端生产构建。
-- 将 `pnpm build:frontend`、`pnpm build:demo`、`pnpm e2e:react`、`pnpm e2e:vue` 作为后续组件优化的基线门禁。
-- 成功标准：`pnpm build:frontend` 与 `pnpm build:demo` 通过；若 E2E 存在非本阶段阻塞，需记录失败用例、失败原因和后续处理项。
-
 ### P2 显示与交互修复
 
 目标：优先修复高频页面中的真实显示 bug 和双端交互漂移。
@@ -62,10 +53,9 @@
 
 ### 实施任务清单
 
-1. 恢复构建基线：定位并修复 `@tigercat-admin/mock-api` workspace 导出解析问题，验证 API 模式与 mock/demo 模式构建。
-2. 显示 bug 修复：按登录/注册、主布局、Users/Roles、Files/Tasks/Notifications、Home/AuditLogs/Settings 的顺序处理高频风险。
-3. Tigercat 规范对齐：统一双端绑定、事件、弹层状态、主题 token 和组件 props 使用方式。
-4. 回归与上游反馈：补充或更新 Playwright 覆盖；确认组件库缺口后同步 [upstream-requirements.md](upstream-requirements.md)。
+1. 显示 bug 修复：按登录/注册、主布局、Users/Roles、Files/Tasks/Notifications、Home/AuditLogs/Settings 的顺序处理高频风险。
+2. Tigercat 规范对齐：统一双端绑定、事件、弹层状态、主题 token 和组件 props 使用方式。
+3. 回归与上游反馈：补充或更新 Playwright 覆盖；确认组件库缺口后同步 [upstream-requirements.md](upstream-requirements.md)。
 
 ### 公共接口与文档影响
 
