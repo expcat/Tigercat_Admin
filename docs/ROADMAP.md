@@ -13,6 +13,7 @@
 - 数据库 provider、连接串和回归方式以 [database.md](database.md) 为准。
 - 发布、生产配置、CI 和部署策略以 [deployment.md](deployment.md) 为准。
 - 组件缺口与上游诉求以 [upstream-requirements.md](upstream-requirements.md) 为准。
+- 双端页面级组件使用盘点以 [component-inventory.md](component-inventory.md) 为准。
 - E2E 回归规划已合并到本文，不再单独维护独立 Roadmap 类文档。
 - Tigercat UI 最新使用方式以官方文档为准：[Vue 3](https://expcat.github.io/Tigercat/vue/) / [React](https://expcat.github.io/Tigercat/react/) / [迁移指南](https://raw.githubusercontent.com/expcat/Tigercat/main/docs/MIGRATION.md)。
 
@@ -39,20 +40,6 @@
 - 将 `pnpm build:frontend`、`pnpm build:demo`、`pnpm e2e:react`、`pnpm e2e:vue` 作为后续组件优化的基线门禁。
 - 成功标准：`pnpm build:frontend` 与 `pnpm build:demo` 通过；若 E2E 存在非本阶段阻塞，需记录失败用例、失败原因和后续处理项。
 
-### P1 双端组件使用盘点
-
-目标：建立可执行的页面级组件清单，先确认真实问题，再做外科式优化。
-
-- 统计 React / Vue 中 `@expcat/tigercat-react`、`@expcat/tigercat-vue`、`@expcat/tigercat-core` 的真实导入和页面覆盖范围。
-- 按页面记录已用 Tigercat 组件、手写 UI、主题 token 使用、疑似可替换组件、显示风险和双端差异。
-- 当前优先盘点入口：
-  - `Users` / `Roles`：`DataTableWithToolbar`、`Modal`、`Popover`、`Dropdown`、`Tooltip`、`Tree`、批量操作与表格列渲染。
-  - `Files` / `Tasks` / `Notifications`：`FileManager`、`TaskBoard`、`NotificationCenter`、上传、删除、拖拽、通知统计。
-  - `Home` / `AuditLogs` / `Settings`：图表、统计块、筛选工具栏、设置表单、审计导出。
-  - `Login` / `Register` / `MainLayout` / `MainHeader` / `MainSidebar` / `PageHeader`：认证入口、布局、菜单、移动端导航和页面头部。
-- 对无法由现有组件库能力覆盖的场景，只在确认复现和影响后同步到 [upstream-requirements.md](upstream-requirements.md)。
-- 成功标准：每个页面都有明确的优化入口、验证方式和是否涉及上游缺口的结论，不留下“全局优化”这类不可验证条目。
-
 ### P2 显示与交互修复
 
 目标：优先修复高频页面中的真实显示 bug 和双端交互漂移。
@@ -76,10 +63,9 @@
 ### 实施任务清单
 
 1. 恢复构建基线：定位并修复 `@tigercat-admin/mock-api` workspace 导出解析问题，验证 API 模式与 mock/demo 模式构建。
-2. 组件盘点：输出 React / Vue 页面级组件使用清单，标记 Tigercat 组件、手写 UI、显示风险、双端差异和上游缺口。
-3. 显示 bug 修复：按登录/注册、主布局、Users/Roles、Files/Tasks/Notifications、Home/AuditLogs/Settings 的顺序处理高频风险。
-4. Tigercat 规范对齐：统一双端绑定、事件、弹层状态、主题 token 和组件 props 使用方式。
-5. 回归与上游反馈：补充或更新 Playwright 覆盖；确认组件库缺口后同步 [upstream-requirements.md](upstream-requirements.md)。
+2. 显示 bug 修复：按登录/注册、主布局、Users/Roles、Files/Tasks/Notifications、Home/AuditLogs/Settings 的顺序处理高频风险。
+3. Tigercat 规范对齐：统一双端绑定、事件、弹层状态、主题 token 和组件 props 使用方式。
+4. 回归与上游反馈：补充或更新 Playwright 覆盖；确认组件库缺口后同步 [upstream-requirements.md](upstream-requirements.md)。
 
 ### 公共接口与文档影响
 

@@ -17,7 +17,7 @@
     "e2e:vue": "playwright test --project=vue",
     "e2e:demo": "pnpm build:demo && playwright test --config=playwright.demo.config.ts",
     "e2e:install": "playwright install chromium",
-    "check:links": "pnpm dlx markdown-link-check README.md DEVELOPMENT.md AGENT.md docs/ROADMAP.md docs/api.md docs/database.md docs/deployment.md docs/upstream-requirements.md"
+    "check:links": "pnpm dlx markdown-link-check README.md DEVELOPMENT.md AGENT.md docs/ROADMAP.md docs/api.md docs/database.md docs/deployment.md docs/upstream-requirements.md docs/component-inventory.md"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0"
