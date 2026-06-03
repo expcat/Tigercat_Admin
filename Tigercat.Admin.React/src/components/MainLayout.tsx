@@ -107,7 +107,7 @@ export function MainLayout({
   const breadcrumbItems = getShellBreadcrumbItems(currentActiveMenu);
 
   return (
-    <Layout className="h-screen w-full overflow-hidden">
+    <Layout className="h-screen w-full overflow-hidden !flex-row">
       {isMobile && sidebarOpen && (
         <button
           type="button"
@@ -123,22 +123,22 @@ export function MainLayout({
         aria-hidden={isMobile && !sidebarOpen}
         className={
           isMobile
-            ? `fixed inset-y-0 left-0 z-40 shrink-0 transform transition-transform duration-200 ease-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
-            : 'relative shrink-0'
+            ? `fixed inset-y-0 left-0 z-40 h-full shrink-0 transform transition-transform duration-200 ease-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
+            : 'relative h-full shrink-0'
         }>
         <MainSidebar
-          collapsed={isMobile ? !sidebarOpen : collapsed}
+          collapsed={isMobile ? false : collapsed}
           activeMenu={currentActiveMenu}
           showCollapseToggle={!isMobile}
           sidebarWidth="240px"
-          collapsedWidth={isMobile ? '0px' : '64px'}
+          collapsedWidth="64px"
           onCollapsedChange={setCollapsed}
           onMenuSelect={handleMenuSelect}
         />
       </div>
 
       {/* Main Content Area */}
-      <Layout className="min-w-0">
+      <Layout className="h-full min-h-0 min-w-0 flex-1">
         {/* Header */}
         <MainHeader
           session={user}
@@ -155,7 +155,7 @@ export function MainLayout({
         />
 
         {/* Content */}
-        <Content className="overflow-auto p-4 scroll-smooth md:p-6">
+        <Content className="min-h-0 overflow-auto p-4 scroll-smooth md:p-6">
           <div className="mx-auto max-w-7xl animate-fade-in">{children}</div>
         </Content>
       </Layout>

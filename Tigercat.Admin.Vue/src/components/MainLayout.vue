@@ -108,7 +108,7 @@ watch(
 </script>
 
 <template>
-  <Layout class="h-screen w-full overflow-hidden">
+  <Layout class="h-screen w-full overflow-hidden !flex-row">
     <button
       v-if="isMobile && sidebarOpen"
       type="button"
@@ -123,24 +123,24 @@ watch(
       :aria-hidden="isMobile && !sidebarOpen"
       :class="isMobile
         ? [
-            'fixed inset-y-0 left-0 z-40 shrink-0 transform transition-transform duration-200 ease-out',
+            'fixed inset-y-0 left-0 z-40 h-full shrink-0 transform transition-transform duration-200 ease-out',
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           ]
-        : 'relative shrink-0'"
+        : 'relative h-full shrink-0'"
     >
       <MainSidebar 
-        :collapsed="isMobile ? !sidebarOpen : collapsed"
+        :collapsed="isMobile ? false : collapsed"
         v-model:active-menu="activeMenu"
         :show-collapse-toggle="!isMobile"
         sidebar-width="240px"
-        :collapsed-width="isMobile ? '0px' : '64px'"
+        collapsed-width="64px"
         @update:collapsed="(value) => collapsed = value"
         @select="handleMenuSelect" 
       />
     </div>
 
     <!-- Main Content Area -->
-    <Layout class="min-w-0">
+    <Layout class="h-full min-h-0 min-w-0 flex-1">
       <!-- Header -->
       <MainHeader 
         :session="session"
@@ -157,7 +157,7 @@ watch(
       />
 
       <!-- Content -->
-      <Content class="overflow-auto p-4 scroll-smooth md:p-6">
+      <Content class="min-h-0 overflow-auto p-4 scroll-smooth md:p-6">
         <div class="mx-auto max-w-7xl animate-fade-in">
           <slot></slot>
         </div>
