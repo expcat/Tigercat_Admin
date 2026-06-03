@@ -10,13 +10,17 @@ import {
   Card,
   Input,
   Tag,
-  TaskBoard,
   Text,
   notification
 } from '@expcat/tigercat-vue'
+import { TaskBoard } from '@expcat/tigercat-vue/TaskBoard'
 import { computed, onMounted, ref } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
+import MetricCard from '../components/MetricCard.vue'
+import MetricGrid from '../components/MetricGrid.vue'
+import MutedPanel from '../components/MutedPanel.vue'
+import PageActionPanel from '../components/PageActionPanel.vue'
 import {
   buildTaskBoardColumnsFromTasks,
   coerceTaskBoardColumns,
@@ -250,15 +254,11 @@ onMounted(loadTasks)
       ]"
     />
 
-    <Card>
-      <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <Text weight="bold">异步任务入口</Text>
-          <Text size="sm" color="secondary">
-            当前任务来自后端模型，创建、负责人、截止时间和状态流转会持久化并写入审计事件。
-          </Text>
-        </div>
-        <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+    <PageActionPanel
+      title="异步任务入口"
+      description="当前任务来自后端模型，创建、负责人、截止时间和状态流转会持久化并写入审计事件。"
+    >
+      <template #actions>
           <Input
             :value="filterText"
             placeholder="搜索任务标题或说明"
@@ -267,61 +267,27 @@ onMounted(loadTasks)
           <Button variant="outline" @click="handleResetBoard">
             刷新看板
           </Button>
-        </div>
-      </div>
-    </Card>
+      </template>
+    </PageActionPanel>
 
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-      <Card>
-        <div class="flex items-center gap-3">
-          <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-            <Icon name="clipboard" :size="20" />
-          </div>
-          <div>
-            <Text weight="bold">任务总数</Text>
-            <Text size="sm" color="secondary">
-              当前看板共 {{ totalCount }} 个异步任务。
-            </Text>
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <div class="flex items-center gap-3">
-          <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-            <Icon name="clock" :size="20" />
-          </div>
-          <div>
-            <Text weight="bold">超期任务</Text>
-            <Text size="sm" color="secondary">
-              还有 {{ overdueCount }} 个任务超过计划时间。
-            </Text>
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <div class="flex items-center gap-3">
-          <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-            <Icon name="zap" :size="20" />
-          </div>
-          <div>
-            <Text weight="bold">阻塞项</Text>
-            <Text size="sm" color="secondary">
-              当前有 {{ blockedCount }} 个任务被阻塞，不能直接移动到已完成。
-            </Text>
-          </div>
-        </div>
-      </Card>
-    </div>
+    <MetricGrid>
+      <MetricCard title="任务总数" :description="`当前看板共 ${totalCount} 个异步任务。`">
+        <template #icon><Icon name="clipboard" :size="20" /></template>
+      </MetricCard>
+      <MetricCard title="超期任务" :description="`还有 ${overdueCount} 个任务超过计划时间。`">
+        <template #icon><Icon name="clock" :size="20" /></template>
+      </MetricCard>
+      <MetricCard title="阻塞项" :description="`当前有 ${blockedCount} 个任务被阻塞，不能直接移动到已完成。`">
+        <template #icon><Icon name="zap" :size="20" /></template>
+      </MetricCard>
+    </MetricGrid>
 
     <Card title="任务流转验证">
-      <div class="p2-muted-panel mb-4 flex flex-col gap-2 p-4">
-        <Text weight="bold">最近动作</Text>
-        <Text size="sm" color="secondary">
-          {{ loading ? '正在同步后端任务...' : lastAction }}
-        </Text>
-      </div>
+      <MutedPanel
+        class="mb-4"
+        title="最近动作"
+        :description="loading ? '正在同步后端任务...' : lastAction"
+      />
 
       <TaskBoard
         :columns="columns"

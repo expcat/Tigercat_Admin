@@ -2,14 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Card,
-  FileManager,
   Message,
   Modal,
   Select,
   Tag,
   Text,
-  Upload,
 } from '@expcat/tigercat-react';
+import { FileManager } from '@expcat/tigercat-react/FileManager';
+import { Upload } from '@expcat/tigercat-react/Upload';
 import type { FileItem, UploadRequestOptions } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { FileTextIcon, UploadIcon } from '../components/Icons';

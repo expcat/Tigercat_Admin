@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { ActivityFeed, Alert, Button, Card, Input, Tag, Text, Timeline } from '@expcat/tigercat-vue'
+import { Alert, Button, Card, Input, Tag, Text } from '@expcat/tigercat-vue'
+import { ActivityFeed } from '@expcat/tigercat-vue/ActivityFeed'
+import { Timeline } from '@expcat/tigercat-vue/Timeline'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
+import ChartEmptyState from '../components/ChartEmptyState.vue'
+import MetricCard from '../components/MetricCard.vue'
+import MetricGrid from '../components/MetricGrid.vue'
+import PageActionPanel from '../components/PageActionPanel.vue'
 import { apiRequest, getAuthHeaders } from '../utils'
 import type { AuditLogItem, AuditRetentionPolicy, PagedResult } from '../utils/types'
 
@@ -183,15 +189,11 @@ onMounted(async () => {
       @close="errorMessage = ''"
     />
 
-    <Card>
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <Text weight="bold">审计事件查询</Text>
-          <Text size="sm" color="secondary">
-            页面通过 API 查询 Redis Streams 聚合结果，支持分页、筛选、详情和导出。
-          </Text>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
+    <PageActionPanel
+      title="审计事件查询"
+      description="页面通过 API 查询 Redis Streams 聚合结果，支持分页、筛选、详情和导出。"
+    >
+      <template #actions>
           <Input
             :value="keyword"
             placeholder="筛选标题、说明或事件类型"
@@ -206,9 +208,8 @@ onMounted(async () => {
           <Button variant="outline" @click="handleExport">
             导出 CSV
           </Button>
-        </div>
-      </div>
-    </Card>
+      </template>
+    </PageActionPanel>
 
     <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_0.85fr]">
       <Card title="活动分组视图">
@@ -222,7 +223,11 @@ onMounted(async () => {
 
       <Card title="事件时间线">
         <Text v-if="loading" color="secondary">正在读取最新事件...</Text>
-        <Text v-else-if="timelineItems.length === 0" color="secondary">暂无可展示的时间线数据。</Text>
+        <ChartEmptyState
+          v-else-if="timelineItems.length === 0"
+          description="暂无可展示的时间线数据。"
+          height-class="min-h-40"
+        />
         <Timeline v-else :items="timelineItems" />
       </Card>
     </div>
@@ -266,48 +271,16 @@ onMounted(async () => {
       </Card>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-      <Card>
-        <div class="flex items-center gap-3">
-          <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-            <Icon name="shieldCheck" :size="20" />
-          </div>
-          <div>
-            <Text weight="bold">认证链路</Text>
-            <Text size="sm" color="secondary">
-              覆盖注册、登录、改密、退出等认证事件。
-            </Text>
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <div class="flex items-center gap-3">
-          <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-            <Icon name="users" :size="20" />
-          </div>
-          <div>
-            <Text weight="bold">用户管理</Text>
-            <Text size="sm" color="secondary">
-              覆盖用户创建、更新、删除、批量删除与密码重置。
-            </Text>
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <div class="flex items-center gap-3">
-          <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-            <Icon name="checkCircle" :size="20" />
-          </div>
-          <div>
-            <Text weight="bold">实时回看</Text>
-            <Text size="sm" color="secondary">
-              当前以最近事件窗口为主，后续可继续扩展筛选与通知联动。
-            </Text>
-          </div>
-        </div>
-      </Card>
-    </div>
+    <MetricGrid>
+      <MetricCard title="认证链路" description="覆盖注册、登录、改密、退出等认证事件。">
+        <template #icon><Icon name="shieldCheck" :size="20" /></template>
+      </MetricCard>
+      <MetricCard title="用户管理" description="覆盖用户创建、更新、删除、批量删除与密码重置。">
+        <template #icon><Icon name="users" :size="20" /></template>
+      </MetricCard>
+      <MetricCard title="实时回看" description="当前以最近事件窗口为主，后续可继续扩展筛选与通知联动。">
+        <template #icon><Icon name="checkCircle" :size="20" /></template>
+      </MetricCard>
+    </MetricGrid>
   </div>
 </template>

@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityFeed,
   Alert,
   Button,
   Card,
   Input,
   Tag,
   Text,
-  Timeline,
 } from '@expcat/tigercat-react';
+import { ActivityFeed } from '@expcat/tigercat-react/ActivityFeed';
+import { Timeline } from '@expcat/tigercat-react/Timeline';
 import type { ActivityItem, TimelineItem } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import {
@@ -17,6 +17,12 @@ import {
   ShieldCheckIcon,
   UsersIcon,
 } from '../components/Icons';
+import {
+  ChartEmptyState,
+  MetricCard,
+  MetricGrid,
+  PageActionPanel,
+} from '../components/PageFragments';
 import { apiRequest, getAuthHeaders, normalizeInput } from '../utils';
 import type {
   AuditLogItem,
@@ -216,15 +222,11 @@ function AuditLogsPage() {
         />
       )}
 
-      <Card>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <Text weight="bold">审计事件查询</Text>
-            <Text size="sm" color="secondary">
-              页面通过 API 查询 Redis Streams 聚合结果，支持分页、筛选、详情和导出。
-            </Text>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+      <PageActionPanel
+        title="审计事件查询"
+        description="页面通过 API 查询 Redis Streams 聚合结果，支持分页、筛选、详情和导出。"
+        actions={
+          <>
             <Input
               value={keyword}
               placeholder="筛选标题、说明或事件类型"
@@ -245,9 +247,9 @@ function AuditLogsPage() {
             <Button variant="outline" onClick={handleExport}>
               导出 CSV
             </Button>
-          </div>
-        </div>
-      </Card>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <Card title="活动分组视图">
@@ -263,7 +265,7 @@ function AuditLogsPage() {
           {loading ? (
             <Text color="secondary">正在读取最新事件...</Text>
           ) : timelineItems.length === 0 ? (
-            <Text color="secondary">暂无可展示的时间线数据。</Text>
+            <ChartEmptyState description="暂无可展示的时间线数据。" heightClassName="min-h-40" />
           ) : (
             <Timeline items={timelineItems} />
           )}
@@ -315,49 +317,23 @@ function AuditLogsPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card>
-          <div className="flex items-center gap-3">
-            <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-              <ShieldCheckIcon size={20} />
-            </div>
-            <div>
-              <Text weight="bold">认证链路</Text>
-              <Text size="sm" color="secondary">
-                覆盖注册、登录、改密、退出等认证事件。
-              </Text>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center gap-3">
-            <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-              <UsersIcon size={20} />
-            </div>
-            <div>
-              <Text weight="bold">用户管理</Text>
-              <Text size="sm" color="secondary">
-                覆盖用户创建、更新、删除、批量删除与密码重置。
-              </Text>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center gap-3">
-            <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-              <CheckCircleIcon size={20} />
-            </div>
-            <div>
-              <Text weight="bold">实时回看</Text>
-              <Text size="sm" color="secondary">
-                当前以最近事件窗口为主，后续可继续扩展筛选与通知联动。
-              </Text>
-            </div>
-          </div>
-        </Card>
-      </div>
+      <MetricGrid>
+        <MetricCard
+          title="认证链路"
+          description="覆盖注册、登录、改密、退出等认证事件。"
+          icon={<ShieldCheckIcon size={20} />}
+        />
+        <MetricCard
+          title="用户管理"
+          description="覆盖用户创建、更新、删除、批量删除与密码重置。"
+          icon={<UsersIcon size={20} />}
+        />
+        <MetricCard
+          title="实时回看"
+          description="当前以最近事件窗口为主，后续可继续扩展筛选与通知联动。"
+          icon={<CheckCircleIcon size={20} />}
+        />
+      </MetricGrid>
     </div>
   );
 }

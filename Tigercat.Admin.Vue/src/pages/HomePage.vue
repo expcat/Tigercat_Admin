@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { inject, ref, onMounted, watch, computed } from 'vue'
-import { Alert, Card, Text, Tag, Select, LineChart, BarChart, PieChart, Loading } from '@expcat/tigercat-vue'
+import { Alert, Card, Text, Tag, Select, Loading } from '@expcat/tigercat-vue'
+import { LineChart } from '@expcat/tigercat-vue/LineChart'
+import { BarChart } from '@expcat/tigercat-vue/BarChart'
+import { PieChart } from '@expcat/tigercat-vue/PieChart'
 import type { Session, StatsOverview, StatsTrend } from '../utils'
 import { apiRequest } from '../utils'
 import Icon from '../components/Icon.vue'
 import AppLogo from '../components/AppLogo.vue'
+import MetricCard from '../components/MetricCard.vue'
+import MetricGrid from '../components/MetricGrid.vue'
+import ChartEmptyState from '../components/ChartEmptyState.vue'
 
 const homeMessage = inject<import('vue').Ref<string>>('homeMessage', ref(''))
 const homeError = inject<import('vue').Ref<string>>('homeError', ref(''))
@@ -36,10 +42,10 @@ const trendDaysOptions = [
 const statsCards = computed(() => {
   const o = overview.value
   return [
-    { label: '总用户数', value: o ? String(o.totalUsers) : '-', icon: 'users', iconClass: '', bgClass: 'p2-icon-chip' },
-    { label: '活跃用户', value: o ? String(o.activeUsers) : '-', icon: 'activity', iconClass: '', bgClass: 'p2-icon-chip' },
-    { label: '总角色数', value: o ? String(o.totalRoles) : '-', icon: 'shield', iconClass: '', bgClass: 'p2-icon-chip' },
-    { label: '总权限数', value: o ? String(o.totalPermissions) : '-', icon: 'shieldCheck', iconClass: '', bgClass: 'p2-icon-chip' },
+    { label: '总用户数', value: o ? String(o.totalUsers) : '-', icon: 'users' },
+    { label: '活跃用户', value: o ? String(o.activeUsers) : '-', icon: 'activity' },
+    { label: '总角色数', value: o ? String(o.totalRoles) : '-', icon: 'shield' },
+    { label: '总权限数', value: o ? String(o.totalPermissions) : '-', icon: 'shieldCheck' },
   ]
 })
 
@@ -149,29 +155,19 @@ const quickActions = [
     />
 
     <!-- 统计卡片 -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <Card
+    <MetricGrid :columns="4">
+      <MetricCard
         v-for="stat in statsCards"
         :key="stat.label"
-        class="group hover:shadow-lg transition-shadow duration-300"
+        :title="stat.label"
+        :value="stat.value"
+        :loading="statsLoading"
       >
-        <div class="flex items-start justify-between">
-          <div class="flex-1">
-            <Text size="sm" color="secondary">{{ stat.label }}</Text>
-            <div class="p2-text-primary text-2xl font-bold mt-2">
-              <Loading v-if="statsLoading" size="sm" />
-              <template v-else>{{ stat.value }}</template>
-            </div>
-          </div>
-          <div
-            class="flex h-12 w-12 items-center justify-center transition-transform group-hover:scale-110"
-            :class="stat.bgClass"
-          >
-            <Icon :name="stat.icon" :size="20" :class="stat.iconClass" />
-          </div>
-        </div>
-      </Card>
-    </div>
+        <template #icon>
+          <Icon :name="stat.icon" :size="20" />
+        </template>
+      </MetricCard>
+    </MetricGrid>
 
     <!-- 图表区域 -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -208,9 +204,7 @@ const quickActions = [
           y-axis-label="新增用户"
           :x-tick-format="(v: string | number) => String(v).slice(5)"
         />
-        <div v-else class="flex items-center justify-center h-52 p2-text-secondary">
-          <Text size="sm" color="secondary">暂无趋势数据</Text>
-        </div>
+        <ChartEmptyState v-else description="暂无趋势数据" />
       </Card>
 
       <!-- 用户状态分布（饼图） -->
@@ -228,9 +222,7 @@ const quickActions = [
           :show-legend="true"
           legend-position="bottom"
         />
-        <div v-else class="flex items-center justify-center h-52 p2-text-secondary">
-          <Text size="sm" color="secondary">暂无分布数据</Text>
-        </div>
+        <ChartEmptyState v-else description="暂无分布数据" />
       </Card>
     </div>
 
@@ -272,52 +264,26 @@ const quickActions = [
           :bar-radius="6"
           y-axis-label="数量"
         />
-        <div v-else class="flex items-center justify-center h-52 p2-text-secondary">
-          <Text size="sm" color="secondary">暂无概览数据</Text>
-        </div>
+        <ChartEmptyState v-else description="暂无概览数据" />
       </Card>
     </div>
 
     <!-- 系统信息 -->
     <Card title="系统信息">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-        <div class="flex items-center gap-3">
-          <div class="p2-icon-chip flex h-10 w-10 items-center justify-center">
-            <Icon name="package" :size="20" />
-          </div>
-          <div>
-            <Text size="xs" color="secondary">系统版本</Text>
-            <Text size="sm" weight="medium">v1.0.0</Text>
-          </div>
-        </div>
-        <div class="flex items-center gap-3">
-          <div class="p2-icon-chip flex h-10 w-10 items-center justify-center">
-            <Icon name="zap" :size="20" />
-          </div>
-          <div>
-            <Text size="xs" color="secondary">运行环境</Text>
-            <Text size="sm" weight="medium">.NET 10 + Vue 3</Text>
-          </div>
-        </div>
-        <div class="flex items-center gap-3">
-          <div class="p2-icon-chip flex h-10 w-10 items-center justify-center">
-            <Icon name="calendar" :size="20" />
-          </div>
-          <div>
-            <Text size="xs" color="secondary">最后更新</Text>
-            <Text size="sm" weight="medium">2026-01-28</Text>
-          </div>
-        </div>
-        <div class="flex items-center gap-3">
-          <div class="p2-icon-chip flex h-10 w-10 items-center justify-center">
-            <Icon name="globe" :size="20" />
-          </div>
-          <div>
-            <Text size="xs" color="secondary">API 状态</Text>
-            <Tag color="green" size="sm">● 在线</Tag>
-          </div>
-        </div>
-      </div>
+      <MetricGrid :columns="4">
+        <MetricCard title="系统版本" value="v1.0.0" :framed="false">
+          <template #icon><Icon name="package" :size="20" /></template>
+        </MetricCard>
+        <MetricCard title="运行环境" value=".NET 10 + Vue 3" :framed="false">
+          <template #icon><Icon name="zap" :size="20" /></template>
+        </MetricCard>
+        <MetricCard title="最后更新" value="2026-01-28" :framed="false">
+          <template #icon><Icon name="calendar" :size="20" /></template>
+        </MetricCard>
+        <MetricCard title="API 状态" value="在线" :framed="false">
+          <template #icon><Icon name="globe" :size="20" /></template>
+        </MetricCard>
+      </MetricGrid>
     </Card>
   </div>
 </template>

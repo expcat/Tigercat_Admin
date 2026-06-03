@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card,
   Button,
-  ColorPicker,
   Input,
   InputNumber,
   Modal,
@@ -13,8 +12,9 @@ import {
   Message,
   Text,
   Tag,
-  Upload,
 } from '@expcat/tigercat-react';
+import { ColorPicker } from '@expcat/tigercat-react/ColorPicker';
+import { Upload } from '@expcat/tigercat-react/Upload';
 import type { UploadRequestOptions } from '@expcat/tigercat-core';
 import { LogoIcon, SettingsIcon } from '../components/Icons';
 import { PageHeader } from '../components/PageHeader';

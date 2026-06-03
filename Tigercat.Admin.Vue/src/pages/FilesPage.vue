@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { Button, Card, FileManager, Message, Modal, Select, Tag, Text, Upload } from '@expcat/tigercat-vue'
+import { Button, Card, Message, Modal, Select, Tag, Text } from '@expcat/tigercat-vue'
+import { FileManager } from '@expcat/tigercat-vue/FileManager'
+import { Upload } from '@expcat/tigercat-vue/Upload'
 import type { FileItem, UploadRequestOptions } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'

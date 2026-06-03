@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Card, Button, ColorPicker, Input, InputNumber, Modal, Popconfirm, Select, Segmented, Switch, Message, Text, Tag, Upload } from '@expcat/tigercat-vue'
+import { Card, Button, Input, InputNumber, Modal, Popconfirm, Select, Segmented, Switch, Message, Text, Tag } from '@expcat/tigercat-vue'
+import { ColorPicker } from '@expcat/tigercat-vue/ColorPicker'
+import { Upload } from '@expcat/tigercat-vue/Upload'
 import type { UploadRequestOptions } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import AppLogo from '../components/AppLogo.vue'

@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import type { NotificationItem } from '@expcat/tigercat-core'
 import {
-  Badge,
   Button,
   Card,
-  NotificationCenter,
   Text,
   notification
 } from '@expcat/tigercat-vue'
+import { NotificationCenter } from '@expcat/tigercat-vue/NotificationCenter'
 import { computed, onMounted, ref } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
+import MetricCard from '../components/MetricCard.vue'
+import MetricGrid from '../components/MetricGrid.vue'
+import MutedPanel from '../components/MutedPanel.vue'
+import PageActionPanel from '../components/PageActionPanel.vue'
 import {
   buildNotificationGroups,
   countUnreadNotifications,
@@ -173,19 +176,16 @@ onMounted(loadNotifications)
       ]"
     />
 
-    <Card>
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <Text weight="bold">通知收件箱</Text>
-          <Text size="sm" color="secondary">
-            通知来自后端数据源，未读状态、分组和批量已读会持久化保存。
-          </Text>
-        </div>
+    <PageActionPanel
+      title="通知收件箱"
+      description="通知来自后端数据源，未读状态、分组和批量已读会持久化保存。"
+    >
+      <template #actions>
         <Button variant="outline" @click="loadNotifications">
           刷新通知
         </Button>
-      </div>
-    </Card>
+      </template>
+    </PageActionPanel>
 
     <Card v-if="errorMessage">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -196,71 +196,24 @@ onMounted(loadNotifications)
       </div>
     </Card>
 
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-4">
-      <Card>
-        <div class="flex items-center gap-3">
-          <Badge :content="unreadCount" type="number" :show-zero="true" :max="99" :standalone="false">
-            <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-              <Icon name="bell" :size="20" />
-            </div>
-          </Badge>
-          <div>
-            <Text weight="bold">未读总数</Text>
-            <Text size="sm" color="secondary">
-              全部分组合计 {{ unreadCount }} 条未读通知。
-            </Text>
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <div class="flex items-center gap-3">
-          <Badge :content="opsUnreadCount" type="number" :show-zero="true" :standalone="false">
-            <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-              <Icon name="server" :size="20" />
-            </div>
-          </Badge>
-          <div>
-            <Text weight="bold">系统运维</Text>
-            <Text size="sm" color="secondary">
-              缓存、发布窗口和服务健康类提醒。
-            </Text>
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <div class="flex items-center gap-3">
-          <Badge :content="securityUnreadCount" type="number" :show-zero="true" :standalone="false">
-            <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-              <Icon name="shieldCheck" :size="20" />
-            </div>
-          </Badge>
-          <div>
-            <Text weight="bold">安全提醒</Text>
-            <Text size="sm" color="secondary">
-              密码策略、权限复核和风险检查提醒。
-            </Text>
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <div class="flex items-center gap-3">
-          <Badge :content="releaseUnreadCount" type="number" :show-zero="true" :standalone="false">
-            <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-              <Icon name="checkCircle" :size="20" />
-            </div>
-          </Badge>
-          <div>
-            <Text weight="bold">版本动态</Text>
-            <Text size="sm" color="secondary">
-              记录 UI 升级、审计能力上线和里程碑变更。
-            </Text>
-          </div>
-        </div>
-      </Card>
-    </div>
+    <MetricGrid :columns="4">
+      <MetricCard
+        title="未读总数"
+        :description="`全部分组合计 ${unreadCount} 条未读通知。`"
+        :badge="unreadCount"
+      >
+        <template #icon><Icon name="bell" :size="20" /></template>
+      </MetricCard>
+      <MetricCard title="系统运维" description="缓存、发布窗口和服务健康类提醒。" :badge="opsUnreadCount">
+        <template #icon><Icon name="server" :size="20" /></template>
+      </MetricCard>
+      <MetricCard title="安全提醒" description="密码策略、权限复核和风险检查提醒。" :badge="securityUnreadCount">
+        <template #icon><Icon name="shieldCheck" :size="20" /></template>
+      </MetricCard>
+      <MetricCard title="版本动态" description="记录 UI 升级、审计能力上线和里程碑变更。" :badge="releaseUnreadCount">
+        <template #icon><Icon name="checkCircle" :size="20" /></template>
+      </MetricCard>
+    </MetricGrid>
 
     <Card title="通知中心组件验证">
       <NotificationCenter
@@ -281,24 +234,12 @@ onMounted(loadNotifications)
 
     <Card>
       <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div
+        <MutedPanel
           v-for="item in notifications.slice(0, 2)"
           :key="item.id"
-          class="p2-muted-panel p-4"
-        >
-          <div class="flex items-center justify-between gap-3">
-            <Text weight="bold">{{ item.title }}</Text>
-            <Text size="sm" color="secondary">
-              {{ formatDateTime(item.time) }}
-            </Text>
-          </div>
-          <Text size="sm" color="secondary" class="mt-2">
-            {{ item.description }}
-          </Text>
-          <Text size="sm" color="secondary" class="mt-3">
-            来源：{{ item.meta.source ?? 'backend' }} · 级别：{{ item.meta.severity ?? 'normal' }}
-          </Text>
-        </div>
+          :title="item.title"
+          :description="`${formatDateTime(item.time)} · ${item.description} · 来源：${item.meta.source ?? 'backend'} · 级别：${item.meta.severity ?? 'normal'}`"
+        />
       </div>
     </Card>
   </div>

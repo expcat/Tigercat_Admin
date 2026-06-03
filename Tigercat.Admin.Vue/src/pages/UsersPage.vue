@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, inject, onMounted, h } from 'vue'
-import { Avatar, DataTableWithToolbar, Button, CropUpload, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tooltip, Message, Popover, Checkbox } from '@expcat/tigercat-vue'
+import { Avatar, DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tooltip, Message, Popover, Checkbox } from '@expcat/tigercat-vue'
+import { CropUpload } from '@expcat/tigercat-vue/CropUpload'
 import type { TableColumn, SortState, TableToolbarFilterValue } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'

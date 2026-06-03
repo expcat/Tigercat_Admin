@@ -10,12 +10,18 @@ import {
   Card,
   Input,
   Tag,
-  TaskBoard,
   Text,
   notification,
 } from '@expcat/tigercat-react';
+import { TaskBoard } from '@expcat/tigercat-react/TaskBoard';
 import { PageHeader } from '../components/PageHeader';
 import { ClipboardIcon, ClockIcon, ZapIcon } from '../components/Icons';
+import {
+  MetricCard,
+  MetricGrid,
+  MutedPanel,
+  PageActionPanel,
+} from '../components/PageFragments';
 import {
   buildTaskBoardColumnsFromTasks,
   coerceTaskBoardColumns,
@@ -257,15 +263,11 @@ function TasksPage() {
         ]}
       />
 
-      <Card>
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <Text weight="bold">异步任务入口</Text>
-            <Text size="sm" color="secondary">
-              当前任务来自后端模型，创建、负责人、截止时间和状态流转会持久化并写入审计事件。
-            </Text>
-          </div>
-          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+      <PageActionPanel
+        title="异步任务入口"
+        description="当前任务来自后端模型，创建、负责人、截止时间和状态流转会持久化并写入审计事件。"
+        actions={
+          <>
             <Input
               value={filterText}
               placeholder="搜索任务标题或说明"
@@ -274,61 +276,34 @@ function TasksPage() {
             <Button variant="outline" onClick={handleResetBoard}>
               刷新看板
             </Button>
-          </div>
-        </div>
-      </Card>
+          </>
+        }
+      />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card>
-          <div className="flex items-center gap-3">
-            <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-              <ClipboardIcon size={20} />
-            </div>
-            <div>
-              <Text weight="bold">任务总数</Text>
-              <Text size="sm" color="secondary">
-                当前看板共 {totalCount} 个异步任务。
-              </Text>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center gap-3">
-            <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-              <ClockIcon size={20} />
-            </div>
-            <div>
-              <Text weight="bold">超期任务</Text>
-              <Text size="sm" color="secondary">
-                还有 {overdueCount} 个任务超过计划时间。
-              </Text>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center gap-3">
-            <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
-              <ZapIcon size={20} />
-            </div>
-            <div>
-              <Text weight="bold">阻塞项</Text>
-              <Text size="sm" color="secondary">
-                当前有 {blockedCount} 个任务被阻塞，不能直接移动到已完成。
-              </Text>
-            </div>
-          </div>
-        </Card>
-      </div>
+      <MetricGrid>
+        <MetricCard
+          title="任务总数"
+          description={`当前看板共 ${totalCount} 个异步任务。`}
+          icon={<ClipboardIcon size={20} />}
+        />
+        <MetricCard
+          title="超期任务"
+          description={`还有 ${overdueCount} 个任务超过计划时间。`}
+          icon={<ClockIcon size={20} />}
+        />
+        <MetricCard
+          title="阻塞项"
+          description={`当前有 ${blockedCount} 个任务被阻塞，不能直接移动到已完成。`}
+          icon={<ZapIcon size={20} />}
+        />
+      </MetricGrid>
 
       <Card title="任务流转验证">
-        <div className="p2-muted-panel mb-4 flex flex-col gap-2 p-4">
-          <Text weight="bold">最近动作</Text>
-          <Text size="sm" color="secondary">
-            {loading ? '正在同步后端任务...' : lastAction}
-          </Text>
-        </div>
+        <MutedPanel
+          className="mb-4"
+          title="最近动作"
+          description={loading ? '正在同步后端任务...' : lastAction}
+        />
 
         <TaskBoard
           columns={columns}

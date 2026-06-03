@@ -5,11 +5,11 @@ import {
   Text,
   Tag,
   Select,
-  LineChart,
-  BarChart,
-  PieChart,
   Loading,
 } from '@expcat/tigercat-react';
+import { LineChart } from '@expcat/tigercat-react/LineChart';
+import { BarChart } from '@expcat/tigercat-react/BarChart';
+import { PieChart } from '@expcat/tigercat-react/PieChart';
 import { useOutletContext } from 'react-router-dom';
 import {
   UsersIcon,
@@ -24,6 +24,11 @@ import {
   CalendarIcon,
   GlobeIcon,
 } from '../components/Icons';
+import {
+  ChartEmptyState,
+  MetricCard,
+  MetricGrid,
+} from '../components/PageFragments';
 import type { StatsOverview, StatsTrend } from '../utils';
 import { apiRequest, getAuthHeaders } from '../utils';
 
@@ -52,29 +57,21 @@ const statsCardsMeta = [
     key: 'totalUsers',
     label: '总用户数',
     icon: UsersIcon,
-    iconClass: '',
-    bgClass: 'p2-icon-chip',
   },
   {
     key: 'activeUsers',
     label: '活跃用户',
     icon: ActivityIcon,
-    iconClass: '',
-    bgClass: 'p2-icon-chip',
   },
   {
     key: 'totalRoles',
     label: '总角色数',
     icon: ShieldIcon,
-    iconClass: '',
-    bgClass: 'p2-icon-chip',
   },
   {
     key: 'totalPermissions',
     label: '总权限数',
     icon: ShieldCheckIcon,
-    iconClass: '',
-    bgClass: 'p2-icon-chip',
   },
 ] as const;
 
@@ -271,32 +268,20 @@ function HomePage() {
         />
       )}
 
-      {/* 统计卡片 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <MetricGrid columns={4}>
         {statsCards.map((stat) => {
           const IconComponent = stat.icon;
           return (
-            <Card
+            <MetricCard
               key={stat.label}
-              className="group hover:shadow-lg transition-shadow duration-300">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <Text size="sm" color="secondary">
-                    {stat.label}
-                  </Text>
-                  <div className="p2-text-primary text-2xl font-bold mt-2">
-                    {statsLoading ? <Loading size="sm" /> : stat.value}
-                  </div>
-                </div>
-                <div
-                  className={`flex h-12 w-12 items-center justify-center transition-transform group-hover:scale-110 ${stat.bgClass}`}>
-                  <IconComponent size={20} className={stat.iconClass} />
-                </div>
-              </div>
-            </Card>
+              title={stat.label}
+              value={stat.value}
+              loading={statsLoading}
+              icon={<IconComponent size={20} />}
+            />
           );
         })}
-      </div>
+      </MetricGrid>
 
       {/* 图表区域 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -336,11 +321,7 @@ function HomePage() {
               xTickFormat={(v) => String(v).slice(5)}
             />
           ) : (
-            <div className="flex items-center justify-center h-52 p2-text-secondary">
-              <Text size="sm" color="secondary">
-                暂无趋势数据
-              </Text>
-            </div>
+            <ChartEmptyState description="暂无趋势数据" />
           )}
         </Card>
 
@@ -360,11 +341,7 @@ function HomePage() {
               legendPosition="bottom"
             />
           ) : (
-            <div className="flex items-center justify-center h-52 p2-text-secondary">
-              <Text size="sm" color="secondary">
-                暂无分布数据
-              </Text>
-            </div>
+            <ChartEmptyState description="暂无分布数据" />
           )}
         </Card>
       </div>
@@ -408,71 +385,39 @@ function HomePage() {
               yAxisLabel="数量"
             />
           ) : (
-            <div className="flex items-center justify-center h-52 p2-text-secondary">
-              <Text size="sm" color="secondary">
-                暂无概览数据
-              </Text>
-            </div>
+            <ChartEmptyState description="暂无概览数据" />
           )}
         </Card>
       </div>
 
       {/* 系统信息 */}
       <Card title="系统信息">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="flex items-center gap-3">
-            <div className="p2-icon-chip flex h-10 w-10 items-center justify-center">
-              <PackageIcon size={20} />
-            </div>
-            <div>
-              <Text size="xs" color="secondary">
-                系统版本
-              </Text>
-              <Text size="sm" weight="medium">
-                v1.0.0
-              </Text>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="p2-icon-chip flex h-10 w-10 items-center justify-center">
-              <ZapIcon size={20} />
-            </div>
-            <div>
-              <Text size="xs" color="secondary">
-                运行环境
-              </Text>
-              <Text size="sm" weight="medium">
-                .NET 10 + React 19
-              </Text>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="p2-icon-chip flex h-10 w-10 items-center justify-center">
-              <CalendarIcon size={20} />
-            </div>
-            <div>
-              <Text size="xs" color="secondary">
-                最后更新
-              </Text>
-              <Text size="sm" weight="medium">
-                2026-01-28
-              </Text>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="p2-icon-chip flex h-10 w-10 items-center justify-center">
-              <GlobeIcon size={20} />
-            </div>
-            <div>
-              <Text size="xs" color="secondary">
-                API 状态
-              </Text>
-              <Tag color="green" size="sm">
-                ● 在线
-              </Tag>
-            </div>
-          </div>
-        </div>
+        <MetricGrid columns={4}>
+          <MetricCard
+            framed={false}
+            title="系统版本"
+            value="v1.0.0"
+            icon={<PackageIcon size={20} />}
+          />
+          <MetricCard
+            framed={false}
+            title="运行环境"
+            value=".NET 10 + React 19"
+            icon={<ZapIcon size={20} />}
+          />
+          <MetricCard
+            framed={false}
+            title="最后更新"
+            value="2026-01-28"
+            icon={<CalendarIcon size={20} />}
+          />
+          <MetricCard
+            framed={false}
+            title="API 状态"
+            value="在线"
+            icon={<GlobeIcon size={20} />}
+          />
+        </MetricGrid>
       </Card>
     </div>
   );

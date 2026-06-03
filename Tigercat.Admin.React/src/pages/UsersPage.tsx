@@ -3,7 +3,6 @@ import {
   Avatar,
   DataTableWithToolbar,
   Button,
-  CropUpload,
   Dropdown,
   DropdownMenu,
   DropdownItem,
@@ -19,6 +18,7 @@ import {
   Popover,
   Checkbox,
 } from '@expcat/tigercat-react';
+import { CropUpload } from '@expcat/tigercat-react/CropUpload';
 import type {
   TableColumn,
   SortState,
