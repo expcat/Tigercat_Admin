@@ -52,29 +52,29 @@ const statsCardsMeta = [
     key: 'totalUsers',
     label: '总用户数',
     icon: UsersIcon,
-    iconClass: 'text-blue-600',
-    bgClass: 'bg-blue-100 dark:bg-blue-900/30',
+    iconClass: '',
+    bgClass: 'p2-icon-chip',
   },
   {
     key: 'activeUsers',
     label: '活跃用户',
     icon: ActivityIcon,
-    iconClass: 'text-purple-600',
-    bgClass: 'bg-purple-100 dark:bg-purple-900/30',
+    iconClass: '',
+    bgClass: 'p2-icon-chip',
   },
   {
     key: 'totalRoles',
     label: '总角色数',
     icon: ShieldIcon,
-    iconClass: 'text-orange-600',
-    bgClass: 'bg-orange-100 dark:bg-orange-900/30',
+    iconClass: '',
+    bgClass: 'p2-icon-chip',
   },
   {
     key: 'totalPermissions',
     label: '总权限数',
     icon: ShieldCheckIcon,
-    iconClass: 'text-green-600',
-    bgClass: 'bg-green-100 dark:bg-green-900/30',
+    iconClass: '',
+    bgClass: 'p2-icon-chip',
   },
 ] as const;
 
@@ -84,33 +84,29 @@ const quickActions = [
     label: '用户管理',
     icon: UsersIcon,
     key: 'users',
-    colorClasses:
-      'from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200',
-    iconClass: 'text-blue-600',
+    colorClasses: '',
+    iconClass: 'text-(--tiger-primary,#3b82f6)',
   },
   {
     label: '角色配置',
     icon: ShieldIcon,
     key: 'roles',
-    colorClasses:
-      'from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200',
-    iconClass: 'text-purple-600',
+    colorClasses: '',
+    iconClass: 'text-(--tiger-primary,#3b82f6)',
   },
   {
     label: '系统设置',
     icon: SettingsIcon,
     key: 'settings',
-    colorClasses:
-      'from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200',
-    iconClass: 'text-orange-600',
+    colorClasses: '',
+    iconClass: 'text-(--tiger-primary,#3b82f6)',
   },
   {
     label: '查看日志',
     icon: FileTextIcon,
     key: 'logs',
-    colorClasses:
-      'from-green-50 to-green-100 hover:from-green-100 hover:to-green-200',
-    iconClass: 'text-green-600',
+    colorClasses: '',
+    iconClass: 'text-(--tiger-primary,#3b82f6)',
   },
 ];
 
@@ -236,15 +232,15 @@ function HomePage() {
       {/* 欢迎区域 */}
       <Card className="overflow-hidden">
         <div className="relative">
-          <div className="absolute inset-0 bg-linear-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4" />
-          <div className="relative flex items-center justify-between">
-            <div>
+          <div className="p2-page-accent absolute inset-0 -m-4" />
+          <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <div className="flex items-center gap-3 mb-2">
                 <div className="flex items-center justify-center shrink-0">
                   <LogoIcon size={48} />
                 </div>
-                <div>
-                  <Text size="lg" weight="bold" className="text-slate-800">
+                <div className="min-w-0">
+                  <Text size="lg" weight="bold" className="p2-text-primary">
                     欢迎回来，{username || 'Admin'}！
                   </Text>
                   <Text size="sm" color="secondary">
@@ -288,12 +284,12 @@ function HomePage() {
                   <Text size="sm" color="secondary">
                     {stat.label}
                   </Text>
-                  <div className="text-2xl font-bold mt-2 text-slate-800">
+                  <div className="p2-text-primary text-2xl font-bold mt-2">
                     {statsLoading ? <Loading size="sm" /> : stat.value}
                   </div>
                 </div>
                 <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${stat.bgClass}`}>
+                  className={`flex h-12 w-12 items-center justify-center transition-transform group-hover:scale-110 ${stat.bgClass}`}>
                   <IconComponent size={20} className={stat.iconClass} />
                 </div>
               </div>
@@ -306,11 +302,11 @@ function HomePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 用户创建趋势（折线图） */}
         <Card className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Text size="base" weight="bold">
               用户创建趋势
             </Text>
-            <div className="w-36">
+            <div className="w-full sm:w-36">
               <Select
                 value={trendDays}
                 options={trendDaysOptions}
@@ -340,7 +336,7 @@ function HomePage() {
               xTickFormat={(v) => String(v).slice(5)}
             />
           ) : (
-            <div className="flex items-center justify-center h-52 text-slate-400">
+            <div className="flex items-center justify-center h-52 p2-text-secondary">
               <Text size="sm" color="secondary">
                 暂无趋势数据
               </Text>
@@ -364,7 +360,7 @@ function HomePage() {
               legendPosition="bottom"
             />
           ) : (
-            <div className="flex items-center justify-center h-52 text-slate-400">
+            <div className="flex items-center justify-center h-52 p2-text-secondary">
               <Text size="sm" color="secondary">
                 暂无分布数据
               </Text>
@@ -383,7 +379,7 @@ function HomePage() {
               return (
                 <button
                   key={action.key}
-                  className={`group flex flex-col items-center justify-center p-4 rounded-xl bg-linear-to-br transition-all duration-300 cursor-pointer border border-slate-200 hover:border-transparent hover:shadow-md ${action.colorClasses}`}>
+                  className={`p2-action-tile group flex min-h-24 flex-col items-center justify-center p-4 transition-all duration-300 hover:shadow-md ${action.colorClasses}`}>
                   <div className="mb-2 transition-transform group-hover:scale-110">
                     <IconComponent size={24} className={action.iconClass} />
                   </div>
@@ -412,7 +408,7 @@ function HomePage() {
               yAxisLabel="数量"
             />
           ) : (
-            <div className="flex items-center justify-center h-52 text-slate-400">
+            <div className="flex items-center justify-center h-52 p2-text-secondary">
               <Text size="sm" color="secondary">
                 暂无概览数据
               </Text>
@@ -425,7 +421,7 @@ function HomePage() {
       <Card title="系统信息">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+            <div className="p2-icon-chip flex h-10 w-10 items-center justify-center">
               <PackageIcon size={20} />
             </div>
             <div>
@@ -438,7 +434,7 @@ function HomePage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
+            <div className="p2-icon-chip flex h-10 w-10 items-center justify-center">
               <ZapIcon size={20} />
             </div>
             <div>
@@ -451,7 +447,7 @@ function HomePage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">
+            <div className="p2-icon-chip flex h-10 w-10 items-center justify-center">
               <CalendarIcon size={20} />
             </div>
             <div>
@@ -464,7 +460,7 @@ function HomePage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+            <div className="p2-icon-chip flex h-10 w-10 items-center justify-center">
               <GlobeIcon size={20} />
             </div>
             <div>

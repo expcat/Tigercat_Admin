@@ -29,14 +29,14 @@ const toggleThemeMode = inject<() => void>('toggleThemeMode')!
         </template>
         <template #fallback>
           <div class="flex items-center justify-center h-full min-h-50">
-            <div class="text-slate-500">加载中...</div>
+            <div class="p2-text-secondary">加载中...</div>
           </div>
         </template>
       </Suspense>
     </RouterView>
 
     <Modal
-      v-model="changeOpen"
+      v-model:open="changeOpen"
       title="修改密码"
       show-default-footer
       ok-text="确认修改"

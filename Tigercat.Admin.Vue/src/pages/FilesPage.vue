@@ -117,8 +117,8 @@ watch([contentType, searchText], loadMedia)
     />
 
     <Card>
-      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div class="flex flex-wrap items-center gap-2">
+      <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <Select
             v-model="contentType"
             :options="typeOptions"
@@ -130,7 +130,7 @@ watch([contentType, searchText], loadMedia)
           </Tag>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <Button
             v-if="canDelete"
             variant="outline"
@@ -169,7 +169,7 @@ watch([contentType, searchText], loadMedia)
         @open="handleOpen"
       />
 
-      <div class="mt-3 text-sm text-slate-500">
+      <div class="p2-text-secondary mt-3 text-sm">
         <Text size="sm" color="secondary">
           被 Logo 或头像引用的媒体会在删除时返回冲突提示。
         </Text>
@@ -177,14 +177,13 @@ watch([contentType, searchText], loadMedia)
     </Card>
 
     <Modal
-      :open="deleteOpen"
+      v-model:open="deleteOpen"
       title="确认删除文件"
       show-default-footer
       :ok-text="deleting ? '删除中…' : '确认删除'"
       cancel-text="取消"
       @ok="confirmDelete"
       @cancel="deleteOpen = false"
-      @update:open="deleteOpen = $event"
     >
       <Text>将删除 {{ selectedIds.length }} 个媒体资源。被引用的文件会被后端阻止删除。</Text>
     </Modal>

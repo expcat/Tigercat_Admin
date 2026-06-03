@@ -327,7 +327,7 @@ const columns = computed<TableColumn[]>(() => {
       width: 200,
       render: (record: any) => {
         const roles = record.roles as RoleInfo[]
-        if (!roles || roles.length === 0) return h('span', { class: 'text-slate-400 text-sm' }, '无角色')
+        if (!roles || roles.length === 0) return h('span', { class: 'p2-text-secondary text-sm' }, '无角色')
         return h('div', { class: 'flex flex-wrap gap-1' },
           roles.map(r => h(Tag, { color: 'blue', size: 'sm', key: r.id }, () => r.name))
         )
@@ -339,7 +339,7 @@ const columns = computed<TableColumn[]>(() => {
       width: 180,
       sortable: true,
       render: (record: any) =>
-        h('span', { class: 'text-sm text-slate-600' },
+        h('span', { class: 'p2-text-secondary text-sm' },
           new Date(record.createdAt).toLocaleString('zh-CN')),
     },
   ]
@@ -565,7 +565,7 @@ onMounted(() => {
       ]"
     />
 
-    <div class="flex flex-wrap justify-end gap-2">
+    <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
       <Popover trigger="click" placement="bottom-end" :width="180">
         <template #reference>
           <Button variant="outline" size="sm">
@@ -579,13 +579,13 @@ onMounted(() => {
           <label
             v-for="key in ALL_COLUMN_KEYS.filter(k => k !== 'actions' || canEdit || canDelete)"
             :key="key"
-            class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800"
+            class="p2-checkbox-row text-sm"
           >
             <Checkbox
               :model-value="!hiddenColumns.has(key)"
               @update:model-value="() => toggleColumn(key)"
             />
-            <span>{{ columnLabels[key] || key }}</span>
+            <span class="p2-checkbox-label">{{ columnLabels[key] || key }}</span>
           </label>
         </div>
       </Popover>
@@ -611,7 +611,7 @@ onMounted(() => {
       </Button>
     </div>
 
-    <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+    <div class="p2-muted-panel px-4 py-3 text-sm">
       {{ serverPaginationHint }}
     </div>
 
@@ -642,15 +642,15 @@ onMounted(() => {
 
     <!-- Create / Edit Modal -->
     <Modal
-      :open="modalVisible"
+      v-model:open="modalVisible"
       :title="modalTitle"
       show-default-footer
       ok-text="确定"
       cancel-text="取消"
       @ok="handleSubmit"
       @cancel="modalVisible = false"
-      @update:open="modalVisible = $event"
     >
+      <div class="p2-modal-scroll">
       <Form :model="formData" :label-width="88">
         <FormItem label="用户名" name="username">
           <Input
@@ -717,37 +717,37 @@ onMounted(() => {
           />
         </FormItem>
       </Form>
+      </div>
     </Modal>
 
     <!-- Batch Delete Confirm -->
     <Modal
-      :open="batchDeleteConfirmVisible"
+      v-model:open="batchDeleteConfirmVisible"
       title="确认批量删除"
       show-default-footer
       ok-text="确认删除"
       cancel-text="取消"
       @ok="confirmBatchDelete"
       @cancel="batchDeleteConfirmVisible = false"
-      @update:open="batchDeleteConfirmVisible = $event"
     >
-      <p class="text-slate-600">
+      <p class="p2-text-secondary">
         确定要删除选中的
-        <span class="font-semibold text-slate-800">{{ selectedRowKeys.length }}</span>
+        <span class="p2-text-primary font-semibold">{{ selectedRowKeys.length }}</span>
         个用户吗？此操作不可撤销。
       </p>
     </Modal>
 
     <!-- Export Modal -->
     <Modal
-      :open="exportModalVisible"
+      v-model:open="exportModalVisible"
       title="导出用户数据"
       show-default-footer
       ok-text="导出"
       cancel-text="取消"
       @ok="handleExport"
       @cancel="exportModalVisible = false"
-      @update:open="exportModalVisible = $event"
     >
+      <div class="p2-modal-scroll">
       <Form :label-width="88">
         <FormItem label="导出格式">
           <Select
@@ -761,17 +761,18 @@ onMounted(() => {
             <label
               v-for="field in EXPORT_FIELD_OPTIONS"
               :key="field.key"
-              class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800"
+              class="p2-checkbox-row text-sm"
             >
               <Checkbox
                 :model-value="exportFields.includes(field.key)"
                 @update:model-value="() => toggleExportField(field.key)"
               />
-              <span>{{ field.label }}</span>
+              <span class="p2-checkbox-label">{{ field.label }}</span>
             </label>
           </div>
         </FormItem>
       </Form>
+      </div>
     </Modal>
   </div>
 </template>

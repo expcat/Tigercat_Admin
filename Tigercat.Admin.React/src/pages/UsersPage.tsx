@@ -484,7 +484,7 @@ function UsersPage() {
         render: (record) => {
           const roles = record.roles;
           if (!roles || roles.length === 0)
-            return <span className="text-slate-400 text-sm">无角色</span>;
+            return <span className="p2-text-secondary text-sm">无角色</span>;
           return (
             <div className="flex flex-wrap gap-1">
               {roles.map((r) => (
@@ -502,7 +502,7 @@ function UsersPage() {
         width: 180,
         sortable: true,
         render: (record) => (
-          <span className="text-sm text-slate-600">
+          <span className="p2-text-secondary text-sm">
             {new Date(record.createdAt).toLocaleString('zh-CN')}
           </span>
         ),
@@ -524,7 +524,7 @@ function UsersPage() {
                   <Button size="sm" variant="ghost">
                     操作
                   </Button>
-                  <DropdownMenu className="min-w-28">
+                  <DropdownMenu className="w-28 max-w-[calc(100vw-2rem)]">
                     <DropdownItem onClick={() => openEditModal(record)}>
                       编辑用户
                     </DropdownItem>
@@ -687,7 +687,7 @@ function UsersPage() {
         ]}
       />
 
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
         <Popover
           trigger="click"
           placement="bottom-end"
@@ -699,12 +699,14 @@ function UsersPage() {
               ).map((key) => (
                 <label
                   key={key}
-                  className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
+                  className="p2-checkbox-row text-sm">
                   <Checkbox
                     checked={!hiddenColumns.has(key)}
                     onChange={() => toggleColumn(key)}
                   />
-                  <span>{COLUMN_LABELS[key] || key}</span>
+                  <span className="p2-checkbox-label">
+                    {COLUMN_LABELS[key] || key}
+                  </span>
                 </label>
               ))}
             </div>
@@ -734,7 +736,7 @@ function UsersPage() {
         </PermissionGuard>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+      <div className="p2-muted-panel px-4 py-3 text-sm">
         {serverPaginationHint}
       </div>
 
@@ -773,6 +775,7 @@ function UsersPage() {
         cancelText="取消"
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}>
+        <div className="p2-modal-scroll">
         <Form model={formData} labelWidth={88}>
           <FormItem label="用户名" name="username">
             <Input
@@ -853,6 +856,7 @@ function UsersPage() {
             />
           </FormItem>
         </Form>
+        </div>
       </Modal>
 
       {/* Export Modal */}
@@ -865,6 +869,7 @@ function UsersPage() {
         confirmLoading={exporting}
         onOk={handleExport}
         onCancel={() => setExportModalVisible(false)}>
+        <div className="p2-modal-scroll">
         <Form labelWidth={88}>
           <FormItem label="导出格式">
             <Select
@@ -878,17 +883,18 @@ function UsersPage() {
               {EXPORT_FIELD_OPTIONS.map((field) => (
                 <label
                   key={field.key}
-                  className="flex items-center gap-1.5 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
+                  className="p2-checkbox-row text-sm">
                   <Checkbox
                     checked={exportFields.includes(field.key)}
                     onChange={() => toggleExportField(field.key)}
                   />
-                  <span>{field.label}</span>
+                  <span className="p2-checkbox-label">{field.label}</span>
                 </label>
               ))}
             </div>
           </FormItem>
         </Form>
+        </div>
       </Modal>
 
       {/* Batch Delete Confirm */}
@@ -902,9 +908,9 @@ function UsersPage() {
         onCancel={() => setBatchDeleteConfirmVisible(false)}
         role="alertdialog"
         aria-label={`确认批量删除 ${selectedRowKeys.length} 个用户`}>
-        <p className="text-slate-600">
+        <p className="p2-text-secondary">
           确定要删除选中的
-          <span className="font-semibold text-slate-800">
+          <span className="p2-text-primary font-semibold">
             {' '}
             {selectedRowKeys.length}{' '}
           </span>

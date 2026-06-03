@@ -78,14 +78,14 @@ function RegisterPage() {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className="w-full max-w-md mx-auto px-1 sm:px-0">
       {/* Logo & Welcome */}
       <div className="text-center mb-8">
         <div className="inline-flex mb-4">
           <LogoIcon size={64} />
         </div>
-        <h1 className="text-2xl font-semibold text-gray-800">创建账号</h1>
-        <p className="text-gray-500 mt-1">注册 Tigercat Admin 账号</p>
+        <h1 className="p2-text-primary text-2xl font-semibold">创建账号</h1>
+        <p className="p2-text-secondary mt-1">注册 Tigercat Admin 账号</p>
       </div>
 
       <Card className="shadow-xl border-0">
@@ -118,11 +118,11 @@ function RegisterPage() {
               onClick={handleRegister}>
               注册
             </Button>
-            <div className="text-center text-sm text-gray-500">
+            <div className="p2-text-secondary text-center text-sm">
               已有账号？
               <button
                 type="button"
-                className="text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                className="font-medium text-(--tiger-primary,#3b82f6) hover:underline"
                 onClick={goToLogin}>
                 立即登录
               </button>

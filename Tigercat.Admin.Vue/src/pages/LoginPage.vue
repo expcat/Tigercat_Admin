@@ -53,14 +53,14 @@ const goToRegister = () => {
 </script>
 
 <template>
-  <div class="w-full max-w-md mx-auto">
+  <div class="w-full max-w-md mx-auto px-1 sm:px-0">
     <!-- Logo & Welcome -->
     <div class="text-center mb-8">
       <div class="inline-flex mb-4">
         <AppLogo :size="64" />
       </div>
-      <h1 class="text-2xl font-semibold text-gray-800">欢迎回来</h1>
-      <p class="text-gray-500 mt-1">登录到 Tigercat Admin</p>
+      <h1 class="p2-text-primary text-2xl font-semibold">欢迎回来</h1>
+      <p class="p2-text-secondary mt-1">登录到 Tigercat Admin</p>
     </div>
 
     <Card class="shadow-xl border-0">
@@ -94,11 +94,11 @@ const goToRegister = () => {
           >
             登录
           </Button>
-          <div class="text-center text-sm text-gray-500">
+          <div class="p2-text-secondary text-center text-sm">
             还没有账号？
             <button
               type="button"
-              class="text-blue-600 hover:text-blue-700 font-medium hover:underline"
+              class="font-medium text-(--tiger-primary,#3b82f6) hover:underline"
               @click="goToRegister"
             >
               立即注册

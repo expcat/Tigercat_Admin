@@ -244,7 +244,7 @@ function NotificationsPage() {
               showZero
               max={99}
               standalone={false}>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+              <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
                 <BellIcon size={20} />
               </div>
             </Badge>
@@ -264,7 +264,7 @@ function NotificationsPage() {
               type="number"
               showZero
               standalone={false}>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+              <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
                 <ServerIcon size={20} />
               </div>
             </Badge>
@@ -284,7 +284,7 @@ function NotificationsPage() {
               type="number"
               showZero
               standalone={false}>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+              <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
                 <ShieldCheckIcon size={20} />
               </div>
             </Badge>
@@ -304,7 +304,7 @@ function NotificationsPage() {
               type="number"
               showZero
               standalone={false}>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+              <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
                 <CheckCircleIcon size={20} />
               </div>
             </Badge>
@@ -340,7 +340,7 @@ function NotificationsPage() {
           {notifications.slice(0, 2).map((item) => (
             <div
               key={item.id}
-              className="rounded-2xl border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-hover,#f8fafc) p-4">
+              className="p2-muted-panel p-4">
               <div className="flex items-center justify-between gap-3">
                 <Text weight="bold">{item.title}</Text>
                 <Text size="sm" color="secondary">

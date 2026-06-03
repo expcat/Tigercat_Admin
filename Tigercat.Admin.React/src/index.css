@@ -18,6 +18,84 @@
   --tiger-shadow: 0 1px 3px rgba(0,0,0,0.4);
   color-scheme: dark;
 }
+
+@layer components {
+  .p2-text-primary {
+    color: var(--tiger-text, #1f2937);
+  }
+
+  .p2-text-secondary {
+    color: var(--tiger-text-secondary, #64748b);
+  }
+
+  .p2-page-accent {
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--tiger-primary, #3b82f6) 12%, transparent),
+      color-mix(in srgb, var(--tiger-bg-hover, #f3f4f6) 86%, transparent)
+    );
+  }
+
+  .p2-muted-panel {
+    border: 1px solid var(--tiger-border, #e2e8f0);
+    border-radius: 0.5rem;
+    background: var(--tiger-bg-hover, #f8fafc);
+    color: var(--tiger-text-secondary, #64748b);
+  }
+
+  .p2-soft-surface {
+    border: 1px solid var(--tiger-border, #e2e8f0);
+    border-radius: 0.5rem;
+    background: var(--tiger-bg-card, #ffffff);
+  }
+
+  .p2-icon-chip {
+    --p2-chip-color: var(--tiger-primary, #3b82f6);
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--p2-chip-color) 14%, transparent);
+    color: var(--p2-chip-color);
+  }
+
+  .p2-action-tile {
+    border: 1px solid var(--tiger-border, #e2e8f0);
+    border-radius: 0.5rem;
+    background: var(--tiger-bg-card, #ffffff);
+    color: var(--tiger-text, #1f2937);
+  }
+
+  .p2-action-tile:hover {
+    border-color: var(--tiger-primary, #3b82f6);
+    background: var(--tiger-bg-hover, #f3f4f6);
+  }
+
+  .p2-checkbox-row {
+    display: flex;
+    min-width: 0;
+    cursor: pointer;
+    align-items: flex-start;
+    gap: 0.5rem;
+    color: var(--tiger-text-secondary, #64748b);
+  }
+
+  .p2-checkbox-row:hover {
+    color: var(--tiger-text, #1f2937);
+  }
+
+  .p2-checkbox-label {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .p2-modal-scroll {
+    max-height: min(66vh, 32rem);
+    overflow-y: auto;
+    padding-right: 0.25rem;
+  }
+
+  .p2-overlay {
+    background: color-mix(in srgb, var(--tiger-text, #0f172a) 48%, transparent);
+  }
+}
 @theme {
   --animate-shake: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
 

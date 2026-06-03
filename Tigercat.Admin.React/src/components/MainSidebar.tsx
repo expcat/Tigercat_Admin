@@ -122,7 +122,7 @@ export function MainSidebar({
           <div className="shrink-0 border-t border-(--tiger-border,#e2e8f0) p-3">
             <button
               onClick={() => onCollapsedChange(!collapsed)}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm text-(--tiger-text-secondary,#64748b) hover:bg-(--tiger-bg-hover,#f3f4f6) hover:text-(--tiger-text,#1f2937) transition-all duration-200">
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm text-(--tiger-text-secondary,#64748b) hover:bg-(--tiger-bg-hover,#f3f4f6) hover:text-(--tiger-text,#1f2937) transition-all duration-200">
               <span className="shrink-0">
                 {collapsed ? (
                   <ChevronRightIcon size={18} />

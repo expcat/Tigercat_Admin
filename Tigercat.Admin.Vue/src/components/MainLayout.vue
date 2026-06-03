@@ -113,7 +113,7 @@ watch(
       v-if="isMobile && sidebarOpen"
       type="button"
       aria-label="关闭导航菜单"
-      class="fixed inset-0 z-30 bg-slate-950/45 md:hidden"
+      class="p2-overlay fixed inset-0 z-30 md:hidden"
       @click="handleSidebarClose"
     />
 
@@ -157,7 +157,7 @@ watch(
       />
 
       <!-- Content -->
-      <Content class="min-h-0 overflow-auto p-4 scroll-smooth md:p-6">
+      <Content class="min-h-0 overflow-auto p-3 scroll-smooth sm:p-4 md:p-6">
         <div class="mx-auto max-w-7xl animate-fade-in">
           <slot></slot>
         </div>

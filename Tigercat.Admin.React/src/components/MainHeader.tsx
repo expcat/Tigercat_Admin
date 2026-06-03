@@ -68,8 +68,8 @@ export function MainHeader({
     breadcrumbItems.length > 0 ? breadcrumbItems : [pageTitle];
 
   return (
-    <Header className="flex items-center justify-between px-6 shadow-sm z-10">
-      <div className="flex min-w-0 flex-col gap-1 py-3">
+    <Header className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 shadow-sm z-10 md:flex-nowrap md:px-6">
+      <div className="flex min-w-0 flex-1 flex-col gap-1 py-2">
         {showSidebarToggle && (
           <button
             type="button"
@@ -77,7 +77,7 @@ export function MainHeader({
             aria-controls="main-sidebar"
             aria-expanded={sidebarOpen}
             aria-label={sidebarOpen ? '关闭导航菜单' : '打开导航菜单'}
-            className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-(--tiger-border,#e2e8f0) text-(--tiger-text-secondary,#64748b) transition-colors hover:border-(--tiger-primary,#3b82f6) hover:bg-(--tiger-bg-hover,#f3f4f6) hover:text-(--tiger-text,#1f2937) md:hidden">
+            className="mb-1 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-(--tiger-border,#e2e8f0) text-(--tiger-text-secondary,#64748b) transition-colors hover:border-(--tiger-primary,#3b82f6) hover:bg-(--tiger-bg-hover,#f3f4f6) hover:text-(--tiger-text,#1f2937) md:hidden">
             {sidebarOpen ? <XIcon size={18} /> : <MenuIcon size={18} />}
           </button>
         )}
@@ -85,7 +85,7 @@ export function MainHeader({
           管理中心
         </Text>
         <Breadcrumb
-          className="text-sm text-(--tiger-text-secondary,#64748b)"
+          className="min-w-0 max-w-full overflow-hidden text-sm text-(--tiger-text-secondary,#64748b)"
           maxItems={4}>
           <BreadcrumbItem>管理中心</BreadcrumbItem>
           {currentBreadcrumbItems.map((item, index) => (
@@ -99,7 +99,7 @@ export function MainHeader({
       </div>
 
       {/* 右侧操作区 */}
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 max-w-full shrink-0 items-center gap-2 sm:gap-3">
         {demoMode && (
           <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
             演示模式
@@ -107,18 +107,18 @@ export function MainHeader({
         )}
         <Dropdown trigger="click" placement="bottom-end">
           <button
-            className="flex items-center gap-3 rounded-full border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-hover,#f3f4f6) px-3 py-1.5 text-left transition-colors hover:border-(--tiger-primary,#3b82f6) hover:text-(--tiger-text,#1f2937)"
+            className="flex max-w-[12rem] items-center gap-2 rounded-full border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-hover,#f3f4f6) px-2.5 py-1.5 text-left transition-colors hover:border-(--tiger-primary,#3b82f6) hover:text-(--tiger-text,#1f2937) sm:max-w-56 sm:gap-3 sm:px-3"
             title={accountLabel}
             aria-label={accountLabel}>
-            <Avatar className="bg-linear-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm">
+            <Avatar className="p2-icon-chip shrink-0 font-bold text-sm">
               {accountLabel.charAt(0).toUpperCase()}
             </Avatar>
-            <span className="text-sm font-medium text-(--tiger-text,#1f2937)">
+            <span className="min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937)">
               {accountLabel}
             </span>
           </button>
 
-          <DropdownMenu className="min-w-56">
+          <DropdownMenu className="w-56 max-w-[calc(100vw-2rem)]">
             <DropdownItem onClick={onToggleTheme}>
               <span className="flex items-center gap-2 text-sm">
                 <ThemeIcon mode={themeMode} />

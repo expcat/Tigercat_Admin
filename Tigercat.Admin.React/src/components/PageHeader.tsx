@@ -17,15 +17,15 @@ export function PageHeader({ title, subtitle, icon, tags }: PageHeaderProps) {
   return (
     <Card className="overflow-hidden">
       <div className="relative">
-        <div className="absolute inset-0 bg-linear-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4" />
-        <div className="relative flex items-center justify-between">
-          <div>
+        <div className="p2-page-accent absolute inset-0 -m-4" />
+        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg text-white">
+              <div className="p2-icon-chip flex h-12 w-12 shrink-0 items-center justify-center">
                 {icon}
               </div>
-              <div>
-                <Text size="lg" weight="bold" className="text-slate-800">
+              <div className="min-w-0">
+                <Text size="lg" weight="bold" className="p2-text-primary">
                   {title}
                 </Text>
                 <Text size="sm" color="secondary">

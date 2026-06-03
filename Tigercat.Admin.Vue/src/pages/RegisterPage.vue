@@ -67,14 +67,14 @@ const goToLogin = () => {
 </script>
 
 <template>
-  <div class="w-full max-w-md mx-auto">
+  <div class="w-full max-w-md mx-auto px-1 sm:px-0">
     <!-- Logo & Welcome -->
     <div class="text-center mb-8">
       <div class="inline-flex mb-4">
         <AppLogo :size="64" />
       </div>
-      <h1 class="text-2xl font-semibold text-gray-800">创建账号</h1>
-      <p class="text-gray-500 mt-1">注册 Tigercat Admin 账号</p>
+      <h1 class="p2-text-primary text-2xl font-semibold">创建账号</h1>
+      <p class="p2-text-secondary mt-1">注册 Tigercat Admin 账号</p>
     </div>
 
     <Card class="shadow-xl border-0">
@@ -84,8 +84,8 @@ const goToLogin = () => {
             :model-value="form.username"
             placeholder="请输入用户名"
             :status="errors?.username ? 'error' : ''"
-            :errorMessage="errors?.username"
-            @update:modelValue="(val) => setField('username', val)"
+            :error-message="errors?.username"
+            @update:model-value="(val) => setField('username', val)"
           />
         </FormItem>
         <FormItem prop="password" label="密码">
@@ -94,17 +94,17 @@ const goToLogin = () => {
             type="password"
             placeholder="请输入密码"
             :status="errors?.password ? 'error' : ''"
-            :errorMessage="errors?.password"
-            @update:modelValue="(val) => setField('password', val)"
+            :error-message="errors?.password"
+            @update:model-value="(val) => setField('password', val)"
           />
         </FormItem>
         <div class="mt-8 flex flex-col gap-3">
           <Button variant="primary" block :loading="loading" html-type="button" @click="handleRegister">注册</Button>
-          <div class="text-center text-sm text-gray-500">
+          <div class="p2-text-secondary text-center text-sm">
             已有账号？
             <button
               type="button"
-              class="text-blue-600 hover:text-blue-700 font-medium hover:underline"
+              class="font-medium text-(--tiger-primary,#3b82f6) hover:underline"
               @click="goToLogin"
             >
               立即登录

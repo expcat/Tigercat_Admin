@@ -145,9 +145,9 @@ function SettingsPage() {
         <>
           <Card title="站点 Logo" className="overflow-hidden">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
-              <div className="space-y-4 rounded-lg border border-dashed border-slate-300 p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
+              <div className="space-y-4 rounded-lg border border-dashed border-(--tiger-border,#e2e8f0) p-4 sm:p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
                     <Text weight="bold">站点 Logo</Text>
                     <Text size="sm" color="secondary">
                       上传后会写入 site.logo 表单值，保存设置后建立媒体引用。
@@ -158,7 +158,7 @@ function SettingsPage() {
                   </Tag>
                 </div>
 
-                <div className="flex min-h-44 items-center justify-center rounded-lg bg-slate-50 p-6">
+                <div className="flex min-h-44 items-center justify-center rounded-lg bg-(--tiger-bg-hover,#f8fafc) p-4 sm:p-6">
                   {currentLogoUrl ? (
                     <img
                       src={currentLogoUrl}
@@ -166,7 +166,7 @@ function SettingsPage() {
                       className="max-h-28 max-w-full rounded-lg object-contain"
                     />
                   ) : (
-                    <div className="flex flex-col items-center gap-3 text-slate-500">
+                    <div className="p2-text-secondary flex flex-col items-center gap-3 text-center">
                       <LogoIcon size={56} />
                       <Text size="sm" color="secondary">
                         暂无 Logo，上传后会在这里显示本地预览
@@ -184,12 +184,12 @@ function SettingsPage() {
                   customRequest={handleLogoUpload}
                 />
 
-                <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                <div className="p2-muted-panel px-4 py-3 text-sm">
                   当前持久化值：{editValues['site.logo'] || '未设置'}
                 </div>
               </div>
 
-              <div className="flex items-center rounded-lg bg-slate-50 p-5 text-sm text-slate-600">
+              <div className="p2-muted-panel flex items-center p-5 text-sm">
                 Logo 媒体被设置引用后，文件管理页会阻止直接删除；恢复默认值并保存后会解除引用。
               </div>
             </div>
@@ -300,7 +300,7 @@ function SettingsPage() {
           </div>
 
           {canEdit && (
-            <div className="flex flex-wrap justify-end gap-3">
+            <div className="flex flex-col justify-end gap-3 sm:flex-row sm:flex-wrap">
               <Popconfirm
                 title="恢复默认值"
                 description="会将当前表单恢复为系统默认配置，提交后才会真正生效。"
@@ -331,7 +331,7 @@ function SettingsPage() {
             cancelText="取消"
             onOk={handleSave}
             onCancel={() => setSaveConfirmOpen(false)}>
-            <div className="space-y-4">
+            <div className="p2-modal-scroll space-y-4">
               <Text>
                 将提交 {changedSettings.length}{' '}
                 项设置变更。保存后会立即影响当前系统配置。

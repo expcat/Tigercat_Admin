@@ -265,7 +265,7 @@ function TasksPage() {
               当前任务来自后端模型，创建、负责人、截止时间和状态流转会持久化并写入审计事件。
             </Text>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
             <Input
               value={filterText}
               placeholder="搜索任务标题或说明"
@@ -281,7 +281,7 @@ function TasksPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card>
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+            <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
               <ClipboardIcon size={20} />
             </div>
             <div>
@@ -295,7 +295,7 @@ function TasksPage() {
 
         <Card>
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+            <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
               <ClockIcon size={20} />
             </div>
             <div>
@@ -309,7 +309,7 @@ function TasksPage() {
 
         <Card>
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-100 text-red-600">
+            <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
               <ZapIcon size={20} />
             </div>
             <div>
@@ -323,7 +323,7 @@ function TasksPage() {
       </div>
 
       <Card title="任务流转验证">
-        <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-hover,#f8fafc) p-4">
+        <div className="p2-muted-panel mb-4 flex flex-col gap-2 p-4">
           <Text weight="bold">最近动作</Text>
           <Text size="sm" color="secondary">
             {loading ? '正在同步后端任务...' : lastAction}

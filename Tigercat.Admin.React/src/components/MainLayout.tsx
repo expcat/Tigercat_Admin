@@ -113,7 +113,7 @@ export function MainLayout({
           type="button"
           aria-label="关闭导航菜单"
           onClick={handleSidebarClose}
-          className="fixed inset-0 z-30 bg-slate-950/45 md:hidden"
+          className="p2-overlay fixed inset-0 z-30 md:hidden"
         />
       )}
 
@@ -155,7 +155,7 @@ export function MainLayout({
         />
 
         {/* Content */}
-        <Content className="min-h-0 overflow-auto p-4 scroll-smooth md:p-6">
+        <Content className="min-h-0 overflow-auto p-3 scroll-smooth sm:p-4 md:p-6">
           <div className="mx-auto max-w-7xl animate-fade-in">{children}</div>
         </Content>
       </Layout>

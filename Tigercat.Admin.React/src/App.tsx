@@ -84,7 +84,7 @@ type LocationState = {
 function PageLoader() {
   return (
     <div className="flex items-center justify-center h-full min-h-50">
-      <div className="text-slate-500">加载中...</div>
+      <div className="p2-text-secondary">加载中...</div>
     </div>
   );
 }
@@ -103,7 +103,7 @@ function getSafeReturnTo(value: unknown): string {
 
 function GuestLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-100 via-blue-50 to-indigo-100 p-6 flex items-center justify-center">
+    <div className="min-h-screen bg-(--tiger-bg-page,#f8fafc) p-4 flex items-center justify-center sm:p-6">
       <Container className="w-full max-w-4xl" padding={false}>
         <Suspense fallback={<PageLoader />}>{children}</Suspense>
       </Container>

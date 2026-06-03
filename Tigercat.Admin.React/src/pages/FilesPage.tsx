@@ -120,8 +120,8 @@ function FilesPage() {
       />
 
       <Card>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <Select
               value={contentType}
               options={TYPE_OPTIONS}
@@ -136,7 +136,7 @@ function FilesPage() {
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             {canDelete && (
               <Button
                 variant="outline"
@@ -179,7 +179,7 @@ function FilesPage() {
           }}
         />
 
-        <div className="mt-3 text-sm text-slate-500">
+        <div className="p2-text-secondary mt-3 text-sm">
           <Text size="sm" color="secondary">
             被 Logo 或头像引用的媒体会在删除时返回冲突提示。
           </Text>

@@ -200,7 +200,7 @@ onMounted(loadNotifications)
       <Card>
         <div class="flex items-center gap-3">
           <Badge :content="unreadCount" type="number" :show-zero="true" :max="99" :standalone="false">
-            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+            <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
               <Icon name="bell" :size="20" />
             </div>
           </Badge>
@@ -216,7 +216,7 @@ onMounted(loadNotifications)
       <Card>
         <div class="flex items-center gap-3">
           <Badge :content="opsUnreadCount" type="number" :show-zero="true" :standalone="false">
-            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+            <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
               <Icon name="server" :size="20" />
             </div>
           </Badge>
@@ -232,7 +232,7 @@ onMounted(loadNotifications)
       <Card>
         <div class="flex items-center gap-3">
           <Badge :content="securityUnreadCount" type="number" :show-zero="true" :standalone="false">
-            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+            <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
               <Icon name="shieldCheck" :size="20" />
             </div>
           </Badge>
@@ -248,7 +248,7 @@ onMounted(loadNotifications)
       <Card>
         <div class="flex items-center gap-3">
           <Badge :content="releaseUnreadCount" type="number" :show-zero="true" :standalone="false">
-            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+            <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
               <Icon name="checkCircle" :size="20" />
             </div>
           </Badge>
@@ -284,7 +284,7 @@ onMounted(loadNotifications)
         <div
           v-for="item in notifications.slice(0, 2)"
           :key="item.id"
-          class="rounded-2xl border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-hover,#f8fafc) p-4"
+          class="p2-muted-panel p-4"
         >
           <div class="flex items-center justify-between gap-3">
             <Text weight="bold">{{ item.title }}</Text>

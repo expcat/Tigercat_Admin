@@ -412,7 +412,7 @@ function RolesPage() {
         title: '描述',
         width: 200,
         render: (record) => (
-          <span className="text-sm text-slate-600">
+          <span className="p2-text-secondary text-sm">
             {record.description || '-'}
           </span>
         ),
@@ -445,7 +445,7 @@ function RolesPage() {
         width: 180,
         sortable: true,
         render: (record) => (
-          <span className="text-sm text-slate-600">
+          <span className="p2-text-secondary text-sm">
             {new Date(record.createdAt).toLocaleString('zh-CN')}
           </span>
         ),
@@ -467,7 +467,7 @@ function RolesPage() {
                   <Button size="sm" variant="ghost">
                     操作
                   </Button>
-                  <DropdownMenu className="min-w-28">
+                  <DropdownMenu className="w-28 max-w-[calc(100vw-2rem)]">
                     <DropdownItem onClick={() => openEditModal(record)}>
                       编辑角色
                     </DropdownItem>
@@ -580,7 +580,7 @@ function RolesPage() {
         ]}
       />
 
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
         <Popover
           trigger="click"
           placement="bottom-end"
@@ -592,12 +592,14 @@ function RolesPage() {
               ).map((key) => (
                 <label
                   key={key}
-                  className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
+                  className="p2-checkbox-row text-sm">
                   <Checkbox
                     checked={!hiddenColumns.has(key)}
                     onChange={() => toggleColumn(key)}
                   />
-                  <span>{COLUMN_LABELS[key] || key}</span>
+                  <span className="p2-checkbox-label">
+                    {COLUMN_LABELS[key] || key}
+                  </span>
                 </label>
               ))}
             </div>
@@ -627,7 +629,7 @@ function RolesPage() {
         </PermissionGuard>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+      <div className="p2-muted-panel px-4 py-3 text-sm">
         {serverPaginationHint}
       </div>
 
@@ -661,6 +663,7 @@ function RolesPage() {
         cancelText="取消"
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}>
+        <div className="p2-modal-scroll">
         <Form model={formData} labelWidth={88}>
           <FormItem label="角色名称" name="name">
             <Input
@@ -688,6 +691,7 @@ function RolesPage() {
             />
           </FormItem>
         </Form>
+        </div>
       </Modal>
 
       {/* Permission Configuration Modal */}
@@ -699,14 +703,14 @@ function RolesPage() {
         cancelText="取消"
         onOk={handlePermSubmit}
         onCancel={() => setPermModalVisible(false)}>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
+        <div className="p2-modal-scroll space-y-3">
+          <div className="flex flex-col gap-2 text-sm text-(--tiger-text-secondary,#64748b) sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <span>按分组勾选权限，保存时仍提交扁平 permissionIds。</span>
             <Tag color="blue" size="sm">
               {permConfigIds.length} / {allPermissions.length}
             </Tag>
           </div>
-          <div className="max-h-96 overflow-y-auto rounded-lg border border-slate-200 p-3">
+          <div className="max-h-96 overflow-y-auto rounded-lg border border-(--tiger-border,#e2e8f0) p-3">
             <Tree
               treeData={permissionTreeData}
               checkable
@@ -733,6 +737,7 @@ function RolesPage() {
         confirmLoading={exporting}
         onOk={handleExport}
         onCancel={() => setExportModalVisible(false)}>
+        <div className="p2-modal-scroll">
         <Form labelWidth={88}>
           <FormItem label="导出格式">
             <Select
@@ -746,17 +751,18 @@ function RolesPage() {
               {EXPORT_FIELD_OPTIONS.map((field) => (
                 <label
                   key={field.key}
-                  className="flex items-center gap-1.5 text-sm text-slate-600 cursor-pointer hover:text-slate-800">
+                  className="p2-checkbox-row text-sm">
                   <Checkbox
                     checked={exportFields.includes(field.key)}
                     onChange={() => toggleExportField(field.key)}
                   />
-                  <span>{field.label}</span>
+                  <span className="p2-checkbox-label">{field.label}</span>
                 </label>
               ))}
             </div>
           </FormItem>
         </Form>
+        </div>
       </Modal>
     </div>
   );

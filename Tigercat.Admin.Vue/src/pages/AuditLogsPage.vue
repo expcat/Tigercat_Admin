@@ -260,7 +260,7 @@ onMounted(async () => {
           <Text size="sm" color="secondary">
             {{ selectedLog.eventType }} · {{ selectedLog.actor ?? '系统' }} · {{ formatDateTime(selectedLog.occurredAtUtc) }}
           </Text>
-          <pre class="max-h-72 overflow-auto rounded bg-(--tiger-bg-hover,#f8fafc) p-3 text-sm">{{ JSON.stringify(selectedLog.data, null, 2) }}</pre>
+          <pre class="max-h-72 max-w-full overflow-auto rounded bg-(--tiger-bg-hover,#f8fafc) p-3 text-sm">{{ JSON.stringify(selectedLog.data, null, 2) }}</pre>
         </div>
         <Text v-else color="secondary">暂无可查看的审计详情。</Text>
       </Card>
@@ -269,7 +269,7 @@ onMounted(async () => {
     <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
       <Card>
         <div class="flex items-center gap-3">
-          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+          <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
             <Icon name="shieldCheck" :size="20" />
           </div>
           <div>
@@ -283,7 +283,7 @@ onMounted(async () => {
 
       <Card>
         <div class="flex items-center gap-3">
-          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-green-100 text-green-600">
+          <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
             <Icon name="users" :size="20" />
           </div>
           <div>
@@ -297,7 +297,7 @@ onMounted(async () => {
 
       <Card>
         <div class="flex items-center gap-3">
-          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-100 text-purple-600">
+          <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
             <Icon name="checkCircle" :size="20" />
           </div>
           <div>

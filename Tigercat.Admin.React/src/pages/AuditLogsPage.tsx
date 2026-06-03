@@ -305,7 +305,7 @@ function AuditLogsPage() {
                 {selectedLog.eventType} · {selectedLog.actor ?? '系统'} ·{' '}
                 {formatDateTime(selectedLog.occurredAtUtc)}
               </Text>
-              <pre className="max-h-72 overflow-auto rounded bg-(--tiger-bg-hover,#f8fafc) p-3 text-sm">
+              <pre className="max-h-72 max-w-full overflow-auto rounded bg-(--tiger-bg-hover,#f8fafc) p-3 text-sm">
                 {JSON.stringify(selectedLog.data, null, 2)}
               </pre>
             </div>
@@ -318,7 +318,7 @@ function AuditLogsPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card>
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+            <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
               <ShieldCheckIcon size={20} />
             </div>
             <div>
@@ -332,7 +332,7 @@ function AuditLogsPage() {
 
         <Card>
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-100 text-green-600">
+            <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
               <UsersIcon size={20} />
             </div>
             <div>
@@ -346,7 +346,7 @@ function AuditLogsPage() {
 
         <Card>
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-100 text-purple-600">
+            <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center">
               <CheckCircleIcon size={20} />
             </div>
             <div>

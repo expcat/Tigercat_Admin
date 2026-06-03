@@ -55,21 +55,21 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
 </script>
 
 <template>
-  <Header class="flex items-center justify-between px-6 shadow-sm z-10">
-    <div class="flex min-w-0 flex-col gap-1 py-3">
+  <Header class="flex flex-wrap items-center justify-between gap-3 px-4 py-2 shadow-sm z-10 md:flex-nowrap md:px-6">
+    <div class="flex min-w-0 flex-1 flex-col gap-1 py-2">
       <button
         v-if="props.showSidebarToggle"
         type="button"
         aria-controls="main-sidebar"
         :aria-expanded="props.sidebarOpen"
         :aria-label="props.sidebarOpen ? '关闭导航菜单' : '打开导航菜单'"
-        class="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-(--tiger-border,#e2e8f0) text-(--tiger-text-secondary,#64748b) transition-colors hover:border-(--tiger-primary,#3b82f6) hover:bg-(--tiger-bg-hover,#f3f4f6) hover:text-(--tiger-text,#1f2937) md:hidden"
+        class="mb-1 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-(--tiger-border,#e2e8f0) text-(--tiger-text-secondary,#64748b) transition-colors hover:border-(--tiger-primary,#3b82f6) hover:bg-(--tiger-bg-hover,#f3f4f6) hover:text-(--tiger-text,#1f2937) md:hidden"
         @click="$emit('toggle-sidebar')"
       >
         <Icon :name="props.sidebarOpen ? 'x' : 'menu'" :size="18" />
       </button>
       <Text size="lg" weight="bold" class="text-(--tiger-text,#1f2937)">管理中心</Text>
-      <Breadcrumb class-name="text-sm text-(--tiger-text-secondary,#64748b)" :max-items="4">
+      <Breadcrumb class-name="min-w-0 max-w-full overflow-hidden text-sm text-(--tiger-text-secondary,#64748b)" :max-items="4">
         <BreadcrumbItem>管理中心</BreadcrumbItem>
         <BreadcrumbItem
           v-for="(item, index) in (props.breadcrumbItems.length ? props.breadcrumbItems : [props.pageTitle])"
@@ -82,7 +82,7 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
     </div>
     
     <!-- 右侧操作区 -->
-    <div class="flex items-center gap-3">
+    <div class="flex min-w-0 max-w-full shrink-0 items-center gap-2 sm:gap-3">
       <span
         v-if="props.demoMode"
         class="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700"
@@ -91,17 +91,17 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
       </span>
       <Dropdown trigger="click" placement="bottom-end">
         <button 
-          class="flex items-center gap-3 rounded-full border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-hover,#f3f4f6) px-3 py-1.5 text-left transition-colors hover:border-(--tiger-primary,#3b82f6) hover:text-(--tiger-text,#1f2937)"
+          class="flex max-w-[12rem] items-center gap-2 rounded-full border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-hover,#f3f4f6) px-2.5 py-1.5 text-left transition-colors hover:border-(--tiger-primary,#3b82f6) hover:text-(--tiger-text,#1f2937) sm:max-w-56 sm:gap-3 sm:px-3"
           :title="getAccountLabel(props.session)"
           :aria-label="getAccountLabel(props.session)"
         >
-          <Avatar class="bg-linear-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm">
+          <Avatar class="p2-icon-chip shrink-0 font-bold text-sm">
             {{ getAccountLabel(props.session).charAt(0).toUpperCase() }}
           </Avatar>
-          <span class="text-sm font-medium text-(--tiger-text,#1f2937)">{{ getAccountLabel(props.session) }}</span>
+          <span class="min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937)">{{ getAccountLabel(props.session) }}</span>
         </button>
 
-        <DropdownMenu class-name="min-w-56">
+        <DropdownMenu class-name="w-56 max-w-[calc(100vw-2rem)]">
           <DropdownItem @click="$emit('toggle-theme')">
             <span class="flex items-center gap-2 text-sm">
               <Icon :name="getThemeIcon(themeMode)" :size="16" />

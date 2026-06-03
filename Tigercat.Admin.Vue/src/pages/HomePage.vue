@@ -36,10 +36,10 @@ const trendDaysOptions = [
 const statsCards = computed(() => {
   const o = overview.value
   return [
-    { label: '总用户数', value: o ? String(o.totalUsers) : '-', icon: 'users', iconClass: 'text-blue-600', bgClass: 'bg-blue-100 dark:bg-blue-900/30' },
-    { label: '活跃用户', value: o ? String(o.activeUsers) : '-', icon: 'activity', iconClass: 'text-purple-600', bgClass: 'bg-purple-100 dark:bg-purple-900/30' },
-    { label: '总角色数', value: o ? String(o.totalRoles) : '-', icon: 'shield', iconClass: 'text-orange-600', bgClass: 'bg-orange-100 dark:bg-orange-900/30' },
-    { label: '总权限数', value: o ? String(o.totalPermissions) : '-', icon: 'shieldCheck', iconClass: 'text-green-600', bgClass: 'bg-green-100 dark:bg-green-900/30' },
+    { label: '总用户数', value: o ? String(o.totalUsers) : '-', icon: 'users', iconClass: '', bgClass: 'p2-icon-chip' },
+    { label: '活跃用户', value: o ? String(o.activeUsers) : '-', icon: 'activity', iconClass: '', bgClass: 'p2-icon-chip' },
+    { label: '总角色数', value: o ? String(o.totalRoles) : '-', icon: 'shield', iconClass: '', bgClass: 'p2-icon-chip' },
+    { label: '总权限数', value: o ? String(o.totalPermissions) : '-', icon: 'shieldCheck', iconClass: '', bgClass: 'p2-icon-chip' },
   ]
 })
 
@@ -116,13 +116,13 @@ const quickActions = [
     <!-- 欢迎区域 -->
     <Card class="overflow-hidden">
       <div class="relative">
-        <div class="absolute inset-0 bg-linear-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 -m-4"></div>
-        <div class="relative flex items-center justify-between">
-          <div>
+        <div class="p2-page-accent absolute inset-0 -m-4"></div>
+        <div class="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="min-w-0">
             <div class="flex items-center gap-3 mb-2">
               <AppLogo class="drop-shadow-sm" />
-              <div>
-                <Text size="lg" weight="bold" class="text-slate-800">
+              <div class="min-w-0">
+                <Text size="lg" weight="bold" class="p2-text-primary">
                   欢迎回来，{{ session?.username || 'Admin' }}！
                 </Text>
                 <Text size="sm" color="secondary">
@@ -158,13 +158,13 @@ const quickActions = [
         <div class="flex items-start justify-between">
           <div class="flex-1">
             <Text size="sm" color="secondary">{{ stat.label }}</Text>
-            <div class="text-2xl font-bold mt-2 text-slate-800">
+            <div class="p2-text-primary text-2xl font-bold mt-2">
               <Loading v-if="statsLoading" size="sm" />
               <template v-else>{{ stat.value }}</template>
             </div>
           </div>
           <div
-            class="w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
+            class="flex h-12 w-12 items-center justify-center transition-transform group-hover:scale-110"
             :class="stat.bgClass"
           >
             <Icon :name="stat.icon" :size="20" :class="stat.iconClass" />
@@ -178,9 +178,9 @@ const quickActions = [
       <!-- 用户创建趋势（折线图） -->
       <Card class="lg:col-span-2">
         <template #header>
-          <div class="flex items-center justify-between">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Text size="base" weight="bold">用户创建趋势</Text>
-            <div class="w-36">
+            <div class="w-full sm:w-36">
               <Select
                 v-model="trendDays"
                 :options="trendDaysOptions"
@@ -208,7 +208,7 @@ const quickActions = [
           y-axis-label="新增用户"
           :x-tick-format="(v: string | number) => String(v).slice(5)"
         />
-        <div v-else class="flex items-center justify-center h-52 text-slate-400">
+        <div v-else class="flex items-center justify-center h-52 p2-text-secondary">
           <Text size="sm" color="secondary">暂无趋势数据</Text>
         </div>
       </Card>
@@ -228,7 +228,7 @@ const quickActions = [
           :show-legend="true"
           legend-position="bottom"
         />
-        <div v-else class="flex items-center justify-center h-52 text-slate-400">
+        <div v-else class="flex items-center justify-center h-52 p2-text-secondary">
           <Text size="sm" color="secondary">暂无分布数据</Text>
         </div>
       </Card>
@@ -242,21 +242,10 @@ const quickActions = [
           <button
             v-for="(action, index) in quickActions"
             :key="action.key"
-            class="group flex flex-col items-center justify-center p-4 rounded-xl bg-linear-to-br transition-all duration-300 cursor-pointer border border-slate-200 hover:border-transparent hover:shadow-md"
-            :class="[
-              index === 0 ? 'from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200' : '',
-              index === 1 ? 'from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200' : '',
-              index === 2 ? 'from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200' : '',
-              index === 3 ? 'from-green-50 to-green-100 hover:from-green-100 hover:to-green-200' : '',
-            ]"
+            class="p2-action-tile group flex min-h-24 flex-col items-center justify-center p-4 transition-all duration-300 hover:shadow-md"
           >
             <div class="mb-2 transition-transform group-hover:scale-110">
-              <Icon :name="action.icon" :size="24" :class="[
-                index === 0 ? 'text-blue-600' : '',
-                index === 1 ? 'text-purple-600' : '',
-                index === 2 ? 'text-orange-600' : '',
-                index === 3 ? 'text-green-600' : '',
-              ]" />
+              <Icon :name="action.icon" :size="24" class="text-(--tiger-primary,#3b82f6)" />
             </div>
             <Text size="sm" weight="medium">{{ action.label }}</Text>
           </button>
@@ -283,7 +272,7 @@ const quickActions = [
           :bar-radius="6"
           y-axis-label="数量"
         />
-        <div v-else class="flex items-center justify-center h-52 text-slate-400">
+        <div v-else class="flex items-center justify-center h-52 p2-text-secondary">
           <Text size="sm" color="secondary">暂无概览数据</Text>
         </div>
       </Card>
@@ -293,7 +282,7 @@ const quickActions = [
     <Card title="系统信息">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+          <div class="p2-icon-chip flex h-10 w-10 items-center justify-center">
             <Icon name="package" :size="20" />
           </div>
           <div>
@@ -302,7 +291,7 @@ const quickActions = [
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
+          <div class="p2-icon-chip flex h-10 w-10 items-center justify-center">
             <Icon name="zap" :size="20" />
           </div>
           <div>
@@ -311,7 +300,7 @@ const quickActions = [
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">
+          <div class="p2-icon-chip flex h-10 w-10 items-center justify-center">
             <Icon name="calendar" :size="20" />
           </div>
           <div>
@@ -320,7 +309,7 @@ const quickActions = [
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+          <div class="p2-icon-chip flex h-10 w-10 items-center justify-center">
             <Icon name="globe" :size="20" />
           </div>
           <div>
