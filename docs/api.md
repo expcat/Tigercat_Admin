@@ -38,6 +38,7 @@
 - **返回 data**：
   - `status`：健康状态字符串
   - `timestamp`：UTC 时间
+  - `details`：依赖状态明细，包含 `database`、`redis`、`eventChannel`、`configuration`
 
 示例：
 
@@ -48,10 +49,18 @@
   "success": true,
   "data": {
     "status": "healthy",
-    "timestamp": "2026-01-21T00:00:00Z"
+    "timestamp": "2026-01-21T00:00:00Z",
+    "details": {
+      "database": { "status": "healthy", "target": "Sqlite", "message": null },
+      "redis": { "status": "healthy", "target": "redis", "message": null },
+      "eventChannel": { "status": "healthy", "target": "stream:auth,stream:admin", "message": null },
+      "configuration": { "status": "healthy", "target": "Development", "message": null }
+    }
   }
 }
 ```
+
+当任一依赖或关键配置不可用时，接口返回 `503`，并在对应 `details` 项中给出诊断信息。
 
 ### 1.1 Redis 健康检查
 

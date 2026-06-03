@@ -64,6 +64,10 @@ pnpm build:all                    # 所有前端
 
 构建产物：.NET → `bin/Debug/net10.0/`，Vue/React → `dist/`
 
+## 发布与生产化
+
+生产环境配置样例、健康检查、数据库发布策略和 CI 门禁见 [docs/deployment.md](docs/deployment.md)。
+
 ## 数据库配置
 
 后端通过 `Database:Provider` 显式选择数据库提供程序：

@@ -18,6 +18,8 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(ApiResponse<LoginResponse>))]
 [JsonSerializable(typeof(ApiResponse<MessageResponse>))]
 [JsonSerializable(typeof(ApiResponse<HealthResponse>))]
+[JsonSerializable(typeof(HealthDependencyStatus))]
+[JsonSerializable(typeof(Dictionary<string, HealthDependencyStatus>))]
 [JsonSerializable(typeof(ApiResponse<InfoResponse>))]
 [JsonSerializable(typeof(Dictionary<string, string?>))]
 [JsonSerializable(typeof(UserResponse))]

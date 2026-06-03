@@ -11,13 +11,14 @@
 - 本文只维护尚未完成的后续计划、执行优先级和验证门禁。
 - API 细节以 [api.md](api.md) 为准。
 - 数据库 provider、连接串和回归方式以 [database.md](database.md) 为准。
+- 发布、生产配置、CI 和部署策略以 [deployment.md](deployment.md) 为准。
 - 组件缺口与上游诉求以 [upstream-requirements.md](upstream-requirements.md) 为准。
 - E2E 回归规划已合并到本文，不再单独维护独立 Roadmap 类文档。
 - Tigercat UI 最新使用方式以官方文档为准：[Vue 3](https://expcat.github.io/Tigercat/vue/) / [React](https://expcat.github.io/Tigercat/react/) / [迁移指南](https://raw.githubusercontent.com/expcat/Tigercat/main/docs/MIGRATION.md)。
 
 ## 规划基线
 
-当前代码库已经具备后端 API、React / Vue 双端后台、Tigercat 1.2.16 组件接入、SQLite / PostgreSQL provider、Redis 缓存与事件通道、文件与媒体资源能力、配置化认证安全策略、审计敏感字段清理，以及 Playwright 工作区基座。后续计划不再重复记录历史完成项，只围绕可继续推进的能力建设展开。
+当前代码库已经具备后端 API、React / Vue 双端后台、Tigercat 1.2.16 组件接入、SQLite / PostgreSQL provider、Redis 缓存与事件通道、文件与媒体资源能力、配置化认证安全策略、审计敏感字段清理、Playwright 工作区基座、生产配置样例、部署说明、健康检查依赖明细和最小 CI 门禁。后续计划不再重复记录历史完成项，只围绕可继续推进的能力建设展开。
 
 ## 推进原则
 
@@ -29,32 +30,11 @@
 
 ## 后续路线
 
-### Milestone J：发布与生产化基线
-
-目标：把项目从本地验证样板推进到可部署、可配置、可观测的后台基线。
-
-范围：
-
-- 补充生产环境配置样例：PostgreSQL、Redis、前端 API 地址、CORS、日志级别和密钥来源。
-- 增加 Docker 或部署文档，明确 Aspire、本地开发和独立部署的差异。
-- 完善健康检查：数据库、Redis、事件通道和关键配置缺失的可诊断输出。
-- 建立最小 CI 门禁：后端测试、双端构建、E2E 烟测和 Markdown 链接检查。
-- 明确数据库迁移、种子数据和回滚策略。
-
-验证：
-
-- 干净环境按文档启动成功。
-- `dotnet test Tigercat.Admin.sln`
-- `pnpm build`
-- `pnpm e2e`
+当前暂无新的已确认里程碑。下一阶段计划应在明确业务目标、验收范围和验证门禁后补充到本文。
 
 ## 近期执行队列
 
-1. 补充生产环境配置样例：PostgreSQL、Redis、前端 API 地址、CORS、日志级别和密钥来源。
-2. 增加 Docker 或部署文档，明确 Aspire、本地开发和独立部署的差异。
-3. 完善健康检查：数据库、Redis、事件通道和关键配置缺失的可诊断输出。
-4. 建立最小 CI 门禁：后端测试、双端构建、E2E 烟测和 Markdown 链接检查。
-5. 明确数据库迁移、种子数据和回滚策略。
+暂无待执行队列。新增计划时应保持单一优先级来源，并同步对应专题文档。
 
 ## 验证门禁
 

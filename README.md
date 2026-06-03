@@ -122,6 +122,8 @@ pnpm dev
 
 ## 📝 开发说明
 
+发布与生产化基线见 [docs/deployment.md](docs/deployment.md)，其中包含 PostgreSQL、Redis、CORS、前端 API 地址、健康检查、CI 和回滚策略。
+
 ### 数据库提供程序
 
 后端现在支持三种数据库提供程序切换：

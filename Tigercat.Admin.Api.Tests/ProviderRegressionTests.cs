@@ -806,6 +806,11 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         var body = await response.ReadApiResponseAsync<HealthResponse>();
         Assert.NotNull(body?.Data);
         Assert.Equal("healthy", body.Data.Status);
+        Assert.NotNull(body.Data.Details);
+        Assert.Equal("healthy", body.Data.Details["database"].Status);
+        Assert.Equal("healthy", body.Data.Details["redis"].Status);
+        Assert.Equal("healthy", body.Data.Details["eventChannel"].Status);
+        Assert.Equal("healthy", body.Data.Details["configuration"].Status);
     }
 
     [Fact]

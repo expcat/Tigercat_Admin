@@ -78,6 +78,7 @@ public class InMemoryApiFactory : AdminApiFactory
 {
     protected override Dictionary<string, string?> ConfigurationOverrides => new()
     {
+        ["Infrastructure:UseInMemory"] = "true",
         ["Database:Provider"] = "InMemory",
         ["Database:InMemoryName"] = $"TigercatAdminTests_{Guid.NewGuid():N}",
         ["ConnectionStrings:Redis"] = "localhost:1",
@@ -98,6 +99,7 @@ public class SqliteApiFactory : AdminApiFactory
 
     protected override Dictionary<string, string?> ConfigurationOverrides => new()
     {
+        ["Infrastructure:UseInMemory"] = "true",
         ["Database:Provider"] = "Sqlite",
         ["ConnectionStrings:Redis"] = "localhost:1",
         ["ConnectionStrings:DefaultConnection"] = $"Data Source={_dbPath}",

@@ -15,7 +15,7 @@
 
 ## 默认开发配置
 
-仓库默认使用 SQLite，本地数据库文件位于 [Tigercat.Admin.Api/tigercat_admin.db](../Tigercat.Admin.Api/tigercat_admin.db)。如果文件不存在，API 启动时会自动创建并应用 SQLite 迁移。
+仓库默认使用 SQLite，本地数据库文件位于 `Tigercat.Admin.Api/tigercat_admin.db`。如果文件不存在，API 启动时会自动创建并应用 SQLite 迁移。
 
 对应配置位于 [Tigercat.Admin.Api/appsettings.json](../Tigercat.Admin.Api/appsettings.json)：
 
@@ -71,6 +71,14 @@ export ConnectionStrings__DefaultConnection="Host=db.example.internal;Port=5432;
 - 独立数据库账号，而不是复用超级用户。
 - `SSL Mode=Require` 或等价 TLS 配置。
 - 生产环境通过密钥管理系统注入密码，不直接写入仓库文件。
+
+## 迁移、种子数据与回滚
+
+- SQLite：API 启动时执行 EF Core migrations，适合本地开发和自动化验证。
+- PostgreSQL：当前基线使用启动时建表，生产环境如需严格治理，应在发布前生成迁移 SQL 并纳入部署流水线。
+- 种子数据：权限、角色、默认管理员、系统设置、通知和任务数据由 `DbInitializer` 幂等写入。已存在的业务数据不会被清空。
+- 权限漂移识别：`security.permissionSeedVersion` 和 `security.permissionSeedChecksum` 会写入系统设置，用于识别权限目录版本和摘要。
+- 回滚：发布前备份数据库；若应用回滚但 schema 已发生不兼容变化，应先执行已评审的回滚 SQL 或从备份恢复，再启动旧版本应用。
 
 ## 回归验证
 
