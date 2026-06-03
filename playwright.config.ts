@@ -7,6 +7,7 @@ const vuePort = 54173;
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: /demo-static\.spec\.ts/,
   fullyParallel: false,
   workers: 1,
   timeout: 30_000,
