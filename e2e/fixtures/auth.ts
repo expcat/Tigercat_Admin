@@ -22,8 +22,13 @@ export const test = base.extend<AuthFixtures>({
   loginAsAdmin: async ({ page }, use) => {
     await use(async () => {
       await page.goto('/login');
-      await page.getByPlaceholder('请输入用户名').fill('admin');
-      await page.getByPlaceholder('请输入密码').fill('admin123');
+      const usernameInput = page.getByRole('textbox', { name: '用户名' });
+      const passwordInput = page.getByRole('textbox', { name: '密码' });
+
+      await usernameInput.fill('admin');
+      await expect(usernameInput).toHaveValue('admin');
+      await passwordInput.fill('admin123');
+      await expect(passwordInput).toHaveValue('admin123');
       await page.getByRole('button', { name: '登录' }).click();
       await expect(page).toHaveURL(/\/dashboard$/);
     });
