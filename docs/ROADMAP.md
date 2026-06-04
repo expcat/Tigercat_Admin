@@ -2,7 +2,7 @@
 
 > 项目定位：以 .NET 10 Aspire + Tigercat UI 为基础，持续验证 Vue 3 与 React 双端后台管理体验，并把真实业务场景中的组件诉求反馈给上游。
 
-最后更新：2026-06-04
+最后更新：2026-06-05
 
 ---
 
@@ -19,7 +19,7 @@
 
 ## 规划基线
 
-当前代码库已经具备后端 API、React / Vue 双端后台、Tigercat 1.2.16 组件接入、SQLite / PostgreSQL provider、Redis 缓存与事件通道、文件与媒体资源能力、配置化认证安全策略、审计敏感字段清理、双端共享页面片段、重组件子路径导入验证、Playwright 工作区基座、生产配置样例、部署说明、健康检查依赖明细、最小 CI 门禁，以及用户、角色、文件、审计四类数据工作台的会话状态保留、批量操作、筛选导出和权限入口收敛能力。P1-P3 的组件盘点、显示门禁、共享页面片段和子路径导入复核，以及 P5 的数据工作台增强结果已经沉淀到 [component-inventory.md](component-inventory.md)。后续计划不再重复记录历史完成项，只围绕可继续推进的能力建设展开。
+当前代码库已经具备后端 API、React / Vue 双端后台、Tigercat 1.2.16 组件接入、SQLite / PostgreSQL provider、Redis 缓存与事件通道、文件与媒体资源能力、配置化认证安全策略、审计敏感字段清理、双端共享页面片段、重组件子路径导入验证、Playwright 工作区基座、生产配置样例、部署说明、健康检查依赖明细、最小 CI 门禁，以及用户、角色、文件、审计四类数据工作台的会话状态保留、批量操作、筛选导出和权限入口收敛能力。P1-P4 的组件盘点、显示门禁、共享页面片段、子路径导入、可访问性与响应式复核，以及 P5 的数据工作台增强结果已经沉淀到 [component-inventory.md](component-inventory.md)。后续计划不再重复记录历史完成项，只围绕可继续推进的能力建设展开。
 
 ## 推进原则
 
@@ -33,36 +33,10 @@
 
 | 优先级 | 主题 | 目标 | 主要验证 |
 | ------ | ---- | ---- | -------- |
-| P4 | 可访问性与响应式硬化 | 把已识别的表格、弹层、菜单、移动端布局风险收口为可重复验证的质量门禁 | `pnpm build:frontend`、`pnpm e2e:react`、`pnpm e2e:vue`、桌面/移动截图与键盘路径复核 |
 | P6 | 运维工作流闭环 | 将通知、任务、审计和设置从独立页面推进为可追踪、可联动、可治理的后台工作流 | API 测试、运维 E2E、Redis/数据库健康检查 |
 | P7 | 媒体与品牌资源生产化 | 扩展媒体存储、引用校验、Logo/头像生命周期和生产资源配置 | 后端媒体测试、双端上传/删除 smoke、部署文档复核 |
 | P8 | 发布、部署与观测增强 | 固化容器化、迁移 SQL、发布门禁、运行时观测和回滚演练 | `dotnet test Tigercat.Admin.sln`、`pnpm build`、`pnpm e2e`、部署 smoke |
 | P9 | Tigercat UI 升级与上游反馈循环 | 建立组件库版本升级、API 迁移、性能体积和上游缺口登记的固定流程 | 双端构建、组件盘点更新、上游需求文档更新 |
-
-## P4：可访问性与响应式硬化
-
-目标：基于 P2/P3 已暴露的显示风险，补齐后台高频页面在移动端、键盘操作、焦点恢复、暗色模式和弹层交互上的可验证质量线。
-
-范围：
-
-- Users / Roles：复核 `DataTableWithToolbar` 固定列、列开关、批量操作区、角色多选下拉、权限树弹层和行操作菜单 detach；确保移动端不出现不可达操作。
-- Files / Settings：复核上传、删除确认、类型筛选、Logo 预览、保存确认弹层和恢复默认值路径；移动端按钮区允许换行但不能遮挡内容。
-- MainLayout / MainHeader / MainSidebar：复核 375px 移动视口下 sidebar 打开/关闭、菜单点击后关闭、面包屑溢出、用户菜单定位和内容滚动。
-- 全局键盘路径：按 Tigercat accessibility 基线覆盖 `Tab`、`Shift+Tab`、`Enter`、`Space`、`Esc`、方向键和焦点恢复；高级拖拽组件若暂无键盘替代路径，需在文档中记录限制。
-- 视觉 token：减少页面级硬编码色、渐变和过大圆角；优先使用 Tigercat token 与组件原生 variant。
-
-交付物：
-
-- 更新或新增 `e2e/display-p2.spec.ts` 中的响应式、弹层和键盘断言。
-- 必要时把手工复核结果沉淀到 [component-inventory.md](component-inventory.md)。
-- 如确认属于组件 API 或可访问性缺口，更新 [upstream-requirements.md](upstream-requirements.md)。
-
-验收门禁：
-
-- `pnpm build:frontend`
-- `pnpm e2e:react`
-- `pnpm e2e:vue`
-- 至少覆盖桌面、375px 移动视口和暗色模式截图或等价 Playwright 断言。
 
 ## P6：运维工作流闭环
 

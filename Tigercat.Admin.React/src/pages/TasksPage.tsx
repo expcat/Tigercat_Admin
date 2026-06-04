@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type {
   TaskBoardCard,
   TaskBoardCardMoveEvent,
@@ -9,6 +10,8 @@ import {
   Button,
   Card,
   Input,
+  Modal,
+  Select,
   Tag,
   Text,
   notification,
@@ -50,8 +53,18 @@ const formatDateTime = (value: string) =>
   });
 
 function TasksPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [filterText, setFilterText] = useState('');
+  const [assigneeFilter, setAssigneeFilter] = useState('');
+  const [blockedFilter, setBlockedFilter] = useState('');
+  const [dueFrom, setDueFrom] = useState('');
+  const [dueTo, setDueTo] = useState('');
   const [columns, setColumns] = useState<AdminTaskBoardColumn[]>([]);
+  const [selectedTask, setSelectedTask] = useState<AdminTaskBoardCard | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [completionNote, setCompletionNote] = useState('');
+  const [completing, setCompleting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lastAction, setLastAction] = useState(
     '任务面板正在读取后端工作流数据。',
@@ -61,11 +74,38 @@ function TasksPage() {
     setLoading(true);
 
     try {
+      const params = new URLSearchParams({ page: '1', pageSize: '200' });
+      if (filterText.trim()) {
+        params.set('keyword', filterText.trim());
+      }
+      if (assigneeFilter.trim()) {
+        params.set('assignee', assigneeFilter.trim());
+      }
+      if (blockedFilter) {
+        params.set('blocked', blockedFilter);
+      }
+      if (dueFrom.trim()) {
+        params.set('dueFrom', new Date(dueFrom).toISOString());
+      }
+      if (dueTo.trim()) {
+        params.set('dueTo', new Date(`${dueTo}T23:59:59`).toISOString());
+      }
+
       const payload = await apiRequest<PagedResult<AdminTaskBoardCard>>(
-        '/api/tasks?page=1&pageSize=200',
+        `/api/tasks?${params}`,
         { headers: getAuthHeaders() },
       );
-      setColumns(buildTaskBoardColumnsFromTasks(payload.data.items));
+      const nextColumns = buildTaskBoardColumnsFromTasks(payload.data.items);
+      setColumns(nextColumns);
+      setSelectedTask((current) => {
+        const queryTaskId = new URLSearchParams(location.search).get('taskId');
+        const targetId = queryTaskId ?? current?.id;
+        const target = targetId ? findTaskBoardCard(nextColumns, targetId) : null;
+        if (queryTaskId && target) {
+          setDetailOpen(true);
+        }
+        return target ?? current;
+      });
       setLastAction(`已同步 ${payload.data.total} 个后端任务。`);
     } catch (error) {
       const message =
@@ -80,7 +120,7 @@ function TasksPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [assigneeFilter, blockedFilter, dueFrom, dueTo, filterText, location.search]);
 
   useEffect(() => {
     loadTasks();
@@ -180,8 +220,71 @@ function TasksPage() {
 
   const handleResetBoard = useCallback(() => {
     setFilterText('');
+    setAssigneeFilter('');
+    setBlockedFilter('');
+    setDueFrom('');
+    setDueTo('');
     loadTasks();
   }, [loadTasks]);
+
+  const openTaskDetail = useCallback(
+    (card: AdminTaskBoardCard) => {
+      setSelectedTask(card);
+      setCompletionNote(card.completionNote ?? '');
+      setDetailOpen(true);
+      navigate(`/tasks?taskId=${encodeURIComponent(card.id)}`, { replace: true });
+    },
+    [navigate],
+  );
+
+  const closeTaskDetail = useCallback(() => {
+    setDetailOpen(false);
+    navigate('/tasks', { replace: true });
+  }, [navigate]);
+
+  const handleCompleteTask = useCallback(async () => {
+    if (!selectedTask) {
+      return;
+    }
+
+    if (selectedTask.blocked || selectedTask.status === 'done') {
+      notification.warning({
+        title: selectedTask.blocked ? '任务仍被阻塞' : '任务已完成',
+        description: selectedTask.blocked
+          ? '请先清除阻塞状态，再确认完成。'
+          : '已完成任务无需重复确认。',
+      });
+      return;
+    }
+
+    setCompleting(true);
+    try {
+      const payload = await apiRequest<AdminTaskBoardCard>(
+        `/api/tasks/${selectedTask.id}/complete`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            confirm: true,
+            completionNote,
+          }),
+        },
+      );
+      setSelectedTask(payload.data);
+      await loadTasks();
+      notification.success({
+        title: '任务已完成',
+        description: payload.data.title,
+      });
+    } catch (error) {
+      notification.error({
+        title: '任务完成失败',
+        description: error instanceof Error ? error.message : '请稍后重试。',
+      });
+    } finally {
+      setCompleting(false);
+    }
+  }, [completionNote, loadTasks, selectedTask]);
 
   const beforeCardMove = useCallback(
     (event: TaskBoardCardMoveEvent) => {
@@ -212,8 +315,9 @@ function TasksPage() {
       priority?: 'low' | 'medium' | 'high';
       dueAt?: string;
       estimateHours?: number;
-      blocked?: boolean;
-    };
+          blocked?: boolean;
+          blockedReason?: string | null;
+        };
 
     return (
       <div className="space-y-3">
@@ -246,9 +350,22 @@ function TasksPage() {
           截止 {currentCard.dueAt ? formatDateTime(currentCard.dueAt) : '--'} ·
           预估 {currentCard.estimateHours ?? 0}h
         </Text>
+
+        {currentCard.blockedReason && (
+          <Text size="sm" color="danger">
+            {currentCard.blockedReason}
+          </Text>
+        )}
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => openTaskDetail(card as AdminTaskBoardCard)}>
+          详情
+        </Button>
       </div>
     );
-  }, []);
+  }, [openTaskDetail]);
 
   return (
     <div className="space-y-6">
@@ -272,6 +389,33 @@ function TasksPage() {
               value={filterText}
               placeholder="搜索任务标题或说明"
               onChange={(event) => setFilterText(normalizeInput(event))}
+            />
+            <Input
+              value={assigneeFilter}
+              placeholder="负责人"
+              onChange={(event) => setAssigneeFilter(normalizeInput(event))}
+            />
+            <Input
+              value={dueFrom}
+              type="date"
+              placeholder="开始日期"
+              onChange={(event) => setDueFrom(normalizeInput(event))}
+            />
+            <Input
+              value={dueTo}
+              type="date"
+              placeholder="结束日期"
+              onChange={(event) => setDueTo(normalizeInput(event))}
+            />
+            <Select
+              value={blockedFilter}
+              options={[
+                { label: '全部阻塞状态', value: '' },
+                { label: '仅阻塞', value: 'true' },
+                { label: '未阻塞', value: 'false' },
+              ]}
+              clearable={false}
+              onChange={(value) => setBlockedFilter(String(value ?? ''))}
             />
             <Button variant="outline" onClick={handleResetBoard}>
               刷新看板
@@ -321,6 +465,55 @@ function TasksPage() {
           renderCard={renderCard}
         />
       </Card>
+
+      <Modal
+        open={detailOpen}
+        title="任务详情"
+        showDefaultFooter
+        okText={completing ? '完成中...' : '确认完成'}
+        cancelText="关闭"
+        confirmLoading={completing}
+        onOk={handleCompleteTask}
+        onCancel={closeTaskDetail}>
+        {selectedTask ? (
+          <div className="space-y-4">
+            <div>
+              <Text weight="bold">{selectedTask.title}</Text>
+              {selectedTask.description && (
+                <Text color="secondary" className="mt-1">
+                  {selectedTask.description}
+                </Text>
+              )}
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <MutedPanel title="负责人" description={selectedTask.assignee} />
+              <MutedPanel title="截止时间" description={formatDateTime(selectedTask.dueAt)} />
+              <MutedPanel title="当前状态" description={selectedTask.status} />
+              <MutedPanel title="预估工时" description={`${selectedTask.estimateHours}h`} />
+            </div>
+            {selectedTask.blocked && (
+              <MutedPanel
+                title="阻塞原因"
+                description={selectedTask.blockedReason ?? '暂无阻塞说明'}
+              />
+            )}
+            {selectedTask.completionNote && (
+              <MutedPanel title="完成说明" description={selectedTask.completionNote} />
+            )}
+            <Input
+              value={completionNote}
+              placeholder="完成说明"
+              disabled={selectedTask.blocked || selectedTask.status === 'done'}
+              onChange={(event) => setCompletionNote(normalizeInput(event))}
+            />
+            {selectedTask.blocked && (
+              <Text color="danger">阻塞任务需要先清除阻塞状态，才能确认完成。</Text>
+            )}
+          </div>
+        ) : (
+          <Text color="secondary">请选择任务。</Text>
+        )}
+      </Modal>
     </div>
   );
 }

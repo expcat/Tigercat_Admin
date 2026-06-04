@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { NotificationItem } from '@expcat/tigercat-core';
 import {
   Button,
@@ -28,6 +29,7 @@ import {
   setNotificationReadState,
 } from '../utils/notifications';
 import { apiRequest, getAuthHeaders } from '../utils';
+import { usePermission } from '../utils/permission';
 import type {
   AdminNotificationGroupKey,
   AdminNotificationItem,
@@ -43,6 +45,21 @@ const formatDateTime = (value: string) =>
     hour: '2-digit',
     minute: '2-digit',
   });
+
+const LINK_PERMISSION_MAP: Array<[RegExp, string]> = [
+  [/^\/users(?:[/?#]|$)/, 'user:view'],
+  [/^\/roles(?:[/?#]|$)/, 'role:view'],
+  [/^\/files(?:[/?#]|$)/, 'media:view'],
+  [/^\/tasks(?:[/?#]|$)/, 'task:view'],
+  [/^\/audit-logs(?:[/?#]|$)/, 'audit:view'],
+  [/^\/settings(?:[/?#]|$)/, 'setting:view'],
+];
+
+const getRequiredPermissionForLink = (linkUrl: string) =>
+  LINK_PERMISSION_MAP.find(([pattern]) => pattern.test(linkUrl))?.[1] ?? null;
+
+const isSafeInternalLink = (linkUrl: string) =>
+  linkUrl.startsWith('/') && !linkUrl.startsWith('//');
 
 function showNotification(
   type: AdminNotificationToastType,
@@ -66,6 +83,8 @@ function showNotification(
 }
 
 function NotificationsPage() {
+  const navigate = useNavigate();
+  const { has: hasPerm } = usePermission();
   const [notifications, setNotifications] = useState<AdminNotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -117,10 +136,46 @@ function NotificationsPage() {
     [notifications],
   );
 
+  const persistReadState = useCallback(async (id: string, read: boolean) => {
+    await apiRequest<AdminNotificationItem>(
+      `/api/notifications/${id}/read`,
+      {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ read }),
+      },
+    );
+  }, []);
+
   const handleItemClick = useCallback(
-    (item: NotificationItem) => {
+    async (item: NotificationItem) => {
       const currentItem = findNotificationById(notifications, item.id);
       if (!currentItem) {
+        return;
+      }
+
+      if (currentItem.linkUrl) {
+        if (!isSafeInternalLink(currentItem.linkUrl)) {
+          showNotification('error', '无法打开通知链接', '通知链接不是安全的站内路径。');
+          return;
+        }
+
+        const requiredPermission = getRequiredPermissionForLink(currentItem.linkUrl);
+        if (requiredPermission && !hasPerm(requiredPermission)) {
+          showNotification('warning', '权限不足', '当前账号无权访问这条通知指向的页面。');
+          return;
+        }
+
+        if (!currentItem.read) {
+          setNotifications((prev) => setNotificationReadState(prev, item.id, true));
+          try {
+            await persistReadState(String(item.id), true);
+          } catch {
+            setNotifications((prev) => setNotificationReadState(prev, item.id, false));
+          }
+        }
+
+        navigate(currentItem.linkUrl);
         return;
       }
 
@@ -130,7 +185,7 @@ function NotificationsPage() {
         currentItem.description,
       );
     },
-    [notifications],
+    [hasPerm, navigate, notifications, persistReadState],
   );
 
   const handleItemReadChange = useCallback(
@@ -139,14 +194,7 @@ function NotificationsPage() {
       setNotifications((prev) => setNotificationReadState(prev, item.id, read));
 
       try {
-        await apiRequest<AdminNotificationItem>(
-          `/api/notifications/${item.id}/read`,
-          {
-            method: 'PUT',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ read }),
-          },
-        );
+        await persistReadState(String(item.id), read);
       } catch (error) {
         setNotifications((prev) =>
           setNotificationReadState(prev, item.id, !read),
@@ -167,7 +215,7 @@ function NotificationsPage() {
         );
       }
     },
-    [notifications],
+    [notifications, persistReadState],
   );
 
   const handleMarkAllRead = useCallback(

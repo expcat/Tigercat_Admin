@@ -158,11 +158,28 @@ async function openFirstRowMenu(page: Page, itemName: string) {
 
 async function expectColumnToggleReachable(page: Page, checkboxName: string) {
   const columnsTrigger = page.getByRole('button', { name: '列显隐' });
+  const checkbox = page.getByRole('checkbox', { name: checkboxName }).first();
+
+  await expect
+    .poll(async () => {
+      const triggerCount = await columnsTrigger.count();
+      const checkboxCount = await checkbox.count();
+      return triggerCount + checkboxCount;
+    })
+    .toBeGreaterThan(0);
+
   if ((await columnsTrigger.count()) > 0) {
+    await expect(columnsTrigger).toBeVisible();
+    await expect(columnsTrigger).toBeEnabled();
+    await columnsTrigger.scrollIntoViewIfNeeded();
     await columnsTrigger.click();
+
+    const expanded = await columnsTrigger.getAttribute('aria-expanded');
+    if (expanded === 'false') {
+      await columnsTrigger.click();
+    }
   }
 
-  const checkbox = page.getByRole('checkbox', { name: checkboxName }).first();
   await expect(checkbox).toBeVisible();
   await expectFullyInViewport(checkbox);
   await page.keyboard.press('Escape');

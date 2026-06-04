@@ -10,6 +10,8 @@ public record AdminTaskResponse(
     DateTime DueAt,
     double EstimateHours,
     bool Blocked,
+    string? BlockedReason,
+    string? CompletionNote,
     string? CreatedBy,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
@@ -23,7 +25,8 @@ public record CreateAdminTaskRequest(
     string? Status,
     DateTime? DueAt,
     double? EstimateHours,
-    bool? Blocked);
+    bool? Blocked,
+    string? BlockedReason);
 
 public record UpdateAdminTaskRequest(
     string? Title,
@@ -33,6 +36,9 @@ public record UpdateAdminTaskRequest(
     string? Status,
     DateTime? DueAt,
     double? EstimateHours,
-    bool? Blocked);
+    bool? Blocked,
+    string? BlockedReason);
 
 public record MoveAdminTaskRequest(string Status);
+
+public record CompleteAdminTaskRequest(bool Confirm, string? CompletionNote);

@@ -227,6 +227,16 @@ export function coerceTaskBoardColumns(
       estimateHours:
         typeof card.estimateHours === 'number' ? card.estimateHours : 2,
       blocked: Boolean(card.blocked),
+      blockedReason:
+        typeof card.blockedReason === 'string' ? card.blockedReason : null,
+      completionNote:
+        typeof card.completionNote === 'string' ? card.completionNote : null,
+      createdBy: typeof card.createdBy === 'string' ? card.createdBy : null,
+      createdAt:
+        typeof card.createdAt === 'string' ? card.createdAt : undefined,
+      updatedAt: typeof card.updatedAt === 'string' ? card.updatedAt : null,
+      completedAt:
+        typeof card.completedAt === 'string' ? card.completedAt : null,
     })),
   }));
 }

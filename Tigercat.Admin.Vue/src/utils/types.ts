@@ -167,6 +167,12 @@ export interface AdminTaskBoardCard {
   dueAt: string;
   estimateHours: number;
   blocked?: boolean;
+  blockedReason?: string | null;
+  completionNote?: string | null;
+  createdBy?: string | null;
+  createdAt?: string;
+  updatedAt?: string | null;
+  completedAt?: string | null;
 }
 
 export interface AdminTaskBoardColumn {
@@ -180,6 +186,14 @@ export interface AdminTaskBoardColumn {
 export interface AuditRetentionPolicy {
   retentionDays: number;
   updatedAtUtc: string;
+}
+
+export interface AuditRetentionCleanupResult {
+  dryRun: boolean;
+  retentionDays: number;
+  cutoffUtc: string;
+  matchedCount: number;
+  deletedCount: number;
 }
 
 // ---- Theme types ----

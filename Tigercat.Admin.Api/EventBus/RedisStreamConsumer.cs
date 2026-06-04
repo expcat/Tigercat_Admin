@@ -1,7 +1,9 @@
 using System.Text.Json;
 using FreeRedis;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Tigercat.Admin.Api.Notifications;
 using Tigercat.Admin.Api.Serialization;
 
 namespace Tigercat.Admin.Api.EventBus;
@@ -19,6 +21,7 @@ public sealed class RedisStreamConsumer : BackgroundService
     private readonly IRedisClient _redis;
     private readonly IIdempotencyService _idempotency;
     private readonly ILogger<RedisStreamConsumer> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly string _groupName;
     private readonly string _consumerName;
 
@@ -26,11 +29,13 @@ public sealed class RedisStreamConsumer : BackgroundService
         IRedisClient redis,
         IIdempotencyService idempotency,
         ILogger<RedisStreamConsumer> logger,
+        IServiceScopeFactory scopeFactory,
         IHostEnvironment environment)
     {
         _redis = redis;
         _idempotency = idempotency;
         _logger = logger;
+        _scopeFactory = scopeFactory;
         _groupName = $"tigercat-admin-{environment.EnvironmentName.ToLowerInvariant()}";
         _consumerName = $"{Environment.MachineName}-{Guid.NewGuid():N}";
     }
@@ -181,14 +186,12 @@ public sealed class RedisStreamConsumer : BackgroundService
         }
     }
 
-    private Task ProcessEventAsync(EventEnvelope envelope, string stream, CancellationToken ct)
+    private async Task ProcessEventAsync(EventEnvelope envelope, string stream, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        _logger.LogInformation(
-            "Event processing is not implemented; acknowledging {EventType} from stream {Stream}.",
-            envelope.EventType,
-            stream);
-        return Task.CompletedTask;
+        using var scope = _scopeFactory.CreateScope();
+        var notificationService = scope.ServiceProvider.GetRequiredService<IAdminNotificationService>();
+        await notificationService.HandleEventAsync(envelope, stream, ct);
     }
 
     private static string? GetField(StreamsEntry entry, string fieldName)

@@ -15,6 +15,8 @@ public class TasksEndpoints : IEndpointDefinition
     private const int TitleMaxLength = 120;
     private const int DescriptionMaxLength = 1000;
     private const int AssigneeMaxLength = 80;
+    private const int BlockedReasonMaxLength = 500;
+    private const int CompletionNoteMaxLength = 500;
     private const int DefaultPageSize = 100;
     private const int MaxPageSize = 200;
 
@@ -42,6 +44,10 @@ public class TasksEndpoints : IEndpointDefinition
         group.MapPut("/{id}/status", MoveTask)
             .RequirePermission("task:edit")
             .WithName("MoveTask");
+
+        group.MapPost("/{id}/complete", CompleteTask)
+            .RequirePermission("task:edit")
+            .WithName("CompleteTask");
     }
 
     private static async Task<IResult> GetTasks(
@@ -49,6 +55,10 @@ public class TasksEndpoints : IEndpointDefinition
         int? pageSize,
         string? status,
         string? keyword,
+        string? assignee,
+        DateTime? dueFrom,
+        DateTime? dueTo,
+        bool? blocked,
         AdminDbContext db,
         CancellationToken ct)
     {
@@ -78,6 +88,29 @@ public class TasksEndpoints : IEndpointDefinition
                 t.Title.ToLower().Contains(kw) ||
                 (t.Description != null && t.Description.ToLower().Contains(kw)) ||
                 t.Assignee.ToLower().Contains(kw));
+        }
+
+        if (!string.IsNullOrWhiteSpace(assignee))
+        {
+            var assigneeKeyword = assignee.Trim().ToLowerInvariant();
+            query = query.Where(t => t.Assignee.ToLower().Contains(assigneeKeyword));
+        }
+
+        if (dueFrom.HasValue)
+        {
+            var from = dueFrom.Value.ToUniversalTime();
+            query = query.Where(t => t.DueAt >= from);
+        }
+
+        if (dueTo.HasValue)
+        {
+            var to = dueTo.Value.ToUniversalTime();
+            query = query.Where(t => t.DueAt <= to);
+        }
+
+        if (blocked.HasValue)
+        {
+            query = query.Where(t => t.Blocked == blocked.Value);
         }
 
         var total = await query.CountAsync(ct);
@@ -128,7 +161,8 @@ public class TasksEndpoints : IEndpointDefinition
             request.Assignee,
             request.Priority,
             request.Status,
-            request.EstimateHours);
+            request.EstimateHours,
+            request.BlockedReason);
 
         if (validation is not null)
         {
@@ -146,9 +180,15 @@ public class TasksEndpoints : IEndpointDefinition
             DueAt = request.DueAt?.ToUniversalTime() ?? DateTime.UtcNow.AddDays(2),
             EstimateHours = request.EstimateHours ?? 2,
             Blocked = request.Blocked ?? false,
+            BlockedReason = NormalizeOptional(request.BlockedReason),
             CreatedBy = GetOperatorUsername(httpContext),
             CreatedAt = DateTime.UtcNow
         };
+
+        if (!task.Blocked)
+        {
+            task.BlockedReason = null;
+        }
 
         if (task.Status == "done")
         {
@@ -189,7 +229,8 @@ public class TasksEndpoints : IEndpointDefinition
             request.Assignee ?? task.Assignee,
             request.Priority ?? task.Priority,
             request.Status ?? task.Status,
-            request.EstimateHours ?? task.EstimateHours);
+            request.EstimateHours ?? task.EstimateHours,
+            request.BlockedReason ?? task.BlockedReason);
 
         if (validation is not null)
         {
@@ -234,11 +275,88 @@ public class TasksEndpoints : IEndpointDefinition
         if (request.Blocked.HasValue)
         {
             task.Blocked = request.Blocked.Value;
+            if (!task.Blocked)
+            {
+                task.BlockedReason = null;
+            }
+        }
+
+        if (request.BlockedReason is not null)
+        {
+            task.BlockedReason = NormalizeOptional(request.BlockedReason);
         }
 
         task.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
         await PublishTaskEventAsync(eventPublisher, "admin.task.updated", task, httpContext, ct);
+
+        return Results.Json(
+            ApiResult.Ok(ToResponse(task)),
+            AppJsonContext.Default.ApiResponseAdminTaskResponse);
+    }
+
+    private static async Task<IResult> CompleteTask(
+        string id,
+        CompleteAdminTaskRequest request,
+        AdminDbContext db,
+        IEventPublisher eventPublisher,
+        HttpContext httpContext,
+        CancellationToken ct)
+    {
+        if (!request.Confirm)
+        {
+            return Results.Json(
+                ApiResult.Fail<AdminTaskResponse>("完成任务前需要确认", 400),
+                AppJsonContext.Default.ApiResponseAdminTaskResponse,
+                statusCode: 400);
+        }
+
+        var completionNote = NormalizeOptional(request.CompletionNote);
+        if (completionNote is { Length: > CompletionNoteMaxLength })
+        {
+            return Results.Json(
+                ApiResult.Fail<AdminTaskResponse>($"完成说明长度不能超过 {CompletionNoteMaxLength}", 400),
+                AppJsonContext.Default.ApiResponseAdminTaskResponse,
+                statusCode: 400);
+        }
+
+        var task = await db.AdminTasks.FirstOrDefaultAsync(t => t.PublicId == id, ct);
+
+        if (task is null)
+        {
+            return Results.Json(
+                ApiResult.Fail<AdminTaskResponse>("任务不存在", 404),
+                AppJsonContext.Default.ApiResponseAdminTaskResponse,
+                statusCode: 404);
+        }
+
+        if (task.Blocked)
+        {
+            return Results.Json(
+                ApiResult.Fail<AdminTaskResponse>("阻塞任务不能直接完成", 400),
+                AppJsonContext.Default.ApiResponseAdminTaskResponse,
+                statusCode: 400);
+        }
+
+        ApplyStatus(task, "done");
+        task.CompletionNote = completionNote;
+        task.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        await eventPublisher.PublishAsync(
+            EventEnvelope.Create(
+                "admin.task.completed",
+                new Dictionary<string, object?>
+                {
+                    ["taskId"] = task.PublicId,
+                    ["title"] = task.Title,
+                    ["assignee"] = task.Assignee,
+                    ["completionNote"] = task.CompletionNote,
+                    ["operator"] = GetOperatorUsername(httpContext)
+                },
+                httpContext.TraceIdentifier),
+            EventBusConstants.AdminStream,
+            ct);
 
         return Results.Json(
             ApiResult.Ok(ToResponse(task)),
@@ -311,7 +429,8 @@ public class TasksEndpoints : IEndpointDefinition
         string? assignee,
         string? priority,
         string? status,
-        double? estimateHours)
+        double? estimateHours,
+        string? blockedReason = null)
     {
         if (string.IsNullOrWhiteSpace(title))
         {
@@ -369,6 +488,14 @@ public class TasksEndpoints : IEndpointDefinition
                 statusCode: 400);
         }
 
+        if (blockedReason is { Length: > BlockedReasonMaxLength })
+        {
+            return Results.Json(
+                ApiResult.Fail<AdminTaskResponse>($"阻塞原因长度不能超过 {BlockedReasonMaxLength}", 400),
+                AppJsonContext.Default.ApiResponseAdminTaskResponse,
+                statusCode: 400);
+        }
+
         return null;
     }
 
@@ -403,6 +530,8 @@ public class TasksEndpoints : IEndpointDefinition
             task.DueAt,
             task.EstimateHours,
             task.Blocked,
+            task.BlockedReason,
+            task.CompletionNote,
             task.CreatedBy,
             task.CreatedAt,
             task.UpdatedAt,
@@ -425,6 +554,8 @@ public class TasksEndpoints : IEndpointDefinition
                     ["title"] = task.Title,
                     ["status"] = task.Status,
                     ["assignee"] = task.Assignee,
+                    ["blocked"] = task.Blocked,
+                    ["blockedReason"] = task.BlockedReason,
                     ["operator"] = GetOperatorUsername(httpContext)
                 },
                 httpContext.TraceIdentifier),

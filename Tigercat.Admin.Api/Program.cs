@@ -9,6 +9,7 @@ using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Endpoints;
 using Tigercat.Admin.Api.EventBus;
 using Tigercat.Admin.Api.Media;
+using Tigercat.Admin.Api.Notifications;
 using Tigercat.Admin.Api.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -98,6 +99,7 @@ builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.Configure<MediaOptions>(builder.Configuration.GetSection("Media"));
 builder.Services.AddSingleton<IMediaStorageProvider, LocalMediaStorageProvider>();
 builder.Services.AddScoped<IMediaReferenceService, MediaReferenceService>();
+builder.Services.AddScoped<IAdminNotificationService, AdminNotificationService>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {

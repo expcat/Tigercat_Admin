@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
+using Tigercat.Admin.Api.EventBus;
 using Tigercat.Admin.Api.Media;
 using Tigercat.Admin.Api.Serialization;
 
@@ -91,6 +92,8 @@ public class SettingsEndpoints : IEndpointDefinition
         UpdateSettingsRequest request,
         AdminDbContext db,
         IMediaReferenceService mediaReferenceService,
+        IEventPublisher eventPublisher,
+        HttpContext httpContext,
         CancellationToken ct)
     {
         if (request.Settings is null || request.Settings.Length == 0)
@@ -200,6 +203,18 @@ public class SettingsEndpoints : IEndpointDefinition
             await mediaReferenceService.SyncSiteLogoReferenceAsync(logoEntry.Value, ct);
         }
 
+        await eventPublisher.PublishAsync(
+            EventEnvelope.Create(
+                "admin.setting.updated",
+                new Dictionary<string, object?>
+                {
+                    ["changedKeys"] = normalized.Select(s => s.Key).ToArray(),
+                    ["operator"] = GetOperatorUsername(httpContext)
+                },
+                httpContext.TraceIdentifier),
+            EventBusConstants.AdminStream,
+            ct);
+
         var updated = entities
             .OrderBy(s => s.Key)
             .Select(ToSettingItemResponse)
@@ -208,5 +223,13 @@ public class SettingsEndpoints : IEndpointDefinition
         return Results.Json(
             ApiResult.Ok(updated),
             AppJsonContext.Default.ApiResponseSettingItemResponseArray);
+    }
+
+    private static string GetOperatorUsername(HttpContext httpContext)
+    {
+        return httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var operatorObj) &&
+            operatorObj is string operatorName
+            ? operatorName
+            : "unknown";
     }
 }

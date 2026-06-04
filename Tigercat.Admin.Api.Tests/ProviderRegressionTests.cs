@@ -2,13 +2,16 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Data.Entities;
 using Tigercat.Admin.Api.Endpoints;
 using Tigercat.Admin.Api.EventBus;
+using Tigercat.Admin.Api.Notifications;
 using Tigercat.Admin.Api.Tests.Fixtures;
+using Tigercat.Admin.Api.Tests.Stubs;
 using Xunit;
 
 namespace Tigercat.Admin.Api.Tests;
@@ -40,9 +43,11 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
     where TFixture : AdminApiFactory
 {
     private readonly HttpClient _client;
+    private readonly TFixture _factory;
 
     protected ProviderRegressionTests(TFixture factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
@@ -979,7 +984,8 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
                 "todo",
                 DateTime.UtcNow.AddDays(1),
                 2,
-                false)),
+                false,
+                null)),
         };
         createRequest.Headers.Add("X-Token", token);
 
@@ -1005,9 +1011,115 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
     }
 
     [Fact]
+    public async Task CompleteTask_RequiresConfirmationAndPersistsGovernanceFields()
+    {
+        var token = await LoginAsAdminAsync();
+        StubEventPublisher.Clear();
+
+        var createRequest = new HttpRequestMessage(HttpMethod.Post, "/api/tasks")
+        {
+            Content = JsonContent.Create(new CreateAdminTaskRequest(
+                "验证任务完成确认",
+                "来自 API 回归测试的完成确认任务",
+                "测试账号",
+                "medium",
+                "review",
+                DateTime.UtcNow.AddDays(1),
+                1,
+                false,
+                null)),
+        };
+        createRequest.Headers.Add("X-Token", token);
+
+        var createResponse = await _client.SendAsync(createRequest);
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.ReadApiResponseAsync<AdminTaskResponse>();
+        Assert.NotNull(created?.Data);
+
+        var rejectedRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/tasks/{created.Data.Id}/complete")
+        {
+            Content = JsonContent.Create(new CompleteAdminTaskRequest(false, "未经确认")),
+        };
+        rejectedRequest.Headers.Add("X-Token", token);
+        var rejectedResponse = await _client.SendAsync(rejectedRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, rejectedResponse.StatusCode);
+
+        var completeRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/tasks/{created.Data.Id}/complete")
+        {
+            Content = JsonContent.Create(new CompleteAdminTaskRequest(true, "验收完成")),
+        };
+        completeRequest.Headers.Add("X-Token", token);
+
+        var completeResponse = await _client.SendAsync(completeRequest);
+        completeResponse.EnsureSuccessStatusCode();
+        var completed = await completeResponse.ReadApiResponseAsync<AdminTaskResponse>();
+
+        Assert.NotNull(completed?.Data);
+        Assert.Equal("done", completed.Data.Status);
+        Assert.Equal("验收完成", completed.Data.CompletionNote);
+        Assert.Contains(StubEventPublisher.PublishedEvents, item => item.Envelope.EventType == "admin.task.completed");
+    }
+
+    [Fact]
+    public async Task GetTasks_FiltersByAssigneeDueDateAndBlockedState()
+    {
+        var token = await LoginAsAdminAsync();
+        var url = "/api/tasks?page=1&pageSize=20&assignee=%E5%B9%B3%E5%8F%B0%E8%BF%90%E7%BB%B4&blocked=true&dueFrom=2026-05-01T00:00:00Z&dueTo=2026-06-30T00:00:00Z";
+
+        var request = AuthRequest(HttpMethod.Get, url, token);
+        var response = await _client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<PagedResponse<AdminTaskResponse>>();
+
+        Assert.NotNull(body?.Data);
+        Assert.NotEmpty(body.Data.Items);
+        Assert.All(body.Data.Items, item =>
+        {
+            Assert.True(item.Blocked);
+            Assert.Contains("平台运维", item.Assignee, StringComparison.Ordinal);
+            Assert.False(string.IsNullOrWhiteSpace(item.BlockedReason));
+        });
+    }
+
+    [Fact]
+    public async Task AdminNotificationService_MapsTaskEventIdempotently()
+    {
+        await LoginAsAdminAsync();
+        using var scope = _factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IAdminNotificationService>();
+        var db = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
+        var envelope = new EventEnvelope(
+            "event-task-notification",
+            "admin.task.created",
+            "1.0",
+            DateTime.UtcNow,
+            "trace-test",
+            new Dictionary<string, object?>
+            {
+                ["taskId"] = "task-demo",
+                ["title"] = "闭环通知测试",
+                ["operator"] = "admin",
+                ["password"] = "should-not-leak"
+            });
+
+        await service.HandleEventAsync(envelope, EventBusConstants.AdminStream);
+        await service.HandleEventAsync(envelope, EventBusConstants.AdminStream);
+
+        var notifications = await db.AdminNotifications
+            .Where(n => n.PublicId == "notif-event-task-notification")
+            .ToArrayAsync();
+
+        var notification = Assert.Single(notifications);
+        Assert.Equal("/tasks?taskId=task-demo", notification.LinkUrl);
+        Assert.DoesNotContain("password", notification.MetadataJson, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task AuditRetentionPolicy_CanBeUpdated()
     {
         var token = await LoginAsAdminAsync();
+        StubEventPublisher.Clear();
 
         var updateRequest = new HttpRequestMessage(HttpMethod.Put, "/api/audit-logs/retention-policy")
         {
@@ -1025,6 +1137,39 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         var body = await readResponse.ReadApiResponseAsync<AuditRetentionPolicyResponse>();
         Assert.NotNull(body?.Data);
         Assert.Equal(120, body.Data.RetentionDays);
+        Assert.Contains(StubEventPublisher.PublishedEvents, item =>
+            item.Envelope.EventType == "admin.setting.updated" &&
+            item.Envelope.Data.TryGetValue("changedKeys", out var changedKeys) &&
+            JsonSerializer.Serialize(changedKeys).Contains("ops.auditRetentionDays", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task UpdateSettings_PublishesSettingsAuditEvent()
+    {
+        var token = await LoginAsAdminAsync();
+        StubEventPublisher.Clear();
+
+        await UpdateSettingAsync(token, "site.name", "Tigercat Admin P6");
+
+        Assert.Contains(StubEventPublisher.PublishedEvents, item =>
+            item.Envelope.EventType == "admin.setting.updated" &&
+            item.Envelope.Data.TryGetValue("changedKeys", out var changedKeys) &&
+            JsonSerializer.Serialize(changedKeys).Contains("site.name", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task AuditRetentionCleanup_Returns503WhenRedisUnavailable()
+    {
+        var token = await LoginAsAdminAsync();
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/audit-logs/retention/cleanup")
+        {
+            Content = JsonContent.Create(new AuditRetentionCleanupRequest(true)),
+        };
+        request.Headers.Add("X-Token", token);
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
     // ── 4. Health Endpoints ─────────────────────────────────────────────

@@ -77,21 +77,21 @@ public static class DbInitializer
             ["dashboard:view", "user:view", "role:view", "setting:view", "media:view", "audit:view", "notification:view", "task:view"]),
     ];
 
-    private static readonly (string PublicId, string GroupKey, string Title, string Description, string ToastType, bool Read, string MetadataJson)[] SeedNotifications =
+    private static readonly (string PublicId, string GroupKey, string Title, string Description, string ToastType, bool Read, string? LinkUrl, string MetadataJson)[] SeedNotifications =
     [
-        ("release-window", "ops", "发布窗口确认", "今晚 20:00 的发布窗口已创建，请确认导出任务与健康检查状态。", "warning", false, """{"source":"deployment","severity":"medium"}"""),
-        ("security-session-review", "security", "会话策略复核", "检测到会话超时时间仍为默认值，建议在生产前完成安全策略确认。", "info", false, """{"source":"security","severity":"low"}"""),
-        ("release-audit-ready", "release", "审计日志已接入", "后台审计日志支持分页、筛选、详情和导出，可进入审计页继续核对。", "success", true, """{"source":"audit","severity":"low"}"""),
+        ("release-window", "ops", "发布窗口确认", "今晚 20:00 的发布窗口已创建，请确认导出任务与健康检查状态。", "warning", false, "/tasks", """{"source":"deployment","severity":"medium"}"""),
+        ("security-session-review", "security", "会话策略复核", "检测到会话超时时间仍为默认值，建议在生产前完成安全策略确认。", "info", false, "/settings", """{"source":"security","severity":"low"}"""),
+        ("release-audit-ready", "release", "审计日志已接入", "后台审计日志支持分页、筛选、详情和导出，可进入审计页继续核对。", "success", true, "/audit-logs", """{"source":"audit","severity":"low"}"""),
     ];
 
-    private static readonly (string PublicId, string Title, string Description, string Assignee, string Priority, string Status, DateTime DueAt, double EstimateHours, bool Blocked)[] SeedTasks =
+    private static readonly (string PublicId, string Title, string Description, string Assignee, string Priority, string Status, DateTime DueAt, double EstimateHours, bool Blocked, string? BlockedReason)[] SeedTasks =
     [
-        ("task-asset-review", "补齐媒体资源持久化方案", "为 Logo 与头像预留真实存储方案，明确对象存储与权限校验边界。", "王一哲", "high", "backlog", new DateTime(2026, 6, 3, 10, 0, 0, DateTimeKind.Utc), 6, false),
-        ("task-e2e-plan", "梳理用户与设置核心流程 E2E 用例", "覆盖登录、用户 CRUD、设置保存与权限保护的最小回归集合。", "平台测试", "medium", "backlog", new DateTime(2026, 6, 5, 4, 0, 0, DateTimeKind.Utc), 4, false),
-        ("task-postgres-docs", "整理 PostgreSQL 生产配置文档", "补齐连接串、迁移、备份策略与 Aspire 环境变量示例。", "后端组", "high", "todo", new DateTime(2026, 5, 30, 10, 0, 0, DateTimeKind.Utc), 5, false),
-        ("task-cache-observe", "定位导出缓存命中率下降原因", "需要结合 Redis 指标与导出模板变更记录继续排查。", "平台运维", "high", "doing", new DateTime(2026, 5, 28, 9, 30, 0, DateTimeKind.Utc), 4, true),
-        ("task-notification-review", "通知中心交互复核", "确认分组筛选、已读切换与浮层反馈在双端一致。", "产品验收", "medium", "review", new DateTime(2026, 5, 29, 7, 0, 0, DateTimeKind.Utc), 2, false),
-        ("task-audit-page", "审计日志页联调完成", "后端聚合 Redis Streams，双端页面已完成 ActivityFeed 与 Timeline 验证。", "管理后台", "medium", "done", new DateTime(2026, 5, 28, 6, 0, 0, DateTimeKind.Utc), 3, false),
+        ("task-asset-review", "补齐媒体资源持久化方案", "为 Logo 与头像预留真实存储方案，明确对象存储与权限校验边界。", "王一哲", "high", "backlog", new DateTime(2026, 6, 3, 10, 0, 0, DateTimeKind.Utc), 6, false, null),
+        ("task-e2e-plan", "梳理用户与设置核心流程 E2E 用例", "覆盖登录、用户 CRUD、设置保存与权限保护的最小回归集合。", "平台测试", "medium", "backlog", new DateTime(2026, 6, 5, 4, 0, 0, DateTimeKind.Utc), 4, false, null),
+        ("task-postgres-docs", "整理 PostgreSQL 生产配置文档", "补齐连接串、迁移、备份策略与 Aspire 环境变量示例。", "后端组", "high", "todo", new DateTime(2026, 5, 30, 10, 0, 0, DateTimeKind.Utc), 5, false, null),
+        ("task-cache-observe", "定位导出缓存命中率下降原因", "需要结合 Redis 指标与导出模板变更记录继续排查。", "平台运维", "high", "doing", new DateTime(2026, 5, 28, 9, 30, 0, DateTimeKind.Utc), 4, true, "等待 Redis 指标与导出模板变更记录交叉确认。"),
+        ("task-notification-review", "通知中心交互复核", "确认分组筛选、已读切换与浮层反馈在双端一致。", "产品验收", "medium", "review", new DateTime(2026, 5, 29, 7, 0, 0, DateTimeKind.Utc), 2, false, null),
+        ("task-audit-page", "审计日志页联调完成", "后端聚合 Redis Streams，双端页面已完成 ActivityFeed 与 Timeline 验证。", "管理后台", "medium", "done", new DateTime(2026, 5, 28, 6, 0, 0, DateTimeKind.Utc), 3, false, null),
     ];
 
     /// <summary>
@@ -229,6 +229,7 @@ public static class DbInitializer
                 ToastType = n.ToastType,
                 Read = n.Read,
                 ReadAt = n.Read ? DateTime.UtcNow : null,
+                LinkUrl = n.LinkUrl,
                 MetadataJson = n.MetadataJson,
                 CreatedAt = DateTime.UtcNow.AddHours(-SeedNotifications.Length + Array.FindIndex(SeedNotifications, item => item.PublicId == n.PublicId))
             })
@@ -239,6 +240,8 @@ public static class DbInitializer
             context.AdminNotifications.AddRange(newNotifications);
             await context.SaveChangesAsync(ct);
         }
+
+        await SyncSeedNotificationLinksAsync(context, ct);
 
         var existingTaskIds = await context.AdminTasks
             .Select(t => t.PublicId)
@@ -257,6 +260,7 @@ public static class DbInitializer
                 DueAt = t.DueAt,
                 EstimateHours = t.EstimateHours,
                 Blocked = t.Blocked,
+                BlockedReason = t.BlockedReason,
                 CreatedBy = "system",
                 CreatedAt = DateTime.UtcNow,
                 CompletedAt = t.Status == "done" ? DateTime.UtcNow : null
@@ -297,6 +301,34 @@ public static class DbInitializer
                 context.UserRoles.Add(new UserRoleEntity { UserId = adminUser.Id, RoleId = adminRoleId });
                 await context.SaveChangesAsync(ct);
             }
+        }
+    }
+
+    private static async Task SyncSeedNotificationLinksAsync(AdminDbContext context, CancellationToken ct)
+    {
+        var seedLinkMap = SeedNotifications
+            .Where(n => n.LinkUrl is not null)
+            .ToDictionary(n => n.PublicId, n => n.LinkUrl, StringComparer.Ordinal);
+
+        var existingSeeds = await context.AdminNotifications
+            .Where(n => seedLinkMap.Keys.Contains(n.PublicId))
+            .ToListAsync(ct);
+
+        var changed = false;
+        foreach (var notification in existingSeeds)
+        {
+            if (seedLinkMap.TryGetValue(notification.PublicId, out var linkUrl) &&
+                string.IsNullOrWhiteSpace(notification.LinkUrl))
+            {
+                notification.LinkUrl = linkUrl;
+                notification.UpdatedAt = DateTime.UtcNow;
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            await context.SaveChangesAsync(ct);
         }
     }
 

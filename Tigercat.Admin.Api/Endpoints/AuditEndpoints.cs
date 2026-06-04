@@ -31,6 +31,10 @@ public class AuditEndpoints : IEndpointDefinition
             .RequirePermission("audit:view")
             .WithName("GetAuditLogs");
 
+        group.MapPost("/retention/cleanup", CleanupRetention)
+            .RequirePermission("setting:edit")
+            .WithName("CleanupAuditRetention");
+
         group.MapGet("/{id}", GetAuditLog)
             .RequirePermission("audit:view")
             .WithName("GetAuditLog");
@@ -144,6 +148,8 @@ public class AuditEndpoints : IEndpointDefinition
     private static async Task<IResult> UpdateRetentionPolicy(
         UpdateAuditRetentionPolicyRequest request,
         AdminDbContext db,
+        IEventPublisher eventPublisher,
+        HttpContext httpContext,
         CancellationToken ct)
     {
         if (request.RetentionDays is < 1 or > 3650)
@@ -174,9 +180,66 @@ public class AuditEndpoints : IEndpointDefinition
 
         await db.SaveChangesAsync(ct);
 
+        await eventPublisher.PublishAsync(
+            EventEnvelope.Create(
+                "admin.setting.updated",
+                new Dictionary<string, object?>
+                {
+                    ["changedKeys"] = new[] { RetentionSettingKey },
+                    ["operator"] = GetOperatorUsername(httpContext)
+                },
+                httpContext.TraceIdentifier),
+            EventBusConstants.AdminStream,
+            ct);
+
         return Results.Json(
             ApiResult.Ok(new AuditRetentionPolicyResponse(request.RetentionDays, DateTime.UtcNow)),
             AppJsonContext.Default.ApiResponseAuditRetentionPolicyResponse);
+    }
+
+    private static async Task<IResult> CleanupRetention(
+        AuditRetentionCleanupRequest request,
+        AdminDbContext db,
+        IServiceProvider services,
+        IEventPublisher eventPublisher,
+        HttpContext httpContext,
+        CancellationToken ct)
+    {
+        var retentionDays = await GetRetentionDaysAsync(db, ct);
+        var cutoffUtc = DateTime.UtcNow.AddDays(-retentionDays);
+        var result = TryCleanupRetention(services, cutoffUtc, request.DryRun, ct);
+
+        if (result.Error is not null)
+        {
+            return result.Error;
+        }
+
+        if (!request.DryRun)
+        {
+            await eventPublisher.PublishAsync(
+                EventEnvelope.Create(
+                    "admin.audit.retention.cleaned",
+                    new Dictionary<string, object?>
+                    {
+                        ["retentionDays"] = retentionDays,
+                        ["cutoffUtc"] = cutoffUtc,
+                        ["matchedCount"] = result.MatchedCount,
+                        ["deletedCount"] = result.DeletedCount,
+                        ["operator"] = GetOperatorUsername(httpContext)
+                    },
+                    httpContext.TraceIdentifier),
+                EventBusConstants.AdminStream,
+                ct);
+        }
+
+        return Results.Json(
+            ApiResult.Ok(new AuditRetentionCleanupResponse(
+                request.DryRun,
+                retentionDays,
+                cutoffUtc,
+                result.MatchedCount,
+                result.DeletedCount)),
+            AppJsonContext.Default.ApiResponseAuditRetentionCleanupResponse);
     }
 
     private static (AuditLogItemResponse[] Items, IResult? Error) TryLoadAuditLogs(
@@ -202,6 +265,49 @@ public class AuditEndpoints : IEndpointDefinition
             return ([], Results.Json(
                 ApiResult.Fail<PagedResponse<AuditLogItemResponse>>("审计日志暂时不可用，请检查 Redis 连接状态", 503),
                 AppJsonContext.Default.ApiResponsePagedResponseAuditLogItemResponse,
+                statusCode: 503));
+        }
+    }
+
+    private static (int MatchedCount, int DeletedCount, IResult? Error) TryCleanupRetention(
+        IServiceProvider services,
+        DateTime cutoffUtc,
+        bool dryRun,
+        CancellationToken ct)
+    {
+        try
+        {
+            var redis = services.GetService<IRedisClient>();
+            if (redis is null)
+            {
+                return (0, 0, Results.Json(
+                    ApiResult.Fail<AuditRetentionCleanupResponse>("审计日志暂时不可用，请检查 Redis 连接状态", 503),
+                    AppJsonContext.Default.ApiResponseAuditRetentionCleanupResponse,
+                    statusCode: 503));
+            }
+
+            var matched = 0;
+            var deleted = 0;
+
+            foreach (var stream in AuditStreams)
+            {
+                ct.ThrowIfCancellationRequested();
+                var ids = LoadExpiredEntryIds(redis, stream, cutoffUtc, ct);
+                matched += ids.Length;
+
+                if (!dryRun && ids.Length > 0)
+                {
+                    deleted += (int)redis.XDel(stream, ids);
+                }
+            }
+
+            return (matched, deleted, null);
+        }
+        catch (Exception ex) when (ex is RedisConnectionException or RedisTimeoutException or FreeRedis.RedisServerException or NotSupportedException)
+        {
+            return (0, 0, Results.Json(
+                ApiResult.Fail<AuditRetentionCleanupResponse>("审计日志暂时不可用，请检查 Redis 连接状态", 503),
+                AppJsonContext.Default.ApiResponseAuditRetentionCleanupResponse,
                 statusCode: 503));
         }
     }
@@ -240,6 +346,32 @@ public class AuditEndpoints : IEndpointDefinition
         return [.. items
             .OrderByDescending(item => item.OccurredAtUtc)
             .Take(take)];
+    }
+
+    private static string[] LoadExpiredEntryIds(
+        IRedisClient redis,
+        string stream,
+        DateTime cutoffUtc,
+        CancellationToken ct)
+    {
+        var entries = redis.XRange(stream, "-", "+", MaxSearchWindow);
+        if (entries is null || entries.Length == 0)
+        {
+            return [];
+        }
+
+        var ids = new List<string>();
+        foreach (var entry in entries)
+        {
+            ct.ThrowIfCancellationRequested();
+            var envelope = TryReadEnvelope(entry);
+            if (envelope is not null && envelope.OccurredAtUtc < cutoffUtc)
+            {
+                ids.Add(entry.id);
+            }
+        }
+
+        return [.. ids];
     }
 
     private static IEnumerable<AuditLogItemResponse> ApplyFilters(
@@ -419,6 +551,14 @@ public class AuditEndpoints : IEndpointDefinition
         return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var days)
             ? days
             : 90;
+    }
+
+    private static string GetOperatorUsername(HttpContext httpContext)
+    {
+        return httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var operatorObj) &&
+            operatorObj is string operatorName
+            ? operatorName
+            : "unknown";
     }
 
     private static string? FormatDataValue(object? value)

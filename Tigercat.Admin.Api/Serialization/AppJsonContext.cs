@@ -33,6 +33,9 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(AuditRetentionPolicyResponse))]
 [JsonSerializable(typeof(UpdateAuditRetentionPolicyRequest))]
 [JsonSerializable(typeof(ApiResponse<AuditRetentionPolicyResponse>))]
+[JsonSerializable(typeof(AuditRetentionCleanupRequest))]
+[JsonSerializable(typeof(AuditRetentionCleanupResponse))]
+[JsonSerializable(typeof(ApiResponse<AuditRetentionCleanupResponse>))]
 // Users CRUD types
 [JsonSerializable(typeof(CreateUserRequest))]
 [JsonSerializable(typeof(UpdateUserRequest))]
@@ -104,6 +107,7 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(CreateAdminTaskRequest))]
 [JsonSerializable(typeof(UpdateAdminTaskRequest))]
 [JsonSerializable(typeof(MoveAdminTaskRequest))]
+[JsonSerializable(typeof(CompleteAdminTaskRequest))]
 [JsonSerializable(typeof(ApiResponse<AdminTaskResponse>))]
 [JsonSerializable(typeof(ApiResponse<PagedResponse<AdminTaskResponse>>))]
 internal partial class AppJsonContext : JsonSerializerContext

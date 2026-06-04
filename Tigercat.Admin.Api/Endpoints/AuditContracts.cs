@@ -15,3 +15,12 @@ public record AuditLogItemResponse(
 public record AuditRetentionPolicyResponse(int RetentionDays, DateTime UpdatedAtUtc);
 
 public record UpdateAuditRetentionPolicyRequest(int RetentionDays);
+
+public record AuditRetentionCleanupRequest(bool DryRun);
+
+public record AuditRetentionCleanupResponse(
+    bool DryRun,
+    int RetentionDays,
+    DateTime CutoffUtc,
+    int MatchedCount,
+    int DeletedCount);

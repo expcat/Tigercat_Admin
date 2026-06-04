@@ -109,6 +109,16 @@ API 暴露两个无需认证的健康入口：
 
 生产环境至少应把 `/api/health` 接入平台 readiness probe。若未显式配置 `Cors:AllowedOrigins`，非 Development 环境会在健康检查的 `configuration` 明细中标记为 `unhealthy`。
 
+## 运维工作流运行要求
+
+通知、任务、设置与审计清理已经形成后台工作流闭环：
+
+- API 成功发布任务、设置、用户治理和审计清理事件后写入 Redis Streams。
+- `RedisStreamConsumer` 消费白名单事件并写入通知中心，通知 `linkUrl` 指向站内页面。
+- 审计保留清理通过 `POST /api/audit-logs/retention/cleanup` 执行；生产环境建议先用 `dryRun=true` 预览，再在维护窗口执行清理。
+
+生产 smoke 除登录和健康检查外，建议补一次通知跳转、任务完成确认、设置保存事件和审计清理 dry-run。
+
 ## 数据库发布策略
 
 当前 SQLite 使用 EF Core migrations；PostgreSQL 样例启动时使用 `EnsureCreated` 建表，适合基线部署和配置验证。生产发布建议：

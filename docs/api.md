@@ -961,6 +961,12 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
 | `admin.user.batch.deleted`   | POST `/api/users/batch-delete`                | `deletedCount`、`deletedIds`、`targetUsernames`、`operator`         |
 | `admin.user.batch.status.updated` | POST `/api/users/batch-status`           | `updatedCount`、`updatedIds`、`targetUsernames`、`operator`、`status` |
 | `admin.user.password.reset`  | PUT `/api/users/{id}`（修改密码时）           | `targetUserId`、`targetUsername`、`operator`                        |
+| `admin.task.created`         | POST `/api/tasks`                             | `taskId`、`title`、`status`、`assignee`、`blocked`、`blockedReason`、`operator` |
+| `admin.task.updated`         | PUT `/api/tasks/{id}`                         | `taskId`、`title`、`status`、`assignee`、`blocked`、`blockedReason`、`operator` |
+| `admin.task.moved`           | PUT `/api/tasks/{id}/status`                  | `taskId`、`title`、`fromStatus`、`toStatus`、`operator`             |
+| `admin.task.completed`       | POST `/api/tasks/{id}/complete`               | `taskId`、`title`、`assignee`、`completionNote`、`operator`         |
+| `admin.setting.updated`      | PUT `/api/settings` 或 PUT `/api/audit-logs/retention-policy` | `changedKeys`、`operator`                               |
+| `admin.audit.retention.cleaned` | POST `/api/audit-logs/retention/cleanup`   | `retentionDays`、`cutoffUtc`、`matchedCount`、`deletedCount`、`operator` |
 
 ### 22.1 获取审计日志（分页 + 筛选）
 
@@ -1057,6 +1063,24 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
 - **返回 data**：
   - `retentionDays`：当前保留天数
   - `updatedAtUtc`：策略读取或更新时间
+- **事件**：PUT 成功后发布 `admin.setting.updated` 到 `stream:admin`
+
+### 22.4.1 执行审计保留清理
+
+- **方法**：POST
+- **路径**：`/api/audit-logs/retention/cleanup`
+- **认证**：是
+- **权限**：`setting:edit`
+- **请求体**：
+  - `dryRun`：`true` 时只预览匹配数量；`false` 时删除 Redis Streams 中早于保留截止时间的事件
+- **返回 data**：
+  - `dryRun`：本次是否为预览
+  - `retentionDays`：使用的保留天数
+  - `cutoffUtc`：清理截止时间
+  - `matchedCount`：匹配的过期事件数
+  - `deletedCount`：实际删除事件数
+- **可能错误码**：`503`：Redis 不可用
+- **事件**：执行清理成功后发布 `admin.audit.retention.cleaned` 到 `stream:admin`
 
 ---
 
@@ -1074,6 +1098,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
   - `groupKey`：分组筛选（`ops` / `security` / `release`）
   - `unread`：传 `true` 时只看未读
 - **返回 data**：分页通知对象，通知字段包含 `id`、`groupKey`、`title`、`description`、`time`、`read`、`toastType`、`meta`、`linkUrl`。
+- **说明**：后台事件消费者会把任务、设置、审计清理、关键用户治理等事件转化为通知，自动生成的通知 ID 格式为 `notif-{eventId}`。`linkUrl` 只使用站内路径，例如 `/tasks?taskId=...`、`/settings?key=...`、`/audit-logs?eventId=...`。
 
 ### 22.6 更新单条通知已读状态
 
@@ -1106,14 +1131,17 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
   - `page` / `pageSize`：分页参数（默认 `1` / `100`）
   - `status`：状态筛选
   - `keyword`：按标题、说明或负责人搜索
-- **返回 data**：分页任务对象，任务字段包含 `id`、`title`、`description`、`assignee`、`priority`、`status`、`dueAt`、`estimateHours`、`blocked`、`createdBy`、`createdAt`、`updatedAt`、`completedAt`。
+  - `assignee`：负责人模糊筛选
+  - `dueFrom` / `dueTo`：截止时间范围（UTC）
+  - `blocked`：阻塞状态筛选，传 `true` 或 `false`
+- **返回 data**：分页任务对象，任务字段包含 `id`、`title`、`description`、`assignee`、`priority`、`status`、`dueAt`、`estimateHours`、`blocked`、`blockedReason`、`completionNote`、`createdBy`、`createdAt`、`updatedAt`、`completedAt`。
 
 ### 22.9 创建任务
 
 - **方法**：POST
 - **路径**：`/api/tasks`
 - **权限**：`task:create`
-- **请求体**：`title` 必填，`description`、`assignee`、`priority`、`status`、`dueAt`、`estimateHours`、`blocked` 可选
+- **请求体**：`title` 必填，`description`、`assignee`、`priority`、`status`、`dueAt`、`estimateHours`、`blocked`、`blockedReason` 可选
 - **返回 data**：创建后的任务对象
 - **事件**：成功后发布 `admin.task.created` 到 `stream:admin`
 
@@ -1135,6 +1163,16 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
 - **返回 data**：更新后的任务对象
 - **说明**：阻塞任务不能直接流转到 `done`
 - **事件**：成功后发布 `admin.task.moved` 到 `stream:admin`
+
+### 22.12 完成任务
+
+- **方法**：POST
+- **路径**：`/api/tasks/{id}/complete`
+- **权限**：`task:edit`
+- **请求体**：`{ "confirm": true, "completionNote": "验收完成" }`
+- **返回 data**：更新后的任务对象
+- **说明**：必须显式传 `confirm=true`；阻塞任务不能直接完成。
+- **事件**：成功后发布 `admin.task.completed` 到 `stream:admin`
 
 ---
 
@@ -1280,6 +1318,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
   - 仅支持更新已存在的 Key，不支持新增
   - Key 会自动去除首尾空格
   - 重复 Key 以最后一个为准（last-write-wins）
+  - 保存成功后发布 `admin.setting.updated` 到 `stream:admin`，通知中心会生成可跳转到 `/settings?key=...` 的提醒
 
 示例请求体：
 

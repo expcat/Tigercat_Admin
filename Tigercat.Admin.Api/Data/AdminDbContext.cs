@@ -160,6 +160,8 @@ public class AdminDbContext : DbContext
             entity.Property(e => e.Assignee).IsRequired().HasMaxLength(80);
             entity.Property(e => e.Priority).IsRequired().HasMaxLength(20);
             entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.BlockedReason).HasMaxLength(500);
+            entity.Property(e => e.CompletionNote).HasMaxLength(500);
             entity.Property(e => e.CreatedBy).HasMaxLength(50);
         });
     }

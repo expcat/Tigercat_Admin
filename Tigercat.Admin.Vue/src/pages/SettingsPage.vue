@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Card, Button, Input, InputNumber, Modal, Popconfirm, Select, Segmented, Switch, Message, Text, Tag } from '@expcat/tigercat-vue'
 import { ColorPicker } from '@expcat/tigercat-vue/ColorPicker'
 import { Upload } from '@expcat/tigercat-vue/Upload'
@@ -19,7 +20,9 @@ const loading = ref(true)
 const saving = ref(false)
 const saveConfirmOpen = ref(false)
 const { has: hasPerm } = usePermission()
+const route = useRoute()
 const canEdit = computed(() => hasPerm('setting:edit'))
+const targetSettingKey = computed(() => typeof route.query.key === 'string' ? route.query.key : '')
 const groups = computed(() => groupSettings(settings.value))
 const changedSettings = computed(() =>
   settings.value.filter(s => editValues.value[s.key] !== s.value)
@@ -91,7 +94,20 @@ async function handleLogoUpload(options: UploadRequestOptions) {
   }
 }
 
-onMounted(fetchSettings)
+function scrollToTargetSetting() {
+  if (!targetSettingKey.value || loading.value) return
+  window.setTimeout(() => {
+    document
+      .getElementById(`setting-${targetSettingKey.value}`)
+      ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, 0)
+}
+
+onMounted(async () => {
+  await fetchSettings()
+  scrollToTargetSetting()
+})
+watch([targetSettingKey, loading], scrollToTargetSetting)
 </script>
 
 <template>
@@ -157,10 +173,18 @@ onMounted(fetchSettings)
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card v-for="[prefix, items] in groups" :key="prefix" :title="SETTINGS_GROUP_LABELS[prefix] ?? prefix">
           <div class="space-y-4">
-            <div v-for="item in items" :key="item.key" class="space-y-1">
+            <div
+              v-for="item in items"
+              :key="item.key"
+              :id="`setting-${item.key}`"
+              :class="[
+                'space-y-1 rounded-md p-2',
+                targetSettingKey === item.key ? 'ring-2 ring-(--tiger-color-primary,#2563eb)' : ''
+              ]"
+            >
               <div class="flex items-center gap-2">
                 <Text size="sm" weight="medium">{{ item.description ?? item.key }}</Text>
-                <Tag color="blue" size="sm">{{ item.key }}</Tag>
+                <Tag :color="targetSettingKey === item.key ? 'orange' : 'blue'" size="sm">{{ item.key }}</Tag>
               </div>
 
               <Switch

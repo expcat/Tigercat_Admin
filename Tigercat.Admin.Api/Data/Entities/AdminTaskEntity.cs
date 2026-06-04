@@ -12,6 +12,8 @@ public class AdminTaskEntity
     public DateTime DueAt { get; set; } = DateTime.UtcNow.AddDays(2);
     public double EstimateHours { get; set; } = 2;
     public bool Blocked { get; set; }
+    public string? BlockedReason { get; set; }
+    public string? CompletionNote { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

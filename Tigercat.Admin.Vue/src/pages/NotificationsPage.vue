@@ -8,6 +8,7 @@ import {
 } from '@expcat/tigercat-vue'
 import { NotificationCenter } from '@expcat/tigercat-vue/NotificationCenter'
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
 import MetricCard from '../components/MetricCard.vue'
@@ -22,6 +23,7 @@ import {
   setNotificationReadState
 } from '../utils/notifications'
 import { apiRequest, getAuthHeaders } from '../utils'
+import { usePermission } from '../utils/permission'
 import type {
   AdminNotificationGroupKey,
   AdminNotificationItem,
@@ -32,6 +34,23 @@ import type {
 const notifications = ref<AdminNotificationItem[]>([])
 const loading = ref(true)
 const errorMessage = ref('')
+const router = useRouter()
+const permission = usePermission()
+
+const LINK_PERMISSION_MAP: Array<[RegExp, string]> = [
+  [/^\/users(?:[/?#]|$)/, 'user:view'],
+  [/^\/roles(?:[/?#]|$)/, 'role:view'],
+  [/^\/files(?:[/?#]|$)/, 'media:view'],
+  [/^\/tasks(?:[/?#]|$)/, 'task:view'],
+  [/^\/audit-logs(?:[/?#]|$)/, 'audit:view'],
+  [/^\/settings(?:[/?#]|$)/, 'setting:view']
+]
+
+const getRequiredPermissionForLink = (linkUrl: string) =>
+  LINK_PERMISSION_MAP.find(([pattern]) => pattern.test(linkUrl))?.[1] ?? null
+
+const isSafeInternalLink = (linkUrl: string) =>
+  linkUrl.startsWith('/') && !linkUrl.startsWith('//')
 
 const notificationGroups = computed(() => buildNotificationGroups(notifications.value))
 const unreadCount = computed(() => countUnreadNotifications(notifications.value))
@@ -89,9 +108,42 @@ const loadNotifications = async () => {
   }
 }
 
-const handleItemClick = (item: NotificationItem) => {
+const persistReadState = async (id: string, read: boolean) => {
+  await apiRequest<AdminNotificationItem>(`/api/notifications/${id}/read`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ read })
+  })
+}
+
+const handleItemClick = async (item: NotificationItem) => {
   const currentItem = findNotificationById(notifications.value, item.id)
   if (!currentItem) {
+    return
+  }
+
+  if (currentItem.linkUrl) {
+    if (!isSafeInternalLink(currentItem.linkUrl)) {
+      showNotification('error', '无法打开通知链接', '通知链接不是安全的站内路径。')
+      return
+    }
+
+    const requiredPermission = getRequiredPermissionForLink(currentItem.linkUrl)
+    if (requiredPermission && !permission.has(requiredPermission)) {
+      showNotification('warning', '权限不足', '当前账号无权访问这条通知指向的页面。')
+      return
+    }
+
+    if (!currentItem.read) {
+      notifications.value = setNotificationReadState(notifications.value, item.id, true)
+      try {
+        await persistReadState(String(item.id), true)
+      } catch {
+        notifications.value = setNotificationReadState(notifications.value, item.id, false)
+      }
+    }
+
+    await router.push(currentItem.linkUrl)
     return
   }
 
@@ -107,11 +159,7 @@ const handleItemReadChange = async (item: NotificationItem, read: boolean) => {
   notifications.value = setNotificationReadState(notifications.value, item.id, read)
 
   try {
-    await apiRequest<AdminNotificationItem>(`/api/notifications/${item.id}/read`, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ read })
-    })
+    await persistReadState(String(item.id), read)
   } catch (error: unknown) {
     notifications.value = setNotificationReadState(notifications.value, item.id, !read)
     showNotification(

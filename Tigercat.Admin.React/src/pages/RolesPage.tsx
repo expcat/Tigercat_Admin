@@ -16,7 +16,6 @@ import {
   Tree,
   Tooltip,
   Message,
-  Popover,
 } from '@expcat/tigercat-react';
 import type { TableColumn, SortState } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
@@ -132,6 +131,9 @@ function RolesPage() {
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(
     () => new Set(savedWorkbench.hiddenColumnKeys),
   );
+  const [columnsPanelOpen, setColumnsPanelOpen] = useState(false);
+  const columnsTriggerRef = useRef<HTMLDivElement>(null);
+  const columnsPanelRef = useRef<HTMLDivElement>(null);
 
   // Modal state — create / edit
   const [modalVisible, setModalVisible] = useState(false);
@@ -439,6 +441,46 @@ function RolesPage() {
     });
   }, []);
 
+  const closeColumnsPanel = useCallback((restoreFocus = false) => {
+    setColumnsPanelOpen(false);
+    if (restoreFocus) {
+      window.setTimeout(() => {
+        columnsTriggerRef.current?.querySelector('button')?.focus();
+      }, 0);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!columnsPanelOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        columnsTriggerRef.current?.contains(target) ||
+        columnsPanelRef.current?.contains(target)
+      ) {
+        return;
+      }
+
+      closeColumnsPanel();
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeColumnsPanel(true);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [closeColumnsPanel, columnsPanelOpen]);
+
   // ---- Table columns ----
   const permissionOptions = useMemo(
     () =>
@@ -647,36 +689,46 @@ function RolesPage() {
       />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-        <Popover
-          trigger="click"
-          placement="bottom-end"
-          width={180}
-          contentContent={
-            <div className="space-y-2">
-              {ALL_COLUMN_KEYS.filter(
-                (k) => k !== 'actions' || canEdit || canDelete,
-              ).map((key) => (
-                <label
-                  key={key}
-                  className="p2-checkbox-row text-sm">
-                  <Checkbox
-                    checked={!hiddenColumns.has(key)}
-                    onChange={() => toggleColumn(key)}
-                  />
-                  <span className="p2-checkbox-label">
-                    {COLUMN_LABELS[key] || key}
-                  </span>
-                </label>
-              ))}
-            </div>
-          }>
-          <Button variant="outline" size="sm">
+        <div className="p4-column-popover" ref={columnsTriggerRef}>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-expanded={columnsPanelOpen}
+            aria-haspopup="dialog"
+            aria-controls="roles-column-panel"
+            onClick={() => setColumnsPanelOpen((open) => !open)}>
             <span className="flex items-center gap-1">
               <SettingsIcon size={14} />
               列显隐
             </span>
           </Button>
-        </Popover>
+          {columnsPanelOpen && (
+            <div
+              id="roles-column-panel"
+              ref={columnsPanelRef}
+              role="dialog"
+              aria-label="角色表格列显隐"
+              className="p4-column-panel">
+              <div className="space-y-2">
+                {ALL_COLUMN_KEYS.filter(
+                  (k) => k !== 'actions' || canEdit || canDelete,
+                ).map((key) => (
+                  <label
+                    key={key}
+                    className="p2-checkbox-row text-sm">
+                    <Checkbox
+                      checked={!hiddenColumns.has(key)}
+                      onChange={() => toggleColumn(key)}
+                    />
+                    <span className="p2-checkbox-label">
+                      {COLUMN_LABELS[key] || key}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
         <PermissionGuard code="role:view">
           <Button variant="outline" onClick={openExportModal}>
             <span className="flex items-center gap-1">

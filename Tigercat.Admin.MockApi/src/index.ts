@@ -94,6 +94,8 @@ type TaskItem = {
   dueAt: string;
   estimateHours: number;
   blocked?: boolean;
+  blockedReason?: string | null;
+  completionNote?: string | null;
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string | null;
@@ -290,7 +292,7 @@ function initialState(): DemoState {
       task('task-asset-review', '补齐媒体资源持久化方案', '为 Logo 与头像预留真实存储方案，明确对象存储与权限校验边界。', '王一哲', 'high', 'backlog', '2026-06-03T10:00:00.000Z', 6, false),
       task('task-e2e-plan', '梳理用户与设置核心流程 E2E 用例', '覆盖登录、用户 CRUD、设置保存与权限保护的最小回归集合。', '平台测试', 'medium', 'backlog', '2026-06-05T04:00:00.000Z', 4, false),
       task('task-postgres-docs', '整理 PostgreSQL 生产配置文档', '补齐连接串、迁移、备份策略与 Aspire 环境变量示例。', '后端组', 'high', 'todo', '2026-05-30T10:00:00.000Z', 5, false),
-      task('task-cache-observe', '定位导出缓存命中率下降原因', '需要结合 Redis 指标与导出模板变更记录继续排查。', '平台运维', 'high', 'doing', '2026-05-28T09:30:00.000Z', 4, true),
+      task('task-cache-observe', '定位导出缓存命中率下降原因', '需要结合 Redis 指标与导出模板变更记录继续排查。', '平台运维', 'high', 'doing', '2026-05-28T09:30:00.000Z', 4, true, '等待 Redis 指标与导出模板变更记录交叉确认。'),
       task('task-notification-review', '通知中心交互复核', '确认分组筛选、已读切换与浮层反馈在双端一致。', '产品验收', 'medium', 'review', '2026-05-29T07:00:00.000Z', 2, false),
       task('task-audit-page', '审计日志页联调完成', '后端聚合 Redis Streams，双端页面已完成 ActivityFeed 与 Timeline 验证。', '管理后台', 'medium', 'done', '2026-05-28T06:00:00.000Z', 3, false),
     ],
@@ -353,6 +355,7 @@ function task(
   dueAt: string,
   estimateHours: number,
   blocked: boolean,
+  blockedReason: string | null = null,
 ): TaskItem {
   return {
     id,
@@ -364,6 +367,8 @@ function task(
     dueAt,
     estimateHours,
     blocked,
+    blockedReason,
+    completionNote: status === 'done' ? '演示任务已完成。' : null,
     createdBy: 'system',
     createdAt: CREATED_AT,
     updatedAt: null,
@@ -674,12 +679,36 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
 
   if (path === '/api/settings' && method === 'PUT') {
     const updates = Array.isArray(body.settings) ? (body.settings as Array<{ key: string; value: string }>) : [];
+    const changedKeys: string[] = [];
     for (const update of updates) {
       const item = state.settings.find((setting) => setting.key === update.key);
       if (item) {
         item.value = String(update.value ?? '');
         item.updatedAt = new Date().toISOString();
+        changedKeys.push(item.key);
       }
+    }
+    if (changedKeys.length > 0) {
+      const notificationId = `notif-setting-${Date.now()}`;
+      state.notifications.unshift({
+        id: notificationId,
+        groupKey: changedKeys.some((key) => key.startsWith('auth.')) ? 'security' : 'ops',
+        title: '系统设置已更新',
+        description: `admin 更新了 ${changedKeys.join(', ')}。`,
+        time: new Date().toISOString(),
+        read: false,
+        toastType: changedKeys.some((key) => key.startsWith('auth.')) ? 'warning' : 'info',
+        meta: { source: 'settings', severity: 'low', eventType: 'admin.setting.updated' },
+        linkUrl: `/settings?key=${encodeURIComponent(changedKeys[0])}`,
+      });
+      state.auditLogs.unshift(audit(
+        `audit-setting-${Date.now()}`,
+        'system',
+        'admin.setting.updated',
+        '系统设置已更新',
+        `admin 更新了 ${changedKeys.join(', ')}。`,
+        'admin',
+      ));
     }
     writeState(storageKey, state);
     return makeJson(state.settings);
@@ -721,9 +750,18 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   if (path === '/api/tasks' && method === 'GET') {
     const keyword = url.searchParams.get('keyword')?.trim().toLowerCase();
     const status = url.searchParams.get('status');
+    const assignee = url.searchParams.get('assignee')?.trim().toLowerCase();
+    const blocked = url.searchParams.get('blocked');
+    const dueFrom = url.searchParams.get('dueFrom');
+    const dueTo = url.searchParams.get('dueTo');
     let items = [...state.tasks];
-    if (keyword) items = items.filter((item) => `${item.title} ${item.description ?? ''}`.toLowerCase().includes(keyword));
+    if (keyword) items = items.filter((item) => `${item.title} ${item.description ?? ''} ${item.assignee}`.toLowerCase().includes(keyword));
     if (status) items = items.filter((item) => item.status === status);
+    if (assignee) items = items.filter((item) => item.assignee.toLowerCase().includes(assignee));
+    if (blocked === 'true') items = items.filter((item) => Boolean(item.blocked));
+    if (blocked === 'false') items = items.filter((item) => !item.blocked);
+    if (dueFrom) items = items.filter((item) => new Date(item.dueAt).getTime() >= new Date(dueFrom).getTime());
+    if (dueTo) items = items.filter((item) => new Date(item.dueAt).getTime() <= new Date(dueTo).getTime());
     return makeJson(page(items, url));
   }
 
@@ -739,6 +777,8 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
       dueAt: String(body.dueAt ?? new Date(Date.now() + 86400000).toISOString()),
       estimateHours: Number(body.estimateHours ?? 2),
       blocked: Boolean(body.blocked),
+      blockedReason: body.blocked ? String(body.blockedReason ?? '') || null : null,
+      completionNote: null,
       createdBy: 'admin',
       createdAt: new Date().toISOString(),
       updatedAt: null,
@@ -749,6 +789,24 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     return makeJson(item, { status: 201 });
   }
 
+  const taskMatch = path.match(/^\/api\/tasks\/([^/]+)$/);
+  if (taskMatch && method === 'PUT') {
+    const item = state.tasks.find((taskItem) => taskItem.id === taskMatch[1]);
+    if (!item) return makeError('任务不存在', 404);
+    item.title = String(body.title ?? item.title);
+    item.description = (body.description as string | undefined) ?? item.description;
+    item.assignee = String(body.assignee ?? item.assignee);
+    item.priority = (body.priority as TaskItem['priority']) ?? item.priority;
+    item.status = (body.status as TaskItem['status']) ?? item.status;
+    item.dueAt = String(body.dueAt ?? item.dueAt);
+    item.estimateHours = Number(body.estimateHours ?? item.estimateHours);
+    if (typeof body.blocked === 'boolean') item.blocked = body.blocked;
+    item.blockedReason = item.blocked ? (String(body.blockedReason ?? item.blockedReason ?? '') || null) : null;
+    item.updatedAt = new Date().toISOString();
+    writeState(storageKey, state);
+    return makeJson(item);
+  }
+
   const taskStatusMatch = path.match(/^\/api\/tasks\/([^/]+)\/status$/);
   if (taskStatusMatch && method === 'PUT') {
     const item = state.tasks.find((taskItem) => taskItem.id === taskStatusMatch[1]);
@@ -757,6 +815,31 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     item.status = (body.status as TaskItem['status']) ?? item.status;
     item.updatedAt = new Date().toISOString();
     item.completedAt = item.status === 'done' ? item.updatedAt : null;
+    writeState(storageKey, state);
+    return makeJson(item);
+  }
+
+  const taskCompleteMatch = path.match(/^\/api\/tasks\/([^/]+)\/complete$/);
+  if (taskCompleteMatch && method === 'POST') {
+    const item = state.tasks.find((taskItem) => taskItem.id === taskCompleteMatch[1]);
+    if (!item) return makeError('任务不存在', 404);
+    if (!body.confirm) return makeError('完成任务前需要确认', 400);
+    if (item.blocked) return makeError('阻塞任务不能直接完成', 400);
+    item.status = 'done';
+    item.completionNote = String(body.completionNote ?? '') || null;
+    item.updatedAt = new Date().toISOString();
+    item.completedAt = item.updatedAt;
+    state.notifications.unshift({
+      id: `notif-task-${Date.now()}`,
+      groupKey: 'ops',
+      title: '运维任务已完成',
+      description: `admin 完成了任务 ${item.title}。`,
+      time: new Date().toISOString(),
+      read: false,
+      toastType: 'success',
+      meta: { source: 'task', severity: 'low', eventType: 'admin.task.completed' },
+      linkUrl: `/tasks?taskId=${encodeURIComponent(item.id)}`,
+    });
     writeState(storageKey, state);
     return makeJson(item);
   }
@@ -776,6 +859,34 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     state.retentionDays = Number(body.retentionDays ?? state.retentionDays);
     writeState(storageKey, state);
     return makeJson({ retentionDays: state.retentionDays, updatedAtUtc: new Date().toISOString() });
+  }
+
+  if (path === '/api/audit-logs/retention/cleanup' && method === 'POST') {
+    const cutoff = new Date(Date.now() - state.retentionDays * 86400000);
+    const expired = state.auditLogs.filter((item) => new Date(item.occurredAtUtc).getTime() < cutoff.getTime());
+    const dryRun = Boolean(body.dryRun);
+    if (!dryRun) {
+      state.auditLogs = state.auditLogs.filter((item) => new Date(item.occurredAtUtc).getTime() >= cutoff.getTime());
+      state.notifications.unshift({
+        id: `notif-audit-cleanup-${Date.now()}`,
+        groupKey: 'ops',
+        title: '审计日志清理完成',
+        description: `admin 清理了 ${expired.length} 条过期审计日志。`,
+        time: new Date().toISOString(),
+        read: false,
+        toastType: 'success',
+        meta: { source: 'audit', severity: 'low', eventType: 'admin.audit.retention.cleaned' },
+        linkUrl: '/audit-logs',
+      });
+      writeState(storageKey, state);
+    }
+    return makeJson({
+      dryRun,
+      retentionDays: state.retentionDays,
+      cutoffUtc: cutoff.toISOString(),
+      matchedCount: expired.length,
+      deletedCount: dryRun ? 0 : expired.length,
+    });
   }
 
   if (path === '/api/audit-logs/export' && method === 'GET') {

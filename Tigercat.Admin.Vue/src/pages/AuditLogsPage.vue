@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { Alert, Button, Card, Empty, Input, Loading, Modal, Select, Tag, Text } from '@expcat/tigercat-vue'
 import { ActivityFeed } from '@expcat/tigercat-vue/ActivityFeed'
 import { Timeline } from '@expcat/tigercat-vue/Timeline'
@@ -11,7 +12,7 @@ import MetricGrid from '../components/MetricGrid.vue'
 import PageActionPanel from '../components/PageActionPanel.vue'
 import { apiRequest, exportAuditLogs, getAuthHeaders, loadWorkbenchState, saveWorkbenchState } from '../utils'
 import { usePermission } from '../utils/permission'
-import type { AuditLogItem, AuditRetentionPolicy, PagedResult } from '../utils/types'
+import type { AuditLogItem, AuditRetentionCleanupResult, AuditRetentionPolicy, PagedResult } from '../utils/types'
 
 const categoryOptions = [
   { label: '全部分类', value: '' },
@@ -21,6 +22,7 @@ const categoryOptions = [
   { label: '系统', value: 'system' },
 ]
 const { has: hasPerm } = usePermission()
+const route = useRoute()
 const savedWorkbench = loadWorkbenchState('audit-logs', {
   queryState: { keyword: '', category: '' },
 })
@@ -37,6 +39,9 @@ const loading = ref(true)
 const errorMessage = ref('')
 const exportConfirmOpen = ref(false)
 const exporting = ref(false)
+const cleanupConfirmOpen = ref(false)
+const cleanupResult = ref<AuditRetentionCleanupResult | null>(null)
+const cleaningRetention = ref(false)
 
 const CONTAINS_CHINESE_CHAR_REGEX = /[\u4e00-\u9fa5]/
 
@@ -99,6 +104,14 @@ const loadAuditLogs = async () => {
       headers: getAuthHeaders()
     })
     logs.value = payload.data.items
+    const eventId = typeof route.query.eventId === 'string' ? route.query.eventId : ''
+    if (eventId) {
+      const target = logs.value.find(log => log.id === eventId)
+      if (target) {
+        selectedLog.value = target
+        return
+      }
+    }
     selectedLog.value = selectedLog.value && logs.value.some(log => log.id === selectedLog.value?.id)
       ? selectedLog.value
       : logs.value[0] ?? null
@@ -153,6 +166,26 @@ const handleSaveRetention = async () => {
     await loadRetentionPolicy()
   } catch (error: unknown) {
     errorMessage.value = error instanceof Error ? error.message : '保留策略保存失败'
+  }
+}
+
+const runRetentionCleanup = async (dryRun: boolean) => {
+  cleaningRetention.value = true
+  try {
+    const payload = await apiRequest<AuditRetentionCleanupResult>('/api/audit-logs/retention/cleanup', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ dryRun })
+    })
+    cleanupResult.value = payload.data
+    cleanupConfirmOpen.value = true
+    if (!dryRun) {
+      await loadAuditLogs()
+    }
+  } catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : '审计清理失败'
+  } finally {
+    cleaningRetention.value = false
   }
 }
 
@@ -285,6 +318,9 @@ onMounted(async () => {
           <Button v-if="canSaveRetention" variant="outline" @click="handleSaveRetention">
             保存策略
           </Button>
+          <Button v-if="canSaveRetention" variant="outline" @click="runRetentionCleanup(true)">
+            预览清理
+          </Button>
         </div>
       </Card>
 
@@ -338,6 +374,27 @@ onMounted(async () => {
       <Text color="secondary">
         将按当前关键词和分类筛选导出最近审计窗口中的 {{ logs.length }} 条记录。
       </Text>
+    </Modal>
+
+    <Modal
+      v-model:open="cleanupConfirmOpen"
+      title="确认清理审计日志"
+      show-default-footer
+      :ok-text="cleaningRetention ? '清理中...' : '执行清理'"
+      cancel-text="关闭"
+      :confirm-loading="cleaningRetention"
+      @ok="runRetentionCleanup(false)"
+      @cancel="cleanupConfirmOpen = false"
+    >
+      <div class="space-y-3">
+        <Text color="secondary">
+          当前保留 {{ cleanupResult?.retentionDays ?? retentionDays }} 天，截止时间
+          {{ cleanupResult ? formatDateTime(cleanupResult.cutoffUtc) : '--' }}。
+        </Text>
+        <Text>
+          预览匹配 {{ cleanupResult?.matchedCount ?? 0 }} 条，已删除 {{ cleanupResult?.deletedCount ?? 0 }} 条。
+        </Text>
+      </div>
     </Modal>
   </div>
 </template>

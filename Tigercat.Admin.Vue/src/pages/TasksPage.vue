@@ -9,12 +9,15 @@ import {
   Button,
   Card,
   Input,
+  Modal,
+  Select,
   Tag,
   Text,
   notification
 } from '@expcat/tigercat-vue'
 import { TaskBoard } from '@expcat/tigercat-vue/TaskBoard'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
 import MetricCard from '../components/MetricCard.vue'
@@ -36,9 +39,19 @@ import { apiRequest, getAuthHeaders } from '../utils'
 import type { AdminTaskBoardCard, AdminTaskBoardColumn, PagedResult } from '../utils/types'
 
 const filterText = ref('')
+const assigneeFilter = ref('')
+const blockedFilter = ref('')
+const dueFrom = ref('')
+const dueTo = ref('')
 const columns = ref<AdminTaskBoardColumn[]>([])
+const selectedTask = ref<AdminTaskBoardCard | null>(null)
+const detailOpen = ref(false)
+const completionNote = ref('')
+const completing = ref(false)
 const loading = ref(true)
 const lastAction = ref('任务面板正在读取后端工作流数据。')
+const route = useRoute()
+const router = useRouter()
 
 const totalCount = computed(() => countTaskBoardCards(columns.value))
 const blockedCount = computed(() => countBlockedTaskBoardCards(columns.value))
@@ -61,10 +74,28 @@ const loadTasks = async () => {
   loading.value = true
 
   try {
-    const payload = await apiRequest<PagedResult<AdminTaskBoardCard>>('/api/tasks?page=1&pageSize=200', {
+    const params = new URLSearchParams({ page: '1', pageSize: '200' })
+    if (filterText.value.trim()) params.set('keyword', filterText.value.trim())
+    if (assigneeFilter.value.trim()) params.set('assignee', assigneeFilter.value.trim())
+    if (blockedFilter.value) params.set('blocked', blockedFilter.value)
+    if (dueFrom.value.trim()) params.set('dueFrom', new Date(dueFrom.value).toISOString())
+    if (dueTo.value.trim()) params.set('dueTo', new Date(`${dueTo.value}T23:59:59`).toISOString())
+
+    const payload = await apiRequest<PagedResult<AdminTaskBoardCard>>(`/api/tasks?${params}`, {
       headers: getAuthHeaders()
     })
-    columns.value = buildTaskBoardColumnsFromTasks(payload.data.items)
+    const nextColumns = buildTaskBoardColumnsFromTasks(payload.data.items)
+    columns.value = nextColumns
+    const queryTaskId = typeof route.query.taskId === 'string' ? route.query.taskId : ''
+    const targetId = queryTaskId || selectedTask.value?.id
+    const target = targetId ? findTaskBoardCard(nextColumns, targetId) : undefined
+    if (queryTaskId && target) {
+      selectedTask.value = target
+      completionNote.value = target.completionNote ?? ''
+      detailOpen.value = true
+    } else if (target) {
+      selectedTask.value = target
+    }
     lastAction.value = `已同步 ${payload.data.total} 个后端任务。`
   } catch (error: unknown) {
     const message = error instanceof Error && error.message
@@ -151,7 +182,62 @@ const handleColumnMove = (event: TaskBoardColumnMoveEvent) => {
 
 const handleResetBoard = () => {
   filterText.value = ''
+  assigneeFilter.value = ''
+  blockedFilter.value = ''
+  dueFrom.value = ''
+  dueTo.value = ''
   void loadTasks()
+}
+
+const openTaskDetail = (card: AdminTaskBoardCard) => {
+  selectedTask.value = card
+  completionNote.value = card.completionNote ?? ''
+  detailOpen.value = true
+  void router.replace({ path: '/tasks', query: { taskId: card.id } })
+}
+
+const closeTaskDetail = () => {
+  detailOpen.value = false
+  void router.replace('/tasks')
+}
+
+const handleCompleteTask = async () => {
+  if (!selectedTask.value) return
+
+  if (selectedTask.value.blocked || selectedTask.value.status === 'done') {
+    notification.warning({
+      title: selectedTask.value.blocked ? '任务仍被阻塞' : '任务已完成',
+      description: selectedTask.value.blocked
+        ? '请先清除阻塞状态，再确认完成。'
+        : '已完成任务无需重复确认。'
+    })
+    return
+  }
+
+  completing.value = true
+  try {
+    const payload = await apiRequest<AdminTaskBoardCard>(`/api/tasks/${selectedTask.value.id}/complete`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        confirm: true,
+        completionNote: completionNote.value
+      })
+    })
+    selectedTask.value = payload.data
+    await loadTasks()
+    notification.success({
+      title: '任务已完成',
+      description: payload.data.title
+    })
+  } catch (error: unknown) {
+    notification.error({
+      title: '任务完成失败',
+      description: error instanceof Error ? error.message : '请稍后重试。'
+    })
+  } finally {
+    completing.value = false
+  }
 }
 
 const beforeCardMove = (event: TaskBoardCardMoveEvent) => {
@@ -239,6 +325,9 @@ const renderCard = (card: TaskBoardCard) => {
 }
 
 onMounted(loadTasks)
+watch([filterText, assigneeFilter, blockedFilter, dueFrom, dueTo], () => {
+  void loadTasks()
+})
 </script>
 
 <template>
@@ -263,6 +352,33 @@ onMounted(loadTasks)
             :value="filterText"
             placeholder="搜索任务标题或说明"
             @change="(value) => filterText = String(value ?? '')"
+          />
+          <Input
+            :value="assigneeFilter"
+            placeholder="负责人"
+            @change="(value) => assigneeFilter = String(value ?? '')"
+          />
+          <Input
+            :value="dueFrom"
+            type="date"
+            placeholder="开始日期"
+            @change="(value) => dueFrom = String(value ?? '')"
+          />
+          <Input
+            :value="dueTo"
+            type="date"
+            placeholder="结束日期"
+            @change="(value) => dueTo = String(value ?? '')"
+          />
+          <Select
+            :value="blockedFilter"
+            :options="[
+              { label: '全部阻塞状态', value: '' },
+              { label: '仅阻塞', value: 'true' },
+              { label: '未阻塞', value: 'false' }
+            ]"
+            :clearable="false"
+            @change="(value) => blockedFilter = String(value ?? '')"
           />
           <Button variant="outline" @click="handleResetBoard">
             刷新看板
@@ -331,9 +447,61 @@ onMounted(loadTasks)
             <Text size="sm" color="secondary">
               截止 {{ card.dueAt ? formatDateTime(card.dueAt) : '--' }} · 预估 {{ card.estimateHours ?? 0 }}h
             </Text>
+            <Text v-if="card.blockedReason" size="sm" color="danger">
+              {{ card.blockedReason }}
+            </Text>
+            <Button size="sm" variant="outline" @click="openTaskDetail(card)">
+              详情
+            </Button>
           </div>
         </template>
       </TaskBoard>
     </Card>
+
+    <Modal
+      v-model:open="detailOpen"
+      title="任务详情"
+      show-default-footer
+      :ok-text="completing ? '完成中...' : '确认完成'"
+      cancel-text="关闭"
+      :confirm-loading="completing"
+      @ok="handleCompleteTask"
+      @cancel="closeTaskDetail"
+    >
+      <div v-if="selectedTask" class="space-y-4">
+        <div>
+          <Text weight="bold">{{ selectedTask.title }}</Text>
+          <Text v-if="selectedTask.description" color="secondary" class="mt-1">
+            {{ selectedTask.description }}
+          </Text>
+        </div>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <MutedPanel title="负责人" :description="selectedTask.assignee" />
+          <MutedPanel title="截止时间" :description="formatDateTime(selectedTask.dueAt)" />
+          <MutedPanel title="当前状态" :description="selectedTask.status" />
+          <MutedPanel title="预估工时" :description="`${selectedTask.estimateHours}h`" />
+        </div>
+        <MutedPanel
+          v-if="selectedTask.blocked"
+          title="阻塞原因"
+          :description="selectedTask.blockedReason ?? '暂无阻塞说明'"
+        />
+        <MutedPanel
+          v-if="selectedTask.completionNote"
+          title="完成说明"
+          :description="selectedTask.completionNote"
+        />
+        <Input
+          :model-value="completionNote"
+          placeholder="完成说明"
+          :disabled="selectedTask.blocked || selectedTask.status === 'done'"
+          @update:model-value="(value) => completionNote = String(value ?? '')"
+        />
+        <Text v-if="selectedTask.blocked" color="danger">
+          阻塞任务需要先清除阻塞状态，才能确认完成。
+        </Text>
+      </div>
+      <Text v-else color="secondary">请选择任务。</Text>
+    </Modal>
   </div>
 </template>

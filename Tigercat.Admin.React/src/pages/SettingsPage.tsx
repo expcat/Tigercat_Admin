@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Card,
   Button,
@@ -31,6 +32,7 @@ import type { SettingItem } from '../utils/types';
 import { uploadMediaFile } from '../utils/media';
 
 function SettingsPage() {
+  const location = useLocation();
   const [settings, setSettings] = useState<SettingItem[]>([]);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -38,6 +40,10 @@ function SettingsPage() {
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const { has: hasPerm } = usePermission();
   const canEdit = hasPerm('setting:edit');
+  const targetSettingKey = useMemo(
+    () => new URLSearchParams(location.search).get('key') ?? '',
+    [location.search],
+  );
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -59,6 +65,15 @@ function SettingsPage() {
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
+
+  useEffect(() => {
+    if (!targetSettingKey || loading) return;
+    window.setTimeout(() => {
+      document
+        .getElementById(`setting-${targetSettingKey}`)
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 0);
+  }, [loading, targetSettingKey]);
 
   const handleSave = async () => {
     if (!canEdit) return;
@@ -204,12 +219,17 @@ function SettingsPage() {
                   {items.map((item) => {
                     const ctrl = getControl(item.key);
                     return (
-                      <div key={item.key} className="space-y-1">
+                      <div
+                        key={item.key}
+                        id={`setting-${item.key}`}
+                        className={`space-y-1 rounded-md p-2 ${targetSettingKey === item.key ? 'ring-2 ring-(--tiger-color-primary,#2563eb)' : ''}`}>
                         <div className="flex items-center gap-2">
                           <Text size="sm" weight="medium">
                             {item.description ?? item.key}
                           </Text>
-                          <Tag color="blue" size="sm">
+                          <Tag
+                            color={targetSettingKey === item.key ? 'orange' : 'blue'}
+                            size="sm">
                             {item.key}
                           </Tag>
                         </div>

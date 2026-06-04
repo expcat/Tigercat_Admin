@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Alert,
   Button,
@@ -38,6 +39,7 @@ import {
 import { usePermission } from '../utils/permission';
 import type {
   AuditLogItem,
+  AuditRetentionCleanupResult,
   AuditRetentionPolicy,
   PagedResult,
 } from '../utils/types';
@@ -92,6 +94,7 @@ const getTimelineColor = (category: AuditLogItem['category']) => {
 };
 
 function AuditLogsPage() {
+  const location = useLocation();
   const { has: hasPerm } = usePermission();
   const savedWorkbench = useMemo(
     () =>
@@ -113,6 +116,9 @@ function AuditLogsPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [cleanupConfirmOpen, setCleanupConfirmOpen] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<AuditRetentionCleanupResult | null>(null);
+  const [cleaningRetention, setCleaningRetention] = useState(false);
 
   const loadAuditLogs = useCallback(async () => {
     setLoading(true);
@@ -138,6 +144,14 @@ function AuditLogsPage() {
       );
       setLogs(payload.data.items);
       setSelectedLog((current) => {
+        const eventId = new URLSearchParams(location.search).get('eventId');
+        if (eventId) {
+          const target = payload.data.items.find((log) => log.id === eventId);
+          if (target) {
+            return target;
+          }
+        }
+
         if (current && payload.data.items.some((log) => log.id === current.id)) {
           return current;
         }
@@ -149,7 +163,7 @@ function AuditLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [category, keyword]);
+  }, [category, keyword, location.search]);
 
   const loadRetentionPolicy = useCallback(async () => {
     try {
@@ -204,6 +218,29 @@ function AuditLogsPage() {
       setErrorMessage(error instanceof Error ? error.message : '保留策略保存失败');
     }
   }, [loadRetentionPolicy, retentionDays]);
+
+  const runRetentionCleanup = useCallback(async (dryRun: boolean) => {
+    setCleaningRetention(true);
+    try {
+      const payload = await apiRequest<AuditRetentionCleanupResult>(
+        '/api/audit-logs/retention/cleanup',
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ dryRun }),
+        },
+      );
+      setCleanupResult(payload.data);
+      setCleanupConfirmOpen(true);
+      if (!dryRun) {
+        await loadAuditLogs();
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '审计清理失败');
+    } finally {
+      setCleaningRetention(false);
+    }
+  }, [loadAuditLogs]);
 
   const handleKeywordChange = (value: string) => {
     const next = normalizeInput(value);
@@ -347,6 +384,13 @@ function AuditLogsPage() {
                 保存策略
               </Button>
             )}
+            {canSaveRetention && (
+              <Button
+                variant="outline"
+                onClick={() => runRetentionCleanup(true)}>
+                预览清理
+              </Button>
+            )}
           </div>
         </Card>
 
@@ -411,6 +455,27 @@ function AuditLogsPage() {
         <Text color="secondary">
           将按当前关键词和分类筛选导出最近审计窗口中的 {logs.length} 条记录。
         </Text>
+      </Modal>
+
+      <Modal
+        open={cleanupConfirmOpen}
+        title="确认清理审计日志"
+        showDefaultFooter
+        okText={cleaningRetention ? '清理中...' : '执行清理'}
+        cancelText="关闭"
+        confirmLoading={cleaningRetention}
+        onOk={() => runRetentionCleanup(false)}
+        onCancel={() => setCleanupConfirmOpen(false)}>
+        <div className="space-y-3">
+          <Text color="secondary">
+            当前保留 {cleanupResult?.retentionDays ?? retentionDays} 天，
+            截止时间 {cleanupResult ? formatDateTime(cleanupResult.cutoffUtc) : '--'}。
+          </Text>
+          <Text>
+            预览匹配 {cleanupResult?.matchedCount ?? 0} 条，
+            已删除 {cleanupResult?.deletedCount ?? 0} 条。
+          </Text>
+        </div>
       </Modal>
     </div>
   );
