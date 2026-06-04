@@ -185,6 +185,8 @@ test.describe('前端权限守卫回归', () => {
       await expect(page).toHaveURL(/\/users$/);
       await expect(page.getByText('用户管理').first()).toBeVisible();
       await expect(page.getByRole('button', { name: '新增用户' })).toBeHidden();
+      await expect(page.getByRole('button', { name: '批量启用' })).toBeHidden();
+      await expect(page.getByRole('button', { name: '批量禁用' })).toBeHidden();
       await expect(page.getByRole('button', { name: '批量删除' })).toBeHidden();
       await expect(page.getByRole('button', { name: '删除', exact: true })).toHaveCount(0);
     } finally {

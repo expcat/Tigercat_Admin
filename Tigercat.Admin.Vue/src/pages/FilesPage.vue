@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { Button, Card, Message, Modal, Select, Tag, Text } from '@expcat/tigercat-vue'
 import { FileManager } from '@expcat/tigercat-vue/FileManager'
 import { Upload } from '@expcat/tigercat-vue/Upload'
 import type { FileItem, UploadRequestOptions } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
-import { deleteMedia, listMedia, uploadMediaFile } from '../utils/media'
+import { batchDeleteMedia, listMedia, uploadMediaFile } from '../utils/media'
 import { usePermission } from '../utils/permission'
+import { clearWorkbenchSelection, loadWorkbenchState, saveWorkbenchState } from '../utils/workbench'
 import type { MediaItem } from '../utils/types'
 
 const typeOptions = [
@@ -21,12 +22,17 @@ const typeOptions = [
 const { has: hasPerm } = usePermission()
 const canUpload = computed(() => hasPerm('media:upload'))
 const canDelete = computed(() => hasPerm('media:delete'))
+const savedWorkbench = loadWorkbenchState('files', {
+  queryState: { contentType: '', keyword: '' },
+  selectedRowKeys: [],
+})
+const savedQuery = savedWorkbench.queryState
 
 const items = ref<MediaItem[]>([])
 const loading = ref(false)
-const contentType = ref('')
-const searchText = ref('')
-const selectedKeys = ref<(string | number)[]>([])
+const contentType = ref(savedQuery.contentType ?? '')
+const searchText = ref(savedQuery.keyword ?? '')
+const selectedKeys = ref<(string | number)[]>(savedWorkbench.selectedRowKeys)
 const deleteOpen = ref(false)
 const deleting = ref(false)
 
@@ -85,11 +91,10 @@ async function confirmDelete() {
   if (selectedIds.value.length === 0) return
   try {
     deleting.value = true
-    for (const id of selectedIds.value) {
-      await deleteMedia(id)
-    }
-    Message.success({ content: '已删除选中文件', duration: 3000 })
+    const res = await batchDeleteMedia(selectedIds.value)
+    Message.success({ content: res.data.message || '已删除选中文件', duration: 3000 })
     selectedKeys.value = []
+    clearWorkbenchSelection('files')
     deleteOpen.value = false
     await loadMedia()
   } catch (e: any) {
@@ -99,6 +104,27 @@ async function confirmDelete() {
   }
 }
 
+async function handleContentTypeChange(value: unknown) {
+  contentType.value = String(value ?? '')
+  saveWorkbenchState('files', {
+    queryState: { contentType: contentType.value, keyword: searchText.value },
+  })
+  await loadMedia()
+}
+
+async function handleSearchTextChange(value: string) {
+  searchText.value = value
+  saveWorkbenchState('files', {
+    queryState: { contentType: contentType.value, keyword: searchText.value },
+  })
+  await loadMedia()
+}
+
+function handleSelectedKeysChange(keys: (string | number)[]) {
+  selectedKeys.value = keys
+  saveWorkbenchState('files', { selectedRowKeys: keys })
+}
+
 function handleOpen(item: any) {
   if (typeof item.url === 'string') {
     window.open(item.url, '_blank', 'noopener,noreferrer')
@@ -106,7 +132,6 @@ function handleOpen(item: any) {
 }
 
 onMounted(loadMedia)
-watch([contentType, searchText], loadMedia)
 </script>
 
 <template>
@@ -122,10 +147,11 @@ watch([contentType, searchText], loadMedia)
       <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <Select
-            v-model="contentType"
+            :model-value="contentType"
             :options="typeOptions"
             placeholder="筛选类型"
             :clearable="false"
+            @update:model-value="handleContentTypeChange"
           />
           <Tag v-if="selectedIds.length > 0" color="blue" size="sm">
             已选择 {{ selectedIds.length }} 个
@@ -166,8 +192,8 @@ watch([contentType, searchText], loadMedia)
         :selected-keys="selectedKeys"
         :search-text="searchText"
         empty-text="暂无媒体资源"
-        @update:selected-keys="selectedKeys = $event"
-        @update:search-text="searchText = $event"
+        @update:selected-keys="handleSelectedKeysChange"
+        @update:search-text="handleSearchTextChange"
         @open="handleOpen"
       />
 

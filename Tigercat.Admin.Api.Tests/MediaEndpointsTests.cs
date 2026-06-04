@@ -40,6 +40,51 @@ public class MediaEndpointsTests : IClassFixture<InMemoryApiFactory>
     }
 
     [Fact]
+    public async Task BatchDeleteMedia_Succeeds()
+    {
+        var token = await LoginAsAdminAsync();
+        var first = await UploadAsync(token, "batch-a.txt", "text/plain", [1, 2, 3]);
+        var second = await UploadAsync(token, "batch-b.txt", "text/plain", [4, 5, 6]);
+
+        var request = AuthRequest(HttpMethod.Post, "/api/media/batch-delete", token);
+        request.Content = JsonContent.Create(new BatchDeleteMediaRequest([first.Id, second.Id]));
+        var response = await _client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<MessageResponse>();
+        Assert.NotNull(body?.Data);
+        Assert.Contains("成功删除 2 个媒体资源", body.Data.Message);
+    }
+
+    [Fact]
+    public async Task BatchDeleteMedia_WithReferencedItem_Returns409AndDeletesNothing()
+    {
+        var token = await LoginAsAdminAsync();
+        var logo = await UploadAsync(token, "batch-logo.png", "image/png", [0x89, 0x50, 0x4e, 0x47], "logo");
+        var other = await UploadAsync(token, "batch-other.txt", "text/plain", [7, 8, 9]);
+
+        await UpdateSettingsAsync(token, new SettingEntry("site.logo", logo.Url));
+
+        var request = AuthRequest(HttpMethod.Post, "/api/media/batch-delete", token);
+        request.Content = JsonContent.Create(new BatchDeleteMediaRequest([logo.Id, other.Id]));
+        var blocked = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Conflict, blocked.StatusCode);
+        var blockedBody = await blocked.ReadApiResponseAsync<MediaReferenceResponse[]>();
+        Assert.NotNull(blockedBody?.Data);
+        Assert.Contains(blockedBody.Data, r => r.ReferenceType == "site.logo");
+
+        var otherStillExists = await _client.SendAsync(AuthRequest(HttpMethod.Get, $"/api/media/{other.Id}", token));
+        otherStillExists.EnsureSuccessStatusCode();
+
+        await UpdateSettingsAsync(token, new SettingEntry("site.logo", ""));
+        var cleanup = AuthRequest(HttpMethod.Post, "/api/media/batch-delete", token);
+        cleanup.Content = JsonContent.Create(new BatchDeleteMediaRequest([logo.Id, other.Id]));
+        var cleanupResponse = await _client.SendAsync(cleanup);
+        cleanupResponse.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
     public async Task UploadLogo_WithNonImage_Returns400()
     {
         var token = await LoginAsAdminAsync();

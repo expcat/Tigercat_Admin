@@ -65,3 +65,11 @@ export function deleteMedia(id: number) {
     headers: getAuthHeaders(),
   });
 }
+
+export function batchDeleteMedia(ids: number[]) {
+  return apiRequest<MessageResult>(`/api/media/batch-delete`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ ids }),
+  });
+}

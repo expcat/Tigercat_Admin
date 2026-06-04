@@ -33,6 +33,10 @@ public class MediaEndpoints : IEndpointDefinition
             .RequirePermission("media:delete")
             .WithName("DeleteMedia");
 
+        group.MapPost("/batch-delete", BatchDeleteMedia)
+            .RequirePermission("media:delete")
+            .WithName("BatchDeleteMedia");
+
         group.MapGet("/{publicId}/content", GetMediaContent)
             .WithName("GetMediaContent");
     }
@@ -273,6 +277,64 @@ public class MediaEndpoints : IEndpointDefinition
 
         return Results.Json(
             ApiResult.Ok(new MessageResponse("删除成功")),
+            AppJsonContext.Default.ApiResponseMessageResponse);
+    }
+
+    private static async Task<IResult> BatchDeleteMedia(
+        BatchDeleteMediaRequest request,
+        AdminDbContext db,
+        IMediaStorageProvider storage,
+        CancellationToken ct)
+    {
+        if (request.Ids is not { Length: > 0 })
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>("请选择要删除的媒体资源", 400),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 400);
+        }
+
+        var distinctIds = request.Ids.Distinct().ToArray();
+        var mediaItems = await db.MediaResources
+            .Include(m => m.References)
+            .Where(m => distinctIds.Contains(m.Id))
+            .ToListAsync(ct);
+
+        var missingIds = distinctIds.Except(mediaItems.Select(static media => media.Id)).ToArray();
+        if (missingIds.Length > 0)
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>($"以下媒体资源 ID 不存在: {string.Join(", ", missingIds)}", 404),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 404);
+        }
+
+        var references = mediaItems
+            .SelectMany(static media => media.References)
+            .OrderBy(r => r.ReferenceType)
+            .ThenBy(r => r.ReferenceKey)
+            .Select(r => new MediaReferenceResponse(r.Id, r.ReferenceType, r.ReferenceKey, r.DisplayName))
+            .ToArray();
+
+        if (references.Length > 0)
+        {
+            return Results.Json(
+                new ApiResponse<MediaReferenceResponse[]>(references, "选中的媒体资源正在被引用，不能批量删除", 409, false),
+                AppJsonContext.Default.ApiResponseMediaReferenceResponseArray,
+                statusCode: 409);
+        }
+
+        var storedFileNames = mediaItems.Select(static media => media.StoredFileName).ToArray();
+        db.MediaResources.RemoveRange(mediaItems);
+        await db.SaveChangesAsync(ct);
+
+        foreach (var storedFileName in storedFileNames)
+        {
+            await storage.DeleteAsync(storedFileName, ct);
+        }
+
+        return Results.Json(
+            ApiResult.Ok(new MessageResponse($"成功删除 {mediaItems.Count} 个媒体资源")),
             AppJsonContext.Default.ApiResponseMessageResponse);
     }
 

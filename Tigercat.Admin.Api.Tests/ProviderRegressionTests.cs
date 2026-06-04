@@ -102,6 +102,75 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         response.EnsureSuccessStatusCode();
     }
 
+    private async Task<UserItemResponse> CreateUserAsync(
+        string token,
+        string username,
+        string password,
+        int[]? roleIds = null,
+        string? displayName = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/users")
+        {
+            Content = JsonContent.Create(new CreateUserRequest(username, password, displayName, roleIds)),
+        };
+        request.Headers.Add("X-Token", token);
+
+        var response = await _client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<UserItemResponse>();
+        Assert.NotNull(body?.Data);
+        return body.Data;
+    }
+
+    private async Task<UserItemResponse> EnsureUserWithRolesAsync(
+        string token,
+        string username,
+        string password,
+        int[] roleIds)
+    {
+        var usersRequest = AuthRequest(HttpMethod.Get, $"/api/users?page=1&pageSize=10&keyword={Uri.EscapeDataString(username)}", token);
+        var usersResponse = await _client.SendAsync(usersRequest);
+        usersResponse.EnsureSuccessStatusCode();
+        var users = await usersResponse.ReadApiResponseAsync<PagedResponse<UserItemResponse>>();
+        var existing = users!.Data!.Items.FirstOrDefault(u => u.Username == username);
+
+        if (existing is null)
+        {
+            return await CreateUserAsync(token, username, password, roleIds);
+        }
+
+        var updateRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/users/{existing.Id}")
+        {
+            Content = JsonContent.Create(new UpdateUserRequest(existing.DisplayName, existing.Status, null, roleIds, null)),
+        };
+        updateRequest.Headers.Add("X-Token", token);
+
+        var updateResponse = await _client.SendAsync(updateRequest);
+        updateResponse.EnsureSuccessStatusCode();
+        var body = await updateResponse.ReadApiResponseAsync<UserItemResponse>();
+        Assert.NotNull(body?.Data);
+        return body.Data;
+    }
+
+    private async Task<RoleDetailResponse> CreateRoleAsync(
+        string token,
+        string name,
+        int[] permissionIds,
+        string? description = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/roles")
+        {
+            Content = JsonContent.Create(new CreateRoleRequest(name, description, permissionIds)),
+        };
+        request.Headers.Add("X-Token", token);
+
+        var response = await _client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<RoleDetailResponse>();
+        Assert.NotNull(body?.Data);
+        return body.Data;
+    }
+
     // ── 1. Login / Logout Flow ──────────────────────────────────────────
 
     [Fact]
@@ -442,6 +511,58 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
     }
 
     [Fact]
+    public async Task ExportUsers_AppliesKeywordStatusAndSort()
+    {
+        var token = await LoginAsAdminAsync();
+        var suffix = Guid.NewGuid().ToString("N");
+        await CreateUserAsync(token, $"export-a-{suffix}", "export123", displayName: "导出用户 A");
+        var disabled = await CreateUserAsync(token, $"export-z-{suffix}", "export123", displayName: "导出用户 Z");
+
+        var statusRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/batch-status")
+        {
+            Content = JsonContent.Create(new BatchUpdateUserStatusRequest([disabled.Id], 1)),
+        };
+        statusRequest.Headers.Add("X-Token", token);
+        var statusResponse = await _client.SendAsync(statusRequest);
+        statusResponse.EnsureSuccessStatusCode();
+
+        var request = AuthRequest(
+            HttpMethod.Get,
+            $"/api/export/users?format=json&fields=username,status&keyword={suffix}&status=1&sortBy=username&sortOrder=desc",
+            token);
+        var response = await _client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var rows = document.RootElement.EnumerateArray().ToArray();
+        var row = Assert.Single(rows);
+        Assert.Equal($"export-z-{suffix}", row.GetProperty("username").GetString());
+        Assert.Equal("Disabled", row.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task ExportRoles_AppliesKeywordAndSort()
+    {
+        var token = await LoginAsAdminAsync();
+        var suffix = Guid.NewGuid().ToString("N");
+        await CreateRoleAsync(token, $"export-role-a-{suffix}", [], "导出角色 A");
+        await CreateRoleAsync(token, $"export-role-z-{suffix}", [], "导出角色 Z");
+
+        var request = AuthRequest(
+            HttpMethod.Get,
+            $"/api/export/roles?format=json&fields=name,description&keyword={suffix}&sortBy=name&sortOrder=desc",
+            token);
+        var response = await _client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var rows = document.RootElement.EnumerateArray().ToArray();
+        Assert.Equal(2, rows.Length);
+        Assert.Equal($"export-role-z-{suffix}", rows[0].GetProperty("name").GetString());
+        Assert.Equal($"export-role-a-{suffix}", rows[1].GetProperty("name").GetString());
+    }
+
+    [Fact]
     public async Task InitializeAsync_BackfillsMissingPermissionsForExistingAdminRole()
     {
         var options = new DbContextOptionsBuilder<AdminDbContext>()
@@ -548,6 +669,117 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         Assert.NotNull(body);
         Assert.False(body.Success);
         Assert.Contains("不能删除当前登录用户", body.Message);
+    }
+
+    [Fact]
+    public async Task BatchUpdateUserStatus_UpdatesSelectedUsers()
+    {
+        var token = await LoginAsAdminAsync();
+        var username = $"batch-status-{Guid.NewGuid():N}";
+        var user = await CreateUserAsync(token, username, "batch123");
+
+        var disableRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/batch-status")
+        {
+            Content = JsonContent.Create(new BatchUpdateUserStatusRequest([user.Id], 1)),
+        };
+        disableRequest.Headers.Add("X-Token", token);
+
+        var disableResponse = await _client.SendAsync(disableRequest);
+        disableResponse.EnsureSuccessStatusCode();
+
+        var readDisabled = await _client.SendAsync(AuthRequest(HttpMethod.Get, $"/api/users/{user.Id}", token));
+        readDisabled.EnsureSuccessStatusCode();
+        var disabledBody = await readDisabled.ReadApiResponseAsync<UserItemResponse>();
+        Assert.Equal(1, disabledBody!.Data!.Status);
+
+        var enableRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/batch-status")
+        {
+            Content = JsonContent.Create(new BatchUpdateUserStatusRequest([user.Id], 0)),
+        };
+        enableRequest.Headers.Add("X-Token", token);
+
+        var enableResponse = await _client.SendAsync(enableRequest);
+        enableResponse.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task BatchUpdateUserStatus_ValidatesEmptyIdsAndStatus()
+    {
+        var token = await LoginAsAdminAsync();
+
+        var emptyRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/batch-status")
+        {
+            Content = JsonContent.Create(new BatchUpdateUserStatusRequest([], 1)),
+        };
+        emptyRequest.Headers.Add("X-Token", token);
+        Assert.Equal(HttpStatusCode.BadRequest, (await _client.SendAsync(emptyRequest)).StatusCode);
+
+        var invalidStatusRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/batch-status")
+        {
+            Content = JsonContent.Create(new BatchUpdateUserStatusRequest([1], 9)),
+        };
+        invalidStatusRequest.Headers.Add("X-Token", token);
+        Assert.Equal(HttpStatusCode.BadRequest, (await _client.SendAsync(invalidStatusRequest)).StatusCode);
+    }
+
+    [Fact]
+    public async Task BatchUpdateUserStatus_PreventsDisablingCurrentUser()
+    {
+        var token = await LoginAsAdminAsync();
+        var usersRequest = AuthRequest(HttpMethod.Get, "/api/users?page=1&pageSize=10&keyword=admin", token);
+        var usersResponse = await _client.SendAsync(usersRequest);
+        usersResponse.EnsureSuccessStatusCode();
+        var users = await usersResponse.ReadApiResponseAsync<PagedResponse<UserItemResponse>>();
+        var adminUser = Assert.Single(users!.Data!.Items, u => u.Username == "admin");
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/users/batch-status")
+        {
+            Content = JsonContent.Create(new BatchUpdateUserStatusRequest([adminUser.Id], 1)),
+        };
+        request.Headers.Add("X-Token", token);
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.ReadApiResponseAsync<MessageResponse>();
+        Assert.Contains("不能禁用当前登录用户", body!.Message);
+    }
+
+    [Fact]
+    public async Task BatchUpdateUserStatus_PreventsDisablingLastActiveAdmin()
+    {
+        var adminToken = await LoginAsAdminAsync();
+
+        var permissionsResponse = await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/roles/permissions", adminToken));
+        permissionsResponse.EnsureSuccessStatusCode();
+        var permissions = await permissionsResponse.ReadApiResponseAsync<PermissionInfoResponse[]>();
+        var permissionIds = permissions!.Data!
+            .Where(p => p.Code is "user:view" or "user:edit")
+            .Select(p => p.Id)
+            .ToArray();
+
+        var role = await CreateRoleAsync(adminToken, $"status-operator-{Guid.NewGuid():N}", permissionIds);
+        var operatorName = $"status-operator-{Guid.NewGuid():N}";
+        var operatorToken = await RegisterAndLoginAsync(operatorName, "operator123");
+        await EnsureUserWithRolesAsync(adminToken, operatorName, "operator123", [role.Id]);
+
+        var usersRequest = AuthRequest(HttpMethod.Get, "/api/users?page=1&pageSize=10&keyword=admin", adminToken);
+        var usersResponse = await _client.SendAsync(usersRequest);
+        usersResponse.EnsureSuccessStatusCode();
+        var users = await usersResponse.ReadApiResponseAsync<PagedResponse<UserItemResponse>>();
+        var adminUser = Assert.Single(users!.Data!.Items, u => u.Username == "admin");
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/users/batch-status")
+        {
+            Content = JsonContent.Create(new BatchUpdateUserStatusRequest([adminUser.Id], 1)),
+        };
+        request.Headers.Add("X-Token", operatorToken);
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.ReadApiResponseAsync<MessageResponse>();
+        Assert.Contains("不能禁用最后一个可用管理员用户", body!.Message);
     }
 
     [Fact]

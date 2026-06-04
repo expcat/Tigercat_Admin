@@ -446,6 +446,33 @@
 }
 ```
 
+### 12.2 批量更新用户状态
+
+- **方法**：POST
+- **路径**：`/api/users/batch-status`
+- **认证**：是
+- **权限**：`user:edit`
+- **请求体**：
+  - `ids`：用户 ID 数组（必填，至少包含一个 ID）
+  - `status`：目标状态，`0`=正常，`1`=禁用
+- **返回 data**：
+  - `message`：`"成功更新 N 个用户状态"`
+- **可能错误码**：
+  - `400`：请选择要更新状态的用户 / 无效状态 / 不能禁用当前登录用户 / 不能禁用最后一个可用管理员用户
+  - `404`：任一用户 ID 不存在
+
+- **事件**：
+  - 成功批量更新状态后发布 `admin.user.batch.status.updated` 到 Redis Stream `stream:admin`（包含 `updatedCount`、`updatedIds`、`targetUsernames`、`operator`、`status`）。
+
+示例请求体：
+
+```json
+{
+  "ids": [2, 3],
+  "status": 1
+}
+```
+
 ---
 
 ## 角色管理接口 (`/api/roles`)
@@ -808,6 +835,9 @@
 - **查询参数**：
   - `format`（可选）：导出格式，可选 `csv`（默认）、`json`、`xlsx`
   - `fields`（可选）：导出字段，逗号分隔。可选值：`id`、`username`、`displayName`、`status`、`createdAt`、`updatedAt`、`roles`。留空则导出全部字段。无效字段名会被忽略，若全部无效则导出全部字段。
+  - `keyword`（可选）：按用户名或显示名筛选，语义同用户列表。
+  - `status`（可选）：状态筛选，`0`=正常，`1`=禁用。
+  - `sortBy` / `sortOrder`（可选）：排序字段和方向，语义同用户列表。
 - **返回**：文件下载（非 JSON API 响应）
   - CSV：`text/csv; charset=utf-8`，带 UTF-8 BOM（兼容 Excel 直接打开）
   - JSON：`application/json; charset=utf-8`，数组格式
@@ -820,7 +850,7 @@
 示例请求：
 
 ```
-GET /api/export/users?format=csv&fields=id,username,status
+GET /api/export/users?format=csv&fields=id,username,status&keyword=editor&status=0&sortBy=username&sortOrder=asc
 ```
 
 错误示例（不支持的格式）：
@@ -843,6 +873,8 @@ GET /api/export/users?format=csv&fields=id,username,status
 - **查询参数**：
   - `format`（可选）：导出格式，可选 `csv`（默认）、`json`、`xlsx`
   - `fields`（可选）：导出字段，逗号分隔。可选值：`id`、`name`、`description`、`createdAt`、`permissions`、`userCount`。留空则导出全部字段。无效字段名会被忽略，若全部无效则导出全部字段。
+  - `keyword`（可选）：按角色名称或描述筛选，语义同角色列表。
+  - `sortBy` / `sortOrder`（可选）：排序字段和方向，语义同角色列表。
 - **返回**：文件下载（非 JSON API 响应）
   - CSV：`text/csv; charset=utf-8`，带 UTF-8 BOM（兼容 Excel 直接打开）
   - JSON：`application/json; charset=utf-8`，数组格式
@@ -855,7 +887,7 @@ GET /api/export/users?format=csv&fields=id,username,status
 示例请求：
 
 ```
-GET /api/export/roles?format=xlsx&fields=id,name,description
+GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sortBy=name&sortOrder=desc
 ```
 
 错误示例（不支持的格式）：
@@ -927,6 +959,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 | `admin.user.updated`         | PUT `/api/users/{id}`（资料/状态/角色/头像变更时） | `targetUserId`、`targetUsername`、`operator`、`status`、`roleCount`、`avatarMediaId` |
 | `admin.user.deleted`         | DELETE `/api/users/{id}`                      | `targetUserId`、`targetUsername`、`operator`                        |
 | `admin.user.batch.deleted`   | POST `/api/users/batch-delete`                | `deletedCount`、`deletedIds`、`targetUsernames`、`operator`         |
+| `admin.user.batch.status.updated` | POST `/api/users/batch-status`           | `updatedCount`、`updatedIds`、`targetUsernames`、`operator`、`status` |
 | `admin.user.password.reset`  | PUT `/api/users/{id}`（修改密码时）           | `targetUserId`、`targetUsername`、`operator`                        |
 
 ### 22.1 获取审计日志（分页 + 筛选）
@@ -1423,3 +1456,18 @@ GET /api/export/roles?format=xlsx&fields=id,name,description
 - **可能错误码**：
   - `404`：媒体资源不存在
   - `409`：媒体资源正在被 `site.logo` 或 `user.avatar` 引用，返回引用数组
+
+### 31. 批量删除媒体资源
+
+- **方法**：POST
+- **路径**：`/api/media/batch-delete`
+- **认证**：是
+- **权限**：`media:delete`
+- **请求体**：
+  - `ids`：媒体资源 ID 数组（必填，至少包含一个 ID）
+- **返回 data**：
+  - `message`：`"成功删除 N 个媒体资源"`
+- **可能错误码**：
+  - `400`：请选择要删除的媒体资源
+  - `404`：任一媒体资源 ID 不存在
+  - `409`：选中的任一媒体资源正在被引用，返回引用数组；此时不会删除任何媒体资源

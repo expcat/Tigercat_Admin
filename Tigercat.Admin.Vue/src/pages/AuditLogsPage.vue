@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Alert, Button, Card, Input, Tag, Text } from '@expcat/tigercat-vue'
+import { Alert, Button, Card, Empty, Input, Loading, Modal, Select, Tag, Text } from '@expcat/tigercat-vue'
 import { ActivityFeed } from '@expcat/tigercat-vue/ActivityFeed'
 import { Timeline } from '@expcat/tigercat-vue/Timeline'
 import PageHeader from '../components/PageHeader.vue'
@@ -9,15 +9,34 @@ import ChartEmptyState from '../components/ChartEmptyState.vue'
 import MetricCard from '../components/MetricCard.vue'
 import MetricGrid from '../components/MetricGrid.vue'
 import PageActionPanel from '../components/PageActionPanel.vue'
-import { apiRequest, getAuthHeaders } from '../utils'
+import { apiRequest, exportAuditLogs, getAuthHeaders, loadWorkbenchState, saveWorkbenchState } from '../utils'
+import { usePermission } from '../utils/permission'
 import type { AuditLogItem, AuditRetentionPolicy, PagedResult } from '../utils/types'
+
+const categoryOptions = [
+  { label: '全部分类', value: '' },
+  { label: '认证', value: 'auth' },
+  { label: '用户', value: 'user' },
+  { label: '任务', value: 'task' },
+  { label: '系统', value: 'system' },
+]
+const { has: hasPerm } = usePermission()
+const savedWorkbench = loadWorkbenchState('audit-logs', {
+  queryState: { keyword: '', category: '' },
+})
+const savedQuery = savedWorkbench.queryState
+const canExport = computed(() => hasPerm('audit:export'))
+const canSaveRetention = computed(() => hasPerm('setting:edit'))
 
 const logs = ref<AuditLogItem[]>([])
 const selectedLog = ref<AuditLogItem | null>(null)
-const keyword = ref('')
+const keyword = ref(savedQuery.keyword ?? '')
+const category = ref(savedQuery.category ?? '')
 const retentionDays = ref('90')
 const loading = ref(true)
 const errorMessage = ref('')
+const exportConfirmOpen = ref(false)
+const exporting = ref(false)
 
 const CONTAINS_CHINESE_CHAR_REGEX = /[\u4e00-\u9fa5]/
 
@@ -72,6 +91,9 @@ const loadAuditLogs = async () => {
     if (keyword.value.trim()) {
       params.set('keyword', keyword.value.trim())
     }
+    if (category.value) {
+      params.set('category', category.value)
+    }
 
     const payload = await apiRequest<PagedResult<AuditLogItem>>(`/api/audit-logs?${params}`, {
       headers: getAuthHeaders()
@@ -98,29 +120,26 @@ const loadRetentionPolicy = async () => {
   }
 }
 
-const handleExport = async () => {
-  const params = new URLSearchParams()
-  if (keyword.value.trim()) {
-    params.set('keyword', keyword.value.trim())
+const handleConfirmExport = async () => {
+  if (logs.value.length === 0) {
+    errorMessage.value = '当前筛选没有可导出的结果'
+    exportConfirmOpen.value = false
+    return
   }
-
+  exporting.value = true
   try {
-    const response = await fetch(`/api/audit-logs/export?${params}`, {
+    await exportAuditLogs({
+      query: {
+        keyword: keyword.value,
+        category: category.value,
+      },
       headers: getAuthHeaders()
     })
-    if (!response.ok) {
-      throw new Error(response.statusText || '导出失败')
-    }
-
-    const blob = await response.blob()
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `audit-logs-${Date.now()}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
+    exportConfirmOpen.value = false
   } catch (error: unknown) {
     errorMessage.value = error instanceof Error ? error.message : '导出失败'
+  } finally {
+    exporting.value = false
   }
 }
 
@@ -135,6 +154,20 @@ const handleSaveRetention = async () => {
   } catch (error: unknown) {
     errorMessage.value = error instanceof Error ? error.message : '保留策略保存失败'
   }
+}
+
+const handleKeywordChange = (value: unknown) => {
+  keyword.value = String(value ?? '')
+  saveWorkbenchState('audit-logs', {
+    queryState: { keyword: keyword.value, category: category.value },
+  })
+}
+
+const handleCategoryChange = (value: unknown) => {
+  category.value = String(value ?? '')
+  saveWorkbenchState('audit-logs', {
+    queryState: { keyword: keyword.value, category: category.value },
+  })
 }
 
 const activityItems = computed(() =>
@@ -197,7 +230,14 @@ onMounted(async () => {
           <Input
             :value="keyword"
             placeholder="筛选标题、说明或事件类型"
-            @change="(value) => keyword = String(value ?? '')"
+            @change="handleKeywordChange"
+          />
+          <Select
+            :model-value="category"
+            :options="categoryOptions"
+            placeholder="筛选分类"
+            :clearable="false"
+            @update:model-value="handleCategoryChange"
           />
           <Tag color="blue" size="sm">认证事件 {{ authCount }}</Tag>
           <Tag color="green" size="sm">用户事件 {{ userCount }}</Tag>
@@ -205,7 +245,7 @@ onMounted(async () => {
           <Button variant="outline" @click="loadAuditLogs">
             刷新日志
           </Button>
-          <Button variant="outline" @click="handleExport">
+          <Button v-if="canExport" variant="outline" @click="exportConfirmOpen = true">
             导出 CSV
           </Button>
       </template>
@@ -222,7 +262,9 @@ onMounted(async () => {
       </Card>
 
       <Card title="事件时间线">
-        <Text v-if="loading" color="secondary">正在读取最新事件...</Text>
+        <div v-if="loading" class="flex min-h-40 items-center justify-center">
+          <Loading size="md" />
+        </div>
         <ChartEmptyState
           v-else-if="timelineItems.length === 0"
           description="暂无可展示的时间线数据。"
@@ -240,7 +282,7 @@ onMounted(async () => {
             placeholder="保留天数"
             @change="(value) => retentionDays = String(value ?? '')"
           />
-          <Button variant="outline" @click="handleSaveRetention">
+          <Button v-if="canSaveRetention" variant="outline" @click="handleSaveRetention">
             保存策略
           </Button>
         </div>
@@ -267,7 +309,7 @@ onMounted(async () => {
           </Text>
           <pre class="max-h-72 max-w-full overflow-auto rounded bg-(--tiger-bg-hover,#f8fafc) p-3 text-sm">{{ JSON.stringify(selectedLog.data, null, 2) }}</pre>
         </div>
-        <Text v-else color="secondary">暂无可查看的审计详情。</Text>
+        <Empty v-else description="暂无可查看的审计详情" :show-image="false" />
       </Card>
     </div>
 
@@ -282,5 +324,20 @@ onMounted(async () => {
         <template #icon><Icon name="checkCircle" :size="20" /></template>
       </MetricCard>
     </MetricGrid>
+
+    <Modal
+      v-model:open="exportConfirmOpen"
+      title="确认导出审计日志"
+      show-default-footer
+      :ok-text="exporting ? '导出中…' : '导出 CSV'"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="handleConfirmExport"
+      @cancel="exportConfirmOpen = false"
+    >
+      <Text color="secondary">
+        将按当前关键词和分类筛选导出最近审计窗口中的 {{ logs.length }} 条记录。
+      </Text>
+    </Modal>
   </div>
 </template>

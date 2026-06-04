@@ -44,6 +44,10 @@ public class UsersEndpoints : IEndpointDefinition
         group.MapPost("/batch-delete", BatchDeleteUsers)
             .RequirePermission("user:delete")
             .WithName("BatchDeleteUsers");
+
+        group.MapPost("/batch-status", BatchUpdateUserStatus)
+            .RequirePermission("user:edit")
+            .WithName("BatchUpdateUserStatus");
     }
 
     // GET /api/users?page=1&pageSize=10&keyword=xxx&sortBy=id&sortOrder=asc&status=0
@@ -606,6 +610,106 @@ public class UsersEndpoints : IEndpointDefinition
 
         return Results.Json(
             ApiResult.Ok(new MessageResponse($"成功删除 {users.Count} 个用户")),
+            AppJsonContext.Default.ApiResponseMessageResponse);
+    }
+
+    // POST /api/users/batch-status
+    private static async Task<IResult> BatchUpdateUserStatus(
+        BatchUpdateUserStatusRequest request,
+        AdminDbContext db,
+        IEventPublisher eventPublisher,
+        HttpContext httpContext,
+        CancellationToken ct)
+    {
+        if (request.Ids is not { Length: > 0 })
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>("请选择要更新状态的用户", 400),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 400);
+        }
+
+        if (!Enum.IsDefined(typeof(UserStatus), request.Status))
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>("无效的用户状态", 400),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 400);
+        }
+
+        var distinctIds = request.Ids.Distinct().ToArray();
+        var users = await db.Users
+            .Include(u => u.UserRoles)
+            .ThenInclude(ur => ur.Role)
+            .Where(u => distinctIds.Contains(u.Id))
+            .ToListAsync(ct);
+
+        var missingIds = distinctIds.Except(users.Select(static user => user.Id)).ToArray();
+        if (missingIds.Length > 0)
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>($"以下用户 ID 不存在: {string.Join(", ", missingIds)}", 404),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 404);
+        }
+
+        var nextStatus = (UserStatus)request.Status;
+        var currentUsername = httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var usernameObj) && usernameObj is string un
+            ? un
+            : null;
+
+        if (nextStatus == UserStatus.Disabled &&
+            currentUsername is not null &&
+            users.Any(u => string.Equals(u.Username, currentUsername, StringComparison.OrdinalIgnoreCase)))
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>("不能禁用当前登录用户", 400),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 400);
+        }
+
+        if (nextStatus == UserStatus.Disabled)
+        {
+            var remainingActiveAdmins = await db.Users
+                .Where(u => !distinctIds.Contains(u.Id))
+                .Where(u => u.Status == UserStatus.Active)
+                .Where(u => u.UserRoles.Any(ur => ur.Role.Name == AdminRoleName))
+                .CountAsync(ct);
+
+            if (remainingActiveAdmins < 1 && users.Any(u => u.UserRoles.Any(ur => ur.Role.Name == AdminRoleName)))
+            {
+                return Results.Json(
+                    ApiResult.Fail<MessageResponse>("不能禁用最后一个可用管理员用户", 400),
+                    AppJsonContext.Default.ApiResponseMessageResponse,
+                    statusCode: 400);
+            }
+        }
+
+        foreach (var user in users)
+        {
+            user.Status = nextStatus;
+            user.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        await eventPublisher.PublishAsync(
+            EventEnvelope.Create(
+                "admin.user.batch.status.updated",
+                new Dictionary<string, object?>
+                {
+                    ["updatedCount"] = users.Count,
+                    ["updatedIds"] = string.Join(",", users.Select(static user => user.Id)),
+                    ["targetUsernames"] = string.Join(",", users.Select(static user => user.Username)),
+                    ["operator"] = GetOperatorUsername(httpContext),
+                    ["status"] = request.Status
+                },
+                httpContext.TraceIdentifier),
+            EventBusConstants.AdminStream,
+            ct);
+
+        return Results.Json(
+            ApiResult.Ok(new MessageResponse($"成功更新 {users.Count} 个用户状态")),
             AppJsonContext.Default.ApiResponseMessageResponse);
     }
 

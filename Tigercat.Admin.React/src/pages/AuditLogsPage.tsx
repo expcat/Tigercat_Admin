@@ -3,7 +3,11 @@ import {
   Alert,
   Button,
   Card,
+  Empty,
   Input,
+  Loading,
+  Modal,
+  Select,
   Tag,
   Text,
 } from '@expcat/tigercat-react';
@@ -23,7 +27,15 @@ import {
   MetricGrid,
   PageActionPanel,
 } from '../components/PageFragments';
-import { apiRequest, getAuthHeaders, normalizeInput } from '../utils';
+import {
+  apiRequest,
+  exportAuditLogs,
+  getAuthHeaders,
+  loadWorkbenchState,
+  normalizeInput,
+  saveWorkbenchState,
+} from '../utils';
+import { usePermission } from '../utils/permission';
 import type {
   AuditLogItem,
   AuditRetentionPolicy,
@@ -31,6 +43,14 @@ import type {
 } from '../utils/types';
 
 const CONTAINS_CHINESE_CHAR_REGEX = /[\u4e00-\u9fa5]/;
+
+const CATEGORY_OPTIONS = [
+  { label: '全部分类', value: '' },
+  { label: '认证', value: 'auth' },
+  { label: '用户', value: 'user' },
+  { label: '任务', value: 'task' },
+  { label: '系统', value: 'system' },
+];
 
 const getFriendlyErrorMessage = (error: unknown) => {
   if (error instanceof Error && error.message) {
@@ -72,12 +92,27 @@ const getTimelineColor = (category: AuditLogItem['category']) => {
 };
 
 function AuditLogsPage() {
+  const { has: hasPerm } = usePermission();
+  const savedWorkbench = useMemo(
+    () =>
+      loadWorkbenchState('audit-logs', {
+        queryState: { keyword: '', category: '' },
+      }),
+    [],
+  );
+  const savedQuery = savedWorkbench.queryState;
+  const canExport = hasPerm('audit:export');
+  const canSaveRetention = hasPerm('setting:edit');
+
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
-  const [keyword, setKeyword] = useState('');
+  const [keyword, setKeyword] = useState(savedQuery.keyword ?? '');
+  const [category, setCategory] = useState(savedQuery.category ?? '');
   const [retentionDays, setRetentionDays] = useState('90');
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const loadAuditLogs = useCallback(async () => {
     setLoading(true);
@@ -90,6 +125,9 @@ function AuditLogsPage() {
       });
       if (keyword.trim()) {
         params.set('keyword', keyword.trim());
+      }
+      if (category) {
+        params.set('category', category);
       }
 
       const payload = await apiRequest<PagedResult<AuditLogItem>>(
@@ -111,7 +149,7 @@ function AuditLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [keyword]);
+  }, [category, keyword]);
 
   const loadRetentionPolicy = useCallback(async () => {
     try {
@@ -130,31 +168,28 @@ function AuditLogsPage() {
     loadRetentionPolicy();
   }, [loadAuditLogs, loadRetentionPolicy]);
 
-  const handleExport = useCallback(async () => {
-    const params = new URLSearchParams();
-    if (keyword.trim()) {
-      params.set('keyword', keyword.trim());
+  const handleConfirmExport = useCallback(async () => {
+    if (logs.length === 0) {
+      setErrorMessage('当前筛选没有可导出的结果');
+      setExportConfirmOpen(false);
+      return;
     }
-
+    setExporting(true);
     try {
-      const response = await fetch(`/api/audit-logs/export?${params}`, {
+      await exportAuditLogs({
+        query: {
+          keyword,
+          category,
+        },
         headers: getAuthHeaders(),
       });
-      if (!response.ok) {
-        throw new Error(response.statusText || '导出失败');
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `audit-logs-${Date.now()}.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
+      setExportConfirmOpen(false);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '导出失败');
+    } finally {
+      setExporting(false);
     }
-  }, [keyword]);
+  }, [category, keyword, logs.length]);
 
   const handleSaveRetention = useCallback(async () => {
     const nextRetentionDays = Number(retentionDays);
@@ -169,6 +204,22 @@ function AuditLogsPage() {
       setErrorMessage(error instanceof Error ? error.message : '保留策略保存失败');
     }
   }, [loadRetentionPolicy, retentionDays]);
+
+  const handleKeywordChange = (value: string) => {
+    const next = normalizeInput(value);
+    setKeyword(next);
+    saveWorkbenchState('audit-logs', {
+      queryState: { keyword: next, category },
+    });
+  };
+
+  const handleCategoryChange = (value: unknown) => {
+    const next = String(value ?? '');
+    setCategory(next);
+    saveWorkbenchState('audit-logs', {
+      queryState: { keyword, category: next },
+    });
+  };
 
   const activityItems = useMemo<ActivityItem[]>(
     () =>
@@ -230,7 +281,14 @@ function AuditLogsPage() {
             <Input
               value={keyword}
               placeholder="筛选标题、说明或事件类型"
-              onChange={(event) => setKeyword(normalizeInput(event))}
+              onChange={handleKeywordChange}
+            />
+            <Select
+              value={category}
+              options={CATEGORY_OPTIONS}
+              placeholder="筛选分类"
+              clearable={false}
+              onChange={handleCategoryChange}
             />
             <Tag color="blue" size="sm">
               认证事件 {authCount}
@@ -244,9 +302,11 @@ function AuditLogsPage() {
             <Button variant="outline" onClick={loadAuditLogs}>
               刷新日志
             </Button>
-            <Button variant="outline" onClick={handleExport}>
-              导出 CSV
-            </Button>
+            {canExport && (
+              <Button variant="outline" onClick={() => setExportConfirmOpen(true)}>
+                导出 CSV
+              </Button>
+            )}
           </>
         }
       />
@@ -263,7 +323,9 @@ function AuditLogsPage() {
 
         <Card title="事件时间线">
           {loading ? (
-            <Text color="secondary">正在读取最新事件...</Text>
+            <div className="flex min-h-40 items-center justify-center">
+              <Loading size="md" />
+            </div>
           ) : timelineItems.length === 0 ? (
             <ChartEmptyState description="暂无可展示的时间线数据。" heightClassName="min-h-40" />
           ) : (
@@ -280,9 +342,11 @@ function AuditLogsPage() {
               placeholder="保留天数"
               onChange={(event) => setRetentionDays(normalizeInput(event))}
             />
-            <Button variant="outline" onClick={handleSaveRetention}>
-              保存策略
-            </Button>
+            {canSaveRetention && (
+              <Button variant="outline" onClick={handleSaveRetention}>
+                保存策略
+              </Button>
+            )}
           </div>
         </Card>
 
@@ -312,7 +376,7 @@ function AuditLogsPage() {
               </pre>
             </div>
           ) : (
-            <Text color="secondary">暂无可查看的审计详情。</Text>
+            <Empty description="暂无可查看的审计详情" showImage={false} />
           )}
         </Card>
       </div>
@@ -334,6 +398,20 @@ function AuditLogsPage() {
           icon={<CheckCircleIcon size={20} />}
         />
       </MetricGrid>
+
+      <Modal
+        open={exportConfirmOpen}
+        title="确认导出审计日志"
+        showDefaultFooter
+        okText={exporting ? '导出中…' : '导出 CSV'}
+        cancelText="取消"
+        confirmLoading={exporting}
+        onOk={handleConfirmExport}
+        onCancel={() => setExportConfirmOpen(false)}>
+        <Text color="secondary">
+          将按当前关键词和分类筛选导出最近审计窗口中的 {logs.length} 条记录。
+        </Text>
+      </Modal>
     </div>
   );
 }

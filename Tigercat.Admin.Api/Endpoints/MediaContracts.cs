@@ -29,3 +29,5 @@ public record MediaReferenceResponse(
     string ReferenceType,
     string ReferenceKey,
     string? DisplayName);
+
+public record BatchDeleteMediaRequest(int[] Ids);

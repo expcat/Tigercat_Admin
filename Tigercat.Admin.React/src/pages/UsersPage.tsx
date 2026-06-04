@@ -38,6 +38,9 @@ import {
   debounce,
   getAuthHeaders,
   exportData,
+  loadWorkbenchState,
+  saveWorkbenchState,
+  clearWorkbenchSelection,
 } from '../utils';
 import { uploadMediaBlob } from '../utils/media';
 import type { ExportFormat } from '../utils/export';
@@ -112,27 +115,47 @@ const STATUS_FILTER_OPTIONS = [
 
 function UsersPage() {
   const { has: hasPerm } = usePermission();
+  const savedWorkbench = useMemo(
+    () =>
+      loadWorkbenchState('users', {
+        queryState: { page: 1, pageSize: 10, status: null },
+        selectedRowKeys: [],
+        hiddenColumnKeys: [],
+        exportState: {
+          format: 'csv',
+          fields: EXPORT_FIELD_OPTIONS.map((f) => f.key),
+        },
+      }),
+    [],
+  );
+  const savedQuery = savedWorkbench.queryState;
 
   // ---- State ----
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [keyword, setKeyword] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [keyword, setKeyword] = useState(savedQuery.keyword ?? '');
+  const [currentPage, setCurrentPage] = useState(savedQuery.page ?? 1);
+  const [pageSize, setPageSize] = useState(savedQuery.pageSize ?? 10);
   const [total, setTotal] = useState(0);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>(
+    savedWorkbench.selectedRowKeys.map(Number).filter((id) => Number.isFinite(id)),
+  );
 
   // Sort state (controlled)
   const [sortState, setSortState] = useState<SortState>({
-    key: null,
-    direction: null,
+    key: savedQuery.sortBy ?? null,
+    direction: savedQuery.sortOrder ?? null,
   });
 
   // Status filter
-  const [statusFilter, setStatusFilter] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<number | null>(
+    savedQuery.status === 0 || savedQuery.status === 1 ? savedQuery.status : null,
+  );
 
   // Column visibility
-  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(
+    () => new Set(savedWorkbench.hiddenColumnKeys),
+  );
 
   // Modal state
   const [modalVisible, setModalVisible] = useState(false);
@@ -144,15 +167,23 @@ function UsersPage() {
 
   const [batchDeleteConfirmVisible, setBatchDeleteConfirmVisible] =
     useState(false);
+  const [batchStatusConfirm, setBatchStatusConfirm] = useState<{
+    open: boolean;
+    status: 0 | 1;
+  }>({ open: false, status: 1 });
 
   // All roles for select
   const [allRoles, setAllRoles] = useState<RoleInfo[]>([]);
 
   // Export state
   const [exportModalVisible, setExportModalVisible] = useState(false);
-  const [exportFormat, setExportFormat] = useState<ExportFormat>('csv');
+  const [exportFormat, setExportFormat] = useState<ExportFormat>(
+    savedWorkbench.exportState?.format ?? 'csv',
+  );
   const [exportFields, setExportFields] = useState<string[]>(() =>
-    EXPORT_FIELD_OPTIONS.map((f) => f.key),
+    savedWorkbench.exportState?.fields?.length
+      ? savedWorkbench.exportState.fields
+      : EXPORT_FIELD_OPTIONS.map((f) => f.key),
   );
   const [exporting, setExporting] = useState(false);
 
@@ -161,13 +192,27 @@ function UsersPage() {
     page: currentPage,
     pageSize,
     keyword,
-    sortState: { key: null, direction: null } as SortState,
-    statusFilter: null as number | null,
+    sortState,
+    statusFilter,
   });
 
   // ---- Permission checks ----
   const canEdit = hasPerm('user:edit');
   const canDelete = hasPerm('user:delete');
+
+  const persistQuery = useCallback((next: Partial<typeof queryRef.current>) => {
+    queryRef.current = { ...queryRef.current, ...next };
+    saveWorkbenchState('users', {
+      queryState: {
+        page: queryRef.current.page,
+        pageSize: queryRef.current.pageSize,
+        keyword: queryRef.current.keyword,
+        sortBy: queryRef.current.sortState.key ?? null,
+        sortOrder: queryRef.current.sortState.direction ?? null,
+        status: queryRef.current.statusFilter,
+      },
+    });
+  }, []);
 
   // ---- API calls ----
   const loadUsers = useCallback(async () => {
@@ -298,7 +343,11 @@ function UsersPage() {
         headers: getAuthHeaders(),
       });
       Message.success({ content: '删除成功', duration: 3000 });
-      setSelectedRowKeys((prev) => prev.filter((k) => k !== userId));
+      setSelectedRowKeys((prev) => {
+        const next = prev.filter((k) => k !== userId);
+        saveWorkbenchState('users', { selectedRowKeys: next });
+        return next;
+      });
       loadUsers();
     } catch (e: any) {
       Message.error({ content: e.message || '删除失败', duration: 3000 });
@@ -311,7 +360,9 @@ function UsersPage() {
       Message.error({ content: '请选择要删除的用户', duration: 3000 });
       return;
     }
-    setSelectedRowKeys(keys as number[]);
+    const next = keys.map(Number).filter((id) => Number.isFinite(id));
+    setSelectedRowKeys(next);
+    saveWorkbenchState('users', { selectedRowKeys: next });
     setBatchDeleteConfirmVisible(true);
   };
 
@@ -328,23 +379,71 @@ function UsersPage() {
       });
       setBatchDeleteConfirmVisible(false);
       setSelectedRowKeys([]);
+      clearWorkbenchSelection('users');
       loadUsers();
     } catch (e: any) {
       Message.error({ content: e.message || '批量删除失败', duration: 3000 });
     }
   };
 
-  // ---- Export ----
-  const openExportModal = () => {
-    setExportFormat('csv');
-    setExportFields(EXPORT_FIELD_OPTIONS.map((f) => f.key));
-    setExportModalVisible(true);
+  const handleBatchStatus = (status: 0 | 1, keys = selectedRowKeys) => {
+    if (keys.length === 0) {
+      Message.error({ content: '请选择要更新状态的用户', duration: 3000 });
+      return;
+    }
+
+    const next = keys.map(Number).filter((id) => Number.isFinite(id));
+    setSelectedRowKeys(next);
+    saveWorkbenchState('users', { selectedRowKeys: next });
+    setBatchStatusConfirm({ open: true, status });
   };
 
+  const confirmBatchStatus = async () => {
+    try {
+      const res = await apiRequest<MessageResult>('/api/users/batch-status', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          ids: selectedRowKeys,
+          status: batchStatusConfirm.status,
+        }),
+      });
+      Message.success({
+        content: res.data.message || '批量状态更新成功',
+        duration: 3000,
+      });
+      setBatchStatusConfirm((prev) => ({ ...prev, open: false }));
+      setSelectedRowKeys([]);
+      clearWorkbenchSelection('users');
+      loadUsers();
+    } catch (e: any) {
+      Message.error({
+        content: e.message || '批量状态更新失败',
+        duration: 3000,
+      });
+    }
+  };
+
+  // ---- Export ----
+  const openExportModal = () => setExportModalVisible(true);
+
   const toggleExportField = (key: string) => {
-    setExportFields((prev) =>
-      prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key],
-    );
+    setExportFields((prev) => {
+      const next = prev.includes(key)
+        ? prev.filter((f) => f !== key)
+        : [...prev, key];
+      saveWorkbenchState('users', {
+        exportState: { format: exportFormat, fields: next },
+      });
+      return next;
+    });
+  };
+
+  const handleExportFormatChange = (format: ExportFormat) => {
+    setExportFormat(format);
+    saveWorkbenchState('users', {
+      exportState: { format, fields: exportFields },
+    });
   };
 
   const handleExport = async () => {
@@ -352,12 +451,23 @@ function UsersPage() {
       Message.error({ content: '请至少选择一个导出字段', duration: 3000 });
       return;
     }
+    if (total === 0) {
+      Message.error({ content: '当前筛选没有可导出的结果', duration: 3000 });
+      return;
+    }
     setExporting(true);
     try {
+      const { keyword: kw, sortState: ss, statusFilter: sf } = queryRef.current;
       await exportData({
         entity: 'users',
         format: exportFormat,
         fields: exportFields,
+        query: {
+          keyword: kw,
+          sortBy: ss.key ?? undefined,
+          sortOrder: ss.direction ?? undefined,
+          status: sf,
+        },
         headers: getAuthHeaders(),
       });
       Message.success({ content: '导出成功', duration: 3000 });
@@ -420,16 +530,16 @@ function UsersPage() {
   const debouncedLoad = useMemo(
     () =>
       debounce(() => {
-        queryRef.current.page = 1;
+        persistQuery({ page: 1 });
         setCurrentPage(1);
         loadUsers();
       }, 300),
-    [loadUsers],
+    [loadUsers, persistQuery],
   );
 
   const handleSearch = (val: string) => {
     const normalized = normalizeInput(val);
-    queryRef.current.keyword = normalized;
+    persistQuery({ keyword: normalized });
     setKeyword(normalized);
     debouncedLoad();
   };
@@ -443,6 +553,9 @@ function UsersPage() {
       } else {
         next.add(key);
       }
+      saveWorkbenchState('users', {
+        hiddenColumnKeys: Array.from(next),
+      });
       return next;
     });
   }, []);
@@ -573,14 +686,13 @@ function UsersPage() {
       return;
     }
 
-    queryRef.current.page = page.current;
+    persistQuery({ page: page.current });
     setCurrentPage(page.current);
     loadUsers();
   };
 
   const handlePageSizeChange = (current: number, nextPageSize: number) => {
-    queryRef.current.pageSize = nextPageSize;
-    queryRef.current.page = 1;
+    persistQuery({ pageSize: nextPageSize, page: 1 });
     setPageSize(nextPageSize);
     setCurrentPage(1);
     loadUsers();
@@ -590,12 +702,11 @@ function UsersPage() {
   const handleSortChange = useCallback(
     (next: SortState) => {
       setSortState(next);
-      queryRef.current.sortState = next;
-      queryRef.current.page = 1;
+      persistQuery({ sortState: next, page: 1 });
       setCurrentPage(1);
       loadUsers();
     },
-    [loadUsers],
+    [loadUsers, persistQuery],
   );
 
   // ---- Status filter ----
@@ -603,12 +714,11 @@ function UsersPage() {
     (value: TableToolbarFilterValue) => {
       const nextStatus = value === null || value === '' ? null : Number(value);
       setStatusFilter(nextStatus);
-      queryRef.current.statusFilter = nextStatus;
-      queryRef.current.page = 1;
+      persistQuery({ statusFilter: nextStatus, page: 1 });
       setCurrentPage(1);
       loadUsers();
     },
-    [loadUsers],
+    [loadUsers, persistQuery],
   );
 
   const handleToolbarFiltersChange = useCallback(
@@ -620,7 +730,9 @@ function UsersPage() {
 
   // ---- Selection ----
   const handleSelectionChange = (keys: (string | number)[]) => {
-    setSelectedRowKeys(keys as number[]);
+    const next = keys.map(Number).filter((id) => Number.isFinite(id));
+    setSelectedRowKeys(next);
+    saveWorkbenchState('users', { selectedRowKeys: next });
   };
 
   // ---- Role select options ----
@@ -642,21 +754,44 @@ function UsersPage() {
           value: statusFilter,
         },
       ],
-      bulkActions: canDelete
-        ? [
-            {
-              key: 'batch-delete',
-              label: '批量删除',
-              variant: 'outline' as const,
-              onClick: (keys: (string | number)[]) =>
-                handleBatchDelete(keys as number[]),
-            },
-          ]
-        : undefined,
+      bulkActions:
+        canEdit || canDelete
+          ? [
+              ...(canEdit
+                ? [
+                    {
+                      key: 'batch-enable',
+                      label: '批量启用',
+                      variant: 'outline' as const,
+                      onClick: (keys: (string | number)[]) =>
+                        handleBatchStatus(0, keys as number[]),
+                    },
+                    {
+                      key: 'batch-disable',
+                      label: '批量禁用',
+                      variant: 'outline' as const,
+                      onClick: (keys: (string | number)[]) =>
+                        handleBatchStatus(1, keys as number[]),
+                    },
+                  ]
+                : []),
+              ...(canDelete
+                ? [
+                    {
+                      key: 'batch-delete',
+                      label: '批量删除',
+                      variant: 'outline' as const,
+                      onClick: (keys: (string | number)[]) =>
+                        handleBatchDelete(keys as number[]),
+                    },
+                  ]
+                : []),
+            ]
+          : undefined,
       selectedKeys: selectedRowKeys,
       selectedCount: selectedRowKeys.length,
     }),
-    [canDelete, handleBatchDelete, keyword, selectedRowKeys, statusFilter],
+    [canDelete, canEdit, handleBatchDelete, keyword, selectedRowKeys, statusFilter],
   );
 
   const serverPaginationHint = useMemo(() => {
@@ -875,7 +1010,7 @@ function UsersPage() {
             <Select
               value={exportFormat}
               options={FORMAT_OPTIONS}
-              onChange={(val) => setExportFormat(val as ExportFormat)}
+              onChange={(val) => handleExportFormatChange(val as ExportFormat)}
             />
           </FormItem>
           <FormItem label="导出字段">
@@ -915,6 +1050,26 @@ function UsersPage() {
             {selectedRowKeys.length}{' '}
           </span>
           个用户吗？此操作不可撤销。
+        </p>
+      </Modal>
+
+      <Modal
+        open={batchStatusConfirm.open}
+        title={batchStatusConfirm.status === 0 ? '确认批量启用' : '确认批量禁用'}
+        showDefaultFooter
+        okText={batchStatusConfirm.status === 0 ? '确认启用' : '确认禁用'}
+        cancelText="取消"
+        onOk={confirmBatchStatus}
+        onCancel={() => setBatchStatusConfirm((prev) => ({ ...prev, open: false }))}
+        role="alertdialog"
+        aria-label={`确认批量${batchStatusConfirm.status === 0 ? '启用' : '禁用'} ${selectedRowKeys.length} 个用户`}>
+        <p className="p2-text-secondary">
+          将选中的
+          <span className="p2-text-primary font-semibold">
+            {' '}
+            {selectedRowKeys.length}{' '}
+          </span>
+          个用户设为{batchStatusConfirm.status === 0 ? '正常' : '禁用'}状态。
         </p>
       </Modal>
     </div>

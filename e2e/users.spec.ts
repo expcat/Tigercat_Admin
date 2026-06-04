@@ -204,4 +204,62 @@ test.describe('用户管理主流程', () => {
     await expect(userRow(page, first)).toBeHidden();
     await expect(userRow(page, second)).toBeHidden();
   });
+
+  test('批量启用禁用选中用户', async ({ page }) => {
+    const username = `e2e_status_${uniqueSuffix()}`;
+    await gotoUsers(page);
+    await createUser(page, {
+      username,
+      password: 'e2e_pass123',
+      role: 'Viewer',
+    });
+
+    await searchUser(page, username);
+    const row = userRow(page, username);
+    await expect(row).toBeVisible();
+    await row.getByRole('checkbox').check();
+
+    await page.getByRole('button', { name: '批量禁用' }).click();
+    let dialog = page.getByRole('dialog', { name: '确认批量禁用' });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: '确认禁用' }).click();
+    await expect(dialog).toBeHidden();
+
+    await searchUser(page, username);
+    await expect(userRow(page, username).getByText('禁用')).toBeVisible();
+
+    await userRow(page, username).getByRole('checkbox').check();
+    await page.getByRole('button', { name: '批量启用' }).click();
+    dialog = page.getByRole('dialog', { name: '确认批量启用' });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: '确认启用' }).click();
+    await expect(dialog).toBeHidden();
+
+    await searchUser(page, username);
+    await expect(userRow(page, username).getByText('正常')).toBeVisible();
+
+    await deleteUser(page, username);
+  });
+
+  test('返回用户页后保留搜索和选中状态', async ({ page }) => {
+    const username = `e2e_keep_${uniqueSuffix()}`;
+    await gotoUsers(page);
+    await createUser(page, {
+      username,
+      password: 'e2e_pass123',
+      role: 'Viewer',
+    });
+
+    await searchUser(page, username);
+    await userRow(page, username).getByRole('checkbox').check();
+
+    await page.goto('/roles');
+    await expect(page.getByText('角色管理').first()).toBeVisible();
+    await page.goto('/users');
+    await expect(page.getByPlaceholder(SEARCH_PLACEHOLDER)).toHaveValue(username);
+    await expect(userRow(page, username)).toBeVisible();
+    await expect(userRow(page, username).getByRole('checkbox')).toBeChecked();
+
+    await deleteUser(page, username);
+  });
 });

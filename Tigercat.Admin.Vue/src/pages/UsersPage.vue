@@ -5,7 +5,7 @@ import { CropUpload } from '@expcat/tigercat-vue/CropUpload'
 import type { TableColumn, SortState, TableToolbarFilterValue } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
-import { apiRequest, debounce, type Session } from '../utils'
+import { apiRequest, debounce, loadWorkbenchState, saveWorkbenchState, clearWorkbenchSelection, type Session } from '../utils'
 import { exportData, type ExportFormat } from '../utils/export'
 import type { RoleInfo, UserItem, PagedResult, MessageResult } from '../utils/types'
 import { usePermission } from '../utils/permission'
@@ -22,23 +22,35 @@ const authHeaders = computed(() =>
   session.value?.token ? { Authorization: `Bearer ${session.value.token}` } : {}
 )
 
+const DEFAULT_EXPORT_FIELDS = ['id', 'username', 'displayName', 'status', 'createdAt', 'updatedAt', 'roles']
+const savedWorkbench = loadWorkbenchState('users', {
+  queryState: { page: 1, pageSize: 10, status: null },
+  selectedRowKeys: [],
+  hiddenColumnKeys: [],
+  exportState: { format: 'csv', fields: DEFAULT_EXPORT_FIELDS },
+})
+const savedQuery = savedWorkbench.queryState
+
 // ---- State ----
 const users = ref<UserItem[]>([])
 const loading = ref(false)
-const keyword = ref('')
-const currentPage = ref(1)
-const pageSize = ref(10)
+const keyword = ref(savedQuery.keyword ?? '')
+const currentPage = ref(savedQuery.page ?? 1)
+const pageSize = ref(savedQuery.pageSize ?? 10)
 const total = ref(0)
-const selectedRowKeys = ref<number[]>([])
+const selectedRowKeys = ref<number[]>(savedWorkbench.selectedRowKeys.map(Number).filter(id => Number.isFinite(id)))
 
 // Sort state (controlled)
-const sortState = ref<SortState>({ key: null, direction: null })
+const sortState = ref<SortState>({
+  key: savedQuery.sortBy ?? null,
+  direction: savedQuery.sortOrder ?? null,
+})
 
 // Status filter
-const statusFilter = ref<number | null>(null)
+const statusFilter = ref<number | null>(savedQuery.status === 0 || savedQuery.status === 1 ? savedQuery.status : null)
 
 // Column visibility
-const hiddenColumns = ref<Set<string>>(new Set())
+const hiddenColumns = ref<Set<string>>(new Set(savedWorkbench.hiddenColumnKeys))
 
 // Modal state
 const modalVisible = ref(false)
@@ -57,14 +69,16 @@ const formData = ref({
 })
 
 const batchDeleteConfirmVisible = ref(false)
+const batchStatusConfirmVisible = ref(false)
+const batchStatusValue = ref<0 | 1>(1)
 
 // All roles for select
 const allRoles = ref<RoleInfo[]>([])
 
 // ---- Export state ----
 const exportModalVisible = ref(false)
-const exportFormat = ref<ExportFormat>('csv')
-const exportFields = ref<string[]>(['id', 'username', 'displayName', 'status', 'createdAt', 'updatedAt', 'roles'])
+const exportFormat = ref<ExportFormat>(savedWorkbench.exportState?.format ?? 'csv')
+const exportFields = ref<string[]>(savedWorkbench.exportState?.fields?.length ? savedWorkbench.exportState.fields : DEFAULT_EXPORT_FIELDS)
 const exporting = ref(false)
 
 const EXPORT_FIELD_OPTIONS = [
@@ -82,6 +96,19 @@ const FORMAT_OPTIONS = [
   { label: 'JSON', value: 'json' },
   { label: 'XLSX', value: 'xlsx' },
 ]
+
+function persistQuery() {
+  saveWorkbenchState('users', {
+    queryState: {
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      keyword: keyword.value,
+      sortBy: sortState.value.key ?? null,
+      sortOrder: sortState.value.direction ?? null,
+      status: statusFilter.value,
+    },
+  })
+}
 
 // ---- API calls ----
 async function loadUsers() {
@@ -197,6 +224,7 @@ async function handleDelete(user: UserItem) {
     })
     Message.success({ content: '删除成功', duration: 3000 })
     selectedRowKeys.value = selectedRowKeys.value.filter(k => k !== userId)
+    saveWorkbenchState('users', { selectedRowKeys: selectedRowKeys.value })
     await loadUsers()
   } catch (e: any) {
     Message.error({ content: e.message || '删除失败', duration: 3000 })
@@ -208,7 +236,8 @@ async function handleBatchDelete(keys = selectedRowKeys.value) {
     Message.error({ content: '请选择要删除的用户', duration: 3000 })
     return
   }
-  selectedRowKeys.value = [...keys] as number[]
+  selectedRowKeys.value = keys.map(Number).filter(id => Number.isFinite(id))
+  saveWorkbenchState('users', { selectedRowKeys: selectedRowKeys.value })
   batchDeleteConfirmVisible.value = true
 }
 
@@ -222,9 +251,38 @@ async function confirmBatchDelete() {
     Message.success({ content: res.data.message || '批量删除成功', duration: 3000 })
     batchDeleteConfirmVisible.value = false
     selectedRowKeys.value = []
+    clearWorkbenchSelection('users')
     await loadUsers()
   } catch (e: any) {
     Message.error({ content: e.message || '批量删除失败', duration: 3000 })
+  }
+}
+
+async function handleBatchStatus(status: 0 | 1, keys = selectedRowKeys.value) {
+  if (keys.length === 0) {
+    Message.error({ content: '请选择要更新状态的用户', duration: 3000 })
+    return
+  }
+  selectedRowKeys.value = keys.map(Number).filter(id => Number.isFinite(id))
+  saveWorkbenchState('users', { selectedRowKeys: selectedRowKeys.value })
+  batchStatusValue.value = status
+  batchStatusConfirmVisible.value = true
+}
+
+async function confirmBatchStatus() {
+  try {
+    const res = await apiRequest<MessageResult>('/api/users/batch-status', {
+      method: 'POST',
+      headers: authHeaders.value,
+      body: JSON.stringify({ ids: selectedRowKeys.value, status: batchStatusValue.value }),
+    })
+    Message.success({ content: res.data.message || '批量状态更新成功', duration: 3000 })
+    batchStatusConfirmVisible.value = false
+    selectedRowKeys.value = []
+    clearWorkbenchSelection('users')
+    await loadUsers()
+  } catch (e: any) {
+    Message.error({ content: e.message || '批量状态更新失败', duration: 3000 })
   }
 }
 
@@ -291,6 +349,7 @@ function toggleColumn(key: string) {
     next.add(key)
   }
   hiddenColumns.value = next
+  saveWorkbenchState('users', { hiddenColumnKeys: Array.from(next) })
 }
 
 const columns = computed<TableColumn[]>(() => {
@@ -423,23 +482,27 @@ function handlePageChange(current: number, nextPageSize: number) {
   }
 
   currentPage.value = current
+  persistQuery()
   loadUsers()
 }
 
 function handlePageSizeChange(_current: number, nextPageSize: number) {
   pageSize.value = nextPageSize
   currentPage.value = 1
+  persistQuery()
   loadUsers()
 }
 
 function handleSelectionChange(keys: (string | number)[]) {
-  selectedRowKeys.value = keys as number[]
+  selectedRowKeys.value = keys.map(Number).filter(id => Number.isFinite(id))
+  saveWorkbenchState('users', { selectedRowKeys: selectedRowKeys.value })
 }
 
 // ---- Sort ----
 function handleSortChange(next: SortState) {
   sortState.value = next
   currentPage.value = 1
+  persistQuery()
   loadUsers()
 }
 
@@ -452,6 +515,7 @@ const statusFilterOptions = [
 function handleStatusFilter(value: TableToolbarFilterValue) {
   statusFilter.value = value === null || value === '' ? null : Number(value)
   currentPage.value = 1
+  persistQuery()
   loadUsers()
 }
 
@@ -462,11 +526,13 @@ function handleToolbarFiltersChange(filters: Record<string, TableToolbarFilterVa
 // ---- Search ----
 const debouncedLoad = debounce(() => {
   currentPage.value = 1
+  persistQuery()
   loadUsers()
 }, 300)
 
 function handleSearch(val: string) {
   keyword.value = val
+  persistQuery()
   debouncedLoad()
 }
 
@@ -487,14 +553,34 @@ const tableToolbar = computed(() => ({
       value: statusFilter.value,
     },
   ],
-  bulkActions: canDelete.value
+  bulkActions: canEdit.value || canDelete.value
     ? [
-        {
-          key: 'batch-delete',
-          label: '批量删除',
-          variant: 'outline',
-          onClick: (keys: (string | number)[]) => handleBatchDelete(keys as number[]),
-        },
+        ...(canEdit.value
+          ? [
+              {
+                key: 'batch-enable',
+                label: '批量启用',
+                variant: 'outline',
+                onClick: (keys: (string | number)[]) => handleBatchStatus(0, keys as number[]),
+              },
+              {
+                key: 'batch-disable',
+                label: '批量禁用',
+                variant: 'outline',
+                onClick: (keys: (string | number)[]) => handleBatchStatus(1, keys as number[]),
+              },
+            ]
+          : []),
+        ...(canDelete.value
+          ? [
+              {
+                key: 'batch-delete',
+                label: '批量删除',
+                variant: 'outline',
+                onClick: (keys: (string | number)[]) => handleBatchDelete(keys as number[]),
+              },
+            ]
+          : []),
       ]
     : undefined,
   selectedKeys: selectedRowKeys.value,
@@ -511,8 +597,6 @@ const serverPaginationHint = computed(() => {
 
 // ---- Export ----
 function openExportModal() {
-  exportFormat.value = 'csv'
-  exportFields.value = EXPORT_FIELD_OPTIONS.map(f => f.key)
   exportModalVisible.value = true
 }
 
@@ -523,11 +607,26 @@ function toggleExportField(key: string) {
   } else {
     exportFields.value = [...exportFields.value, key]
   }
+  saveWorkbenchState('users', {
+    exportState: { format: exportFormat.value, fields: exportFields.value },
+  })
+}
+
+function handleExportFormatChange(value: unknown) {
+  const format = value as ExportFormat
+  exportFormat.value = format
+  saveWorkbenchState('users', {
+    exportState: { format, fields: exportFields.value },
+  })
 }
 
 async function handleExport() {
   if (exportFields.value.length === 0) {
     Message.error({ content: '请至少选择一个导出字段', duration: 3000 })
+    return
+  }
+  if (total.value === 0) {
+    Message.error({ content: '当前筛选没有可导出的结果', duration: 3000 })
     return
   }
   exporting.value = true
@@ -536,6 +635,12 @@ async function handleExport() {
       entity: 'users',
       format: exportFormat.value,
       fields: exportFields.value,
+      query: {
+        keyword: keyword.value,
+        sortBy: sortState.value.key ?? undefined,
+        sortOrder: sortState.value.direction ?? undefined,
+        status: statusFilter.value,
+      },
       headers: authHeaders.value,
     })
     Message.success({ content: '导出成功', duration: 3000 })
@@ -738,6 +843,22 @@ onMounted(() => {
       </p>
     </Modal>
 
+    <Modal
+      v-model:open="batchStatusConfirmVisible"
+      :title="batchStatusValue === 0 ? '确认批量启用' : '确认批量禁用'"
+      show-default-footer
+      :ok-text="batchStatusValue === 0 ? '确认启用' : '确认禁用'"
+      cancel-text="取消"
+      @ok="confirmBatchStatus"
+      @cancel="batchStatusConfirmVisible = false"
+    >
+      <p class="p2-text-secondary">
+        将选中的
+        <span class="p2-text-primary font-semibold">{{ selectedRowKeys.length }}</span>
+        个用户设为{{ batchStatusValue === 0 ? '正常' : '禁用' }}状态。
+      </p>
+    </Modal>
+
     <!-- Export Modal -->
     <Modal
       v-model:open="exportModalVisible"
@@ -752,9 +873,10 @@ onMounted(() => {
       <Form :label-width="88">
         <FormItem label="导出格式">
           <Select
-            v-model="exportFormat"
+            :model-value="exportFormat"
             :options="FORMAT_OPTIONS"
             placeholder="选择导出格式"
+            @update:model-value="handleExportFormatChange"
           />
         </FormItem>
         <FormItem label="导出字段">

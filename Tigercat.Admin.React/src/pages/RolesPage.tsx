@@ -33,6 +33,8 @@ import {
   debounce,
   getAuthHeaders,
   exportData,
+  loadWorkbenchState,
+  saveWorkbenchState,
 } from '../utils';
 import type { ExportFormat } from '../utils/export';
 import { usePermission } from '../utils/permission';
@@ -94,23 +96,42 @@ const COLUMN_LABELS: Record<string, string> = {
 
 function RolesPage() {
   const { has: hasPerm } = usePermission();
+  const savedWorkbench = useMemo(
+    () =>
+      loadWorkbenchState('roles', {
+        queryState: { page: 1, pageSize: 10 },
+        selectedRowKeys: [],
+        hiddenColumnKeys: [],
+        exportState: {
+          format: 'csv',
+          fields: EXPORT_FIELD_OPTIONS.map((f) => f.key),
+        },
+      }),
+    [],
+  );
+  const savedQuery = savedWorkbench.queryState;
 
   // ---- State ----
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [keyword, setKeyword] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [keyword, setKeyword] = useState(savedQuery.keyword ?? '');
+  const [currentPage, setCurrentPage] = useState(savedQuery.page ?? 1);
+  const [pageSize, setPageSize] = useState(savedQuery.pageSize ?? 10);
   const [total, setTotal] = useState(0);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>(
+    savedWorkbench.selectedRowKeys.map(Number).filter((id) => Number.isFinite(id)),
+  );
 
   // Sort state (controlled)
   const [sortState, setSortState] = useState<SortState>({
-    key: null,
-    direction: null,
+    key: savedQuery.sortBy ?? null,
+    direction: savedQuery.sortOrder ?? null,
   });
 
   // Column visibility
-  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(
+    () => new Set(savedWorkbench.hiddenColumnKeys),
+  );
 
   // Modal state — create / edit
   const [modalVisible, setModalVisible] = useState(false);
@@ -128,9 +149,13 @@ function RolesPage() {
 
   // Export state
   const [exportModalVisible, setExportModalVisible] = useState(false);
-  const [exportFormat, setExportFormat] = useState<ExportFormat>('csv');
+  const [exportFormat, setExportFormat] = useState<ExportFormat>(
+    savedWorkbench.exportState?.format ?? 'csv',
+  );
   const [exportFields, setExportFields] = useState<string[]>(() =>
-    EXPORT_FIELD_OPTIONS.map((f) => f.key),
+    savedWorkbench.exportState?.fields?.length
+      ? savedWorkbench.exportState.fields
+      : EXPORT_FIELD_OPTIONS.map((f) => f.key),
   );
   const [exporting, setExporting] = useState(false);
 
@@ -139,12 +164,25 @@ function RolesPage() {
     page: currentPage,
     pageSize,
     keyword,
-    sortState: { key: null, direction: null } as SortState,
+    sortState,
   });
 
   // ---- Permission checks ----
   const canEdit = hasPerm('role:edit');
   const canDelete = hasPerm('role:delete');
+
+  const persistQuery = useCallback((next: Partial<typeof queryRef.current>) => {
+    queryRef.current = { ...queryRef.current, ...next };
+    saveWorkbenchState('roles', {
+      queryState: {
+        page: queryRef.current.page,
+        pageSize: queryRef.current.pageSize,
+        keyword: queryRef.current.keyword,
+        sortBy: queryRef.current.sortState.key ?? null,
+        sortOrder: queryRef.current.sortState.direction ?? null,
+      },
+    });
+  }, []);
 
   // ---- API calls ----
   const loadRoles = useCallback(async () => {
@@ -295,16 +333,25 @@ function RolesPage() {
   };
 
   // ---- Export ----
-  const openExportModal = () => {
-    setExportFormat('csv');
-    setExportFields(EXPORT_FIELD_OPTIONS.map((f) => f.key));
-    setExportModalVisible(true);
-  };
+  const openExportModal = () => setExportModalVisible(true);
 
   const toggleExportField = (key: string) => {
-    setExportFields((prev) =>
-      prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key],
-    );
+    setExportFields((prev) => {
+      const next = prev.includes(key)
+        ? prev.filter((f) => f !== key)
+        : [...prev, key];
+      saveWorkbenchState('roles', {
+        exportState: { format: exportFormat, fields: next },
+      });
+      return next;
+    });
+  };
+
+  const handleExportFormatChange = (format: ExportFormat) => {
+    setExportFormat(format);
+    saveWorkbenchState('roles', {
+      exportState: { format, fields: exportFields },
+    });
   };
 
   const handleExport = async () => {
@@ -312,12 +359,22 @@ function RolesPage() {
       Message.error({ content: '请至少选择一个导出字段', duration: 3000 });
       return;
     }
+    if (total === 0) {
+      Message.error({ content: '当前筛选没有可导出的结果', duration: 3000 });
+      return;
+    }
     setExporting(true);
     try {
+      const { keyword: kw, sortState: ss } = queryRef.current;
       await exportData({
         entity: 'roles',
         format: exportFormat,
         fields: exportFields,
+        query: {
+          keyword: kw,
+          sortBy: ss.key ?? undefined,
+          sortOrder: ss.direction ?? undefined,
+        },
         headers: getAuthHeaders(),
       });
       Message.success({ content: '导出成功', duration: 3000 });
@@ -352,16 +409,16 @@ function RolesPage() {
   const debouncedLoad = useMemo(
     () =>
       debounce(() => {
-        queryRef.current.page = 1;
+        persistQuery({ page: 1 });
         setCurrentPage(1);
         loadRoles();
       }, 300),
-    [loadRoles],
+    [loadRoles, persistQuery],
   );
 
   const handleSearch = (val: string) => {
     const normalized = normalizeInput(val);
-    queryRef.current.keyword = normalized;
+    persistQuery({ keyword: normalized });
     setKeyword(normalized);
     debouncedLoad();
   };
@@ -375,6 +432,9 @@ function RolesPage() {
       } else {
         next.add(key);
       }
+      saveWorkbenchState('roles', {
+        hiddenColumnKeys: Array.from(next),
+      });
       return next;
     });
   }, []);
@@ -519,14 +579,13 @@ function RolesPage() {
       return;
     }
 
-    queryRef.current.page = page.current;
+    persistQuery({ page: page.current });
     setCurrentPage(page.current);
     loadRoles();
   };
 
   const handlePageSizeChange = (_current: number, nextPageSize: number) => {
-    queryRef.current.pageSize = nextPageSize;
-    queryRef.current.page = 1;
+    persistQuery({ pageSize: nextPageSize, page: 1 });
     setPageSize(nextPageSize);
     setCurrentPage(1);
     loadRoles();
@@ -536,13 +595,18 @@ function RolesPage() {
   const handleSortChange = useCallback(
     (next: SortState) => {
       setSortState(next);
-      queryRef.current.sortState = next;
-      queryRef.current.page = 1;
+      persistQuery({ sortState: next, page: 1 });
       setCurrentPage(1);
       loadRoles();
     },
-    [loadRoles],
+    [loadRoles, persistQuery],
   );
+
+  const handleSelectionChange = (keys: (string | number)[]) => {
+    const next = keys.map(Number).filter((id) => Number.isFinite(id));
+    setSelectedRowKeys(next);
+    saveWorkbenchState('roles', { selectedRowKeys: next });
+  };
 
   // ---- Form field helpers ----
   const setField = <K extends keyof RoleFormData>(
@@ -556,8 +620,10 @@ function RolesPage() {
     () => ({
       searchValue: keyword,
       searchPlaceholder: '搜索角色名称或描述...',
+      selectedKeys: selectedRowKeys,
+      selectedCount: selectedRowKeys.length,
     }),
-    [keyword],
+    [keyword, selectedRowKeys],
   );
 
   const serverPaginationHint = useMemo(() => {
@@ -638,6 +704,9 @@ function RolesPage() {
         dataSource={roles}
         loading={loading}
         pagination={paginationConfig}
+        rowSelection={{
+          selectedRowKeys,
+        }}
         sort={sortState}
         columnLockable
         rowKey="id"
@@ -651,6 +720,7 @@ function RolesPage() {
           handlePageChange({ current, pageSize: nextPageSize })
         }
         onPageSizeChange={handlePageSizeChange}
+        onSelectionChange={handleSelectionChange}
         onSortChange={handleSortChange}
       />
 
@@ -743,7 +813,7 @@ function RolesPage() {
             <Select
               value={exportFormat}
               options={FORMAT_OPTIONS}
-              onChange={(val) => setExportFormat(val as ExportFormat)}
+              onChange={(val) => handleExportFormatChange(val as ExportFormat)}
             />
           </FormItem>
           <FormItem label="导出字段">

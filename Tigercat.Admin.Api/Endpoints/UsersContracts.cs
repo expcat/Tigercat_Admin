@@ -8,6 +8,8 @@ public record UpdateUserRequest(string? DisplayName, int? Status, string? Passwo
 
 public record BatchDeleteUsersRequest(int[] Ids);
 
+public record BatchUpdateUserStatusRequest(int[] Ids, int Status);
+
 // --- Response DTOs ---
 
 public record UserItemResponse(

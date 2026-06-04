@@ -13,8 +13,9 @@ import { Upload } from '@expcat/tigercat-react/Upload';
 import type { FileItem, UploadRequestOptions } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { FileTextIcon, UploadIcon } from '../components/Icons';
-import { deleteMedia, listMedia, uploadMediaFile } from '../utils/media';
+import { batchDeleteMedia, listMedia, uploadMediaFile } from '../utils/media';
 import { usePermission } from '../utils/permission';
+import { clearWorkbenchSelection, loadWorkbenchState, saveWorkbenchState } from '../utils/workbench';
 import type { MediaItem } from '../utils/types';
 
 const TYPE_OPTIONS = [
@@ -43,12 +44,23 @@ function FilesPage() {
   const { has: hasPerm } = usePermission();
   const canUpload = hasPerm('media:upload');
   const canDelete = hasPerm('media:delete');
+  const savedWorkbench = useMemo(
+    () =>
+      loadWorkbenchState('files', {
+        queryState: { contentType: '', keyword: '' },
+        selectedRowKeys: [],
+      }),
+    [],
+  );
+  const savedQuery = savedWorkbench.queryState;
 
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [contentType, setContentType] = useState('');
-  const [searchText, setSearchText] = useState('');
-  const [selectedKeys, setSelectedKeys] = useState<(string | number)[]>([]);
+  const [contentType, setContentType] = useState(savedQuery.contentType ?? '');
+  const [searchText, setSearchText] = useState(savedQuery.keyword ?? '');
+  const [selectedKeys, setSelectedKeys] = useState<(string | number)[]>(
+    savedWorkbench.selectedRowKeys,
+  );
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -96,11 +108,13 @@ function FilesPage() {
     if (selectedIds.length === 0) return;
     try {
       setDeleting(true);
-      for (const id of selectedIds) {
-        await deleteMedia(id);
-      }
-      Message.success({ content: '已删除选中文件', duration: 3000 });
+      const res = await batchDeleteMedia(selectedIds);
+      Message.success({
+        content: res.data.message || '已删除选中文件',
+        duration: 3000,
+      });
       setSelectedKeys([]);
+      clearWorkbenchSelection('files');
       setDeleteOpen(false);
       await load();
     } catch (e: any) {
@@ -108,6 +122,26 @@ function FilesPage() {
     } finally {
       setDeleting(false);
     }
+  };
+
+  const handleContentTypeChange = (value: unknown) => {
+    const next = String(value ?? '');
+    setContentType(next);
+    saveWorkbenchState('files', {
+      queryState: { contentType: next, keyword: searchText },
+    });
+  };
+
+  const handleSearchTextChange = (value: string) => {
+    setSearchText(value);
+    saveWorkbenchState('files', {
+      queryState: { contentType, keyword: value },
+    });
+  };
+
+  const handleSelectedKeysChange = (keys: (string | number)[]) => {
+    setSelectedKeys(keys);
+    saveWorkbenchState('files', { selectedRowKeys: keys });
   };
 
   return (
@@ -127,7 +161,7 @@ function FilesPage() {
               options={TYPE_OPTIONS}
               placeholder="筛选类型"
               clearable={false}
-              onChange={(value) => setContentType(String(value ?? ''))}
+              onChange={handleContentTypeChange}
             />
             {selectedIds.length > 0 && (
               <Tag color="blue" size="sm">
@@ -170,8 +204,8 @@ function FilesPage() {
           selectedKeys={selectedKeys}
           searchText={searchText}
           emptyText="暂无媒体资源"
-          onSelectedKeysChange={setSelectedKeys}
-          onSearchTextChange={setSearchText}
+          onSelectedKeysChange={handleSelectedKeysChange}
+          onSearchTextChange={handleSearchTextChange}
           onOpen={(item) => {
             if (typeof item.url === 'string') {
               window.open(item.url, '_blank', 'noopener,noreferrer');

@@ -4,7 +4,7 @@ import { DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Inp
 import type { TableColumn, SortState } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
-import { apiRequest, debounce, type Session } from '../utils'
+import { apiRequest, debounce, loadWorkbenchState, saveWorkbenchState, type Session } from '../utils'
 import { exportData, type ExportFormat } from '../utils/export'
 import type { PermissionInfo, RoleUserInfo, RoleItem, PagedResult } from '../utils/types'
 import { usePermission } from '../utils/permission'
@@ -23,19 +23,32 @@ const authHeaders = computed(() =>
   session.value?.token ? { Authorization: `Bearer ${session.value.token}` } : {}
 )
 
+const DEFAULT_EXPORT_FIELDS = ['id', 'name', 'description', 'createdAt', 'permissions', 'userCount']
+const savedWorkbench = loadWorkbenchState('roles', {
+  queryState: { page: 1, pageSize: 10 },
+  selectedRowKeys: [],
+  hiddenColumnKeys: [],
+  exportState: { format: 'csv', fields: DEFAULT_EXPORT_FIELDS },
+})
+const savedQuery = savedWorkbench.queryState
+
 // ---- State ----
 const roles = ref<RoleItem[]>([])
 const loading = ref(false)
-const keyword = ref('')
-const currentPage = ref(1)
-const pageSize = ref(10)
+const keyword = ref(savedQuery.keyword ?? '')
+const currentPage = ref(savedQuery.page ?? 1)
+const pageSize = ref(savedQuery.pageSize ?? 10)
 const total = ref(0)
+const selectedRowKeys = ref<number[]>(savedWorkbench.selectedRowKeys.map(Number).filter(id => Number.isFinite(id)))
 
 // Sort state (controlled)
-const sortState = ref<SortState>({ key: null, direction: null })
+const sortState = ref<SortState>({
+  key: savedQuery.sortBy ?? null,
+  direction: savedQuery.sortOrder ?? null,
+})
 
 // Column visibility
-const hiddenColumns = ref<Set<string>>(new Set())
+const hiddenColumns = ref<Set<string>>(new Set(savedWorkbench.hiddenColumnKeys))
 
 // Modal state
 const modalVisible = ref(false)
@@ -57,8 +70,8 @@ const allPermissions = ref<PermissionInfo[]>([])
 
 // ---- Export state ----
 const exportModalVisible = ref(false)
-const exportFormat = ref<ExportFormat>('csv')
-const exportFields = ref<string[]>(['id', 'name', 'description', 'createdAt', 'permissions', 'userCount'])
+const exportFormat = ref<ExportFormat>(savedWorkbench.exportState?.format ?? 'csv')
+const exportFields = ref<string[]>(savedWorkbench.exportState?.fields?.length ? savedWorkbench.exportState.fields : DEFAULT_EXPORT_FIELDS)
 const exporting = ref(false)
 
 const EXPORT_FIELD_OPTIONS = [
@@ -75,6 +88,18 @@ const FORMAT_OPTIONS = [
   { label: 'JSON', value: 'json' },
   { label: 'XLSX', value: 'xlsx' },
 ]
+
+function persistQuery() {
+  saveWorkbenchState('roles', {
+    queryState: {
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      keyword: keyword.value,
+      sortBy: sortState.value.key ?? null,
+      sortOrder: sortState.value.direction ?? null,
+    },
+  })
+}
 
 // ---- API calls ----
 async function loadRoles() {
@@ -254,6 +279,7 @@ function toggleColumn(key: string) {
     next.add(key)
   }
   hiddenColumns.value = next
+  saveWorkbenchState('roles', { hiddenColumnKeys: Array.from(next) })
 }
 
 const columns = computed<TableColumn[]>(() => {
@@ -380,12 +406,14 @@ function handlePageChange(current: number, nextPageSize: number) {
   }
 
   currentPage.value = current
+  persistQuery()
   loadRoles()
 }
 
 function handlePageSizeChange(_current: number, nextPageSize: number) {
   pageSize.value = nextPageSize
   currentPage.value = 1
+  persistQuery()
   loadRoles()
 }
 
@@ -393,23 +421,33 @@ function handlePageSizeChange(_current: number, nextPageSize: number) {
 function handleSortChange(next: SortState) {
   sortState.value = next
   currentPage.value = 1
+  persistQuery()
   loadRoles()
 }
 
 // ---- Search ----
 const debouncedLoad = debounce(() => {
   currentPage.value = 1
+  persistQuery()
   loadRoles()
 }, 300)
 
 function handleSearch(val: string) {
   keyword.value = val
+  persistQuery()
   debouncedLoad()
+}
+
+function handleSelectionChange(keys: (string | number)[]) {
+  selectedRowKeys.value = keys.map(Number).filter(id => Number.isFinite(id))
+  saveWorkbenchState('roles', { selectedRowKeys: selectedRowKeys.value })
 }
 
 const tableToolbar = computed(() => ({
   searchValue: keyword.value,
   searchPlaceholder: '搜索角色名称或描述...',
+  selectedKeys: selectedRowKeys.value,
+  selectedCount: selectedRowKeys.value.length,
 }))
 
 const serverPaginationHint = computed(() => {
@@ -422,8 +460,6 @@ const serverPaginationHint = computed(() => {
 
 // ---- Export ----
 function openExportModal() {
-  exportFormat.value = 'csv'
-  exportFields.value = EXPORT_FIELD_OPTIONS.map(f => f.key)
   exportModalVisible.value = true
 }
 
@@ -434,11 +470,26 @@ function toggleExportField(key: string) {
   } else {
     exportFields.value = [...exportFields.value, key]
   }
+  saveWorkbenchState('roles', {
+    exportState: { format: exportFormat.value, fields: exportFields.value },
+  })
+}
+
+function handleExportFormatChange(value: unknown) {
+  const format = value as ExportFormat
+  exportFormat.value = format
+  saveWorkbenchState('roles', {
+    exportState: { format, fields: exportFields.value },
+  })
 }
 
 async function handleExport() {
   if (exportFields.value.length === 0) {
     Message.error({ content: '请至少选择一个导出字段', duration: 3000 })
+    return
+  }
+  if (total.value === 0) {
+    Message.error({ content: '当前筛选没有可导出的结果', duration: 3000 })
     return
   }
   exporting.value = true
@@ -447,6 +498,11 @@ async function handleExport() {
       entity: 'roles',
       format: exportFormat.value,
       fields: exportFields.value,
+      query: {
+        keyword: keyword.value,
+        sortBy: sortState.value.key ?? undefined,
+        sortOrder: sortState.value.direction ?? undefined,
+      },
       headers: authHeaders.value,
     })
     Message.success({ content: '导出成功', duration: 3000 })
@@ -532,6 +588,10 @@ onMounted(() => {
       :data-source="roles as any"
       :loading="loading"
       :pagination="paginationConfig"
+      :row-selection="{
+        selectedRowKeys: selectedRowKeys,
+        type: 'checkbox',
+      }"
       :sort="sortState"
       column-lockable
       row-key="id"
@@ -543,6 +603,7 @@ onMounted(() => {
       @search="handleSearch"
       @page-change="handlePageChange"
       @page-size-change="handlePageSizeChange"
+      @selection-change="handleSelectionChange"
       @sort-change="handleSortChange"
     />
 
@@ -630,9 +691,10 @@ onMounted(() => {
       <Form :label-width="88">
         <FormItem label="导出格式">
           <Select
-            v-model="exportFormat"
+            :model-value="exportFormat"
             :options="FORMAT_OPTIONS"
             placeholder="选择导出格式"
+            @update:model-value="handleExportFormatChange"
           />
         </FormItem>
         <FormItem label="导出字段">

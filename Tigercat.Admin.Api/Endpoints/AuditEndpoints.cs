@@ -347,6 +347,9 @@ public class AuditEndpoints : IEndpointDefinition
             "admin.user.batch.deleted" => (
                 "批量删除用户",
                 $"{operatorName} 批量删除了 {data.GetValueOrDefault("deletedCount") ?? "0"} 个用户。"),
+            "admin.user.batch.status.updated" => (
+                "批量更新用户状态",
+                $"{operatorName} 批量更新了 {data.GetValueOrDefault("updatedCount") ?? "0"} 个用户状态。"),
             "admin.user.password.reset" => ("重置用户密码", $"{operatorName} 重置了用户 {targetUsername} 的登录密码。"),
             "admin.task.created" => ("创建运维任务", $"{operatorName} 创建了任务 {data.GetValueOrDefault("title") ?? "未命名任务"}。"),
             "admin.task.updated" => ("更新运维任务", $"{operatorName} 更新了任务 {data.GetValueOrDefault("title") ?? "未命名任务"}。"),

@@ -44,6 +44,10 @@ public class ExportEndpoints : IEndpointDefinition
     private static async Task<IResult> ExportUsers(
         string? format,
         string? fields,
+        string? keyword,
+        int? status,
+        string? sortBy,
+        string? sortOrder,
         AdminDbContext db,
         CancellationToken ct)
     {
@@ -58,10 +62,50 @@ public class ExportEndpoints : IEndpointDefinition
 
         var selectedFields = ParseFields(fields, ValidUserFields);
 
-        var users = await db.Users
+        IQueryable<UserEntity> query = db.Users;
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var kw = keyword.Trim().ToLowerInvariant();
+            query = query.Where(u =>
+                u.Username.ToLower().Contains(kw) ||
+                (u.DisplayName != null && u.DisplayName.ToLower().Contains(kw)));
+        }
+
+        if (status.HasValue)
+        {
+            if (status.Value != 0 && status.Value != 1)
+            {
+                return Results.Json(
+                    ApiResult.Fail<object>("Invalid 'status' query parameter value. Allowed values are 0 and 1.", 400),
+                    AppJsonContext.Default.ApiResponseObject,
+                    statusCode: 400);
+            }
+
+            query = query.Where(u => (int)u.Status == status.Value);
+        }
+
+        var desc = string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase);
+        IOrderedQueryable<UserEntity> ordered = sortBy?.ToLowerInvariant() switch
+        {
+            "username" => desc
+                ? query.OrderByDescending(u => u.Username).ThenByDescending(u => u.Id)
+                : query.OrderBy(u => u.Username).ThenBy(u => u.Id),
+            "displayname" => desc
+                ? query.OrderByDescending(u => u.DisplayName).ThenByDescending(u => u.Id)
+                : query.OrderBy(u => u.DisplayName).ThenBy(u => u.Id),
+            "status" => desc
+                ? query.OrderByDescending(u => u.Status).ThenByDescending(u => u.Id)
+                : query.OrderBy(u => u.Status).ThenBy(u => u.Id),
+            "createdat" => desc
+                ? query.OrderByDescending(u => u.CreatedAt).ThenByDescending(u => u.Id)
+                : query.OrderBy(u => u.CreatedAt).ThenBy(u => u.Id),
+            _ => desc ? query.OrderByDescending(u => u.Id) : query.OrderBy(u => u.Id),
+        };
+
+        var users = await ordered
             .Include(u => u.UserRoles)
             .ThenInclude(ur => ur.Role)
-            .OrderBy(u => u.Id)
             .Take(MaxExportRows)
             .ToListAsync(ct);
 
@@ -82,6 +126,9 @@ public class ExportEndpoints : IEndpointDefinition
     private static async Task<IResult> ExportRoles(
         string? format,
         string? fields,
+        string? keyword,
+        string? sortBy,
+        string? sortOrder,
         AdminDbContext db,
         CancellationToken ct)
     {
@@ -96,11 +143,32 @@ public class ExportEndpoints : IEndpointDefinition
 
         var selectedFields = ParseFields(fields, ValidRoleFields);
 
-        var roles = await db.Roles
+        IQueryable<RoleEntity> query = db.Roles;
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var kw = keyword.Trim().ToLowerInvariant();
+            query = query.Where(r =>
+                r.Name.ToLower().Contains(kw) ||
+                (r.Description != null && r.Description.ToLower().Contains(kw)));
+        }
+
+        var desc = string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase);
+        IOrderedQueryable<RoleEntity> ordered = sortBy?.ToLowerInvariant() switch
+        {
+            "name" => desc
+                ? query.OrderByDescending(r => r.Name).ThenByDescending(r => r.Id)
+                : query.OrderBy(r => r.Name).ThenBy(r => r.Id),
+            "createdat" => desc
+                ? query.OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id)
+                : query.OrderBy(r => r.CreatedAt).ThenBy(r => r.Id),
+            _ => desc ? query.OrderByDescending(r => r.Id) : query.OrderBy(r => r.Id),
+        };
+
+        var roles = await ordered
             .Include(r => r.RolePermissions)
             .ThenInclude(rp => rp.Permission)
             .Include(r => r.UserRoles)
-            .OrderBy(r => r.Id)
             .Take(MaxExportRows)
             .ToListAsync(ct);
 
