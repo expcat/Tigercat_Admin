@@ -4,6 +4,17 @@ public static class MediaUrl
 {
     public static string Content(string publicId) => $"/api/media/{publicId}/content";
 
+    public static string Content(string publicId, MediaOptions options)
+    {
+        var relative = Content(publicId);
+        if (string.IsNullOrWhiteSpace(options.PublicBaseUrl))
+        {
+            return relative;
+        }
+
+        return $"{options.PublicBaseUrl.TrimEnd('/')}{relative}";
+    }
+
     public static string? TryGetPublicId(string? url)
     {
         if (string.IsNullOrWhiteSpace(url))

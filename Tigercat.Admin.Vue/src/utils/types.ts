@@ -107,9 +107,13 @@ export interface MediaItem {
   id: number;
   publicId: string;
   originalFileName: string;
+  storageProvider: string;
   contentType: string;
   extension: string | null;
   sizeBytes: number;
+  sha256Hash: string | null;
+  width: number | null;
+  height: number | null;
   url: string;
   uploadedBy: string | null;
   createdAt: string;
@@ -118,6 +122,10 @@ export interface MediaItem {
 
 export interface MediaDetail extends Omit<MediaItem, 'referenceCount'> {
   references: MediaReference[];
+}
+
+export interface DuplicateMediaResult {
+  existing: MediaItem;
 }
 
 export interface AuditLogItem {

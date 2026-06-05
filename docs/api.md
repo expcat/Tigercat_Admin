@@ -968,6 +968,8 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
 | `admin.setting.updated`      | PUT `/api/settings` 或 PUT `/api/audit-logs/retention-policy` | `changedKeys`、`operator`                               |
 | `admin.audit.retention.cleaned` | POST `/api/audit-logs/retention/cleanup`   | `retentionDays`、`cutoffUtc`、`matchedCount`、`deletedCount`、`operator` |
 | `admin.media.delete.failed`  | DELETE `/api/media/{id}` 或 POST `/api/media/batch-delete` 引用冲突时 | `mediaId` / `mediaIds`、`fileName` / `fileNames`、`referenceCount`、`reason`、`operator` |
+| `admin.media.delete.forced`  | DELETE `/api/media/{id}?force=true` 或 POST `/api/media/batch-delete` 强制删除成功时 | `mediaIds`、`fileNames`、`referenceCount`、`operator` |
+| `admin.media.orphans.cleaned` | POST `/api/media/orphans/cleanup` 且 `dryRun=false` | `matchedCount`、`deletedCount`、`operator` |
 
 ### 22.1 获取审计日志（分页 + 筛选）
 
@@ -1421,7 +1423,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
 
 ## 媒体资源接口 (`/api/media`)
 
-> 管理接口均需登录且需要对应权限。内容读取接口使用不可预测 `publicId`，便于 Logo / 头像直接以 `<img>` URL 渲染。
+> 管理接口均需登录且需要对应权限。内容读取接口使用不可预测 `publicId`，便于 Logo / 头像直接以 `<img>` URL 渲染；生产环境可通过 `Media:PublicBaseUrl` 返回绝对 URL。
 
 **媒体对象结构**：
 
@@ -1430,9 +1432,13 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
 | `id`               | number         | 媒体资源 ID                           |
 | `publicId`         | string         | 公开访问标识                          |
 | `originalFileName` | string         | 原始文件名                            |
+| `storageProvider`  | string         | 存储 provider，当前内置为 `Local`     |
 | `contentType`      | string         | MIME 类型                             |
 | `extension`        | string \| null | 文件扩展名                            |
 | `sizeBytes`        | number         | 文件大小（字节）                      |
+| `sha256Hash`       | string \| null | 文件 SHA256 摘要                      |
+| `width`            | number \| null | 图片宽度；非图片或未识别时为空       |
+| `height`           | number \| null | 图片高度；非图片或未识别时为空       |
 | `url`              | string         | 内容访问 URL，如 `/api/media/.../content` |
 | `uploadedBy`       | string \| null | 上传人                                |
 | `createdAt`        | string         | 创建时间（UTC）                       |
@@ -1449,7 +1455,8 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
   - `usage`：用途（可选，`logo` / `avatar` / `file`；`logo` 和 `avatar` 仅允许图片）
 - **返回 data**：媒体对象
 - **可能错误码**：
-  - `400`：未使用 multipart / 未选择文件 / 空文件 / 文件过大 / 不支持的类型 / Logo 或头像不是图片
+  - `400`：未使用 multipart / 未选择文件 / 空文件 / 文件过大 / 不支持的 MIME / 不支持的扩展名 / MIME 与扩展名不匹配 / Logo 或头像不是图片 / 图片尺寸超过 `Media:MaxImageWidth` 或 `Media:MaxImageHeight`
+  - `409`：文件内容已存在，返回 `{ "existing": 媒体对象 }`，前端可提示复用已有资源
 
 ### 27. 获取媒体列表
 
@@ -1473,6 +1480,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
 - **认证**：是
 - **权限**：`media:view`
 - **返回 data**：媒体对象，额外包含 `references` 数组
+- **引用对象结构**：`id`、`referenceType`、`referenceKey`、`displayName`
 - **可能错误码**：
   - `404`：媒体资源不存在
 
@@ -1482,21 +1490,25 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
 - **路径**：`/api/media/{publicId}/content`
 - **认证**：否
 - **返回**：文件内容流
+- **响应头**：按 `Media:PublicCacheSeconds` 写入 `Cache-Control`，并返回 `X-Content-Type-Options: nosniff`
 - **可能错误码**：
   - `404`：媒体资源或本地文件不存在
 
 ### 30. 删除媒体资源
 
 - **方法**：DELETE
-- **路径**：`/api/media/{id}`
+- **路径**：`/api/media/{id}?force=true`
 - **认证**：是
 - **权限**：`media:delete`
+- **查询参数**：
+  - `force`：可选，`true` 时强制删除已知引用
 - **返回 data**：
   - `message`：`"删除成功"`
 - **可能错误码**：
   - `404`：媒体资源不存在
-  - `409`：媒体资源正在被 `site.logo` 或 `user.avatar` 引用，返回引用数组
-- **事件**：引用冲突导致删除失败时发布 `admin.media.delete.failed` 到 `stream:admin`，通知中心生成 `/files` 站内提醒。
+  - `409`：媒体资源正在被引用，返回引用数组；普通删除不会删除任何记录或文件
+- **强制删除规则**：仅自动清理已知 `site.logo` 和 `user.avatar` 引用；遇到未知业务引用时即使 `force=true` 也返回 `409`。
+- **事件**：引用冲突导致删除失败时发布 `admin.media.delete.failed` 到 `stream:admin`；强制删除成功时发布 `admin.media.delete.forced`。
 
 ### 31. 批量删除媒体资源
 
@@ -1506,10 +1518,26 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
 - **权限**：`media:delete`
 - **请求体**：
   - `ids`：媒体资源 ID 数组（必填，至少包含一个 ID）
+  - `force`：可选，`true` 时强制删除已知引用
 - **返回 data**：
   - `message`：`"成功删除 N 个媒体资源"`
 - **可能错误码**：
   - `400`：请选择要删除的媒体资源
   - `404`：任一媒体资源 ID 不存在
   - `409`：选中的任一媒体资源正在被引用，返回引用数组；此时不会删除任何媒体资源
-- **事件**：引用冲突导致批量删除失败时发布 `admin.media.delete.failed` 到 `stream:admin`，载荷包含选中媒体 ID 与文件名数组。
+- **事件**：引用冲突导致批量删除失败时发布 `admin.media.delete.failed` 到 `stream:admin`；强制删除成功时发布 `admin.media.delete.forced`，载荷包含媒体 ID、文件名数组、引用数量和操作人。
+
+### 32. 清理孤儿媒体文件
+
+- **方法**：POST
+- **路径**：`/api/media/orphans/cleanup`
+- **认证**：是
+- **权限**：`media:delete`
+- **请求体**：
+  - `dryRun`：`true` 只预览本地存储中没有数据库记录的文件；`false` 删除这些孤儿文件
+- **返回 data**：
+  - `dryRun`：本次是否为预览
+  - `matchedCount`：匹配到的孤儿文件数
+  - `deletedCount`：实际删除数量
+  - `items`：孤儿文件列表，包含 `storedFileName`、`sizeBytes`、`lastModified`
+- **事件**：实际执行清理时发布 `admin.media.orphans.cleaned` 到 `stream:admin`。

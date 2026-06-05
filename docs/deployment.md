@@ -22,6 +22,10 @@ export Database__Provider=PostgreSql
 export ConnectionStrings__DefaultConnection="Host=db.example.internal;Port=5432;Database=tigercat_admin;Username=tigercat_admin;Password=<secret>;Pooling=true;SSL Mode=Require;Trust Server Certificate=false"
 export ConnectionStrings__Redis="redis.example.internal:6379,password=<secret>,ssl=True,abortConnect=False"
 export Cors__AllowedOrigins__0="https://admin.example.com"
+export Media__Provider=Local
+export Media__LocalRoot=/var/lib/tigercat-admin/media
+export Media__PublicBaseUrl=https://admin-api.example.com
+export Media__PublicCacheSeconds=86400
 export Logging__LogLevel__Default=Warning
 ```
 
@@ -54,6 +58,23 @@ pnpm build:pages
 - `--out=dist/pages`：`--deploy=pages` 时可选，指定统一输出目录。
 
 前端代码仍以 `/api` 为业务入口；真实 API 独立部署时建议由反向代理把 `/api` 转发到 API 服务，或保持同源路径。
+
+## 媒体资源生产配置
+
+当前内置媒体 provider 只有 `Local`。`Media:Provider` 会显式解析，配置为其他值时会在启动或 `/api/health` 的 `mediaStorage` 明细中暴露错误；后续接入对象存储时应复用 `IMediaStorageProvider` 边界并通过密钥系统注入 provider 凭据。
+
+推荐生产配置：
+
+- `Media:LocalRoot` 指向持久化卷，例如 `/var/lib/tigercat-admin/media`，不要使用容器临时层。
+- `Media:PublicBaseUrl` 设置为 API 对外域名，用于返回绝对资源 URL；若前端与 API 同源，可留空保持 `/api/media/.../content` 相对路径。
+- `Media:PublicCacheSeconds` 控制内容读取的 `Cache-Control`。媒体 URL 使用不可预测 `publicId`，Logo/头像变更会生成新 URL，适合设置较长浏览器缓存。
+- `Media:MaxBytes`、`AllowedContentTypes`、`AllowedExtensions`、`MaxImageWidth`、`MaxImageHeight` 应按业务需求收敛，避免任意文件进入生产存储。
+
+反向代理建议：
+
+- 对 `/api/media/{publicId}/content` 保留 Range 请求与响应头，不要剥离 `Cache-Control` 和 `X-Content-Type-Options`。
+- 如由 Nginx/Caddy 缓存媒体内容，缓存 key 应包含完整路径，清理策略以新 URL 生效为主，不依赖覆盖原文件。
+- 本地 provider 的数据库记录和 `Media:LocalRoot` 文件目录需要一起备份与恢复；只恢复其中一侧会产生孤儿文件或 404 内容读取。可使用 `POST /api/media/orphans/cleanup` 先 `dryRun=true` 巡检。
 
 ## 前端静态演示部署
 
@@ -107,7 +128,7 @@ API 暴露两个无需认证的健康入口：
 - `/api/health`：返回数据库、Redis、事件通道和关键配置状态。
 - `/api/health/redis`：仅检查 Redis ping，便于单项排障。
 
-生产环境至少应把 `/api/health` 接入平台 readiness probe。若未显式配置 `Cors:AllowedOrigins`，非 Development 环境会在健康检查的 `configuration` 明细中标记为 `unhealthy`。
+生产环境至少应把 `/api/health` 接入平台 readiness probe。若未显式配置 `Cors:AllowedOrigins`，非 Development 环境会在健康检查的 `configuration` 明细中标记为 `unhealthy`；若 `Media:Provider` 不是已注册 provider，`mediaStorage` 明细会标记为 `unhealthy`。
 
 ## 运维工作流运行要求
 
@@ -115,7 +136,7 @@ API 暴露两个无需认证的健康入口：
 
 - API 成功发布任务、设置、用户治理和审计清理事件后写入 Redis Streams。
 - `RedisStreamConsumer` 消费白名单事件并写入通知中心，通知 `linkUrl` 指向站内页面。
-- 媒体资源因站点 Logo 或用户头像引用导致删除失败时会发布 `admin.media.delete.failed`，通知中心指向文件管理页。
+- 媒体资源因站点 Logo 或用户头像引用导致删除失败时会发布 `admin.media.delete.failed`，通知中心指向文件管理页；确认业务影响后可通过文件管理页强制删除已知引用，成功事件为 `admin.media.delete.forced`。
 - 审计保留清理通过 `POST /api/audit-logs/retention/cleanup` 执行；生产环境建议先用 `dryRun=true` 预览，再在维护窗口执行清理。
 
 生产 smoke 除登录和健康检查外，建议补一次通知跳转、任务完成确认、设置保存事件、媒体删除失败通知和审计清理 dry-run，并确认审计清理通知可跳转到 `/audit-logs?eventId=...` 详情。

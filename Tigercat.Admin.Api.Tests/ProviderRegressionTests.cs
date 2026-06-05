@@ -49,6 +49,7 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
     {
         _factory = factory;
         _client = factory.CreateClient();
+        StubEventPublisher.Clear();
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────

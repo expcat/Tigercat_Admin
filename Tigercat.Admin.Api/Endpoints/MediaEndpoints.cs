@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.Security.Cryptography;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
@@ -38,6 +39,10 @@ public class MediaEndpoints : IEndpointDefinition
             .RequirePermission("media:delete")
             .WithName("BatchDeleteMedia");
 
+        group.MapPost("/orphans/cleanup", CleanupOrphanMedia)
+            .RequirePermission("media:delete")
+            .WithName("CleanupOrphanMedia");
+
         group.MapGet("/{publicId}/content", GetMediaContent)
             .WithName("GetMediaContent");
     }
@@ -50,12 +55,14 @@ public class MediaEndpoints : IEndpointDefinition
         string? sortBy,
         string? sortOrder,
         AdminDbContext db,
+        IOptions<MediaOptions> mediaOptions,
         CancellationToken ct)
     {
         var p = Math.Max(page ?? 1, 1);
         var ps = Math.Clamp(pageSize ?? 20, 1, 100);
 
-        IQueryable<MediaResourceEntity> query = db.MediaResources;
+        IQueryable<MediaResourceEntity> query = db.MediaResources
+            .Where(m => m.DeletedAt == null);
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
@@ -95,10 +102,14 @@ public class MediaEndpoints : IEndpointDefinition
                 m.Id,
                 m.PublicId,
                 m.OriginalFileName,
+                m.StorageProvider ?? MediaStorageProviderResolver.LocalProvider,
                 m.ContentType,
                 m.Extension,
                 m.SizeBytes,
-                MediaUrl.Content(m.PublicId),
+                m.Sha256Hash,
+                m.Width,
+                m.Height,
+                MediaUrl.Content(m.PublicId, mediaOptions.Value),
                 m.UploadedBy,
                 m.CreatedAt,
                 m.References.Count))
@@ -112,18 +123,23 @@ public class MediaEndpoints : IEndpointDefinition
     private static async Task<IResult> GetMediaById(
         int id,
         AdminDbContext db,
+        IOptions<MediaOptions> mediaOptions,
         CancellationToken ct)
     {
         var media = await db.MediaResources
-            .Where(m => m.Id == id)
+            .Where(m => m.Id == id && m.DeletedAt == null)
             .Select(m => new MediaDetailResponse(
                 m.Id,
                 m.PublicId,
                 m.OriginalFileName,
+                m.StorageProvider ?? MediaStorageProviderResolver.LocalProvider,
                 m.ContentType,
                 m.Extension,
                 m.SizeBytes,
-                MediaUrl.Content(m.PublicId),
+                m.Sha256Hash,
+                m.Width,
+                m.Height,
+                MediaUrl.Content(m.PublicId, mediaOptions.Value),
                 m.UploadedBy,
                 m.CreatedAt,
                 m.References
@@ -182,19 +198,21 @@ public class MediaEndpoints : IEndpointDefinition
                 statusCode: 400);
         }
 
-        if (file.Length > mediaOptions.Value.MaxBytes)
+        var options = mediaOptions.Value;
+
+        if (file.Length > options.MaxBytes)
         {
             return Results.Json(
-                ApiResult.Fail<MediaItemResponse>($"文件大小不能超过 {mediaOptions.Value.MaxBytes} 字节", 400),
+                ApiResult.Fail<MediaItemResponse>($"文件大小不能超过 {options.MaxBytes} 字节", 400),
                 AppJsonContext.Default.ApiResponseMediaItemResponse,
                 statusCode: 400);
         }
 
         var contentType = string.IsNullOrWhiteSpace(file.ContentType)
             ? "application/octet-stream"
-            : file.ContentType;
+            : file.ContentType.Split(';', StringSplitOptions.TrimEntries)[0];
 
-        if (!MediaFileRules.IsAllowedContentType(contentType))
+        if (!MediaFileRules.IsAllowedContentType(contentType, options))
         {
             return Results.Json(
                 ApiResult.Fail<MediaItemResponse>("不支持的文件类型", 400),
@@ -216,17 +234,80 @@ public class MediaEndpoints : IEndpointDefinition
         var originalFileName = Path.GetFileName(file.FileName);
         var extension = MediaFileRules.NormalizeExtension(Path.GetExtension(originalFileName));
 
+        if (!MediaFileRules.IsAllowedExtension(extension, options))
+        {
+            return Results.Json(
+                ApiResult.Fail<MediaItemResponse>("不支持的文件扩展名", 400),
+                AppJsonContext.Default.ApiResponseMediaItemResponse,
+                statusCode: 400);
+        }
+
+        if (!MediaFileRules.IsExtensionAllowedForContentType(contentType, extension))
+        {
+            return Results.Json(
+                ApiResult.Fail<MediaItemResponse>("文件扩展名与 MIME 类型不匹配", 400),
+                AppJsonContext.Default.ApiResponseMediaItemResponse,
+                statusCode: 400);
+        }
+
         await using var stream = file.OpenReadStream();
-        var stored = await storage.SaveAsync(stream, publicId, extension, ct);
+        using var memory = new MemoryStream((int)file.Length);
+        await stream.CopyToAsync(memory, ct);
+        var bytes = memory.ToArray();
+        var sha256Hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+
+        var duplicate = await db.MediaResources
+            .Where(m => m.DeletedAt == null && m.Sha256Hash == sha256Hash && m.SizeBytes == file.Length)
+            .FirstOrDefaultAsync(ct);
+
+        if (duplicate is not null)
+        {
+            return Results.Json(
+                new ApiResponse<DuplicateMediaResponse>(
+                    new DuplicateMediaResponse(ToItem(duplicate, duplicate.References.Count, options)),
+                    "文件已存在，可复用已有媒体资源",
+                    409,
+                    false),
+                AppJsonContext.Default.ApiResponseDuplicateMediaResponse,
+                statusCode: 409);
+        }
+
+        var dimensions = await MediaImageMetadata.TryReadDimensionsAsync(bytes, contentType, ct);
+        if (dimensions is not null)
+        {
+            if (options.MaxImageWidth is > 0 && dimensions.Width > options.MaxImageWidth)
+            {
+                return Results.Json(
+                    ApiResult.Fail<MediaItemResponse>($"图片宽度不能超过 {options.MaxImageWidth} 像素", 400),
+                    AppJsonContext.Default.ApiResponseMediaItemResponse,
+                    statusCode: 400);
+            }
+
+            if (options.MaxImageHeight is > 0 && dimensions.Height > options.MaxImageHeight)
+            {
+                return Results.Json(
+                    ApiResult.Fail<MediaItemResponse>($"图片高度不能超过 {options.MaxImageHeight} 像素", 400),
+                    AppJsonContext.Default.ApiResponseMediaItemResponse,
+                    statusCode: 400);
+            }
+        }
+
+        await using var saveStream = new MemoryStream(bytes);
+        var stored = await storage.SaveAsync(saveStream, publicId, extension, ct);
 
         var media = new MediaResourceEntity
         {
             PublicId = publicId,
             OriginalFileName = string.IsNullOrWhiteSpace(originalFileName) ? "upload" : originalFileName,
             StoredFileName = stored.StoredFileName,
+            StorageProvider = storage.ProviderName,
+            StorageKey = stored.StoredFileName,
             ContentType = contentType,
             Extension = string.IsNullOrEmpty(extension) ? null : extension.TrimStart('.'),
             SizeBytes = file.Length,
+            Sha256Hash = sha256Hash,
+            Width = dimensions?.Width,
+            Height = dimensions?.Height,
             UploadedBy = GetOperatorUsername(httpContext),
             CreatedAt = DateTime.UtcNow
         };
@@ -235,13 +316,14 @@ public class MediaEndpoints : IEndpointDefinition
         await db.SaveChangesAsync(ct);
 
         return Results.Json(
-            ApiResult.Ok(ToItem(media, 0)),
+            ApiResult.Ok(ToItem(media, 0, options)),
             AppJsonContext.Default.ApiResponseMediaItemResponse,
             statusCode: 201);
     }
 
     private static async Task<IResult> DeleteMedia(
         int id,
+        bool? force,
         AdminDbContext db,
         IMediaStorageProvider storage,
         IEventPublisher eventPublisher,
@@ -250,7 +332,7 @@ public class MediaEndpoints : IEndpointDefinition
     {
         var media = await db.MediaResources
             .Include(m => m.References)
-            .FirstOrDefaultAsync(m => m.Id == id, ct);
+            .FirstOrDefaultAsync(m => m.Id == id && m.DeletedAt == null, ct);
 
         if (media is null)
         {
@@ -260,7 +342,7 @@ public class MediaEndpoints : IEndpointDefinition
                 statusCode: 404);
         }
 
-        if (media.References.Count > 0)
+        if (media.References.Count > 0 && force != true)
         {
             var references = media.References
                 .OrderBy(r => r.ReferenceType)
@@ -280,6 +362,27 @@ public class MediaEndpoints : IEndpointDefinition
                 new ApiResponse<MediaReferenceResponse[]>(references, "媒体资源正在被引用，不能删除", 409, false),
                 AppJsonContext.Default.ApiResponseMediaReferenceResponseArray,
                 statusCode: 409);
+        }
+
+        if (media.References.Count > 0 && force == true)
+        {
+            var unknownReferences = media.References
+                .Where(static reference => !IsKnownForceDeleteReference(reference))
+                .OrderBy(r => r.ReferenceType)
+                .ThenBy(r => r.ReferenceKey)
+                .Select(r => new MediaReferenceResponse(r.Id, r.ReferenceType, r.ReferenceKey, r.DisplayName))
+                .ToArray();
+
+            if (unknownReferences.Length > 0)
+            {
+                return Results.Json(
+                    new ApiResponse<MediaReferenceResponse[]>(unknownReferences, "媒体资源包含未知业务引用，不能强制删除", 409, false),
+                    AppJsonContext.Default.ApiResponseMediaReferenceResponseArray,
+                    statusCode: 409);
+            }
+
+            await ClearKnownReferencesAsync(db, media.References.ToArray(), ct);
+            await PublishMediaDeleteForcedAsync(eventPublisher, httpContext, [media], media.References.Count, ct);
         }
 
         db.MediaResources.Remove(media);
@@ -310,7 +413,7 @@ public class MediaEndpoints : IEndpointDefinition
         var distinctIds = request.Ids.Distinct().ToArray();
         var mediaItems = await db.MediaResources
             .Include(m => m.References)
-            .Where(m => distinctIds.Contains(m.Id))
+            .Where(m => distinctIds.Contains(m.Id) && m.DeletedAt == null)
             .ToListAsync(ct);
 
         var missingIds = distinctIds.Except(mediaItems.Select(static media => media.Id)).ToArray();
@@ -329,7 +432,7 @@ public class MediaEndpoints : IEndpointDefinition
             .Select(r => new MediaReferenceResponse(r.Id, r.ReferenceType, r.ReferenceKey, r.DisplayName))
             .ToArray();
 
-        if (references.Length > 0)
+        if (references.Length > 0 && !request.Force)
         {
             await PublishBatchMediaDeleteFailedAsync(
                 eventPublisher,
@@ -343,6 +446,28 @@ public class MediaEndpoints : IEndpointDefinition
                 new ApiResponse<MediaReferenceResponse[]>(references, "选中的媒体资源正在被引用，不能批量删除", 409, false),
                 AppJsonContext.Default.ApiResponseMediaReferenceResponseArray,
                 statusCode: 409);
+        }
+
+        if (references.Length > 0 && request.Force)
+        {
+            var unknownReferences = mediaItems
+                .SelectMany(static media => media.References)
+                .Where(static reference => !IsKnownForceDeleteReference(reference))
+                .OrderBy(r => r.ReferenceType)
+                .ThenBy(r => r.ReferenceKey)
+                .Select(r => new MediaReferenceResponse(r.Id, r.ReferenceType, r.ReferenceKey, r.DisplayName))
+                .ToArray();
+
+            if (unknownReferences.Length > 0)
+            {
+                return Results.Json(
+                    new ApiResponse<MediaReferenceResponse[]>(unknownReferences, "选中的媒体资源包含未知业务引用，不能强制删除", 409, false),
+                    AppJsonContext.Default.ApiResponseMediaReferenceResponseArray,
+                    statusCode: 409);
+            }
+
+            await ClearKnownReferencesAsync(db, mediaItems.SelectMany(static media => media.References).ToArray(), ct);
+            await PublishMediaDeleteForcedAsync(eventPublisher, httpContext, mediaItems, references.Length, ct);
         }
 
         var storedFileNames = mediaItems.Select(static media => media.StoredFileName).ToArray();
@@ -363,10 +488,12 @@ public class MediaEndpoints : IEndpointDefinition
         string publicId,
         AdminDbContext db,
         IMediaStorageProvider storage,
+        IOptions<MediaOptions> mediaOptions,
+        HttpContext httpContext,
         CancellationToken ct)
     {
         var media = await db.MediaResources
-            .FirstOrDefaultAsync(m => m.PublicId == publicId, ct);
+            .FirstOrDefaultAsync(m => m.PublicId == publicId && m.DeletedAt == null, ct);
 
         if (media is null)
         {
@@ -376,6 +503,11 @@ public class MediaEndpoints : IEndpointDefinition
         try
         {
             var stream = await storage.OpenReadAsync(media.StoredFileName, ct);
+            var cacheSeconds = Math.Max(mediaOptions.Value.PublicCacheSeconds, 0);
+            httpContext.Response.Headers.CacheControl = cacheSeconds > 0
+                ? $"public,max-age={cacheSeconds}"
+                : "no-store";
+            httpContext.Response.Headers["X-Content-Type-Options"] = "nosniff";
             return Results.File(stream, media.ContentType, media.OriginalFileName, enableRangeProcessing: true);
         }
         catch (FileNotFoundException)
@@ -384,19 +516,141 @@ public class MediaEndpoints : IEndpointDefinition
         }
     }
 
-    private static MediaItemResponse ToItem(MediaResourceEntity media, int referenceCount)
+    private static async Task<IResult> CleanupOrphanMedia(
+        MediaOrphanCleanupRequest request,
+        AdminDbContext db,
+        IMediaStorageProvider storage,
+        IEventPublisher eventPublisher,
+        HttpContext httpContext,
+        CancellationToken ct)
+    {
+        var storedFiles = await storage.ListAsync(ct);
+        var knownStoredFileNames = await db.MediaResources
+            .Select(static media => media.StoredFileName)
+            .ToArrayAsync(ct);
+
+        var known = knownStoredFileNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var orphans = storedFiles
+            .Where(file => !known.Contains(file.StoredFileName))
+            .OrderBy(file => file.StoredFileName)
+            .Select(file => new MediaOrphanFileResponse(file.StoredFileName, file.SizeBytes, file.LastModified))
+            .ToArray();
+
+        var deletedCount = 0;
+        if (!request.DryRun)
+        {
+            foreach (var orphan in orphans)
+            {
+                await storage.DeleteAsync(orphan.StoredFileName, ct);
+                deletedCount++;
+            }
+
+            await eventPublisher.PublishAsync(
+                EventEnvelope.Create(
+                    "admin.media.orphans.cleaned",
+                    new Dictionary<string, object?>
+                    {
+                        ["matchedCount"] = orphans.Length,
+                        ["deletedCount"] = deletedCount,
+                        ["operator"] = GetOperatorUsername(httpContext)
+                    },
+                    httpContext.TraceIdentifier),
+                EventBusConstants.AdminStream,
+                ct);
+        }
+
+        return Results.Json(
+            ApiResult.Ok(new MediaOrphanCleanupResponse(request.DryRun, orphans.Length, deletedCount, orphans)),
+            AppJsonContext.Default.ApiResponseMediaOrphanCleanupResponse);
+    }
+
+    private static MediaItemResponse ToItem(MediaResourceEntity media, int referenceCount, MediaOptions options)
     {
         return new MediaItemResponse(
             media.Id,
             media.PublicId,
             media.OriginalFileName,
+            media.StorageProvider ?? MediaStorageProviderResolver.LocalProvider,
             media.ContentType,
             media.Extension,
             media.SizeBytes,
-            MediaUrl.Content(media.PublicId),
+            media.Sha256Hash,
+            media.Width,
+            media.Height,
+            MediaUrl.Content(media.PublicId, options),
             media.UploadedBy,
             media.CreatedAt,
             referenceCount);
+    }
+
+    private static bool IsKnownForceDeleteReference(MediaReferenceEntity reference)
+    {
+        return string.Equals(reference.ReferenceType, MediaReferences.SiteLogoType, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(reference.ReferenceType, MediaReferences.UserAvatarType, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static async Task ClearKnownReferencesAsync(
+        AdminDbContext db,
+        IReadOnlyCollection<MediaReferenceEntity> references,
+        CancellationToken ct)
+    {
+        if (references.Any(static reference =>
+                string.Equals(reference.ReferenceType, MediaReferences.SiteLogoType, StringComparison.OrdinalIgnoreCase)))
+        {
+            var logoSetting = await db.SystemSettings
+                .FirstOrDefaultAsync(setting => setting.Key == MediaReferences.SiteLogoKey, ct);
+
+            if (logoSetting is not null)
+            {
+                logoSetting.Value = string.Empty;
+                logoSetting.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        var userIds = references
+            .Where(static reference => string.Equals(reference.ReferenceType, MediaReferences.UserAvatarType, StringComparison.OrdinalIgnoreCase))
+            .Select(static reference => int.TryParse(reference.ReferenceKey, out var userId) ? userId : 0)
+            .Where(static userId => userId > 0)
+            .Distinct()
+            .ToArray();
+
+        if (userIds.Length > 0)
+        {
+            var users = await db.Users
+                .Where(user => userIds.Contains(user.Id))
+                .ToListAsync(ct);
+
+            foreach (var user in users)
+            {
+                user.AvatarMediaId = null;
+                user.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        db.MediaReferences.RemoveRange(references);
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static Task PublishMediaDeleteForcedAsync(
+        IEventPublisher eventPublisher,
+        HttpContext httpContext,
+        IReadOnlyCollection<MediaResourceEntity> mediaItems,
+        int referenceCount,
+        CancellationToken ct)
+    {
+        return eventPublisher.PublishAsync(
+            EventEnvelope.Create(
+                "admin.media.delete.forced",
+                new Dictionary<string, object?>
+                {
+                    ["mediaIds"] = mediaItems.Select(static media => media.Id).ToArray(),
+                    ["fileNames"] = mediaItems.Select(static media => media.OriginalFileName).ToArray(),
+                    ["referenceCount"] = referenceCount,
+                    ["operator"] = GetOperatorUsername(httpContext)
+                },
+                httpContext.TraceIdentifier),
+            EventBusConstants.AdminStream,
+            ct);
     }
 
     private static Task PublishMediaDeleteFailedAsync(

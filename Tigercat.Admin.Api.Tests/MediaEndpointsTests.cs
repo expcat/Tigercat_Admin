@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Endpoints;
@@ -14,17 +15,20 @@ namespace Tigercat.Admin.Api.Tests;
 public class MediaEndpointsTests : IClassFixture<InMemoryApiFactory>
 {
     private readonly HttpClient _client;
+    private readonly InMemoryApiFactory _factory;
 
     public MediaEndpointsTests(InMemoryApiFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
+        StubEventPublisher.Clear();
     }
 
     [Fact]
     public async Task UploadListContentAndDelete_Succeeds()
     {
         var token = await LoginAsAdminAsync();
-        var media = await UploadAsync(token, "sample.png", "image/png", [0x89, 0x50, 0x4e, 0x47]);
+        var media = await UploadAsync(token, "sample.png", "image/png", FakePngBytes("sample"));
 
         var listRequest = AuthRequest(HttpMethod.Get, "/api/media?keyword=sample", token);
         var listResponse = await _client.SendAsync(listRequest);
@@ -32,13 +36,20 @@ public class MediaEndpointsTests : IClassFixture<InMemoryApiFactory>
         var listBody = await listResponse.ReadApiResponseAsync<PagedResponse<MediaItemResponse>>();
         Assert.NotNull(listBody?.Data);
         Assert.Contains(listBody.Data.Items, item => item.Id == media.Id);
+        Assert.Equal("Local", media.StorageProvider);
+        Assert.False(string.IsNullOrWhiteSpace(media.Sha256Hash));
 
         var contentResponse = await _client.GetAsync(media.Url);
         contentResponse.EnsureSuccessStatusCode();
         Assert.Equal("image/png", contentResponse.Content.Headers.ContentType?.MediaType);
+        Assert.True(contentResponse.Headers.CacheControl?.Public);
+        Assert.Contains("nosniff", contentResponse.Headers.GetValues("X-Content-Type-Options"));
 
         var deleteResponse = await _client.SendAsync(AuthRequest(HttpMethod.Delete, $"/api/media/{media.Id}", token));
         deleteResponse.EnsureSuccessStatusCode();
+
+        var missingContent = await _client.GetAsync(media.Url);
+        Assert.Equal(HttpStatusCode.NotFound, missingContent.StatusCode);
     }
 
     [Fact]
@@ -62,7 +73,7 @@ public class MediaEndpointsTests : IClassFixture<InMemoryApiFactory>
     public async Task BatchDeleteMedia_WithReferencedItem_Returns409AndDeletesNothing()
     {
         var token = await LoginAsAdminAsync();
-        var logo = await UploadAsync(token, "batch-logo.png", "image/png", [0x89, 0x50, 0x4e, 0x47], "logo");
+        var logo = await UploadAsync(token, "batch-logo.png", "image/png", FakePngBytes("batch-logo"), "logo");
         var other = await UploadAsync(token, "batch-other.txt", "text/plain", [7, 8, 9]);
         StubEventPublisher.Clear();
 
@@ -117,7 +128,7 @@ public class MediaEndpointsTests : IClassFixture<InMemoryApiFactory>
     public async Task DeleteReferencedSiteLogo_Returns409UntilReferenceCleared()
     {
         var token = await LoginAsAdminAsync();
-        var media = await UploadAsync(token, "logo.png", "image/png", [0x89, 0x50, 0x4e, 0x47], "logo");
+        var media = await UploadAsync(token, "logo.png", "image/png", FakePngBytes("logo"), "logo");
         StubEventPublisher.Clear();
 
         await UpdateSettingsAsync(token, new SettingEntry("site.logo", media.Url));
@@ -145,7 +156,7 @@ public class MediaEndpointsTests : IClassFixture<InMemoryApiFactory>
     public async Task DeleteReferencedUserAvatar_Returns409UntilReferenceCleared()
     {
         var token = await LoginAsAdminAsync();
-        var avatar = await UploadAsync(token, "avatar.png", "image/png", [0x89, 0x50, 0x4e, 0x47], "avatar");
+        var avatar = await UploadAsync(token, "avatar.png", "image/png", FakePngBytes("avatar"), "avatar");
         var admin = await GetAdminUserAsync(token);
 
         await UpdateUserAvatarAsync(token, admin.Id, avatar.Id);
@@ -159,6 +170,117 @@ public class MediaEndpointsTests : IClassFixture<InMemoryApiFactory>
         await UpdateUserAvatarAsync(token, admin.Id, 0);
         var deleted = await _client.SendAsync(AuthRequest(HttpMethod.Delete, $"/api/media/{avatar.Id}", token));
         deleted.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task UploadDuplicateFile_Returns409WithExistingMedia()
+    {
+        var token = await LoginAsAdminAsync();
+        var bytes = Encoding.UTF8.GetBytes($"duplicate-{Guid.NewGuid():N}");
+        var media = await UploadAsync(token, "duplicate-a.txt", "text/plain", bytes);
+
+        var response = await UploadRawAsync(token, "duplicate-b.txt", "text/plain", "file", bytes);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var body = await response.ReadApiResponseAsync<DuplicateMediaResponse>();
+        Assert.NotNull(body?.Data);
+        Assert.Equal(media.Id, body.Data.Existing.Id);
+    }
+
+    [Fact]
+    public async Task Upload_WithExtensionMismatch_Returns400()
+    {
+        var token = await LoginAsAdminAsync();
+        var response = await UploadRawAsync(token, "wrong.png", "text/plain", "file", [1, 2, 3]);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetMediaById_ReturnsProductionMetadataAndReferences()
+    {
+        var token = await LoginAsAdminAsync();
+        var logo = await UploadAsync(token, "detail-logo.png", "image/png", FakePngBytes("detail-logo"), "logo");
+        await UpdateSettingsAsync(token, new SettingEntry("site.logo", logo.Url));
+
+        var response = await _client.SendAsync(AuthRequest(HttpMethod.Get, $"/api/media/{logo.Id}", token));
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<MediaDetailResponse>();
+        Assert.NotNull(body?.Data);
+        Assert.Equal("Local", body.Data.StorageProvider);
+        Assert.False(string.IsNullOrWhiteSpace(body.Data.Sha256Hash));
+        Assert.Contains(body.Data.References, reference => reference.ReferenceType == "site.logo");
+
+        await UpdateSettingsAsync(token, new SettingEntry("site.logo", ""));
+        var cleanup = await _client.SendAsync(AuthRequest(HttpMethod.Delete, $"/api/media/{logo.Id}", token));
+        cleanup.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task ForceDeleteReferencedSiteLogo_ClearsReferenceAndPublishesEvent()
+    {
+        var token = await LoginAsAdminAsync();
+        var media = await UploadAsync(token, "force-logo.png", "image/png", FakePngBytes("force-logo"), "logo");
+        await UpdateSettingsAsync(token, new SettingEntry("site.logo", media.Url));
+        StubEventPublisher.Clear();
+
+        var deleted = await _client.SendAsync(AuthRequest(HttpMethod.Delete, $"/api/media/{media.Id}?force=true", token));
+
+        deleted.EnsureSuccessStatusCode();
+        var setting = await GetSettingAsync(token, "site.logo");
+        Assert.Equal(string.Empty, setting.Value);
+        Assert.Contains(StubEventPublisher.PublishedEvents, item =>
+            item.StreamName == EventBusConstants.AdminStream &&
+            item.Envelope.EventType == "admin.media.delete.forced");
+    }
+
+    [Fact]
+    public async Task BatchForceDeleteReferencedAvatar_ClearsUserAvatar()
+    {
+        var token = await LoginAsAdminAsync();
+        var avatar = await UploadAsync(token, "force-avatar.png", "image/png", FakePngBytes("force-avatar"), "avatar");
+        var admin = await GetAdminUserAsync(token);
+        await UpdateUserAvatarAsync(token, admin.Id, avatar.Id);
+
+        var request = AuthRequest(HttpMethod.Post, "/api/media/batch-delete", token);
+        request.Content = JsonContent.Create(new BatchDeleteMediaRequest([avatar.Id], Force: true));
+        var response = await _client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var updatedAdmin = await GetAdminUserAsync(token);
+        Assert.Null(updatedAdmin.AvatarMediaId);
+    }
+
+    [Fact]
+    public async Task CleanupOrphanMedia_DryRunAndExecute()
+    {
+        var token = await LoginAsAdminAsync();
+        Directory.CreateDirectory(_factory.MediaRootPath);
+        var orphanName = $"orphan-{Guid.NewGuid():N}.txt";
+        var orphanPath = Path.Combine(_factory.MediaRootPath, orphanName);
+        await File.WriteAllTextAsync(orphanPath, "orphan media file");
+
+        var dryRun = AuthRequest(HttpMethod.Post, "/api/media/orphans/cleanup", token);
+        dryRun.Content = JsonContent.Create(new MediaOrphanCleanupRequest(DryRun: true));
+        var dryRunResponse = await _client.SendAsync(dryRun);
+
+        dryRunResponse.EnsureSuccessStatusCode();
+        var dryRunBody = await dryRunResponse.ReadApiResponseAsync<MediaOrphanCleanupResponse>();
+        Assert.NotNull(dryRunBody?.Data);
+        Assert.Equal(1, dryRunBody.Data.MatchedCount);
+        Assert.Equal(0, dryRunBody.Data.DeletedCount);
+        Assert.True(File.Exists(orphanPath));
+
+        var execute = AuthRequest(HttpMethod.Post, "/api/media/orphans/cleanup", token);
+        execute.Content = JsonContent.Create(new MediaOrphanCleanupRequest(DryRun: false));
+        var executeResponse = await _client.SendAsync(execute);
+
+        executeResponse.EnsureSuccessStatusCode();
+        var executeBody = await executeResponse.ReadApiResponseAsync<MediaOrphanCleanupResponse>();
+        Assert.NotNull(executeBody?.Data);
+        Assert.Equal(1, executeBody.Data.DeletedCount);
+        Assert.False(File.Exists(orphanPath));
     }
 
     private async Task<string> LoginAsAdminAsync()
@@ -213,6 +335,16 @@ public class MediaEndpointsTests : IClassFixture<InMemoryApiFactory>
         response.EnsureSuccessStatusCode();
     }
 
+    private async Task<SettingItemResponse> GetSettingAsync(string token, string key)
+    {
+        var request = AuthRequest(HttpMethod.Get, $"/api/settings/{key}", token);
+        var response = await _client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<SettingItemResponse>();
+        Assert.NotNull(body?.Data);
+        return body.Data;
+    }
+
     private async Task<UserItemResponse> GetAdminUserAsync(string token)
     {
         var request = AuthRequest(HttpMethod.Get, "/api/users?keyword=admin", token);
@@ -236,5 +368,10 @@ public class MediaEndpointsTests : IClassFixture<InMemoryApiFactory>
         var request = new HttpRequestMessage(method, url);
         request.Headers.Add("X-Token", token);
         return request;
+    }
+
+    private static byte[] FakePngBytes(string seed)
+    {
+        return [0x89, 0x50, 0x4e, 0x47, .. Encoding.UTF8.GetBytes(seed)];
     }
 }

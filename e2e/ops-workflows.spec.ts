@@ -4,6 +4,7 @@ import type { Page } from '@playwright/test';
 type UploadedMedia = {
   id: number;
   fileName: string;
+  url: string;
 };
 
 async function createTestTask(page: Page, label: string) {
@@ -48,7 +49,7 @@ async function createTestTask(page: Page, label: string) {
 async function uploadTestMedia(page: Page, label: string): Promise<UploadedMedia> {
   const fileName = `p5-${label}-${uniqueSuffix()}.txt`;
   const media = await page.evaluate(
-    async ({ key, fileName }) => {
+    async ({ key, fileName, label }) => {
       const session = JSON.parse(window.localStorage.getItem(key) || 'null') as
         | { token?: string }
         | null;
@@ -57,7 +58,7 @@ async function uploadTestMedia(page: Page, label: string): Promise<UploadedMedia
       }
 
       const form = new FormData();
-      form.append('file', new Blob(['P5 workbench smoke'], { type: 'text/plain' }), fileName);
+      form.append('file', new Blob([`P7 media smoke ${label} ${Date.now()}`], { type: 'text/plain' }), fileName);
       form.append('usage', 'file');
 
       const response = await fetch('/api/media', {
@@ -70,12 +71,59 @@ async function uploadTestMedia(page: Page, label: string): Promise<UploadedMedia
         throw new Error(payload?.message || `Upload failed: ${response.status}`);
       }
 
-      return payload.data as { id: number };
+      return payload.data as { id: number; url: string };
     },
-    { key: SESSION_KEY, fileName },
+    { key: SESSION_KEY, fileName, label },
   );
 
-  return { id: media.id, fileName };
+  return { id: media.id, fileName, url: media.url };
+}
+
+async function createReferencedLogo(page: Page, label: string): Promise<UploadedMedia> {
+  const fileName = `p7-logo-${label}-${uniqueSuffix()}.png`;
+  const media = await page.evaluate(
+    async ({ key, fileName, label }) => {
+      const session = JSON.parse(window.localStorage.getItem(key) || 'null') as
+        | { token?: string }
+        | null;
+      if (!session?.token) {
+        throw new Error('Missing admin session');
+      }
+
+      const form = new FormData();
+      form.append('file', new Blob([`P7 logo smoke ${fileName}`], { type: 'image/png' }), fileName);
+      form.append('usage', 'logo');
+
+      const uploadResponse = await fetch('/api/media', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.token}` },
+        body: form,
+      });
+      const uploadPayload = await uploadResponse.json();
+      if (!uploadResponse.ok || uploadPayload?.success === false) {
+        throw new Error(uploadPayload?.message || `Upload failed: ${uploadResponse.status}`);
+      }
+
+      const media = uploadPayload.data as { id: number; url: string };
+      const settingsResponse = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ settings: [{ key: 'site.logo', value: media.url }] }),
+      });
+      const settingsPayload = await settingsResponse.json();
+      if (!settingsResponse.ok || settingsPayload?.success === false) {
+        throw new Error(settingsPayload?.message || `Settings failed: ${settingsResponse.status}`);
+      }
+
+      return media;
+    },
+    { key: SESSION_KEY, fileName, label },
+  );
+
+  return { id: media.id, fileName, url: media.url };
 }
 
 async function deleteTestMedia(page: Page, id: number) {
@@ -162,7 +210,16 @@ test.describe('运维工作流后端化页面', () => {
     try {
       await page.goto('/files');
       await expect(page.getByText('文件管理').first()).toBeVisible();
-      await page.getByRole('option', { name: new RegExp(first.fileName) }).click();
+      const firstOption = page.getByRole('option', { name: new RegExp(first.fileName) });
+      await firstOption.click();
+      await page.getByRole('button', { name: '查看详情' }).click();
+      const detailDialog = page.getByRole('dialog', { name: '媒体详情' });
+      await expect(detailDialog).toBeVisible();
+      await expect(detailDialog.getByText('SHA256')).toBeVisible();
+      await detailDialog.getByRole('button', { name: '复制 URL' }).click();
+      await page.keyboard.press('Escape');
+      await expect(detailDialog).toBeHidden();
+
       await page.getByRole('option', { name: new RegExp(second.fileName) }).click();
 
       const deleteButton = page.getByRole('button', { name: '删除选中' });
@@ -174,9 +231,27 @@ test.describe('运维工作流后端化页面', () => {
       await expect(dialog).toBeHidden();
       await expect(page.getByRole('option', { name: new RegExp(first.fileName) })).toHaveCount(0);
       await expect(page.getByRole('option', { name: new RegExp(second.fileName) })).toHaveCount(0);
+      const missing = await page.evaluate(async (url) => fetch(url).then((response) => response.status), first.url);
+      expect(missing).toBe(404);
     } finally {
       await deleteTestMedia(page, first.id);
       await deleteTestMedia(page, second.id);
     }
+  });
+
+  test('文件页展示引用影响并支持强制删除已知引用', async ({ page }) => {
+    const logo = await createReferencedLogo(page, 'force');
+
+    await page.goto('/files');
+    await expect(page.getByText('文件管理').first()).toBeVisible();
+    await page.getByRole('option', { name: new RegExp(logo.fileName) }).click();
+    await page.getByRole('button', { name: '删除选中' }).click();
+    const dialog = page.getByRole('dialog', { name: '确认删除文件' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('站点 Logo')).toBeVisible();
+    await expect(dialog.getByText('强制删除并清理已知 Logo / 头像引用')).toBeVisible();
+    await dialog.getByRole('button', { name: '强制删除' }).click();
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole('option', { name: new RegExp(logo.fileName) })).toHaveCount(0);
   });
 });

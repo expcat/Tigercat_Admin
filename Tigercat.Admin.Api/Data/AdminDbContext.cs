@@ -113,8 +113,12 @@ public class AdminDbContext : DbContext
             entity.Property(e => e.PublicId).IsRequired().HasMaxLength(64);
             entity.Property(e => e.OriginalFileName).IsRequired().HasMaxLength(255);
             entity.Property(e => e.StoredFileName).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.StorageProvider).HasMaxLength(50);
+            entity.Property(e => e.StorageKey).HasMaxLength(500);
             entity.Property(e => e.ContentType).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Extension).HasMaxLength(20);
+            entity.Property(e => e.Sha256Hash).HasMaxLength(64);
+            entity.HasIndex(e => new { e.Sha256Hash, e.SizeBytes });
             entity.Property(e => e.UploadedBy).HasMaxLength(50);
         });
 

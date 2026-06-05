@@ -76,11 +76,14 @@ export ConnectionStrings__DefaultConnection="Host=db.example.internal;Port=5432;
 
 - SQLite：API 启动时执行 EF Core migrations，适合本地开发和自动化验证。
 - PostgreSQL：当前基线使用启动时建表，生产环境如需严格治理，应在发布前生成迁移 SQL 并纳入部署流水线。
+- P7 媒体生产化迁移 `AddMediaProductionFields` 会为 `MediaResources` 增加 provider、storage key、SHA256、图片尺寸和删除标记字段，并建立 `Sha256Hash + SizeBytes` 索引。
 - 种子数据：权限、角色、默认管理员、系统设置、通知和任务数据由 `DbInitializer` 幂等写入。已存在的业务数据不会被清空；内置通知会补齐站内 `linkUrl`，内置任务包含阻塞原因和完成说明字段。
 - 运维工作流：`AdminTasks` 持久化 `BlockedReason` 与 `CompletionNote`；`AdminNotifications` 继续保存 `GroupKey`、`LinkUrl` 与脱敏元数据。Redis Streams 仍是审计事件来源，事件消费者会把任务、设置、审计保留清理、媒体删除失败和用户治理事件转化为通知。
-- 媒体删除治理：单个或批量删除媒体时，如资源仍被 `site.logo` 或 `user.avatar` 引用，API 不删除任何文件或记录，并发布 `admin.media.delete.failed` 到 `stream:admin`，用于通知中心和审计详情追踪。
+- 媒体资源表：`MediaResources` 记录 `PublicId`、原始文件名、`StorageProvider`、`StorageKey`、MIME、扩展名、大小、`Sha256Hash`、图片 `Width` / `Height`、上传人和创建时间；`MediaReferences` 记录 `site.logo`、`user.avatar` 等引用来源。
+- 媒体删除治理：单个或批量删除媒体时，如资源仍被引用，普通删除不删除任何文件或记录，并发布 `admin.media.delete.failed` 到 `stream:admin`；强制删除只会清理已知 `site.logo` 和 `user.avatar` 引用，并发布 `admin.media.delete.forced`。未知业务引用始终阻止删除。
+- 媒体文件治理：上传会校验大小、MIME、扩展名匹配、图片尺寸并计算 SHA256；同内容重复上传返回已有媒体资源。`POST /api/media/orphans/cleanup` 可预览或清理本地存储中无数据库记录的孤儿文件。
 - 权限漂移识别：`security.permissionSeedVersion` 和 `security.permissionSeedChecksum` 会写入系统设置，用于识别权限目录版本和摘要。
-- 回滚：发布前备份数据库；若应用回滚但 schema 已发生不兼容变化，应先执行已评审的回滚 SQL 或从备份恢复，再启动旧版本应用。
+- 回滚：发布前备份数据库；生产使用本地媒体存储时同时备份 `Media:LocalRoot` 目录。若应用回滚但 schema 已发生不兼容变化，应先执行已评审的回滚 SQL 或从备份恢复，再启动旧版本应用。
 
 ## 回归验证
 

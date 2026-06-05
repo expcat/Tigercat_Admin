@@ -105,7 +105,7 @@ async function uploadTestMedia(page: Page): Promise<UploadedMedia> {
       }
 
       const form = new FormData();
-      form.append('file', new Blob(['P4 display gate'], { type: 'text/plain' }), fileName);
+      form.append('file', new Blob([`P4 display gate ${fileName} ${Date.now()}`], { type: 'text/plain' }), fileName);
       form.append('usage', 'file');
 
       const response = await fetch('/api/media', {

@@ -1,5 +1,6 @@
 using FreeRedis;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
 using Tigercat.Admin.Api.Auth;
@@ -97,7 +98,14 @@ builder.Services.AddScoped<ISessionStore>(sp =>
 
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.Configure<MediaOptions>(builder.Configuration.GetSection("Media"));
-builder.Services.AddSingleton<IMediaStorageProvider, LocalMediaStorageProvider>();
+builder.Services.AddSingleton<IMediaStorageProvider>(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<MediaOptions>>().Value;
+    var provider = MediaStorageProviderResolver.Resolve(options);
+    return provider == MediaStorageProviderResolver.LocalProvider
+        ? ActivatorUtilities.CreateInstance<LocalMediaStorageProvider>(sp)
+        : throw new InvalidOperationException($"Media provider '{provider}' is not registered.");
+});
 builder.Services.AddScoped<IMediaReferenceService, MediaReferenceService>();
 builder.Services.AddScoped<IAdminNotificationService, AdminNotificationService>();
 
@@ -207,6 +215,7 @@ static async Task<IResult> GetHealth(
         ["database"] = await CheckDatabaseAsync(dbContext, configuration, ct),
         ["redis"] = await CheckRedisAsync(configuration, services, ct),
         ["eventChannel"] = CheckEventChannel(configuration, services),
+        ["mediaStorage"] = CheckMediaStorage(configuration),
         ["configuration"] = CheckConfiguration(configuration, environment),
     };
 
@@ -367,6 +376,20 @@ static HealthDependencyStatus CheckConfiguration(IConfiguration configuration, I
     return issues.Count == 0
         ? HealthDependencyStatus.Healthy(environment.EnvironmentName)
         : HealthDependencyStatus.Unhealthy(environment.EnvironmentName, string.Join(" ", issues));
+}
+
+static HealthDependencyStatus CheckMediaStorage(IConfiguration configuration)
+{
+    try
+    {
+        var options = configuration.GetSection("Media").Get<MediaOptions>() ?? new MediaOptions();
+        var provider = MediaStorageProviderResolver.Resolve(options);
+        return HealthDependencyStatus.Healthy(provider);
+    }
+    catch (Exception ex)
+    {
+        return HealthDependencyStatus.Unhealthy("media", ex.Message);
+    }
 }
 
 public record HealthDependencyStatus(string Status, string Target, string? Message)

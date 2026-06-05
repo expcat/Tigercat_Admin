@@ -8,6 +8,8 @@ public class LocalMediaStorageProvider(
 {
     private readonly MediaOptions _options = options.Value;
 
+    public string ProviderName => "Local";
+
     public async Task<StoredMediaFile> SaveAsync(
         Stream stream,
         string publicId,
@@ -48,6 +50,30 @@ public class LocalMediaStorageProvider(
         }
 
         return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<StoredMediaFileInfo>> ListAsync(CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var root = GetStorageRoot();
+        if (!Directory.Exists(root))
+        {
+            return Task.FromResult<IReadOnlyList<StoredMediaFileInfo>>([]);
+        }
+
+        var files = Directory
+            .EnumerateFiles(root, "*", SearchOption.TopDirectoryOnly)
+            .Select(path =>
+            {
+                var info = new FileInfo(path);
+                return new StoredMediaFileInfo(
+                    info.Name,
+                    info.Length,
+                    info.LastWriteTimeUtc);
+            })
+            .ToArray();
+
+        return Task.FromResult<IReadOnlyList<StoredMediaFileInfo>>(files);
     }
 
     private string GetStorageRoot()

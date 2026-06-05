@@ -1,6 +1,6 @@
 import { getAuthHeaders } from './auth';
-import { apiRequest } from './request';
-import type { MediaItem, MessageResult, PagedResult } from './types';
+import { ApiError, apiRequest } from './request';
+import type { MediaDetail, MediaItem, MessageResult, PagedResult } from './types';
 
 export async function uploadMediaFile(
   file: File,
@@ -20,7 +20,12 @@ export async function uploadMediaFile(
 
   const payload = await response.json().catch(() => null);
   if (!response.ok || payload?.success === false) {
-    throw new Error(payload?.message || response.statusText || '上传失败');
+    throw new ApiError(
+      payload?.message || response.statusText || '上传失败',
+      response.status,
+      payload?.code,
+      payload?.data,
+    );
   }
 
   return payload.data as MediaItem;
@@ -59,17 +64,24 @@ export function listMedia(params: {
   });
 }
 
-export function deleteMedia(id: number) {
-  return apiRequest<MessageResult>(`/api/media/${id}`, {
+export function getMediaDetail(id: number) {
+  return apiRequest<MediaDetail>(`/api/media/${id}`, {
+    headers: getAuthHeaders(),
+  });
+}
+
+export function deleteMedia(id: number, force = false) {
+  const suffix = force ? '?force=true' : '';
+  return apiRequest<MessageResult>(`/api/media/${id}${suffix}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
 }
 
-export function batchDeleteMedia(ids: number[]) {
+export function batchDeleteMedia(ids: number[], force = false) {
   return apiRequest<MessageResult>(`/api/media/batch-delete`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ ids }),
+    body: JSON.stringify({ ids, force }),
   });
 }

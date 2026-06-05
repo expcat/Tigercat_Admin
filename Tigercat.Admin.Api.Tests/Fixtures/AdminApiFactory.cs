@@ -19,11 +19,19 @@ namespace Tigercat.Admin.Api.Tests.Fixtures;
 /// </summary>
 public abstract class AdminApiFactory : WebApplicationFactory<Program>
 {
+    private readonly string _mediaRoot = Path.Combine(
+        Path.GetTempPath(),
+        $"tigercat_media_{Guid.NewGuid():N}");
+
     /// <summary>
     /// Connection-string overrides applied via in-memory configuration so that they
     /// supersede any values from appsettings.json.
     /// </summary>
     protected abstract Dictionary<string, string?> ConfigurationOverrides { get; }
+
+    protected string MediaRoot => _mediaRoot;
+
+    public string MediaRootPath => _mediaRoot;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -67,6 +75,16 @@ public abstract class AdminApiFactory : WebApplicationFactory<Program>
             }
         });
     }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+
+        if (Directory.Exists(_mediaRoot))
+        {
+            try { Directory.Delete(_mediaRoot, recursive: true); } catch { /* best effort */ }
+        }
+    }
 }
 
 /// <summary>
@@ -83,6 +101,7 @@ public class InMemoryApiFactory : AdminApiFactory
         ["Database:InMemoryName"] = $"TigercatAdminTests_{Guid.NewGuid():N}",
         ["ConnectionStrings:Redis"] = "localhost:1",
         ["ConnectionStrings:DefaultConnection"] = "",
+        ["Media:LocalRoot"] = MediaRoot,
     };
 }
 
@@ -103,6 +122,7 @@ public class SqliteApiFactory : AdminApiFactory
         ["Database:Provider"] = "Sqlite",
         ["ConnectionStrings:Redis"] = "localhost:1",
         ["ConnectionStrings:DefaultConnection"] = $"Data Source={_dbPath}",
+        ["Media:LocalRoot"] = MediaRoot,
     };
 
     protected override void Dispose(bool disposing)

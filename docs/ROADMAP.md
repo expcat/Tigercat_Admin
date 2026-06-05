@@ -19,7 +19,7 @@
 
 ## 规划基线
 
-当前代码库已经具备后端 API、React / Vue 双端后台、Tigercat 1.2.16 组件接入、SQLite / PostgreSQL provider、Redis 缓存与事件通道、文件与媒体资源能力、配置化认证安全策略、审计敏感字段清理、双端共享页面片段、重组件子路径导入验证、Playwright 工作区基座、生产配置样例、部署说明、健康检查依赖明细、最小 CI 门禁，以及用户、角色、文件、审计四类数据工作台的会话状态保留、批量操作、筛选导出和权限入口收敛能力。P1-P4 的组件盘点、显示门禁、共享页面片段、子路径导入、可访问性与响应式复核，P5 的数据工作台增强，以及 P6 的通知、任务、审计、设置和媒体失败事件闭环结果已经沉淀到 [component-inventory.md](component-inventory.md)、[api.md](api.md)、[database.md](database.md) 和 [deployment.md](deployment.md)。后续计划不再重复记录历史完成项，只围绕可继续推进的能力建设展开。
+当前代码库已经具备后端 API、React / Vue 双端后台、Tigercat 1.2.16 组件接入、SQLite / PostgreSQL provider、Redis 缓存与事件通道、媒体资源生产化治理、配置化认证安全策略、审计敏感字段清理、双端共享页面片段、重组件子路径导入验证、Playwright 工作区基座、生产配置样例、部署说明、健康检查依赖明细、最小 CI 门禁，以及用户、角色、文件、审计四类数据工作台的会话状态保留、批量操作、筛选导出和权限入口收敛能力。P1-P4 的组件盘点、显示门禁、共享页面片段、子路径导入、可访问性与响应式复核，P5 的数据工作台增强，P6 的通知、任务、审计、设置和媒体失败事件闭环，以及 P7 的媒体 provider 配置、上传治理、引用校验、强制删除审计、孤儿清理、双端详情预览和生产资源配置结果已经沉淀到 [component-inventory.md](component-inventory.md)、[api.md](api.md)、[database.md](database.md) 和 [deployment.md](deployment.md)。后续计划不再重复记录历史完成项，只围绕可继续推进的能力建设展开。
 
 ## 推进原则
 
@@ -33,34 +33,8 @@
 
 | 优先级 | 主题 | 目标 | 主要验证 |
 | ------ | ---- | ---- | -------- |
-| P7 | 媒体与品牌资源生产化 | 扩展媒体存储、引用校验、Logo/头像生命周期和生产资源配置 | 后端媒体测试、双端上传/删除 smoke、部署文档复核 |
 | P8 | 发布、部署与观测增强 | 固化容器化、迁移 SQL、发布门禁、运行时观测和回滚演练 | `dotnet test Tigercat.Admin.sln`、`pnpm build`、`pnpm e2e`、部署 smoke |
 | P9 | Tigercat UI 升级与上游反馈循环 | 建立组件库版本升级、API 迁移、性能体积和上游缺口登记的固定流程 | 双端构建、组件盘点更新、上游需求文档更新 |
-
-## P7：媒体与品牌资源生产化
-
-目标：让媒体资源能力从本地文件管理扩展到可生产部署的资源生命周期管理。
-
-范围：
-
-- 存储 provider：在 `IMediaStorageProvider` 之上扩展对象存储或可替换 provider 配置，保留本地 provider 作为开发默认值。
-- 引用完整性：删除媒体前检查用户头像、站点 Logo、设置引用和后续业务引用；阻止误删或提供强制删除审计。
-- 资源治理：补上传大小、MIME、扩展名、图片尺寸、重复文件、孤儿文件清理和 publicId 访问策略。
-- 双端体验：文件管理页补预览、复制 URL、引用来源、删除影响提示和上传失败细分提示。
-- 生产配置：补充静态资源域名、反向代理缓存、备份恢复和对象存储密钥注入说明。
-
-交付物：
-
-- API、数据模型和媒体测试补齐。
-- 双端文件管理和 Logo/头像路径保持一致。
-- 同步更新 [api.md](api.md)、[database.md](database.md) 和 [deployment.md](deployment.md)。
-
-验收门禁：
-
-- `dotnet test Tigercat.Admin.sln`
-- `pnpm build:frontend`
-- `pnpm e2e:react --grep 运维` / `pnpm e2e:vue --grep 运维`
-- 上传、预览、引用校验、删除和 404 内容读取 smoke。
 
 ## P8：发布、部署与观测增强
 

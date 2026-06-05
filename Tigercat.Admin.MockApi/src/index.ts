@@ -63,13 +63,24 @@ type MediaItem = {
   id: number;
   publicId: string;
   originalFileName: string;
+  storageProvider: string;
   contentType: string;
   extension: string | null;
   sizeBytes: number;
+  sha256Hash: string | null;
+  width: number | null;
+  height: number | null;
   url: string;
   uploadedBy: string | null;
   createdAt: string;
   referenceCount: number;
+};
+
+type MediaReference = {
+  id: number;
+  referenceType: string;
+  referenceKey: string;
+  displayName: string | null;
 };
 
 type NotificationItem = {
@@ -327,14 +338,27 @@ function media(
     id,
     publicId,
     originalFileName: name,
+    storageProvider: 'Local',
     contentType,
     extension,
     sizeBytes,
+    sha256Hash: `demo-${publicId}-${sizeBytes}`,
+    width: contentType.startsWith('image/') ? 512 : null,
+    height: contentType.startsWith('image/') ? 512 : null,
     url: toStaticMediaUrl(publicId, name, contentType),
     uploadedBy: 'admin',
     createdAt: CREATED_AT,
     referenceCount,
   };
+}
+
+function mediaReferencesFor(item: MediaItem): MediaReference[] {
+  if (item.referenceCount <= 0) return [];
+  if (item.originalFileName.toLowerCase().includes('avatar')) {
+    return [{ id: item.id * 10 + 1, referenceType: 'user.avatar', referenceKey: '1', displayName: '用户头像：admin' }];
+  }
+
+  return [{ id: item.id * 10 + 1, referenceType: 'site.logo', referenceKey: 'site.logo', displayName: '站点 Logo' }];
 }
 
 function toStaticMediaUrl(publicId: string, name: string, contentType: string): string {
@@ -412,8 +436,8 @@ function makeJson<T>(data: T, init?: ResponseInit): Response {
   });
 }
 
-function makeError(message: string, status = 400): Response {
-  return new Response(JSON.stringify({ code: status, message, success: false, data: null }), {
+function makeError(message: string, status = 400, data: unknown = null): Response {
+  return new Response(JSON.stringify({ code: status, message, success: false, data }), {
     status,
     headers: { 'Content-Type': 'application/json; charset=utf-8' },
   });
@@ -920,6 +944,14 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
         sizeBytes = file.size || sizeBytes;
       }
     }
+    const duplicate = state.media.find((item) =>
+      item.originalFileName === fileName &&
+      item.contentType === contentType &&
+      item.sizeBytes === sizeBytes);
+    if (duplicate) {
+      return makeError('文件已存在，可复用已有媒体资源', 409, { existing: duplicate });
+    }
+
     const id = state.nextMediaId++;
     const publicId = `demo-upload-${id}`;
     const item = media(id, publicId, fileName, contentType, sizeBytes, fileName.split('.').pop() ?? 'file', 0);
@@ -928,16 +960,69 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     return makeJson(item, { status: 201 });
   }
 
+  const mediaDetailMatch = path.match(/^\/api\/media\/(\d+)$/);
+  if (mediaDetailMatch && method === 'GET') {
+    const item = state.media.find((mediaItem) => mediaItem.id === Number(mediaDetailMatch[1]));
+    if (!item) return makeError('媒体资源不存在', 404);
+    return makeJson({ ...item, references: mediaReferencesFor(item) });
+  }
+
   const mediaContentMatch = path.match(/^\/api\/media\/([^/]+)\/content$/);
   if (mediaContentMatch && method === 'GET') {
-    return new Response(new Blob(['static demo media content'], { type: 'text/plain' }), { status: 200 });
+    const item = state.media.find((mediaItem) => mediaItem.publicId === mediaContentMatch[1]);
+    if (!item) return new Response(null, { status: 404 });
+    return new Response(new Blob(['static demo media content'], { type: item.contentType }), {
+      status: 200,
+      headers: { 'Cache-Control': 'public,max-age=3600', 'X-Content-Type-Options': 'nosniff' },
+    });
+  }
+
+  if (path === '/api/media/batch-delete' && method === 'POST') {
+    const ids = Array.isArray(body.ids) ? body.ids.map((id) => Number(id)).filter(Number.isFinite) : [];
+    const force = body.force === true;
+    if (ids.length === 0) return makeError('请选择要删除的媒体资源', 400);
+
+    const selected = state.media.filter((item) => ids.includes(item.id));
+    if (selected.length !== ids.length) return makeError('以下媒体资源 ID 不存在', 404);
+
+    const references = selected.flatMap(mediaReferencesFor);
+    if (references.length > 0 && !force) {
+      return makeError('选中的媒体资源正在被引用，不能批量删除', 409, references);
+    }
+
+    if (force) {
+      for (const item of selected) {
+        for (const reference of mediaReferencesFor(item)) {
+          if (reference.referenceType === 'site.logo') {
+            const settingItem = state.settings.find((settingValue) => settingValue.key === 'site.logo');
+            if (settingItem) settingItem.value = '';
+          }
+          if (reference.referenceType === 'user.avatar') {
+            for (const user of state.users.filter((userItem) => userItem.avatarMediaId === item.id)) {
+              user.avatarMediaId = null;
+              user.avatarUrl = null;
+            }
+          }
+        }
+      }
+    }
+
+    state.media = state.media.filter((item) => !ids.includes(item.id));
+    writeState(storageKey, state);
+    return makeJson({ message: `成功删除 ${selected.length} 个媒体资源` });
+  }
+
+  if (path === '/api/media/orphans/cleanup' && method === 'POST') {
+    return makeJson({ dryRun: body.dryRun !== false, matchedCount: 0, deletedCount: 0, items: [] });
   }
 
   const mediaDeleteMatch = path.match(/^\/api\/media\/(\d+)$/);
   if (mediaDeleteMatch && method === 'DELETE') {
     const item = state.media.find((mediaItem) => mediaItem.id === Number(mediaDeleteMatch[1]));
     if (!item) return makeError('媒体资源不存在', 404);
-    if (item.referenceCount > 0) return makeError('媒体资源正在被引用', 409);
+    const force = url.searchParams.get('force') === 'true';
+    const references = mediaReferencesFor(item);
+    if (references.length > 0 && !force) return makeError('媒体资源正在被引用，不能删除', 409, references);
     state.media = state.media.filter((mediaItem) => mediaItem.id !== item.id);
     writeState(storageKey, state);
     return makeJson({ message: '删除成功' });

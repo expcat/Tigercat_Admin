@@ -10,6 +10,7 @@ export class ApiError extends Error {
     message: string,
     public readonly status: number,
     public readonly code?: number,
+    public readonly data?: unknown,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -61,7 +62,7 @@ export const apiRequest = async <T = any>(
     if (response.status === 401 && hasAuthHeader && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('tigercat:session-expired'));
     }
-    throw new ApiError(message, response.status, payload?.code);
+    throw new ApiError(message, response.status, payload?.code, payload?.data);
   }
 
   return payload as ApiResponse<T>;

@@ -2,8 +2,8 @@ namespace Tigercat.Admin.Api.Media;
 
 public static class MediaFileRules
 {
-    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
+    public static readonly string[] DefaultAllowedContentTypes =
+    [
         "image/png",
         "image/jpeg",
         "image/gif",
@@ -15,11 +15,67 @@ public static class MediaFileRules
         "application/json",
         "application/vnd.ms-excel",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ];
+
+    public static readonly string[] DefaultAllowedExtensions =
+    [
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".webp",
+        ".svg",
+        ".pdf",
+        ".txt",
+        ".csv",
+        ".json",
+        ".xls",
+        ".xlsx",
+    ];
+
+    private static readonly Dictionary<string, string[]> ContentTypeExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["image/png"] = [".png"],
+        ["image/jpeg"] = [".jpg", ".jpeg"],
+        ["image/gif"] = [".gif"],
+        ["image/webp"] = [".webp"],
+        ["image/svg+xml"] = [".svg"],
+        ["application/pdf"] = [".pdf"],
+        ["text/plain"] = [".txt"],
+        ["text/csv"] = [".csv"],
+        ["application/json"] = [".json"],
+        ["application/vnd.ms-excel"] = [".xls"],
+        ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"] = [".xlsx"],
     };
 
-    public static bool IsAllowedContentType(string contentType)
+    public static bool IsAllowedContentType(string contentType, MediaOptions? options = null)
     {
-        return AllowedContentTypes.Contains(contentType);
+        var allowed = options?.AllowedContentTypes is { Length: > 0 }
+            ? options.AllowedContentTypes
+            : DefaultAllowedContentTypes;
+
+        return allowed.Any(type => string.Equals(type, contentType, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static bool IsAllowedExtension(string extension, MediaOptions? options = null)
+    {
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            return false;
+        }
+
+        var allowed = options?.AllowedExtensions is { Length: > 0 }
+            ? options.AllowedExtensions
+            : DefaultAllowedExtensions;
+
+        return allowed.Any(value =>
+            string.Equals(NormalizeExtension(value), extension, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static bool IsExtensionAllowedForContentType(string contentType, string extension)
+    {
+        return ContentTypeExtensions.TryGetValue(contentType, out var extensions) &&
+            extensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
     }
 
     public static bool IsImageContentType(string contentType)

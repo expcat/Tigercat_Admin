@@ -70,9 +70,16 @@ internal record ApiContracts(
     MediaDetailResponse? MediaDetailResponse,
     MediaReferenceResponse? MediaReferenceResponse,
     MediaReferenceResponse[]? MediaReferenceResponseArray,
+    DuplicateMediaResponse? DuplicateMediaResponse,
+    MediaOrphanCleanupRequest? MediaOrphanCleanupRequest,
+    MediaOrphanFileResponse? MediaOrphanFileResponse,
+    MediaOrphanFileResponse[]? MediaOrphanFileResponseArray,
+    MediaOrphanCleanupResponse? MediaOrphanCleanupResponse,
     PagedResponse<MediaItemResponse>? PagedResponseMediaItemResponse,
     ApiResponse<MediaItemResponse>? ApiResponseMediaItemResponse,
+    ApiResponse<DuplicateMediaResponse>? ApiResponseDuplicateMediaResponse,
     ApiResponse<MediaDetailResponse>? ApiResponseMediaDetailResponse,
     ApiResponse<MediaReferenceResponse[]>? ApiResponseMediaReferenceResponseArray,
+    ApiResponse<MediaOrphanCleanupResponse>? ApiResponseMediaOrphanCleanupResponse,
     ApiResponse<PagedResponse<MediaItemResponse>>? ApiResponsePagedResponseMediaItemResponse
 );
