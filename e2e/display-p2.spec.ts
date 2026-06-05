@@ -185,6 +185,43 @@ async function expectColumnToggleReachable(page: Page, checkboxName: string) {
   await page.keyboard.press('Escape');
 }
 
+async function expectSidebarWidth(page: Page, width: number) {
+  const sidebar = page.locator('#main-sidebar .tiger-sidebar').first();
+  await expect(sidebar).toBeVisible();
+  await expect
+    .poll(async () =>
+      sidebar.evaluate((element) => Math.round(element.getBoundingClientRect().width)),
+    )
+    .toBe(width);
+}
+
+async function expectSidebarHasTransition(page: Page) {
+  const sidebar = page.locator('#main-sidebar .tiger-sidebar').first();
+  const transition = await sidebar.evaluate((element) => {
+    const style = window.getComputedStyle(element);
+    return {
+      property: style.transitionProperty,
+      duration: style.transitionDuration,
+    };
+  });
+
+  expect(transition.property).not.toBe('none');
+  expect(transition.duration).not.toBe('0s');
+}
+
+async function expectMobileDrawerHasTransition(drawerPanel: Locator) {
+  const transition = await drawerPanel.evaluate((element) => {
+    const style = window.getComputedStyle(element);
+    return {
+      property: style.transitionProperty,
+      duration: style.transitionDuration,
+    };
+  });
+
+  expect(transition.property).toContain('transform');
+  expect(transition.duration).not.toBe('0s');
+}
+
 test.describe('P4 可访问性与响应式门禁', () => {
   test('认证页在移动端和暗色模式下不溢出', async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORT);
@@ -210,6 +247,13 @@ test.describe('P4 可访问性与响应式门禁', () => {
     await loginAsAdmin();
     await page.evaluate(() => document.documentElement.classList.add('dark'));
 
+    await expectSidebarWidth(page, 240);
+    await expectSidebarHasTransition(page);
+    await page.getByRole('button', { name: '关闭导航菜单' }).click();
+    await expectSidebarWidth(page, 64);
+    await page.getByRole('button', { name: '打开导航菜单' }).click();
+    await expectSidebarWidth(page, 240);
+
     for (const item of protectedPages) {
       await page.goto(item.path);
       await expect(page.getByText(item.text).first()).toBeVisible();
@@ -229,8 +273,22 @@ test.describe('P4 可访问性与响应式门禁', () => {
     await expectNoPageHorizontalOverflow(page);
 
     await toggle.click();
-    const closeOverlay = page.getByRole('button', { name: '关闭导航菜单' }).first();
-    await expect(closeOverlay).toBeVisible();
+    const drawerMask = page.locator('[data-tiger-drawer-mask]').first();
+    const drawerPanel = page.locator('[data-tiger-drawer]').first();
+    await expect(drawerMask).toBeVisible();
+    await expect(drawerPanel).toBeVisible();
+    await expectMobileDrawerHasTransition(drawerPanel);
+    await expect
+      .poll(async () =>
+        drawerPanel.evaluate((element) => Math.round(element.getBoundingClientRect().width)),
+      )
+      .toBe(240);
+    await drawerMask.click({ position: { x: 320, y: 120 } });
+    await expect(drawerPanel).toBeVisible();
+    await expect(page.getByRole('button', { name: '打开导航菜单' })).toBeVisible();
+
+    await toggle.click();
+    await expect(drawerMask).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByRole('button', { name: '打开导航菜单' })).toBeVisible();
     await expectFocused(toggle);

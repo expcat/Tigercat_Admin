@@ -66,7 +66,7 @@ const menuIcon = (name?: string, size = 20) => h(Icon, { name: name || 'placehol
     :collapsed="displayCollapsed"
     :width="props.sidebarWidth"
     :collapsed-width="props.collapsedWidth"
-    class="h-full shrink-0 transition-[width] duration-300 ease-in-out"
+    class="h-full shrink-0"
   >
     <div class="flex h-full min-h-0 flex-col">
       <!-- Logo -->
@@ -74,8 +74,8 @@ const menuIcon = (name?: string, size = 20) => h(Icon, { name: name || 'placehol
         <div class="flex items-center gap-3">
           <AppLogo :size="36" />
           <span 
-            class="font-bold text-lg text-(--tiger-text,#1f2937) tracking-wide whitespace-nowrap transition-all duration-300"
-            :class="displayCollapsed ? 'w-0 opacity-0 scale-95 pointer-events-none' : 'w-auto opacity-100'"
+            class="overflow-hidden whitespace-nowrap font-bold text-lg text-(--tiger-text,#1f2937) tracking-wide transition-[max-width,opacity,transform] duration-300 ease-in-out"
+            :class="displayCollapsed ? 'max-w-0 -translate-x-2 opacity-0 pointer-events-none' : 'max-w-32 translate-x-0 opacity-100'"
           >
             Tigercat
           </span>
@@ -88,6 +88,9 @@ const menuIcon = (name?: string, size = 20) => h(Icon, { name: name || 'placehol
           :selected-keys="[activeMenu]"
           :open-keys="expandedKeys"
           :collapsed="displayCollapsed"
+          mode="inline"
+          :inline-indent="displayCollapsed ? 0 : 24"
+          class="!min-w-0"
           @select="handleMenuSelect"
           @update:open-keys="(keys: (string | number)[]) => expandedKeys = keys"
         >
@@ -103,6 +106,8 @@ const menuIcon = (name?: string, size = 20) => h(Icon, { name: name || 'placehol
                 :key="child.key"
                 :item-key="child.key"
                 :icon="menuIcon(child.icon, 18)"
+                :level="1"
+                :class="displayCollapsed ? '!px-2' : ''"
               >
                 {{ child.label }}
               </MenuItem>
@@ -123,6 +128,8 @@ const menuIcon = (name?: string, size = 20) => h(Icon, { name: name || 'placehol
         <Menu
           :selected-keys="[activeMenu]"
           :collapsed="displayCollapsed"
+          mode="inline"
+          class="!min-w-0"
           @select="handleMenuSelect"
         >
           <MenuItem
@@ -146,8 +153,8 @@ const menuIcon = (name?: string, size = 20) => h(Icon, { name: name || 'placehol
             <Icon :name="props.collapsed ? 'chevronRight' : 'chevronLeft'" :size="18" />
           </span>
           <span 
-            class="whitespace-nowrap transition-all duration-300"
-            :class="props.collapsed ? 'w-0 opacity-0 scale-95 pointer-events-none' : 'w-auto opacity-100'"
+            class="overflow-hidden whitespace-nowrap transition-[max-width,opacity,transform] duration-300 ease-in-out"
+            :class="props.collapsed ? 'max-w-0 -translate-x-2 opacity-0 pointer-events-none' : 'max-w-20 translate-x-0 opacity-100'"
           >
             收起菜单
           </span>

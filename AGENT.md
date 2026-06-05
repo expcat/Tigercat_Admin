@@ -86,6 +86,8 @@ Tigercat_Admin/
 - React 项目优先使用 `@expcat/tigercat-react`。
 - Tailwind CSS v4 通过 CSS 入口接入 `@plugin "@expcat/tigercat-core/tailwind/modern"`，并使用 `@source` 扫描组件库产物。
 - 尽量使用 Tigercat UI 组件库原生能力，不添加过多冗余样式。
+- 若为达成通用组件交互效果而在业务层增加了较复杂的状态、计时器、DOM 查询、焦点恢复或双端重复样式，需判断是否适合沉淀到 Tigercat 组件本身；适合时同步更新 `docs/upstream-requirements.md`，写清业务场景、期望组件 API、当前规避方案和优先级。
+- 框架页移动端侧栏当前依赖 Tigercat `Drawer` 的 `mask` / `maskClosable`，但为了补足窄屏滑入/滑出动画，应用层临时拆分了挂载态与展开态。后续如果 Tigercat Drawer 提供离场动画后卸载、固定宽度移动端抽屉或面板样式 API，应优先收敛回组件原生能力并删除本项目的补偿逻辑。
 - 涉及 Tigercat UI 组件、属性、跨框架映射或最佳实践时，优先使用 `skill:tigercat`：
   - 查组件时先看 `component-index.md`，再按组件分类打开对应 examples、props 和类型来源。
   - 写 React / Vue 双端实现时，先看 `shared/patterns/common.md` 与 `shared/glossary.md`，确认 `v-model` / controlled props、事件命名、`open` 状态和 `class` / `className` 差异。

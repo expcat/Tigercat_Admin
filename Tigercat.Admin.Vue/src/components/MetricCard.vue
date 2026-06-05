@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import { Badge, Card, Loading, Statistic, Text } from '@expcat/tigercat-vue'
 
-defineProps<{
-  title: string
-  value?: string | number
-  description?: string
-  badge?: string | number
-  loading?: boolean
-  framed?: boolean
-}>()
+withDefaults(
+  defineProps<{
+    title: string
+    value?: string | number
+    description?: string
+    badge?: string | number
+    loading?: boolean
+    framed?: boolean
+  }>(),
+  {
+    framed: true,
+  }
+)
 </script>
 
 <template>

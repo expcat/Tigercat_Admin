@@ -60,15 +60,15 @@ export function MainSidebar({
       collapsed={displayCollapsed}
       width={sidebarWidth}
       collapsedWidth={collapsedWidth}
-      className="h-full shrink-0 transition-[width] duration-300 ease-in-out">
+      className="h-full shrink-0">
       <div className="flex h-full min-h-0 flex-col">
         {/* Logo */}
         <div className="flex h-16 shrink-0 items-center justify-center border-b border-(--tiger-border,#e2e8f0) overflow-hidden">
           <div className="flex items-center gap-3">
             <LogoIcon />
             <span
-              className={`font-bold text-lg text-(--tiger-text,#1f2937) tracking-wide whitespace-nowrap transition-all duration-300 ${
-                displayCollapsed ? 'w-0 opacity-0 scale-95 pointer-events-none' : 'w-auto opacity-100'
+              className={`overflow-hidden whitespace-nowrap font-bold text-lg text-(--tiger-text,#1f2937) tracking-wide transition-[max-width,opacity,transform] duration-300 ease-in-out ${
+                displayCollapsed ? 'max-w-0 -translate-x-2 opacity-0 pointer-events-none' : 'max-w-32 translate-x-0 opacity-100'
               }`}>
               Tigercat
             </span>
@@ -81,6 +81,9 @@ export function MainSidebar({
             selectedKeys={[activeMenu]}
             openKeys={expandedKeys}
             collapsed={displayCollapsed}
+            mode="inline"
+            inlineIndent={displayCollapsed ? 0 : 24}
+            className="!min-w-0"
             onSelect={handleSelect}
             onOpenChange={(_key, info) => setExpandedKeys(info.openKeys)}>
             {filteredMenuItems.map((item) =>
@@ -94,7 +97,8 @@ export function MainSidebar({
                     <MenuItem
                       key={child.key}
                       itemKey={child.key}
-                      icon={renderItemIcon(child.icon)}>
+                      icon={renderItemIcon(child.icon)}
+                      className={displayCollapsed ? '!px-2' : ''}>
                       {child.label}
                     </MenuItem>
                   ))}
@@ -113,6 +117,8 @@ export function MainSidebar({
           <Menu
             selectedKeys={[activeMenu]}
             collapsed={displayCollapsed}
+            mode="inline"
+            className="!min-w-0"
             onSelect={handleSelect}>
             {SHELL_BOTTOM_MENU_ITEMS.map((item) => (
               <MenuItem key={item.key} itemKey={item.key} icon={renderItemIcon(item.icon)}>
@@ -136,8 +142,8 @@ export function MainSidebar({
                 )}
               </span>
               <span
-                className={`whitespace-nowrap transition-all duration-300 ${
-                  collapsed ? 'w-0 opacity-0 scale-95 pointer-events-none' : 'w-auto opacity-100'
+                className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity,transform] duration-300 ease-in-out ${
+                  collapsed ? 'max-w-0 -translate-x-2 opacity-0 pointer-events-none' : 'max-w-20 translate-x-0 opacity-100'
                 }`}>
                 收起菜单
               </span>

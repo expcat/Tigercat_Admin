@@ -10,7 +10,7 @@ import {
 import { LineChart } from '@expcat/tigercat-react/LineChart';
 import { BarChart } from '@expcat/tigercat-react/BarChart';
 import { PieChart } from '@expcat/tigercat-react/PieChart';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
   UsersIcon,
   ShieldIcon,
@@ -108,6 +108,7 @@ const quickActions = [
 ];
 
 function HomePage() {
+  const navigate = useNavigate();
   const { notice, homeMessage, homeError, username } =
     useOutletContext<HomePageContext>();
 
@@ -119,6 +120,14 @@ function HomePage() {
   const [statsError, setStatsError] = useState('');
   const [trendDays, setTrendDays] = useState<number>(7);
   const trendRequestId = useRef(0);
+
+  // --- 快捷操作跳转 ---
+  const handleQuickAction = useCallback((key: string) => {
+    if (key === 'users') navigate('/users');
+    else if (key === 'roles') navigate('/roles');
+    else if (key === 'settings') navigate('/settings');
+    else if (key === 'logs') navigate('/audit-logs');
+  }, [navigate]);
 
   // --- 统计卡片（基于真实概览数据） ---
   const statsCards = useMemo(() => {
@@ -319,6 +328,8 @@ function HomePage() {
               xAxisLabel="日期"
               yAxisLabel="新增用户"
               xTickFormat={(v) => String(v).slice(5)}
+              strokeGradient={true}
+              pointGradient={true}
             />
           ) : (
             <ChartEmptyState description="暂无趋势数据" />
@@ -337,8 +348,11 @@ function HomePage() {
               height={220}
               colors={['#3b82f6', '#ef4444']}
               showLabels={true}
+              labelPosition="outside"
               showLegend={true}
               legendPosition="bottom"
+              shadow={true}
+              gradient={true}
             />
           ) : (
             <ChartEmptyState description="暂无分布数据" />
@@ -356,6 +370,7 @@ function HomePage() {
               return (
                 <button
                   key={action.key}
+                  onClick={() => handleQuickAction(action.key)}
                   className={`p2-action-tile group flex min-h-24 flex-col items-center justify-center p-4 transition-all duration-300 hover:shadow-md ${action.colorClasses}`}>
                   <div className="mb-2 transition-transform group-hover:scale-110">
                     <IconComponent size={24} className={action.iconClass} />
@@ -383,6 +398,7 @@ function HomePage() {
               animated={true}
               barRadius={6}
               yAxisLabel="数量"
+              gradient={true}
             />
           ) : (
             <ChartEmptyState description="暂无概览数据" />

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { inject, ref, onMounted, watch, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { Alert, Card, Text, Tag, Select, Loading } from '@expcat/tigercat-vue'
 import { LineChart } from '@expcat/tigercat-vue/LineChart'
 import { BarChart } from '@expcat/tigercat-vue/BarChart'
@@ -108,6 +109,15 @@ watch(trendDays, async () => {
 
 onMounted(loadStats)
 
+const router = useRouter()
+
+function handleQuickAction(key: string) {
+  if (key === 'users') router.push('/users')
+  else if (key === 'roles') router.push('/roles')
+  else if (key === 'settings') router.push('/settings')
+  else if (key === 'logs') router.push('/audit-logs')
+}
+
 // 快捷操作
 const quickActions = [
   { label: '用户管理', icon: 'users', key: 'users' },
@@ -126,7 +136,7 @@ const quickActions = [
         <div class="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div class="min-w-0">
             <div class="flex items-center gap-3 mb-2">
-              <AppLogo class="drop-shadow-sm" />
+              <AppLogo :size="48" class="drop-shadow-sm" />
               <div class="min-w-0">
                 <Text size="lg" weight="bold" class="p2-text-primary">
                   欢迎回来，{{ session?.username || 'Admin' }}！
@@ -203,6 +213,8 @@ const quickActions = [
           x-axis-label="日期"
           y-axis-label="新增用户"
           :x-tick-format="(v: string | number) => String(v).slice(5)"
+          :stroke-gradient="true"
+          :point-gradient="true"
         />
         <ChartEmptyState v-else description="暂无趋势数据" />
       </Card>
@@ -221,6 +233,8 @@ const quickActions = [
           label-position="outside"
           :show-legend="true"
           legend-position="bottom"
+          :shadow="true"
+          :gradient="true"
         />
         <ChartEmptyState v-else description="暂无分布数据" />
       </Card>
@@ -234,6 +248,7 @@ const quickActions = [
           <button
             v-for="(action, index) in quickActions"
             :key="action.key"
+            @click="handleQuickAction(action.key)"
             class="p2-action-tile group flex min-h-24 flex-col items-center justify-center p-4 transition-all duration-300 hover:shadow-md"
           >
             <div class="mb-2 transition-transform group-hover:scale-110">
@@ -252,17 +267,18 @@ const quickActions = [
         <BarChart
           v-else-if="overview"
           :data="[
-            { value: overview.totalUsers, label: '总用户', color: '#3b82f6' },
-            { value: overview.activeUsers, label: '活跃', color: '#22c55e' },
-            { value: overview.disabledUsers, label: '禁用', color: '#ef4444' },
-            { value: overview.totalRoles, label: '角色', color: '#a855f7' },
-            { value: overview.totalPermissions, label: '权限', color: '#f97316' },
+            { x: '总用户', y: overview.totalUsers, color: '#3b82f6' },
+            { x: '活跃', y: overview.activeUsers, color: '#22c55e' },
+            { x: '禁用', y: overview.disabledUsers, color: '#ef4444' },
+            { x: '角色', y: overview.totalRoles, color: '#a855f7' },
+            { x: '权限', y: overview.totalPermissions, color: '#f97316' },
           ]"
           :height="220"
           :show-grid="true"
           :animated="true"
           :bar-radius="6"
           y-axis-label="数量"
+          :gradient="true"
         />
         <ChartEmptyState v-else description="暂无概览数据" />
       </Card>
