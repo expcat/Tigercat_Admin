@@ -19,7 +19,7 @@
 
 ## 规划基线
 
-当前代码库已经具备后端 API、React / Vue 双端后台、Tigercat 1.2.16 组件接入、SQLite / PostgreSQL provider、Redis 缓存与事件通道、媒体资源生产化治理、配置化认证安全策略、审计敏感字段清理、双端共享页面片段、重组件子路径导入验证、Playwright 工作区基座、生产配置样例、部署说明、健康检查依赖明细、分层 CI 门禁、生产 Dockerfile、PostgreSQL 迁移 SQL 生成、运行时安全健康检查、OTLP 观测基线，以及用户、角色、文件、审计四类数据工作台的会话状态保留、批量操作、筛选导出和权限入口收敛能力。P1-P4 的组件盘点、显示门禁、共享页面片段、子路径导入、可访问性与响应式复核，P5 的数据工作台增强，P6 的通知、任务、审计、设置和媒体失败事件闭环，P7 的媒体 provider 配置、上传治理、引用校验、强制删除审计、孤儿清理、双端详情预览和生产资源配置结果，以及 P8 的容器化、迁移 SQL、发布门禁、观测和回滚基线已经沉淀到 [component-inventory.md](component-inventory.md)、[api.md](api.md)、[database.md](database.md) 和 [deployment.md](deployment.md)。后续计划不再重复记录历史完成项，只围绕可继续推进的能力建设展开。
+当前代码库已经具备后端 API、React / Vue 双端后台、Tigercat 1.2.16 组件接入、SQLite / PostgreSQL provider、Redis 缓存与事件通道、媒体资源生产化治理、配置化认证安全策略、审计敏感字段清理、双端共享页面片段、重组件子路径导入验证、Playwright 工作区基座、生产配置样例、部署说明、健康检查依赖明细、分层 CI 门禁、生产 Dockerfile、PostgreSQL 迁移 SQL 生成、运行时安全健康检查、OTLP 观测基线，以及用户、角色、文件、审计四类数据工作台的会话状态保留、批量操作、筛选导出和权限入口收敛能力。P1-P4 的组件盘点、显示门禁、共享页面片段、子路径导入、可访问性与响应式复核，P5 的数据工作台增强，P6 的通知、任务、审计、设置和媒体失败事件闭环，P7 的媒体 provider 配置、上传治理、引用校验、强制删除审计、孤儿清理、双端详情预览和生产资源配置结果，P8 的容器化、迁移 SQL、发布门禁、观测和回滚基线，以及 P9 的 Tigercat UI 版本升级、API 迁移、性能体积和上游反馈流程复核已经沉淀到 [component-inventory.md](component-inventory.md)、[api.md](api.md)、[database.md](database.md)、[deployment.md](deployment.md) 和 [upstream-requirements.md](upstream-requirements.md)。后续计划不再重复记录历史完成项，只围绕可继续推进的能力建设展开。
 
 ## 推进原则
 
@@ -31,34 +31,7 @@
 
 ## 后续优先级总览
 
-| 优先级 | 主题 | 目标 | 主要验证 |
-| ------ | ---- | ---- | -------- |
-| P9 | Tigercat UI 升级与上游反馈循环 | 建立组件库版本升级、API 迁移、性能体积和上游缺口登记的固定流程 | 双端构建、组件盘点更新、上游需求文档更新 |
-
-## P9：Tigercat UI 升级与上游反馈循环
-
-目标：建立组件库升级、性能复核和上游反馈的固定节奏，避免双端实现长期停留在一次性接入状态。
-
-范围：
-
-- 版本升级：每次升级 `@expcat/tigercat-core`、`@expcat/tigercat-vue`、`@expcat/tigercat-react` 时，先阅读 Tigercat 迁移说明，再统一升级三包版本。
-- API 映射：按 Tigercat skill 的 Vue / React 映射复核 `open`、`modelValue` / `value`、`@update:*` / `on*Change`、`class` / `className` 等差异。
-- 性能复核：保持普通组件包级导入、重组件子路径导入；图表、TaskBoard、NotificationCenter、FileManager、ActivityFeed、Timeline、ColorPicker、Upload、CropUpload 等继续按 route 或 interaction 边界控制。
-- 组件盘点：升级或大规模页面改动后更新 [component-inventory.md](component-inventory.md)，记录真实导入、双端差异、构建体积和显示风险。
-- 上游反馈：只有确认属于 Tigercat 组件 API、交互、可访问性或性能能力的问题，才登记到 [upstream-requirements.md](upstream-requirements.md)，并写清复现路径和临时方案。
-
-交付物：
-
-- 依赖升级 PR 或变更记录。
-- 组件盘点与上游需求文档同步。
-- 必要时补充最小复现或示例页面。
-
-验收门禁：
-
-- `pnpm build:frontend`
-- `pnpm e2e:react`
-- `pnpm e2e:vue`
-- 重点页面 chunk 体积对比和重组件导入路径复核。
+当前暂无未完成的后续优先级。新增计划时在本文补充目标、范围和验证方式，并同步沉淀到对应专题文档。
 
 ## 验证门禁
 
