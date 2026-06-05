@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Layout, Content } from '@expcat/tigercat-react';
+import { Layout, Content, Drawer } from '@expcat/tigercat-react';
 import { MainHeader } from './MainHeader';
 import { MainSidebar } from './MainSidebar';
 import type { ThemeMode } from '../utils/types';
@@ -118,24 +118,41 @@ export function MainLayout({
       )}
 
       {/* Sidebar */}
-      <div
-        id="main-sidebar"
-        aria-hidden={isMobile && !sidebarOpen}
-        className={
-          isMobile
-            ? `fixed inset-y-0 left-0 z-40 h-full shrink-0 transform transition-transform duration-200 ease-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
-            : 'relative h-full shrink-0'
-        }>
-        <MainSidebar
-          collapsed={isMobile ? false : collapsed}
-          activeMenu={currentActiveMenu}
-          showCollapseToggle={!isMobile}
-          sidebarWidth="240px"
-          collapsedWidth="64px"
-          onCollapsedChange={setCollapsed}
-          onMenuSelect={handleMenuSelect}
-        />
-      </div>
+      {isMobile ? (
+        <Drawer
+          placement="left"
+          open={sidebarOpen}
+          onClose={handleSidebarClose}
+          closable={false}
+          mask={false}
+          width="240px"
+          bodyClassName="!p-0 h-full"
+        >
+          <div id="main-sidebar" className="h-full">
+            <MainSidebar
+              collapsed={false}
+              activeMenu={currentActiveMenu}
+              showCollapseToggle={false}
+              sidebarWidth="240px"
+              collapsedWidth="64px"
+              onCollapsedChange={setCollapsed}
+              onMenuSelect={handleMenuSelect}
+            />
+          </div>
+        </Drawer>
+      ) : (
+        <div id="main-sidebar" className="relative h-full shrink-0">
+          <MainSidebar
+            collapsed={collapsed}
+            activeMenu={currentActiveMenu}
+            showCollapseToggle={true}
+            sidebarWidth="240px"
+            collapsedWidth="64px"
+            onCollapsedChange={setCollapsed}
+            onMenuSelect={handleMenuSelect}
+          />
+        </div>
+      )}
 
       {/* Main Content Area */}
       <Layout className="h-full min-h-0 min-w-0 flex-1">

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Layout, Content } from '@expcat/tigercat-vue'
+import { Layout, Content, Drawer } from '@expcat/tigercat-vue'
 import MainHeader from './MainHeader.vue'
 import MainSidebar from './MainSidebar.vue'
 import type { ThemeMode } from '../utils/types'
@@ -118,20 +118,37 @@ watch(
     />
 
     <!-- Sidebar -->
+    <Drawer
+      v-if="isMobile"
+      placement="left"
+      v-model:open="sidebarOpen"
+      :closable="false"
+      :mask="false"
+      width="240px"
+      body-class-name="!p-0 h-full"
+    >
+      <div id="main-sidebar" class="h-full">
+        <MainSidebar 
+          :collapsed="false"
+          v-model:active-menu="activeMenu"
+          :show-collapse-toggle="false"
+          sidebar-width="240px"
+          collapsed-width="64px"
+          @update:collapsed="(value) => collapsed = value"
+          @select="handleMenuSelect" 
+        />
+      </div>
+    </Drawer>
+
     <div
+      v-else
       id="main-sidebar"
-      :aria-hidden="isMobile && !sidebarOpen"
-      :class="isMobile
-        ? [
-            'fixed inset-y-0 left-0 z-40 h-full shrink-0 transform transition-transform duration-200 ease-out',
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          ]
-        : 'relative h-full shrink-0'"
+      class="relative h-full shrink-0"
     >
       <MainSidebar 
-        :collapsed="isMobile ? false : collapsed"
+        :collapsed="collapsed"
         v-model:active-menu="activeMenu"
-        :show-collapse-toggle="!isMobile"
+        :show-collapse-toggle="true"
         sidebar-width="240px"
         collapsed-width="64px"
         @update:collapsed="(value) => collapsed = value"

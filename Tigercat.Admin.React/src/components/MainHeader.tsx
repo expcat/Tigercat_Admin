@@ -8,6 +8,8 @@ import {
   Dropdown,
   DropdownMenu,
   DropdownItem,
+  Button,
+  Tag,
 } from '@expcat/tigercat-react';
 import {
   LockIcon,
@@ -71,15 +73,15 @@ export function MainHeader({
     <Header className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 shadow-sm z-10 md:flex-nowrap md:px-6">
       <div className="flex min-w-0 flex-1 flex-col gap-1 py-2">
         {showSidebarToggle && (
-          <button
-            type="button"
+          <Button
+            variant="outline"
             onClick={onToggleSidebar}
             aria-controls="main-sidebar"
             aria-expanded={sidebarOpen}
             aria-label={sidebarOpen ? '关闭导航菜单' : '打开导航菜单'}
-            className="mb-1 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-(--tiger-border,#e2e8f0) text-(--tiger-text-secondary,#64748b) transition-colors hover:border-(--tiger-primary,#3b82f6) hover:bg-(--tiger-bg-hover,#f3f4f6) hover:text-(--tiger-text,#1f2937) md:hidden">
+            className="mb-1 h-10 w-10 !p-0 md:hidden">
             {sidebarOpen ? <XIcon size={18} /> : <MenuIcon size={18} />}
-          </button>
+          </Button>
         )}
         <Text size="lg" weight="bold" className="text-(--tiger-text,#1f2937)">
           管理中心
@@ -101,16 +103,16 @@ export function MainHeader({
       {/* 右侧操作区 */}
       <div className="flex min-w-0 max-w-full shrink-0 items-center gap-2 sm:gap-3">
         {demoMode && (
-          <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
+          <Tag variant="warning" className="rounded-full px-3 font-medium">
             演示模式
-          </span>
+          </Tag>
         )}
         <Dropdown trigger="click" placement="bottom-end">
           <button
             className="flex max-w-[12rem] items-center gap-2 rounded-full border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-hover,#f3f4f6) px-2.5 py-1.5 text-left transition-colors hover:border-(--tiger-primary,#3b82f6) hover:text-(--tiger-text,#1f2937) sm:max-w-56 sm:gap-3 sm:px-3"
             title={accountLabel}
             aria-label={accountLabel}>
-            <Avatar className="p2-icon-chip shrink-0 font-bold text-sm">
+            <Avatar className="shrink-0 font-bold text-sm bg-gradient-to-tr from-(--tiger-primary,#3b82f6) to-blue-400 text-white">
               {accountLabel.charAt(0).toUpperCase()}
             </Avatar>
             <span className="min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937)">
