@@ -70,22 +70,24 @@ export function MainHeader({
     breadcrumbItems.length > 0 ? breadcrumbItems : [pageTitle];
 
   return (
-    <Header className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 shadow-sm z-10 md:flex-nowrap md:px-6">
+    <Header height="auto" className="flex min-h-16 flex-wrap items-center justify-between gap-3 px-4 py-2 shadow-sm z-10 md:flex-nowrap md:px-6">
       <div className="flex min-w-0 flex-1 flex-col gap-1 py-2">
-        {showSidebarToggle && (
-          <Button
-            variant="outline"
-            onClick={onToggleSidebar}
-            aria-controls="main-sidebar"
-            aria-expanded={sidebarOpen}
-            aria-label={sidebarOpen ? '关闭导航菜单' : '打开导航菜单'}
-            className="mb-1 h-10 w-10 !p-0 md:hidden">
-            {sidebarOpen ? <XIcon size={18} /> : <MenuIcon size={18} />}
-          </Button>
-        )}
-        <Text size="lg" weight="bold" className="text-(--tiger-text,#1f2937)">
-          管理中心
-        </Text>
+        <div className="flex items-center gap-2">
+          {showSidebarToggle && (
+            <Button
+              variant="outline"
+              onClick={onToggleSidebar}
+              aria-controls="main-sidebar"
+              aria-expanded={sidebarOpen}
+              aria-label={sidebarOpen ? '关闭导航菜单' : '打开导航菜单'}
+              className="h-10 w-10 !p-0 shrink-0">
+              {sidebarOpen ? <XIcon size={18} /> : <MenuIcon size={18} />}
+            </Button>
+          )}
+          <Text size="lg" weight="bold" className="text-(--tiger-text,#1f2937)">
+            管理中心
+          </Text>
+        </div>
         <Breadcrumb
           className="min-w-0 max-w-full overflow-hidden text-sm text-(--tiger-text-secondary,#64748b)"
           maxItems={4}>

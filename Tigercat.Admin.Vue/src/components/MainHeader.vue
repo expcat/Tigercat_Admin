@@ -57,20 +57,22 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
 </script>
 
 <template>
-  <Header class="flex flex-wrap items-center justify-between gap-3 px-4 py-2 shadow-sm z-10 md:flex-nowrap md:px-6">
+  <Header height="auto" class="flex min-h-16 flex-wrap items-center justify-between gap-3 px-4 py-2 shadow-sm z-10 md:flex-nowrap md:px-6">
     <div class="flex min-w-0 flex-1 flex-col gap-1 py-2">
-      <Button
-        v-if="props.showSidebarToggle"
-        variant="outline"
-        aria-controls="main-sidebar"
-        :aria-expanded="props.sidebarOpen"
-        :aria-label="props.sidebarOpen ? '关闭导航菜单' : '打开导航菜单'"
-        class="mb-1 h-10 w-10 !p-0 md:hidden"
-        @click="$emit('toggle-sidebar')"
-      >
-        <Icon :name="props.sidebarOpen ? 'x' : 'menu'" :size="18" />
-      </Button>
-      <Text size="lg" weight="bold" class="text-(--tiger-text,#1f2937)">管理中心</Text>
+      <div class="flex items-center gap-2">
+        <Button
+          v-if="props.showSidebarToggle"
+          variant="outline"
+          aria-controls="main-sidebar"
+          :aria-expanded="props.sidebarOpen"
+          :aria-label="props.sidebarOpen ? '关闭导航菜单' : '打开导航菜单'"
+          class="h-10 w-10 !p-0 shrink-0"
+          @click="$emit('toggle-sidebar')"
+        >
+          <Icon :name="props.sidebarOpen ? 'x' : 'menu'" :size="18" />
+        </Button>
+        <Text size="lg" weight="bold" class="text-(--tiger-text,#1f2937)">管理中心</Text>
+      </div>
       <Breadcrumb class-name="min-w-0 max-w-full overflow-hidden text-sm text-(--tiger-text-secondary,#64748b)" :max-items="4">
         <BreadcrumbItem>管理中心</BreadcrumbItem>
         <BreadcrumbItem

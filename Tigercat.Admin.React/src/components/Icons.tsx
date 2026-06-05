@@ -393,6 +393,12 @@ export const MoonIcon = (props: IconProps) => (
   </IconBase>
 );
 
+export const PlaceholderIcon = (props: IconProps) => (
+  <IconBase {...props}>
+    <circle cx="12" cy="12" r="5" fill="currentColor" />
+  </IconBase>
+);
+
 export const MonitorIcon = (props: IconProps) => (
   <IconBase {...props}>
     <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
@@ -440,4 +446,5 @@ export const Icons = {
   Sun: SunIcon,
   Moon: MoonIcon,
   Monitor: MonitorIcon,
+  Placeholder: PlaceholderIcon,
 };

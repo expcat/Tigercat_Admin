@@ -54,7 +54,11 @@ const handleMenuSelect = (key: string) => {
 }
 
 const handleSidebarToggle = () => {
-  sidebarOpen.value = !sidebarOpen.value
+  if (isMobile.value) {
+    sidebarOpen.value = !sidebarOpen.value
+  } else {
+    collapsed.value = !collapsed.value
+  }
 }
 
 const handleSidebarClose = () => {
@@ -109,14 +113,6 @@ watch(
 
 <template>
   <Layout class="h-screen w-full overflow-hidden !flex-row">
-    <button
-      v-if="isMobile && sidebarOpen"
-      type="button"
-      aria-label="关闭导航菜单"
-      class="p2-overlay fixed inset-0 z-30 md:hidden"
-      @click="handleSidebarClose"
-    />
-
     <!-- Sidebar -->
     <Drawer
       v-if="isMobile"
@@ -124,8 +120,10 @@ watch(
       v-model:open="sidebarOpen"
       :closable="false"
       :mask="false"
+      :mask-closable="true"
       width="240px"
       body-class-name="!p-0 h-full"
+      @close="handleSidebarClose"
     >
       <div id="main-sidebar" class="h-full">
         <MainSidebar 
@@ -140,10 +138,19 @@ watch(
       </div>
     </Drawer>
 
+    <button
+      v-if="isMobile && sidebarOpen"
+      type="button"
+      aria-label="关闭导航菜单"
+      class="p2-overlay fixed inset-0 z-30 md:hidden"
+      @click="handleSidebarClose"
+    />
+
     <div
-      v-else
+      v-if="!isMobile"
       id="main-sidebar"
-      class="relative h-full shrink-0"
+      class="relative h-full shrink-0 transition-[width] duration-300 ease-in-out"
+      :style="{ width: collapsed ? '64px' : '240px' }"
     >
       <MainSidebar 
         :collapsed="collapsed"
@@ -164,8 +171,8 @@ watch(
         :page-title="pageTitle"
         :breadcrumb-items="breadcrumbItems"
         :theme-mode="themeMode"
-        :show-sidebar-toggle="isMobile"
-        :sidebar-open="sidebarOpen"
+        :show-sidebar-toggle="true"
+        :sidebar-open="!isMobile ? !collapsed : sidebarOpen"
         :demo-mode="DEMO_MODE"
         @logout="$emit('logout')"
         @change-password="$emit('change-password')"

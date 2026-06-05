@@ -58,7 +58,7 @@ watch(
   { immediate: true }
 )
 
-const menuIcon = (name: string, size = 20) => h(Icon, { name, size })
+const menuIcon = (name?: string, size = 20) => h(Icon, { name: name || 'placeholder', size })
 </script>
 
 <template>
@@ -66,14 +66,19 @@ const menuIcon = (name: string, size = 20) => h(Icon, { name, size })
     :collapsed="displayCollapsed"
     :width="props.sidebarWidth"
     :collapsed-width="props.collapsedWidth"
-    class="h-full shrink-0"
+    class="h-full shrink-0 transition-[width] duration-300 ease-in-out"
   >
     <div class="flex h-full min-h-0 flex-col">
       <!-- Logo -->
-      <div class="flex h-16 shrink-0 items-center justify-center border-b border-(--tiger-border,#e2e8f0)">
+      <div class="flex h-16 shrink-0 items-center justify-center border-b border-(--tiger-border,#e2e8f0) overflow-hidden">
         <div class="flex items-center gap-3">
           <AppLogo :size="36" />
-          <span v-if="!displayCollapsed" class="font-bold text-lg text-(--tiger-text,#1f2937) tracking-wide whitespace-nowrap">Tigercat</span>
+          <span 
+            class="font-bold text-lg text-(--tiger-text,#1f2937) tracking-wide whitespace-nowrap transition-all duration-300"
+            :class="displayCollapsed ? 'w-0 opacity-0 scale-95 pointer-events-none' : 'w-auto opacity-100'"
+          >
+            Tigercat
+          </span>
         </div>
       </div>
 
@@ -132,7 +137,7 @@ const menuIcon = (name: string, size = 20) => h(Icon, { name, size })
       </div>
 
       <!-- 折叠按钮 -->
-      <div v-if="props.showCollapseToggle" class="shrink-0 border-t border-(--tiger-border,#e2e8f0) p-3">
+      <div v-if="props.showCollapseToggle" class="shrink-0 border-t border-(--tiger-border,#e2e8f0) p-3 overflow-hidden">
         <button 
           @click="toggleCollapsed" 
           class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm text-(--tiger-text-secondary,#64748b) hover:bg-(--tiger-bg-hover,#f3f4f6) hover:text-(--tiger-text,#1f2937) transition-all duration-200"
@@ -140,7 +145,12 @@ const menuIcon = (name: string, size = 20) => h(Icon, { name, size })
           <span class="shrink-0">
             <Icon :name="props.collapsed ? 'chevronRight' : 'chevronLeft'" :size="18" />
           </span>
-          <span v-if="!props.collapsed" class="whitespace-nowrap">收起菜单</span>
+          <span 
+            class="whitespace-nowrap transition-all duration-300"
+            :class="props.collapsed ? 'w-0 opacity-0 scale-95 pointer-events-none' : 'w-auto opacity-100'"
+          >
+            收起菜单
+          </span>
         </button>
       </div>
     </div>

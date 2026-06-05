@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Sidebar, Menu, MenuItem, SubMenu } from '@expcat/tigercat-react';
-import { LogoIcon, ChevronRightIcon, ChevronLeftIcon } from './Icons';
+import { LogoIcon, ChevronRightIcon, ChevronLeftIcon, PlaceholderIcon } from './Icons';
 import { usePermission } from '../utils/permission';
 import {
   SHELL_BOTTOM_MENU_ITEMS,
@@ -51,22 +51,27 @@ export function MainSidebar({
 
   const displayCollapsed = showCollapseToggle ? collapsed : false;
 
+  const renderItemIcon = (icon: React.ReactNode) => {
+    return icon || <PlaceholderIcon size={18} />;
+  };
+
   return (
     <Sidebar
       collapsed={displayCollapsed}
       width={sidebarWidth}
       collapsedWidth={collapsedWidth}
-      className="h-full shrink-0">
+      className="h-full shrink-0 transition-[width] duration-300 ease-in-out">
       <div className="flex h-full min-h-0 flex-col">
         {/* Logo */}
-        <div className="flex h-16 shrink-0 items-center justify-center border-b border-(--tiger-border,#e2e8f0)">
+        <div className="flex h-16 shrink-0 items-center justify-center border-b border-(--tiger-border,#e2e8f0) overflow-hidden">
           <div className="flex items-center gap-3">
             <LogoIcon />
-            {!displayCollapsed && (
-              <span className="font-bold text-lg text-(--tiger-text,#1f2937) tracking-wide whitespace-nowrap">
-                Tigercat
-              </span>
-            )}
+            <span
+              className={`font-bold text-lg text-(--tiger-text,#1f2937) tracking-wide whitespace-nowrap transition-all duration-300 ${
+                displayCollapsed ? 'w-0 opacity-0 scale-95 pointer-events-none' : 'w-auto opacity-100'
+              }`}>
+              Tigercat
+            </span>
           </div>
         </div>
 
@@ -84,18 +89,18 @@ export function MainSidebar({
                   key={item.key}
                   itemKey={item.key}
                   title={item.label}
-                  icon={item.icon}>
+                  icon={renderItemIcon(item.icon)}>
                   {item.children.map((child) => (
                     <MenuItem
                       key={child.key}
                       itemKey={child.key}
-                      icon={child.icon}>
+                      icon={renderItemIcon(child.icon)}>
                       {child.label}
                     </MenuItem>
                   ))}
                 </SubMenu>
               ) : (
-                <MenuItem key={item.key} itemKey={item.key} icon={item.icon}>
+                <MenuItem key={item.key} itemKey={item.key} icon={renderItemIcon(item.icon)}>
                   {item.label}
                 </MenuItem>
               ),
@@ -110,7 +115,7 @@ export function MainSidebar({
             collapsed={displayCollapsed}
             onSelect={handleSelect}>
             {SHELL_BOTTOM_MENU_ITEMS.map((item) => (
-              <MenuItem key={item.key} itemKey={item.key} icon={item.icon}>
+              <MenuItem key={item.key} itemKey={item.key} icon={renderItemIcon(item.icon)}>
                 {item.label}
               </MenuItem>
             ))}
@@ -119,7 +124,7 @@ export function MainSidebar({
 
         {/* 折叠按钮 */}
         {showCollapseToggle && (
-          <div className="shrink-0 border-t border-(--tiger-border,#e2e8f0) p-3">
+          <div className="shrink-0 border-t border-(--tiger-border,#e2e8f0) p-3 overflow-hidden">
             <button
               onClick={() => onCollapsedChange(!collapsed)}
               className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm text-(--tiger-text-secondary,#64748b) hover:bg-(--tiger-bg-hover,#f3f4f6) hover:text-(--tiger-text,#1f2937) transition-all duration-200">
@@ -130,9 +135,12 @@ export function MainSidebar({
                   <ChevronLeftIcon size={18} />
                 )}
               </span>
-              {!collapsed && (
-                <span className="whitespace-nowrap">收起菜单</span>
-              )}
+              <span
+                className={`whitespace-nowrap transition-all duration-300 ${
+                  collapsed ? 'w-0 opacity-0 scale-95 pointer-events-none' : 'w-auto opacity-100'
+                }`}>
+                收起菜单
+              </span>
             </button>
           </div>
         )}

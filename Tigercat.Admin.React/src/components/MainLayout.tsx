@@ -96,7 +96,11 @@ export function MainLayout({
   };
 
   const handleSidebarToggle = () => {
-    setSidebarOpen((prev) => !prev);
+    if (isMobile) {
+      setSidebarOpen((prev) => !prev);
+    } else {
+      setCollapsed((prev) => !prev);
+    }
   };
 
   const handleSidebarClose = () => {
@@ -108,40 +112,46 @@ export function MainLayout({
 
   return (
     <Layout className="h-screen w-full overflow-hidden !flex-row">
-      {isMobile && sidebarOpen && (
-        <button
-          type="button"
-          aria-label="关闭导航菜单"
-          onClick={handleSidebarClose}
-          className="p2-overlay fixed inset-0 z-30 md:hidden"
-        />
-      )}
-
       {/* Sidebar */}
       {isMobile ? (
-        <Drawer
-          placement="left"
-          open={sidebarOpen}
-          onClose={handleSidebarClose}
-          closable={false}
-          mask={false}
-          width="240px"
-          bodyClassName="!p-0 h-full"
-        >
-          <div id="main-sidebar" className="h-full">
-            <MainSidebar
-              collapsed={false}
-              activeMenu={currentActiveMenu}
-              showCollapseToggle={false}
-              sidebarWidth="240px"
-              collapsedWidth="64px"
-              onCollapsedChange={setCollapsed}
-              onMenuSelect={handleMenuSelect}
+        <>
+          <Drawer
+            placement="left"
+            open={sidebarOpen}
+            onClose={handleSidebarClose}
+            closable={false}
+            mask={false}
+            maskClosable={true}
+            width="240px"
+            bodyClassName="!p-0 h-full"
+          >
+            <div id="main-sidebar" className="h-full">
+              <MainSidebar
+                collapsed={false}
+                activeMenu={currentActiveMenu}
+                showCollapseToggle={false}
+                sidebarWidth="240px"
+                collapsedWidth="64px"
+                onCollapsedChange={setCollapsed}
+                onMenuSelect={handleMenuSelect}
+              />
+            </div>
+          </Drawer>
+          {sidebarOpen && (
+            <button
+              type="button"
+              aria-label="关闭导航菜单"
+              onClick={handleSidebarClose}
+              className="p2-overlay fixed inset-0 z-30 md:hidden"
             />
-          </div>
-        </Drawer>
+          )}
+        </>
       ) : (
-        <div id="main-sidebar" className="relative h-full shrink-0">
+        <div 
+          id="main-sidebar" 
+          className="relative h-full shrink-0 transition-[width] duration-300 ease-in-out"
+          style={{ width: collapsed ? '64px' : '240px' }}
+        >
           <MainSidebar
             collapsed={collapsed}
             activeMenu={currentActiveMenu}
@@ -162,8 +172,8 @@ export function MainLayout({
           pageTitle={pageTitle}
           breadcrumbItems={breadcrumbItems}
           themeMode={themeMode}
-          showSidebarToggle={isMobile}
-          sidebarOpen={sidebarOpen}
+          showSidebarToggle={true}
+          sidebarOpen={!isMobile ? !collapsed : sidebarOpen}
           onLogout={onLogout}
           onChangePassword={onChangePassword}
           onToggleTheme={onToggleTheme}
