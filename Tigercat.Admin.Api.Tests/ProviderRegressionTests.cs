@@ -1239,6 +1239,7 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         Assert.Equal("healthy", body.Data.Details["redis"].Status);
         Assert.Equal("healthy", body.Data.Details["eventChannel"].Status);
         Assert.Equal("healthy", body.Data.Details["configuration"].Status);
+        Assert.Equal("healthy", body.Data.Details["security"].Status);
     }
 
     [Fact]
@@ -1265,4 +1266,26 @@ public class InMemoryProviderRegressionTests : ProviderRegressionTests<InMemoryA
 public class SqliteProviderRegressionTests : ProviderRegressionTests<SqliteApiFactory>
 {
     public SqliteProviderRegressionTests(SqliteApiFactory factory) : base(factory) { }
+}
+
+public class ProductionSecurityHealthTests : IClassFixture<ProductionSecurityApiFactory>
+{
+    private readonly HttpClient _client;
+
+    public ProductionSecurityHealthTests(ProductionSecurityApiFactory factory)
+    {
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task HealthCheck_ReturnsUnhealthyForDefaultProductionSecuritySettings()
+    {
+        var response = await _client.GetAsync("/api/health");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        var body = await response.ReadApiResponseAsync<HealthResponse>();
+        Assert.NotNull(body?.Data?.Details);
+        Assert.Equal("unhealthy", body.Data.Details["security"].Status);
+        Assert.Contains("Default admin password", body.Data.Details["security"].Message);
+    }
 }

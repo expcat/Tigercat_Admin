@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -14,40 +14,34 @@ namespace Tigercat.Admin.Api.Data.Migrations
             migrationBuilder.AddColumn<DateTime>(
                 name: "DeletedAt",
                 table: "MediaResources",
-                type: "TEXT",
                 nullable: true);
 
             migrationBuilder.AddColumn<int>(
                 name: "Height",
                 table: "MediaResources",
-                type: "INTEGER",
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
                 name: "Sha256Hash",
                 table: "MediaResources",
-                type: "TEXT",
                 maxLength: 64,
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
                 name: "StorageKey",
                 table: "MediaResources",
-                type: "TEXT",
                 maxLength: 500,
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
                 name: "StorageProvider",
                 table: "MediaResources",
-                type: "TEXT",
                 maxLength: 50,
                 nullable: true);
 
             migrationBuilder.AddColumn<int>(
                 name: "Width",
                 table: "MediaResources",
-                type: "INTEGER",
                 nullable: true);
 
             migrationBuilder.CreateIndex(

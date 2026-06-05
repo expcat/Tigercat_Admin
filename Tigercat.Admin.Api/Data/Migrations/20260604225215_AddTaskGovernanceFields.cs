@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -13,14 +13,12 @@ namespace Tigercat.Admin.Api.Data.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "BlockedReason",
                 table: "AdminTasks",
-                type: "TEXT",
                 maxLength: 500,
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
                 name: "CompletionNote",
                 table: "AdminTasks",
-                type: "TEXT",
                 maxLength: 500,
                 nullable: true);
         }

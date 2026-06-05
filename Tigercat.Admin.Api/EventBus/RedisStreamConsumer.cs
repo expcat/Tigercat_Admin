@@ -3,6 +3,7 @@ using FreeRedis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Tigercat.Admin.Api.Observability;
 using Tigercat.Admin.Api.Notifications;
 using Tigercat.Admin.Api.Serialization;
 
@@ -178,11 +179,13 @@ public sealed class RedisStreamConsumer : BackgroundService
 
             await ProcessEventAsync(envelope, stream, ct);
             _redis.XAck(stream, _groupName, new[] { entry.id });
+            AdminMetrics.RecordRedisStreamEvent("consume", stream, envelope.EventType, true);
             _logger.LogInformation("Event {EventType} acknowledged for stream {Stream}.", envelope.EventType, stream);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Event handling failed for stream {Stream}.", stream);
+            AdminMetrics.RecordRedisStreamEvent("consume", stream, "unknown", false);
         }
     }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -15,19 +15,18 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "AdminNotifications",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    PublicId = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
-                    GroupKey = table.Column<string>(type: "TEXT", maxLength: 30, nullable: false),
-                    Title = table.Column<string>(type: "TEXT", maxLength: 120, nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: false),
-                    ToastType = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    Read = table.Column<bool>(type: "INTEGER", nullable: false),
-                    LinkUrl = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
-                    MetadataJson = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    ReadAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: true)
+                    Id = table.Column<int>(nullable: false),
+                    PublicId = table.Column<string>(maxLength: 64, nullable: false),
+                    GroupKey = table.Column<string>(maxLength: 30, nullable: false),
+                    Title = table.Column<string>(maxLength: 120, nullable: false),
+                    Description = table.Column<string>(maxLength: 1000, nullable: false),
+                    ToastType = table.Column<string>(maxLength: 20, nullable: false),
+                    Read = table.Column<bool>(nullable: false),
+                    LinkUrl = table.Column<string>(maxLength: 500, nullable: true),
+                    MetadataJson = table.Column<string>(maxLength: 2000, nullable: false),
+                    CreatedAt = table.Column<DateTime>(nullable: false),
+                    ReadAt = table.Column<DateTime>(nullable: true),
+                    UpdatedAt = table.Column<DateTime>(nullable: true)
                 },
                 constraints: table =>
                 {
@@ -38,21 +37,20 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "AdminTasks",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    PublicId = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
-                    Title = table.Column<string>(type: "TEXT", maxLength: 120, nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: true),
-                    Assignee = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false),
-                    Priority = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    DueAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    EstimateHours = table.Column<double>(type: "REAL", nullable: false),
-                    Blocked = table.Column<bool>(type: "INTEGER", nullable: false),
-                    CreatedBy = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    CompletedAt = table.Column<DateTime>(type: "TEXT", nullable: true)
+                    Id = table.Column<int>(nullable: false),
+                    PublicId = table.Column<string>(maxLength: 64, nullable: false),
+                    Title = table.Column<string>(maxLength: 120, nullable: false),
+                    Description = table.Column<string>(maxLength: 1000, nullable: true),
+                    Assignee = table.Column<string>(maxLength: 80, nullable: false),
+                    Priority = table.Column<string>(maxLength: 20, nullable: false),
+                    Status = table.Column<string>(maxLength: 20, nullable: false),
+                    DueAt = table.Column<DateTime>(nullable: false),
+                    EstimateHours = table.Column<double>(nullable: false),
+                    Blocked = table.Column<bool>(nullable: false),
+                    CreatedBy = table.Column<string>(maxLength: 50, nullable: true),
+                    CreatedAt = table.Column<DateTime>(nullable: false),
+                    UpdatedAt = table.Column<DateTime>(nullable: true),
+                    CompletedAt = table.Column<DateTime>(nullable: true)
                 },
                 constraints: table =>
                 {

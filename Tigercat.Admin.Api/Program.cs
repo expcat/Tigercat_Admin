@@ -166,7 +166,7 @@ try
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
-    await DbInitializer.InitializeAsync(dbContext);
+    await DbInitializer.InitializeAsync(dbContext, app.Configuration);
 }
 catch (Exception ex)
 {
@@ -217,6 +217,7 @@ static async Task<IResult> GetHealth(
         ["eventChannel"] = CheckEventChannel(configuration, services),
         ["mediaStorage"] = CheckMediaStorage(configuration),
         ["configuration"] = CheckConfiguration(configuration, environment),
+        ["security"] = await CheckSecurityAsync(dbContext, configuration, environment, ct),
     };
 
     var status = details.Values.Any(item => item.Status == "unhealthy")
@@ -342,7 +343,109 @@ static HealthDependencyStatus CheckEventChannel(IConfiguration configuration, IS
     var connectionString = configuration.GetConnectionString("Redis");
     return string.IsNullOrWhiteSpace(connectionString)
         ? HealthDependencyStatus.Unhealthy("redis-stream", "ConnectionStrings:Redis is required for Redis Stream events.")
-        : HealthDependencyStatus.Healthy(string.Join(",", EventBusConstants.Streams));
+        : HealthDependencyStatus.Healthy($"streams:{string.Join(",", EventBusConstants.Streams)}");
+}
+
+static async Task<HealthDependencyStatus> CheckSecurityAsync(
+    AdminDbContext dbContext,
+    IConfiguration configuration,
+    IWebHostEnvironment environment,
+    CancellationToken ct)
+{
+    if (!environment.IsProduction())
+    {
+        return HealthDependencyStatus.Healthy(environment.EnvironmentName);
+    }
+
+    var issues = new List<string>();
+
+    try
+    {
+        var databaseOptions = DatabaseProviderResolver.Resolve(configuration);
+        if (databaseOptions.Provider == AdminDatabaseProvider.PostgreSql &&
+            !HasPostgreSqlTls(databaseOptions.ConnectionString))
+        {
+            issues.Add("PostgreSQL connection should require TLS.");
+        }
+    }
+    catch (Exception ex)
+    {
+        issues.Add(ex.Message);
+    }
+
+    if (!configuration.GetValue<bool>("Infrastructure:UseInMemory") &&
+        !HasRedisTls(configuration.GetConnectionString("Redis")))
+    {
+        issues.Add("Redis connection should enable TLS.");
+    }
+
+    var allowedOrigins = configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>() ?? [];
+
+    if (allowedOrigins.Length == 0)
+    {
+        issues.Add("Cors:AllowedOrigins must be configured.");
+    }
+
+    var allowedHosts = configuration["AllowedHosts"];
+    if (string.IsNullOrWhiteSpace(allowedHosts) || allowedHosts.Trim() == "*")
+    {
+        issues.Add("AllowedHosts should be restricted in Production.");
+    }
+
+    var defaultAdminHash = PasswordHasher.Hash("admin123");
+    var adminHash = await dbContext.Users
+        .Where(u => u.Username == "admin")
+        .Select(u => u.PasswordHash)
+        .FirstOrDefaultAsync(ct);
+
+    if (string.Equals(adminHash, defaultAdminHash, StringComparison.Ordinal))
+    {
+        issues.Add("Default admin password must be rotated.");
+    }
+
+    if (string.IsNullOrWhiteSpace(configuration["BootstrapAdmin:Password"]))
+    {
+        issues.Add("BootstrapAdmin:Password should be injected before first production startup.");
+    }
+
+    try
+    {
+        var policy = await AuthPolicySettings.LoadAsync(dbContext, ct);
+        if (policy.SessionTtl == TimeSpan.FromMinutes(AuthPolicySettings.DefaultSessionTimeoutMinutes))
+        {
+            issues.Add("auth.sessionTimeout is still at the default value.");
+        }
+
+        if (policy.MaxLoginAttempts == AuthPolicySettings.DefaultMaxAttempts)
+        {
+            issues.Add("auth.maxAttempts is still at the default value.");
+        }
+
+        if (policy.LoginLockout == TimeSpan.FromMinutes(AuthPolicySettings.DefaultLoginLockoutMinutes))
+        {
+            issues.Add("auth.loginLockoutMinutes is still at the default value.");
+        }
+
+        if (policy.PasswordMinLength == AuthPolicySettings.DefaultPasswordMinLength)
+        {
+            issues.Add("auth.passwordMinLength is still at the default value.");
+        }
+
+        if (!policy.RequireComplexPassword)
+        {
+            issues.Add("auth.requireComplexPassword should be enabled in Production.");
+        }
+    }
+    catch (Exception ex)
+    {
+        issues.Add($"Auth policy check failed: {ex.Message}");
+    }
+
+    return issues.Count == 0
+        ? HealthDependencyStatus.Healthy("production")
+        : HealthDependencyStatus.Unhealthy("production", string.Join(" ", issues));
 }
 
 static HealthDependencyStatus CheckConfiguration(IConfiguration configuration, IWebHostEnvironment environment)
@@ -390,6 +493,45 @@ static HealthDependencyStatus CheckMediaStorage(IConfiguration configuration)
     {
         return HealthDependencyStatus.Unhealthy("media", ex.Message);
     }
+}
+
+static bool HasPostgreSqlTls(string? connectionString)
+{
+    var values = ParseConnectionString(connectionString, ';');
+    return values.TryGetValue("SSL Mode", out var sslMode) &&
+        (sslMode.Equals("Require", StringComparison.OrdinalIgnoreCase) ||
+         sslMode.Equals("VerifyCA", StringComparison.OrdinalIgnoreCase) ||
+         sslMode.Equals("VerifyFull", StringComparison.OrdinalIgnoreCase));
+}
+
+static bool HasRedisTls(string? connectionString)
+{
+    var values = ParseConnectionString(connectionString, ',');
+    return values.TryGetValue("ssl", out var ssl) &&
+        bool.TryParse(ssl, out var enabled) &&
+        enabled;
+}
+
+static Dictionary<string, string> ParseConnectionString(string? connectionString, char separator)
+{
+    var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        return values;
+    }
+
+    foreach (var part in connectionString.Split(separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    {
+        var index = part.IndexOf('=');
+        if (index <= 0 || index == part.Length - 1)
+        {
+            continue;
+        }
+
+        values[part[..index].Trim()] = part[(index + 1)..].Trim();
+    }
+
+    return values;
 }
 
 public record HealthDependencyStatus(string Status, string Target, string? Message)

@@ -86,6 +86,9 @@ pnpm dev
 - ✅ 认证、用户、角色、权限、统计、导出、设置 API
 - ✅ CORS 跨域支持
 - ✅ API 代理配置
+- ✅ API / React / Vue 生产 Dockerfile
+- ✅ PostgreSQL 迁移 SQL 生成与发布门禁
+- ✅ OpenTelemetry 与生产安全健康检查
 - ✅ 解决方案文件 (Tigercat.Admin.sln)
 - ✅ 双端路由、权限守卫与主布局
 - ✅ 用户/角色/设置/仪表板核心页面
@@ -123,6 +126,24 @@ pnpm dev
 ## 📝 开发说明
 
 发布与生产化基线见 [docs/deployment.md](docs/deployment.md)，其中包含 PostgreSQL、Redis、CORS、前端 API 地址、健康检查、CI 和回滚策略。
+
+常用发布门禁：
+
+```bash
+dotnet test Tigercat.Admin.sln
+pnpm build
+pnpm build:demo
+pnpm db:script:postgres
+pnpm run check:links
+```
+
+生产镜像构建：
+
+```bash
+docker build -f Tigercat.Admin.Api/Dockerfile -t tigercat-admin-api .
+docker build -f Tigercat.Admin.React/Dockerfile -t tigercat-admin-react .
+docker build -f Tigercat.Admin.Vue/Dockerfile -t tigercat-admin-vue .
+```
 
 ### 数据库提供程序
 

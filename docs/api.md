@@ -38,7 +38,7 @@
 - **返回 data**：
   - `status`：健康状态字符串
   - `timestamp`：UTC 时间
-  - `details`：依赖状态明细，包含 `database`、`redis`、`eventChannel`、`configuration`
+  - `details`：依赖状态明细，包含 `database`、`redis`、`eventChannel`、`mediaStorage`、`configuration`、`security`
 
 示例：
 
@@ -53,14 +53,16 @@
     "details": {
       "database": { "status": "healthy", "target": "Sqlite", "message": null },
       "redis": { "status": "healthy", "target": "redis", "message": null },
-      "eventChannel": { "status": "healthy", "target": "stream:auth,stream:admin", "message": null },
-      "configuration": { "status": "healthy", "target": "Development", "message": null }
+      "eventChannel": { "status": "healthy", "target": "streams:stream:auth,stream:admin", "message": null },
+      "mediaStorage": { "status": "healthy", "target": "Local", "message": null },
+      "configuration": { "status": "healthy", "target": "Development", "message": null },
+      "security": { "status": "healthy", "target": "Development", "message": null }
     }
   }
 }
 ```
 
-当任一依赖或关键配置不可用时，接口返回 `503`，并在对应 `details` 项中给出诊断信息。
+当任一依赖或关键配置不可用时，接口返回 `503`，并在对应 `details` 项中给出诊断信息。`security` 在 `Production` 环境会检查 PostgreSQL TLS、Redis TLS、CORS 白名单、`AllowedHosts`、默认管理员密码轮换、`BootstrapAdmin:Password` 注入和会话/密码策略是否仍为默认值；非生产环境该项只作为宽松健康项返回。
 
 ### 1.1 Redis 健康检查
 

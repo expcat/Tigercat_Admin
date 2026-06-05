@@ -19,7 +19,7 @@
 
 ## 规划基线
 
-当前代码库已经具备后端 API、React / Vue 双端后台、Tigercat 1.2.16 组件接入、SQLite / PostgreSQL provider、Redis 缓存与事件通道、媒体资源生产化治理、配置化认证安全策略、审计敏感字段清理、双端共享页面片段、重组件子路径导入验证、Playwright 工作区基座、生产配置样例、部署说明、健康检查依赖明细、最小 CI 门禁，以及用户、角色、文件、审计四类数据工作台的会话状态保留、批量操作、筛选导出和权限入口收敛能力。P1-P4 的组件盘点、显示门禁、共享页面片段、子路径导入、可访问性与响应式复核，P5 的数据工作台增强，P6 的通知、任务、审计、设置和媒体失败事件闭环，以及 P7 的媒体 provider 配置、上传治理、引用校验、强制删除审计、孤儿清理、双端详情预览和生产资源配置结果已经沉淀到 [component-inventory.md](component-inventory.md)、[api.md](api.md)、[database.md](database.md) 和 [deployment.md](deployment.md)。后续计划不再重复记录历史完成项，只围绕可继续推进的能力建设展开。
+当前代码库已经具备后端 API、React / Vue 双端后台、Tigercat 1.2.16 组件接入、SQLite / PostgreSQL provider、Redis 缓存与事件通道、媒体资源生产化治理、配置化认证安全策略、审计敏感字段清理、双端共享页面片段、重组件子路径导入验证、Playwright 工作区基座、生产配置样例、部署说明、健康检查依赖明细、分层 CI 门禁、生产 Dockerfile、PostgreSQL 迁移 SQL 生成、运行时安全健康检查、OTLP 观测基线，以及用户、角色、文件、审计四类数据工作台的会话状态保留、批量操作、筛选导出和权限入口收敛能力。P1-P4 的组件盘点、显示门禁、共享页面片段、子路径导入、可访问性与响应式复核，P5 的数据工作台增强，P6 的通知、任务、审计、设置和媒体失败事件闭环，P7 的媒体 provider 配置、上传治理、引用校验、强制删除审计、孤儿清理、双端详情预览和生产资源配置结果，以及 P8 的容器化、迁移 SQL、发布门禁、观测和回滚基线已经沉淀到 [component-inventory.md](component-inventory.md)、[api.md](api.md)、[database.md](database.md) 和 [deployment.md](deployment.md)。后续计划不再重复记录历史完成项，只围绕可继续推进的能力建设展开。
 
 ## 推进原则
 
@@ -33,35 +33,7 @@
 
 | 优先级 | 主题 | 目标 | 主要验证 |
 | ------ | ---- | ---- | -------- |
-| P8 | 发布、部署与观测增强 | 固化容器化、迁移 SQL、发布门禁、运行时观测和回滚演练 | `dotnet test Tigercat.Admin.sln`、`pnpm build`、`pnpm e2e`、部署 smoke |
 | P9 | Tigercat UI 升级与上游反馈循环 | 建立组件库版本升级、API 迁移、性能体积和上游缺口登记的固定流程 | 双端构建、组件盘点更新、上游需求文档更新 |
-
-## P8：发布、部署与观测增强
-
-目标：把当前发布说明推进为可重复执行的生产交付基线，覆盖容器、迁移、配置、观测和回滚。
-
-范围：
-
-- 容器化：补 API、React、Vue 的生产 Dockerfile 或等价发布脚本，明确镜像构建上下文、静态资源服务和健康检查。
-- 数据库迁移：为 PostgreSQL 生产发布补迁移 SQL 生成、评审、执行和回滚流程，避免只依赖启动时建表。
-- CI 门禁：在最小 CI 基础上分层加入后端测试、前端构建、静态演示、E2E、链接检查和产物上传。
-- 观测：补结构化日志、健康检查明细、Redis 事件通道状态、关键业务事件指标和部署 smoke 清单。
-- 配置安全：补生产密钥注入、CORS 白名单、Redis TLS、数据库 TLS、默认管理员密码轮换和会话策略检查。
-
-交付物：
-
-- 更新 [deployment.md](deployment.md)，必要时新增脚本或 CI workflow。
-- 保持 `README.md`、`DEVELOPMENT.md`、`AGENT.md` 中入口命令一致。
-- 若新增部署模式，不把它做成新的 Roadmap 入口，只在本文保留优先级。
-
-验收门禁：
-
-- `dotnet test Tigercat.Admin.sln`
-- `pnpm build`
-- `pnpm build:demo`
-- `pnpm e2e:demo`
-- `pnpm e2e`
-- `pnpm run check:links`
 
 ## P9：Tigercat UI 升级与上游反馈循环
 

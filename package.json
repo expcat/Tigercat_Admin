@@ -20,6 +20,7 @@
     "e2e:vue": "playwright test --project=vue",
     "e2e:demo": "pnpm build:demo && playwright test --config=playwright.demo.config.ts",
     "e2e:install": "playwright install chromium",
+    "db:script:postgres": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/generate-postgres-sql.ps1",
     "check:links": "pnpm dlx markdown-link-check README.md DEVELOPMENT.md AGENT.md docs/ROADMAP.md docs/api.md docs/database.md docs/deployment.md docs/upstream-requirements.md docs/component-inventory.md"
   },
   "devDependencies": {

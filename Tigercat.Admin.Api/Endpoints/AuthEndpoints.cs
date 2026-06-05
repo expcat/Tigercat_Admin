@@ -4,6 +4,7 @@ using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.EventBus;
+using Tigercat.Admin.Api.Observability;
 using Tigercat.Admin.Api.Serialization;
 
 namespace Tigercat.Admin.Api.Endpoints;
@@ -115,6 +116,7 @@ public class AuthEndpoints : IEndpointDefinition
         var attemptKey = GetLoginAttemptKey(username, httpContext);
         if (IsLockedOut(attemptKey, policy, out var retryAfter))
         {
+            AdminMetrics.RecordAuthEvent("login_locked", false);
             return Results.Json(
                 ApiResult.Fail<LoginResponse>($"登录失败次数过多，请 {Math.Max(1, (int)Math.Ceiling(retryAfter.TotalMinutes))} 分钟后再试", 429),
                 AppJsonContext.Default.ApiResponseLoginResponse,
@@ -125,6 +127,7 @@ public class AuthEndpoints : IEndpointDefinition
         if (!await userStore.ValidateUserAsync(username, passwordHash, ct))
         {
             RecordLoginFailure(attemptKey);
+            AdminMetrics.RecordAuthEvent("login", false);
             return Results.Json(
                 ApiResult.Fail<LoginResponse>("用户名或密码错误", 401),
                 AppJsonContext.Default.ApiResponseLoginResponse,
@@ -142,6 +145,7 @@ public class AuthEndpoints : IEndpointDefinition
             },
             httpContext.TraceIdentifier);
         await eventPublisher.PublishAsync(envelope, EventBusConstants.AuthStream, ct);
+        AdminMetrics.RecordAuthEvent("login", true);
         return Results.Json(ApiResult.Ok(new LoginResponse(session.Token, session.ExpiresAt, session.Username)), AppJsonContext.Default.ApiResponseLoginResponse);
     }
 
@@ -198,6 +202,7 @@ public class AuthEndpoints : IEndpointDefinition
             },
             httpContext.TraceIdentifier);
         await eventPublisher.PublishAsync(envelope, EventBusConstants.AuthStream, ct);
+        AdminMetrics.RecordAuthEvent("password_changed", true);
 
         return Results.Json(ApiResult.Ok(new MessageResponse("密码修改成功")), AppJsonContext.Default.ApiResponseMessageResponse);
     }
@@ -225,6 +230,7 @@ public class AuthEndpoints : IEndpointDefinition
             await eventPublisher.PublishAsync(envelope, EventBusConstants.AuthStream, ct);
         }
 
+        AdminMetrics.RecordAuthEvent("logout", true);
         return Results.Json(ApiResult.Ok(new MessageResponse("退出成功")), AppJsonContext.Default.ApiResponseMessageResponse);
     }
 

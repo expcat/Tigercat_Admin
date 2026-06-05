@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -15,11 +15,10 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "Permissions",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Code = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 200, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    Id = table.Column<int>(nullable: false),
+                    Code = table.Column<string>(maxLength: 100, nullable: false),
+                    Description = table.Column<string>(maxLength: 200, nullable: true),
+                    CreatedAt = table.Column<DateTime>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -30,11 +29,10 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "Roles",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 200, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    Id = table.Column<int>(nullable: false),
+                    Name = table.Column<string>(maxLength: 50, nullable: false),
+                    Description = table.Column<string>(maxLength: 200, nullable: true),
+                    CreatedAt = table.Column<DateTime>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -45,12 +43,11 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "Sessions",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Token = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
-                    Username = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    Id = table.Column<int>(nullable: false),
+                    Token = table.Column<string>(maxLength: 64, nullable: false),
+                    Username = table.Column<string>(maxLength: 50, nullable: false),
+                    ExpiresAt = table.Column<DateTime>(nullable: false),
+                    CreatedAt = table.Column<DateTime>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -61,13 +58,12 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "SystemSettings",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Key = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Value = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: true)
+                    Id = table.Column<int>(nullable: false),
+                    Key = table.Column<string>(maxLength: 100, nullable: false),
+                    Value = table.Column<string>(maxLength: 2000, nullable: false),
+                    Description = table.Column<string>(maxLength: 500, nullable: true),
+                    CreatedAt = table.Column<DateTime>(nullable: false),
+                    UpdatedAt = table.Column<DateTime>(nullable: true)
                 },
                 constraints: table =>
                 {
@@ -78,14 +74,13 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Username = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    PasswordHash = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
-                    DisplayName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
-                    Status = table.Column<int>(type: "INTEGER", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: true)
+                    Id = table.Column<int>(nullable: false),
+                    Username = table.Column<string>(maxLength: 50, nullable: false),
+                    PasswordHash = table.Column<string>(maxLength: 128, nullable: false),
+                    DisplayName = table.Column<string>(maxLength: 100, nullable: true),
+                    Status = table.Column<int>(nullable: false),
+                    CreatedAt = table.Column<DateTime>(nullable: false),
+                    UpdatedAt = table.Column<DateTime>(nullable: true)
                 },
                 constraints: table =>
                 {
@@ -96,9 +91,9 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "RolePermissions",
                 columns: table => new
                 {
-                    RoleId = table.Column<int>(type: "INTEGER", nullable: false),
-                    PermissionId = table.Column<int>(type: "INTEGER", nullable: false),
-                    AssignedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    RoleId = table.Column<int>(nullable: false),
+                    PermissionId = table.Column<int>(nullable: false),
+                    AssignedAt = table.Column<DateTime>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -121,9 +116,9 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "UserRoles",
                 columns: table => new
                 {
-                    UserId = table.Column<int>(type: "INTEGER", nullable: false),
-                    RoleId = table.Column<int>(type: "INTEGER", nullable: false),
-                    AssignedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    UserId = table.Column<int>(nullable: false),
+                    RoleId = table.Column<int>(nullable: false),
+                    AssignedAt = table.Column<DateTime>(nullable: false)
                 },
                 constraints: table =>
                 {

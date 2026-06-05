@@ -93,7 +93,11 @@ export Database__Provider=PostgreSql
 export ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=tigercat_admin;Username=postgres;Password=postgres"
 ```
 
-SQLite 会在启动时自动应用现有迁移；PostgreSQL 在当前样例中使用启动时建表，适合配置验证与样例部署。如需严格迁移治理，请在后续迭代补齐独立的 PostgreSQL migration pipeline。
+SQLite 与 PostgreSQL 都会在启动时应用 EF Core migrations。生产发布前应先生成并评审 PostgreSQL SQL artifact：
+
+```bash
+pnpm db:script:postgres
+```
 
 完整说明见 [docs/database.md](docs/database.md)。
 
@@ -134,6 +138,8 @@ pnpm build:all           # 构建所有前端项目
 pnpm e2e                 # 运行 React + Vue 首批 E2E 烟测
 pnpm e2e:react           # 仅运行 React E2E 烟测
 pnpm e2e:vue             # 仅运行 Vue E2E 烟测
+pnpm db:script:postgres  # 生成 PostgreSQL 幂等迁移 SQL
+pnpm run check:links     # 检查 README、开发文档和 docs 链接
 
 # .NET
 dotnet build             # 构建解决方案
@@ -143,6 +149,14 @@ dotnet clean             # 清理构建产物
 
 # Aspire
 cd Tigercat.Aspire && dotnet run
+```
+
+生产镜像构建：
+
+```bash
+docker build -f Tigercat.Admin.Api/Dockerfile -t tigercat-admin-api .
+docker build -f Tigercat.Admin.React/Dockerfile -t tigercat-admin-react .
+docker build -f Tigercat.Admin.Vue/Dockerfile -t tigercat-admin-vue .
 ```
 
 说明：默认只维护仓库根目录的 workspace lockfile；若子项目出现旧依赖残留，回到仓库根目录重新执行 `pnpm install`。

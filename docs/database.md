@@ -64,7 +64,7 @@ export Database__Provider=PostgreSql
 export ConnectionStrings__DefaultConnection="Host=db.example.internal;Port=5432;Database=tigercat_admin;Username=tigercat_admin;Password=<password>;Pooling=true;SSL Mode=Require;Trust Server Certificate=false"
 ```
 
-当前样例在 PostgreSQL 下会在启动时自动建表，适合配置验证和样例部署。若需要严格的变更审计、灰度发布或 DBA 托管迁移，请将 PostgreSQL 的 schema 迁移独立到部署流程中，而不要完全依赖应用启动。
+PostgreSQL 与 SQLite 共用 EF Core migrations。应用启动会执行 `MigrateAsync`，但生产发布仍建议先生成、评审并执行 SQL artifact，再启动新版本，避免把 schema 变更完全交给应用启动时隐式完成。
 
 推荐同时保留：
 
@@ -75,7 +75,21 @@ export ConnectionStrings__DefaultConnection="Host=db.example.internal;Port=5432;
 ## 迁移、种子数据与回滚
 
 - SQLite：API 启动时执行 EF Core migrations，适合本地开发和自动化验证。
-- PostgreSQL：当前基线使用启动时建表，生产环境如需严格治理，应在发布前生成迁移 SQL 并纳入部署流水线。
+- PostgreSQL：API 启动时同样执行 EF Core migrations；生产环境应先生成幂等 SQL 并纳入发布评审。
+- 迁移 SQL：仓库提供 design-time `AdminDbContext` factory，生成 SQL 不依赖 Redis 或 API 完整启动。命令会输出到 `artifacts/sql/tigercat-admin-postgres.sql`：
+
+```bash
+pnpm db:script:postgres
+```
+
+发布建议流程：
+
+1. 备份 PostgreSQL 数据库，并记录当前应用镜像版本。
+2. 在 CI 或发布机生成 SQL artifact，人工评审 DDL、索引、外键和潜在数据影响。
+3. 在预发库执行 SQL，启动新版本 API，完成 `/api/health`、登录、设置读取和用户列表 smoke。
+4. 在生产维护窗口由流水线或 DBA 执行已评审 SQL，再发布 API 与前端镜像。
+5. 回滚时优先使用已评审的 Down SQL 或备份恢复；涉及媒体本地存储时同时恢复 `Media:LocalRoot`。
+
 - P7 媒体生产化迁移 `AddMediaProductionFields` 会为 `MediaResources` 增加 provider、storage key、SHA256、图片尺寸和删除标记字段，并建立 `Sha256Hash + SizeBytes` 索引。
 - 种子数据：权限、角色、默认管理员、系统设置、通知和任务数据由 `DbInitializer` 幂等写入。已存在的业务数据不会被清空；内置通知会补齐站内 `linkUrl`，内置任务包含阻塞原因和完成说明字段。
 - 运维工作流：`AdminTasks` 持久化 `BlockedReason` 与 `CompletionNote`；`AdminNotifications` 继续保存 `GroupKey`、`LinkUrl` 与脱敏元数据。Redis Streams 仍是审计事件来源，事件消费者会把任务、设置、审计保留清理、媒体删除失败和用户治理事件转化为通知。
@@ -92,11 +106,13 @@ export ConnectionStrings__DefaultConnection="Host=db.example.internal;Port=5432;
 - InMemory 集成回归：验证 API 在无持久化 provider 下可正常登录、鉴权和读写数据。
 - SQLite 集成回归：验证 SQLite 启动、迁移和 EF 存储路径。
 - Provider 解析测试：验证 `Database:Provider` 对 `InMemory`、`Sqlite`、`PostgreSql` 的解析，以及缺失连接串时的失败行为。
+- Design-time factory 测试：验证 `dotnet ef` 可以在 PostgreSQL provider 下创建 `AdminDbContext` 并生成发布 SQL。
 
 建议命令：
 
 ```bash
 dotnet test Tigercat.Admin.sln
+pnpm db:script:postgres
 ```
 
 如果要在部署前做 PostgreSQL 冒烟验证，至少补一轮真实环境检查：

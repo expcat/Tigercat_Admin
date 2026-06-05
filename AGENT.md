@@ -103,6 +103,7 @@ Tigercat_Admin/
 pnpm install
 dotnet build Tigercat.Admin.sln
 pnpm build:all
+pnpm db:script:postgres
 cd Tigercat.Aspire && dotnet run
 ```
 
@@ -114,10 +115,19 @@ cd Tigercat.Admin.Vue && pnpm dev
 cd Tigercat.Admin.React && pnpm dev
 ```
 
+生产镜像验证：
+
+```bash
+docker build -f Tigercat.Admin.Api/Dockerfile -t tigercat-admin-api .
+docker build -f Tigercat.Admin.React/Dockerfile -t tigercat-admin-react .
+docker build -f Tigercat.Admin.Vue/Dockerfile -t tigercat-admin-vue .
+```
+
 ## 验证
 
 - 优先运行项目已有的测试、构建、格式化或静态检查命令。
 - 修改 API 后，至少确认健康检查与信息端点仍可用。
+- 修改数据库或部署链路后，至少运行 `dotnet test Tigercat.Admin.sln`；涉及 PostgreSQL 迁移时补跑 `pnpm db:script:postgres`。
 - 修改前端后，至少确认对应本地开发服务器可正常启动，必要时用浏览器实际检查页面。
 - 如果没有可用检查，需明确说明已检查项目中未发现相关命令。
 - 输出总结中明确列出已运行和未运行的验证。

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -14,23 +14,21 @@ namespace Tigercat.Admin.Api.Data.Migrations
             migrationBuilder.AddColumn<int>(
                 name: "AvatarMediaId",
                 table: "Users",
-                type: "INTEGER",
                 nullable: true);
 
             migrationBuilder.CreateTable(
                 name: "MediaResources",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    PublicId = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
-                    OriginalFileName = table.Column<string>(type: "TEXT", maxLength: 255, nullable: false),
-                    StoredFileName = table.Column<string>(type: "TEXT", maxLength: 255, nullable: false),
-                    ContentType = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Extension = table.Column<string>(type: "TEXT", maxLength: 20, nullable: true),
-                    SizeBytes = table.Column<long>(type: "INTEGER", nullable: false),
-                    UploadedBy = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    Id = table.Column<int>(nullable: false),
+                    PublicId = table.Column<string>(maxLength: 64, nullable: false),
+                    OriginalFileName = table.Column<string>(maxLength: 255, nullable: false),
+                    StoredFileName = table.Column<string>(maxLength: 255, nullable: false),
+                    ContentType = table.Column<string>(maxLength: 100, nullable: false),
+                    Extension = table.Column<string>(maxLength: 20, nullable: true),
+                    SizeBytes = table.Column<long>(nullable: false),
+                    UploadedBy = table.Column<string>(maxLength: 50, nullable: true),
+                    CreatedAt = table.Column<DateTime>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -41,14 +39,13 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "MediaReferences",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    MediaResourceId = table.Column<int>(type: "INTEGER", nullable: false),
-                    ReferenceType = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    ReferenceKey = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    DisplayName = table.Column<string>(type: "TEXT", maxLength: 200, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: true)
+                    Id = table.Column<int>(nullable: false),
+                    MediaResourceId = table.Column<int>(nullable: false),
+                    ReferenceType = table.Column<string>(maxLength: 50, nullable: false),
+                    ReferenceKey = table.Column<string>(maxLength: 100, nullable: false),
+                    DisplayName = table.Column<string>(maxLength: 200, nullable: true),
+                    CreatedAt = table.Column<DateTime>(nullable: false),
+                    UpdatedAt = table.Column<DateTime>(nullable: true)
                 },
                 constraints: table =>
                 {

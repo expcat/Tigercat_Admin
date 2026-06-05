@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 using Tigercat.Admin.Api.Data;
 using Xunit;
 
@@ -62,6 +63,20 @@ public class DatabaseProviderResolverTests
         Assert.True(options.UsesRelationalStores);
     }
 
+    [Fact]
+    public void DesignTimeFactory_CreatesPostgreSqlContextFromEnvironment()
+    {
+        using var _ = new EnvironmentVariableScope(new Dictionary<string, string?>
+        {
+            ["Database__Provider"] = "PostgreSql",
+            ["ConnectionStrings__DefaultConnection"] = "Host=db;Port=5432;Database=tigercat_admin;Username=postgres;Password=postgres;SSL Mode=Require;Trust Server Certificate=false",
+        });
+
+        using var context = new AdminDbContextDesignTimeFactory().CreateDbContext([]);
+
+        Assert.Contains("Npgsql", context.Database.ProviderName);
+    }
+
     [Theory]
     [InlineData("Sqlite")]
     [InlineData("PostgreSql")]
@@ -83,5 +98,30 @@ public class DatabaseProviderResolverTests
         return new ConfigurationBuilder()
             .AddInMemoryCollection(values)
             .Build();
+    }
+
+    private sealed class EnvironmentVariableScope : IDisposable
+    {
+        private readonly Dictionary<string, string?> _previousValues;
+
+        public EnvironmentVariableScope(Dictionary<string, string?> values)
+        {
+            _previousValues = values.ToDictionary(
+                item => item.Key,
+                item => Environment.GetEnvironmentVariable(item.Key));
+
+            foreach (var (key, value) in values)
+            {
+                Environment.SetEnvironmentVariable(key, value);
+            }
+        }
+
+        public void Dispose()
+        {
+            foreach (var (key, value) in _previousValues)
+            {
+                Environment.SetEnvironmentVariable(key, value);
+            }
+        }
     }
 }

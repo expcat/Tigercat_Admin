@@ -33,6 +33,7 @@ pnpm-debug.log*
 dist/
 build/
 out/
+artifacts/
 
 # Environment
 .env

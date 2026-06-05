@@ -29,12 +29,16 @@ public abstract class AdminApiFactory : WebApplicationFactory<Program>
     /// </summary>
     protected abstract Dictionary<string, string?> ConfigurationOverrides { get; }
 
+    protected virtual string EnvironmentName => Environments.Development;
+
     protected string MediaRoot => _mediaRoot;
 
     public string MediaRootPath => _mediaRoot;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment(EnvironmentName);
+
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(ConfigurationOverrides);
@@ -134,4 +138,9 @@ public class SqliteApiFactory : AdminApiFactory
             try { File.Delete(_dbPath); } catch { /* best effort */ }
         }
     }
+}
+
+public class ProductionSecurityApiFactory : InMemoryApiFactory
+{
+    protected override string EnvironmentName => Environments.Production;
 }

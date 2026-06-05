@@ -1,6 +1,7 @@
 using System.Text.Json;
 using FreeRedis;
 using Microsoft.Extensions.Logging;
+using Tigercat.Admin.Api.Observability;
 using Tigercat.Admin.Api.Serialization;
 
 namespace Tigercat.Admin.Api.EventBus;
@@ -32,10 +33,12 @@ public sealed class RedisStreamPublisher : IEventPublisher
                 ["traceId"] = envelope.TraceId ?? string.Empty,
                 ["payload"] = payload
             });
+            AdminMetrics.RecordRedisStreamEvent("publish", streamName, envelope.EventType, true);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to publish event {EventId} to stream {StreamName}; fire-and-forget publish not retried.", envelope.EventId, streamName);
+            AdminMetrics.RecordRedisStreamEvent("publish", streamName, envelope.EventType, false);
         }
 
         return Task.CompletedTask;

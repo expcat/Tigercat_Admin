@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Data.Entities;
 
@@ -98,12 +99,13 @@ public static class DbInitializer
     /// Idempotent seed: each table is checked independently — safe to re-run after partial
     /// failures and also works with the InMemory provider (which lacks transaction support).
     /// </summary>
-    public static async Task InitializeAsync(AdminDbContext context, CancellationToken ct = default)
+    public static async Task InitializeAsync(
+        AdminDbContext context,
+        IConfiguration? configuration = null,
+        CancellationToken ct = default)
     {
-        // Use migrations for SQLite so local development keeps schema history.
-        // Other providers in this sample use EnsureCreated to avoid coupling
-        // startup to provider-specific migration artifacts.
-        if (context.Database.ProviderName?.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) == true)
+        // Keep schema history for relational providers. InMemory has no migrations.
+        if (context.Database.IsRelational())
         {
             await context.Database.MigrateAsync(ct);
         }
@@ -278,10 +280,16 @@ public static class DbInitializer
 
         if (adminUser is null)
         {
+            var adminPassword = configuration?["BootstrapAdmin:Password"];
+            if (string.IsNullOrWhiteSpace(adminPassword))
+            {
+                adminPassword = "admin123";
+            }
+
             adminUser = new UserEntity
             {
                 Username = "admin",
-                PasswordHash = PasswordHasher.Hash("admin123"),
+                PasswordHash = PasswordHasher.Hash(adminPassword),
                 DisplayName = "管理员",
                 Status = UserStatus.Active,
                 CreatedAt = DateTime.UtcNow
