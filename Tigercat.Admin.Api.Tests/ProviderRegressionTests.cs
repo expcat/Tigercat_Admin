@@ -1116,6 +1116,56 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
     }
 
     [Fact]
+    public async Task AdminNotificationService_MapsP6EventsWithSafeLinks()
+    {
+        await LoginAsAdminAsync();
+        using var scope = _factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IAdminNotificationService>();
+        var db = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
+
+        var mediaEnvelope = new EventEnvelope(
+            "event-media-delete-failed",
+            "admin.media.delete.failed",
+            "1.0",
+            DateTime.UtcNow,
+            "trace-media",
+            new Dictionary<string, object?>
+            {
+                ["mediaId"] = 42,
+                ["fileName"] = "logo.png",
+                ["referenceCount"] = 1,
+                ["reason"] = "媒体资源正在被引用，不能删除",
+                ["operator"] = "admin",
+                ["accessToken"] = "should-not-leak"
+            });
+        var cleanupEnvelope = new EventEnvelope(
+            "event-audit-cleaned",
+            "admin.audit.retention.cleaned",
+            "1.0",
+            DateTime.UtcNow,
+            "trace-audit",
+            new Dictionary<string, object?>
+            {
+                ["retentionDays"] = 90,
+                ["deletedCount"] = 2,
+                ["operator"] = "admin"
+            });
+
+        await service.HandleEventAsync(mediaEnvelope, EventBusConstants.AdminStream);
+        await service.HandleEventAsync(cleanupEnvelope, EventBusConstants.AdminStream);
+
+        var mediaNotification = await db.AdminNotifications
+            .SingleAsync(n => n.PublicId == "notif-event-media-delete-failed");
+        var cleanupNotification = await db.AdminNotifications
+            .SingleAsync(n => n.PublicId == "notif-event-audit-cleaned");
+
+        Assert.Equal("/files", mediaNotification.LinkUrl);
+        Assert.Contains("media", mediaNotification.MetadataJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("accessToken", mediaNotification.MetadataJson, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("/audit-logs?eventId=event-audit-cleaned", cleanupNotification.LinkUrl);
+    }
+
+    [Fact]
     public async Task AuditRetentionPolicy_CanBeUpdated()
     {
         var token = await LoginAsAdminAsync();

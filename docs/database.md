@@ -77,7 +77,8 @@ export ConnectionStrings__DefaultConnection="Host=db.example.internal;Port=5432;
 - SQLite：API 启动时执行 EF Core migrations，适合本地开发和自动化验证。
 - PostgreSQL：当前基线使用启动时建表，生产环境如需严格治理，应在发布前生成迁移 SQL 并纳入部署流水线。
 - 种子数据：权限、角色、默认管理员、系统设置、通知和任务数据由 `DbInitializer` 幂等写入。已存在的业务数据不会被清空；内置通知会补齐站内 `linkUrl`，内置任务包含阻塞原因和完成说明字段。
-- 运维工作流：`AdminTasks` 持久化 `BlockedReason` 与 `CompletionNote`；`AdminNotifications` 继续保存 `GroupKey`、`LinkUrl` 与脱敏元数据。Redis Streams 仍是审计事件来源，事件消费者会把白名单审计事件转化为通知。
+- 运维工作流：`AdminTasks` 持久化 `BlockedReason` 与 `CompletionNote`；`AdminNotifications` 继续保存 `GroupKey`、`LinkUrl` 与脱敏元数据。Redis Streams 仍是审计事件来源，事件消费者会把任务、设置、审计保留清理、媒体删除失败和用户治理事件转化为通知。
+- 媒体删除治理：单个或批量删除媒体时，如资源仍被 `site.logo` 或 `user.avatar` 引用，API 不删除任何文件或记录，并发布 `admin.media.delete.failed` 到 `stream:admin`，用于通知中心和审计详情追踪。
 - 权限漂移识别：`security.permissionSeedVersion` 和 `security.permissionSeedChecksum` 会写入系统设置，用于识别权限目录版本和摘要。
 - 回滚：发布前备份数据库；若应用回滚但 schema 已发生不兼容变化，应先执行已评审的回滚 SQL 或从备份恢复，再启动旧版本应用。
 

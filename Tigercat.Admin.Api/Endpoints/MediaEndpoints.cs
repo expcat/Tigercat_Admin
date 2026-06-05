@@ -4,6 +4,7 @@ using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Data.Entities;
+using Tigercat.Admin.Api.EventBus;
 using Tigercat.Admin.Api.Media;
 using Tigercat.Admin.Api.Serialization;
 
@@ -243,6 +244,8 @@ public class MediaEndpoints : IEndpointDefinition
         int id,
         AdminDbContext db,
         IMediaStorageProvider storage,
+        IEventPublisher eventPublisher,
+        HttpContext httpContext,
         CancellationToken ct)
     {
         var media = await db.MediaResources
@@ -265,6 +268,14 @@ public class MediaEndpoints : IEndpointDefinition
                 .Select(r => new MediaReferenceResponse(r.Id, r.ReferenceType, r.ReferenceKey, r.DisplayName))
                 .ToArray();
 
+            await PublishMediaDeleteFailedAsync(
+                eventPublisher,
+                httpContext,
+                media,
+                references.Length,
+                "媒体资源正在被引用，不能删除",
+                ct);
+
             return Results.Json(
                 new ApiResponse<MediaReferenceResponse[]>(references, "媒体资源正在被引用，不能删除", 409, false),
                 AppJsonContext.Default.ApiResponseMediaReferenceResponseArray,
@@ -284,6 +295,8 @@ public class MediaEndpoints : IEndpointDefinition
         BatchDeleteMediaRequest request,
         AdminDbContext db,
         IMediaStorageProvider storage,
+        IEventPublisher eventPublisher,
+        HttpContext httpContext,
         CancellationToken ct)
     {
         if (request.Ids is not { Length: > 0 })
@@ -318,6 +331,14 @@ public class MediaEndpoints : IEndpointDefinition
 
         if (references.Length > 0)
         {
+            await PublishBatchMediaDeleteFailedAsync(
+                eventPublisher,
+                httpContext,
+                mediaItems,
+                references.Length,
+                "选中的媒体资源正在被引用，不能批量删除",
+                ct);
+
             return Results.Json(
                 new ApiResponse<MediaReferenceResponse[]>(references, "选中的媒体资源正在被引用，不能批量删除", 409, false),
                 AppJsonContext.Default.ApiResponseMediaReferenceResponseArray,
@@ -376,6 +397,54 @@ public class MediaEndpoints : IEndpointDefinition
             media.UploadedBy,
             media.CreatedAt,
             referenceCount);
+    }
+
+    private static Task PublishMediaDeleteFailedAsync(
+        IEventPublisher eventPublisher,
+        HttpContext httpContext,
+        MediaResourceEntity media,
+        int referenceCount,
+        string reason,
+        CancellationToken ct)
+    {
+        return eventPublisher.PublishAsync(
+            EventEnvelope.Create(
+                "admin.media.delete.failed",
+                new Dictionary<string, object?>
+                {
+                    ["mediaId"] = media.Id,
+                    ["fileName"] = media.OriginalFileName,
+                    ["referenceCount"] = referenceCount,
+                    ["reason"] = reason,
+                    ["operator"] = GetOperatorUsername(httpContext)
+                },
+                httpContext.TraceIdentifier),
+            EventBusConstants.AdminStream,
+            ct);
+    }
+
+    private static Task PublishBatchMediaDeleteFailedAsync(
+        IEventPublisher eventPublisher,
+        HttpContext httpContext,
+        IReadOnlyCollection<MediaResourceEntity> mediaItems,
+        int referenceCount,
+        string reason,
+        CancellationToken ct)
+    {
+        return eventPublisher.PublishAsync(
+            EventEnvelope.Create(
+                "admin.media.delete.failed",
+                new Dictionary<string, object?>
+                {
+                    ["mediaIds"] = mediaItems.Select(static media => media.Id).ToArray(),
+                    ["fileNames"] = mediaItems.Select(static media => media.OriginalFileName).ToArray(),
+                    ["referenceCount"] = referenceCount,
+                    ["reason"] = reason,
+                    ["operator"] = GetOperatorUsername(httpContext)
+                },
+                httpContext.TraceIdentifier),
+            EventBusConstants.AdminStream,
+            ct);
     }
 
     private static string GetOperatorUsername(HttpContext httpContext)

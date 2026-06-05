@@ -486,6 +486,14 @@ public class AuditEndpoints : IEndpointDefinition
             "admin.task.created" => ("创建运维任务", $"{operatorName} 创建了任务 {data.GetValueOrDefault("title") ?? "未命名任务"}。"),
             "admin.task.updated" => ("更新运维任务", $"{operatorName} 更新了任务 {data.GetValueOrDefault("title") ?? "未命名任务"}。"),
             "admin.task.moved" => ("流转运维任务", $"{operatorName} 将任务 {data.GetValueOrDefault("title") ?? "未命名任务"} 从 {data.GetValueOrDefault("fromStatus") ?? "-"} 移动到 {data.GetValueOrDefault("toStatus") ?? "-"}。"),
+            "admin.task.completed" => ("完成运维任务", $"{operatorName} 完成了任务 {data.GetValueOrDefault("title") ?? "未命名任务"}。"),
+            "admin.setting.updated" => ("更新系统设置", $"{operatorName} 更新了设置 {data.GetValueOrDefault("changedKeys") ?? "系统设置"}。"),
+            "admin.audit.retention.cleaned" => (
+                "清理审计日志",
+                $"{operatorName} 清理了 {data.GetValueOrDefault("deletedCount") ?? "0"} 条过期审计日志。"),
+            "admin.media.delete.failed" => (
+                "媒体删除失败",
+                $"{operatorName} 删除媒体资源失败：{data.GetValueOrDefault("reason") ?? "存在引用或存储异常"}。"),
             _ => (eventType, BuildFallbackDescription(data)),
         };
     }

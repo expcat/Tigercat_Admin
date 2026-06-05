@@ -115,9 +115,10 @@ API 暴露两个无需认证的健康入口：
 
 - API 成功发布任务、设置、用户治理和审计清理事件后写入 Redis Streams。
 - `RedisStreamConsumer` 消费白名单事件并写入通知中心，通知 `linkUrl` 指向站内页面。
+- 媒体资源因站点 Logo 或用户头像引用导致删除失败时会发布 `admin.media.delete.failed`，通知中心指向文件管理页。
 - 审计保留清理通过 `POST /api/audit-logs/retention/cleanup` 执行；生产环境建议先用 `dryRun=true` 预览，再在维护窗口执行清理。
 
-生产 smoke 除登录和健康检查外，建议补一次通知跳转、任务完成确认、设置保存事件和审计清理 dry-run。
+生产 smoke 除登录和健康检查外，建议补一次通知跳转、任务完成确认、设置保存事件、媒体删除失败通知和审计清理 dry-run，并确认审计清理通知可跳转到 `/audit-logs?eventId=...` 详情。
 
 ## 数据库发布策略
 

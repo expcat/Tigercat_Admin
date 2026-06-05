@@ -967,6 +967,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
 | `admin.task.completed`       | POST `/api/tasks/{id}/complete`               | `taskId`、`title`、`assignee`、`completionNote`、`operator`         |
 | `admin.setting.updated`      | PUT `/api/settings` 或 PUT `/api/audit-logs/retention-policy` | `changedKeys`、`operator`                               |
 | `admin.audit.retention.cleaned` | POST `/api/audit-logs/retention/cleanup`   | `retentionDays`、`cutoffUtc`、`matchedCount`、`deletedCount`、`operator` |
+| `admin.media.delete.failed`  | DELETE `/api/media/{id}` 或 POST `/api/media/batch-delete` 引用冲突时 | `mediaId` / `mediaIds`、`fileName` / `fileNames`、`referenceCount`、`reason`、`operator` |
 
 ### 22.1 获取审计日志（分页 + 筛选）
 
@@ -1098,7 +1099,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
   - `groupKey`：分组筛选（`ops` / `security` / `release`）
   - `unread`：传 `true` 时只看未读
 - **返回 data**：分页通知对象，通知字段包含 `id`、`groupKey`、`title`、`description`、`time`、`read`、`toastType`、`meta`、`linkUrl`。
-- **说明**：后台事件消费者会把任务、设置、审计清理、关键用户治理等事件转化为通知，自动生成的通知 ID 格式为 `notif-{eventId}`。`linkUrl` 只使用站内路径，例如 `/tasks?taskId=...`、`/settings?key=...`、`/audit-logs?eventId=...`。
+- **说明**：后台事件消费者会把任务、设置、审计清理、媒体删除失败和关键用户治理等事件转化为通知，自动生成的通知 ID 格式为 `notif-{eventId}`。`linkUrl` 只使用站内路径，例如 `/tasks?taskId=...`、`/settings?key=...`、`/audit-logs?eventId=...`、`/files`。
 
 ### 22.6 更新单条通知已读状态
 
@@ -1495,6 +1496,7 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
 - **可能错误码**：
   - `404`：媒体资源不存在
   - `409`：媒体资源正在被 `site.logo` 或 `user.avatar` 引用，返回引用数组
+- **事件**：引用冲突导致删除失败时发布 `admin.media.delete.failed` 到 `stream:admin`，通知中心生成 `/files` 站内提醒。
 
 ### 31. 批量删除媒体资源
 
@@ -1510,3 +1512,4 @@ GET /api/export/roles?format=xlsx&fields=id,name,description&keyword=Editor&sort
   - `400`：请选择要删除的媒体资源
   - `404`：任一媒体资源 ID 不存在
   - `409`：选中的任一媒体资源正在被引用，返回引用数组；此时不会删除任何媒体资源
+- **事件**：引用冲突导致批量删除失败时发布 `admin.media.delete.failed` 到 `stream:admin`，载荷包含选中媒体 ID 与文件名数组。

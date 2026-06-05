@@ -4,7 +4,9 @@ using System.Net.Http.Json;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Endpoints;
+using Tigercat.Admin.Api.EventBus;
 using Tigercat.Admin.Api.Tests.Fixtures;
+using Tigercat.Admin.Api.Tests.Stubs;
 using Xunit;
 
 namespace Tigercat.Admin.Api.Tests;
@@ -62,8 +64,10 @@ public class MediaEndpointsTests : IClassFixture<InMemoryApiFactory>
         var token = await LoginAsAdminAsync();
         var logo = await UploadAsync(token, "batch-logo.png", "image/png", [0x89, 0x50, 0x4e, 0x47], "logo");
         var other = await UploadAsync(token, "batch-other.txt", "text/plain", [7, 8, 9]);
+        StubEventPublisher.Clear();
 
         await UpdateSettingsAsync(token, new SettingEntry("site.logo", logo.Url));
+        StubEventPublisher.Clear();
 
         var request = AuthRequest(HttpMethod.Post, "/api/media/batch-delete", token);
         request.Content = JsonContent.Create(new BatchDeleteMediaRequest([logo.Id, other.Id]));
@@ -73,6 +77,13 @@ public class MediaEndpointsTests : IClassFixture<InMemoryApiFactory>
         var blockedBody = await blocked.ReadApiResponseAsync<MediaReferenceResponse[]>();
         Assert.NotNull(blockedBody?.Data);
         Assert.Contains(blockedBody.Data, r => r.ReferenceType == "site.logo");
+        var failedEvent = Assert.Single(StubEventPublisher.PublishedEvents, item =>
+            item.StreamName == EventBusConstants.AdminStream &&
+            item.Envelope.EventType == "admin.media.delete.failed");
+        Assert.True(failedEvent.Envelope.Data.ContainsKey("mediaIds"));
+        Assert.True(failedEvent.Envelope.Data.ContainsKey("fileNames"));
+        Assert.Equal(blockedBody.Data.Length, failedEvent.Envelope.Data["referenceCount"]);
+        Assert.Equal("admin", failedEvent.Envelope.Data["operator"]);
 
         var otherStillExists = await _client.SendAsync(AuthRequest(HttpMethod.Get, $"/api/media/{other.Id}", token));
         otherStillExists.EnsureSuccessStatusCode();
@@ -107,14 +118,23 @@ public class MediaEndpointsTests : IClassFixture<InMemoryApiFactory>
     {
         var token = await LoginAsAdminAsync();
         var media = await UploadAsync(token, "logo.png", "image/png", [0x89, 0x50, 0x4e, 0x47], "logo");
+        StubEventPublisher.Clear();
 
         await UpdateSettingsAsync(token, new SettingEntry("site.logo", media.Url));
+        StubEventPublisher.Clear();
 
         var blocked = await _client.SendAsync(AuthRequest(HttpMethod.Delete, $"/api/media/{media.Id}", token));
         Assert.Equal(HttpStatusCode.Conflict, blocked.StatusCode);
         var blockedBody = await blocked.ReadApiResponseAsync<MediaReferenceResponse[]>();
         Assert.NotNull(blockedBody?.Data);
         Assert.Contains(blockedBody.Data, r => r.ReferenceType == "site.logo");
+        var failedEvent = Assert.Single(StubEventPublisher.PublishedEvents, item =>
+            item.StreamName == EventBusConstants.AdminStream &&
+            item.Envelope.EventType == "admin.media.delete.failed");
+        Assert.Equal(media.Id, failedEvent.Envelope.Data["mediaId"]);
+        Assert.Equal("logo.png", failedEvent.Envelope.Data["fileName"]);
+        Assert.Equal(blockedBody.Data.Length, failedEvent.Envelope.Data["referenceCount"]);
+        Assert.Equal("admin", failedEvent.Envelope.Data["operator"]);
 
         await UpdateSettingsAsync(token, new SettingEntry("site.logo", ""));
         var deleted = await _client.SendAsync(AuthRequest(HttpMethod.Delete, $"/api/media/{media.Id}", token));

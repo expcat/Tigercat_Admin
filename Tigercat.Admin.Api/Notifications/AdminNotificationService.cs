@@ -100,7 +100,7 @@ public sealed class AdminNotificationService : IAdminNotificationService
                 "审计日志清理完成",
                 $"{operatorName} 清理了 {GetString(data, "deletedCount") ?? "0"} 条过期审计日志。",
                 "success",
-                "/audit-logs",
+                BuildAuditLogLink(envelope.EventId),
                 BuildMetadata(streamName, eventType, "audit", "low", data)),
             var userEvent when userEvent.StartsWith("admin.user.", StringComparison.OrdinalIgnoreCase) => Create(
                 envelope,
@@ -196,6 +196,11 @@ public sealed class AdminNotificationService : IAdminNotificationService
         return string.IsNullOrWhiteSpace(key)
             ? "/settings"
             : $"/settings?key={Uri.EscapeDataString(key)}";
+    }
+
+    private static string BuildAuditLogLink(string eventId)
+    {
+        return $"/audit-logs?eventId={Uri.EscapeDataString(eventId)}";
     }
 
     private static bool IsSecuritySetting(IReadOnlyDictionary<string, object?> data)
