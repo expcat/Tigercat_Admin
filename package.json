@@ -5,6 +5,9 @@
   "scripts": {
     "dev:vue": "pnpm --filter tigercat-admin-vue dev",
     "dev:react": "pnpm --filter tigercat-admin-react dev",
+    "dev:demo:vue": "pnpm --filter tigercat-admin-vue dev:demo",
+    "dev:demo:react": "pnpm --filter tigercat-admin-react dev:demo",
+    "dev:demo:all": "pnpm --filter tigercat-admin-vue --filter tigercat-admin-react --parallel dev:demo",
     "build": "node scripts/build-frontends.mjs --data=api",
     "build:frontend": "node scripts/build-frontends.mjs",
     "build:demo": "node scripts/build-frontends.mjs --data=mock",
