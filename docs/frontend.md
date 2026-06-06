@@ -47,6 +47,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 
 - 外层：`Layout` 横向布局，左侧 `MainSidebar`，右侧 `MainHeader + Content`。
 - 桌面侧栏：宽 `240px`，折叠宽 `64px`，使用 `Sidebar`、`Menu`、`SubMenu`、`MenuItem`。
+- 桌面侧栏主菜单保持 `mode="inline"`；折叠态继续传 `collapsed` 并开启 `popupPortal`，由上游在收缩时自动退化为 popup 子菜单，不再手动切换 `vertical`。
 - 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭，Esc 关闭；依赖 `destroyOnClose + destroyOnCloseAfterLeave + onAfterLeave/@after-leave` 完成离场后卸载与焦点恢复。
 - Header：使用 `Header`、`Breadcrumb`、`Button`、`Dropdown`、`Avatar`、`Tag`，包含侧栏开关、面包屑、主题切换、修改密码和退出。
 - Content：`min-h-0 overflow-auto p-3 sm:p-4 md:p-6`，内部最大宽度 `max-w-7xl`。
@@ -145,11 +146,11 @@ LLM 生成新页面或复刻页面时，至少满足：
 - 弹层可关闭，菜单不被固定列遮挡，键盘路径不破坏焦点。
 - 新增 API 能在 [api.md](api.md) 找到契约。
 
-## 当前上游缺口
+## 已对齐的上游能力
 
-这些是仍有价值的 Tigercat UI 上游诉求；本项目已有临时规避方案。
+截至 Tigercat UI `v1.2.23`，本项目此前记录的 Shell 相关上游诉求已经补齐：
 
-| 组件 | 平台 | 诉求 | 当前规避 |
-| ---- | ---- | ---- | -------- |
-| `Sidebar` | React / Vue | 希望补充官方后台 Shell 示例，覆盖 Logo 文案、底部折叠按钮和收缩动画。 | `MainSidebar` 手写 `max-width + opacity + transform` 动画。 |
-| `Menu` | React / Vue | `popupPortal` 已由上游支持，但折叠态仍需验证 `min-width` 与 popup 定位在复杂容器里的稳定性。 | 展开态使用 `mode="inline"`；折叠态切换为 `mode="vertical"` 并启用 `popupPortal`，同时继续保留 `!min-w-0` 与 `inline-indent=0` 作为防御性规避。 |
+| 组件 | 平台 | 上游现状 | 本项目保留的布局 glue |
+| ---- | ---- | -------- | --------------------- |
+| `Sidebar` | React / Vue | 上游 `LayoutDemo` 已提供官方后台 Shell 侧栏示例，覆盖 Logo 文案、主菜单和底部折叠按钮的组合用法。 | `MainSidebar` 继续保留 `max-width + opacity + transform` 的品牌文案和折叠按钮动画。 |
+| `Menu` | React / Vue | 上游在 `inline + collapsed + popupPortal` 下会自动退化为 popup 子菜单，并补充了双端测试。 | 主菜单保持 `mode="inline"`，继续保留 `!min-w-0` 作为 flex / overflow 容器下的布局 glue。 |

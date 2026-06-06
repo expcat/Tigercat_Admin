@@ -90,7 +90,7 @@ pnpm run check:links
 - Aspire 编排 API、React、Vue 和 Redis。
 - .NET 10 Minimal API，支持认证、用户、角色、权限、统计、导出、设置、媒体、通知、任务和审计日志。
 - React / Vue 双端共用业务概念，并保持页面、交互、状态命名和权限入口一致。
-- Tigercat UI 1.2.19：`@expcat/tigercat-react`、`@expcat/tigercat-vue`、`@expcat/tigercat-core`。
+- Tigercat UI 1.2.23：`@expcat/tigercat-react`、`@expcat/tigercat-vue`、`@expcat/tigercat-core`。
 - Tailwind CSS v4 通过 Tigercat modern 插件接入主题 token。
 - SQLite 本地默认开发，PostgreSQL 生产发布，Redis 用于缓存与事件流。
 - Playwright 覆盖 React / Vue 双端主流程和显示门禁。

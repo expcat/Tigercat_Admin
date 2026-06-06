@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, h, watch } from 'vue'
-import { Sidebar, Menu, MenuItem, SubMenu } from '@expcat/tigercat-vue'
+import { Sidebar, Menu } from '@expcat/tigercat-vue'
 import Icon from './Icon.vue'
 import AppLogo from './AppLogo.vue'
 import { usePermission } from '../utils/permission'
@@ -52,6 +52,9 @@ const { has: hasPerm } = usePermission()
 const filteredMenuItems = computed(() =>
   filterShellMenuItems(SHELL_MENU_ITEMS, hasPerm)
 )
+const filteredBottomMenuItems = computed(() =>
+  filterShellMenuItems(SHELL_BOTTOM_MENU_ITEMS, hasPerm)
+)
 
 watch(
   [() => props.activeMenu, filteredMenuItems],
@@ -62,6 +65,18 @@ watch(
 )
 
 const menuIcon = (name?: string, size = 20) => h(Icon, { name: name || 'placeholder', size })
+
+function toMenuItems(items: typeof SHELL_MENU_ITEMS) {
+  return items.map((item) => ({
+    key: item.key,
+    label: item.label,
+    icon: menuIcon(item.icon, item.key === 'home' || item.key === 'system' || item.key === 'about' ? 20 : 18),
+    children: item.children ? toMenuItems(item.children) : undefined,
+  }))
+}
+
+const mainMenuItems = computed(() => toMenuItems(filteredMenuItems.value))
+const bottomMenuItems = computed(() => toMenuItems(filteredBottomMenuItems.value))
 </script>
 
 <template>
@@ -91,40 +106,13 @@ const menuIcon = (name?: string, size = 20) => h(Icon, { name: name || 'placehol
           :selected-keys="[activeMenu]"
           :open-keys="menuOpenKeys"
           :collapsed="displayCollapsed"
-          :mode="displayCollapsed ? 'vertical' : 'inline'"
-          :inline-indent="displayCollapsed ? 0 : 24"
-          :popup-portal="displayCollapsed"
+          mode="inline"
+          popup-portal
+          :items="mainMenuItems"
           class="!min-w-0"
           @select="handleMenuSelect"
           @update:open-keys="(keys: (string | number)[]) => expandedKeys = keys"
-        >
-          <template v-for="item in filteredMenuItems" :key="item.key">
-            <SubMenu
-              v-if="item.children?.length"
-              :item-key="item.key"
-              :title="item.label"
-              :icon="menuIcon(item.icon)"
-            >
-              <MenuItem
-                v-for="child in item.children"
-                :key="child.key"
-                :item-key="child.key"
-                :icon="menuIcon(child.icon, 18)"
-                :level="1"
-                :class="displayCollapsed ? '!px-2' : ''"
-              >
-                {{ child.label }}
-              </MenuItem>
-            </SubMenu>
-            <MenuItem
-              v-else
-              :item-key="item.key"
-              :icon="menuIcon(item.icon)"
-            >
-            {{ item.label }}
-          </MenuItem>
-        </template>
-        </Menu>
+        />
       </nav>
 
       <!-- Bottom menu -->
@@ -132,19 +120,11 @@ const menuIcon = (name?: string, size = 20) => h(Icon, { name: name || 'placehol
         <Menu
           :selected-keys="[activeMenu]"
           :collapsed="displayCollapsed"
-          :mode="displayCollapsed ? 'vertical' : 'inline'"
+          mode="inline"
+          :items="bottomMenuItems"
           class="!min-w-0"
           @select="handleMenuSelect"
-        >
-          <MenuItem
-            v-for="item in SHELL_BOTTOM_MENU_ITEMS"
-            :key="item.key"
-            :item-key="item.key"
-            :icon="menuIcon(item.icon)"
-          >
-            {{ item.label }}
-          </MenuItem>
-        </Menu>
+        />
       </div>
 
       <!-- 折叠按钮 -->

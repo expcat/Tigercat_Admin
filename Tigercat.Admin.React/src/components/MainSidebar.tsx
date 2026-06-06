@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Sidebar, Menu, MenuItem, SubMenu } from '@expcat/tigercat-react';
-import { LogoIcon, ChevronRightIcon, ChevronLeftIcon, PlaceholderIcon } from './Icons';
+import { Sidebar, Menu } from '@expcat/tigercat-react';
+import { LogoIcon, ChevronRightIcon, ChevronLeftIcon } from './Icons';
 import { usePermission } from '../utils/permission';
 import {
   SHELL_BOTTOM_MENU_ITEMS,
@@ -36,6 +36,9 @@ export function MainSidebar({
   const filteredMenuItems = useMemo(() => {
     return filterShellMenuItems(SHELL_MENU_ITEMS, hasPerm);
   }, [hasPerm]);
+  const filteredBottomMenuItems = useMemo(() => {
+    return filterShellMenuItems(SHELL_BOTTOM_MENU_ITEMS, hasPerm);
+  }, [hasPerm]);
   const requiredOpenKeys = useMemo(
     () => getShellExpandedKeys(activeMenu, filteredMenuItems),
     [activeMenu, filteredMenuItems],
@@ -51,10 +54,6 @@ export function MainSidebar({
 
   const displayCollapsed = showCollapseToggle ? collapsed : false;
   const menuOpenKeys = displayCollapsed ? [] : expandedKeys;
-
-  const renderItemIcon = (icon: React.ReactNode) => {
-    return icon || <PlaceholderIcon size={18} />;
-  };
 
   return (
     <Sidebar
@@ -82,36 +81,13 @@ export function MainSidebar({
             selectedKeys={[activeMenu]}
             openKeys={menuOpenKeys}
             collapsed={displayCollapsed}
-            mode={displayCollapsed ? 'vertical' : 'inline'}
-            inlineIndent={displayCollapsed ? 0 : 24}
-            popupPortal={displayCollapsed}
+            mode="inline"
+            popupPortal
+            items={filteredMenuItems}
             className="!min-w-0"
             onSelect={handleSelect}
-            onOpenChange={(_key, info) => setExpandedKeys(info.openKeys)}>
-            {filteredMenuItems.map((item) =>
-              item.children && item.children.length > 0 ? (
-                <SubMenu
-                  key={item.key}
-                  itemKey={item.key}
-                  title={item.label}
-                  icon={renderItemIcon(item.icon)}>
-                  {item.children.map((child) => (
-                    <MenuItem
-                      key={child.key}
-                      itemKey={child.key}
-                      icon={renderItemIcon(child.icon)}
-                      className={displayCollapsed ? '!px-2' : ''}>
-                      {child.label}
-                    </MenuItem>
-                  ))}
-                </SubMenu>
-              ) : (
-                <MenuItem key={item.key} itemKey={item.key} icon={renderItemIcon(item.icon)}>
-                  {item.label}
-                </MenuItem>
-              ),
-            )}
-          </Menu>
+            onOpenChange={(_key, info) => setExpandedKeys(info.openKeys)}
+          />
         </nav>
 
         {/* Bottom menu */}
@@ -119,15 +95,11 @@ export function MainSidebar({
           <Menu
             selectedKeys={[activeMenu]}
             collapsed={displayCollapsed}
-            mode={displayCollapsed ? 'vertical' : 'inline'}
+            mode="inline"
+            items={filteredBottomMenuItems}
             className="!min-w-0"
-            onSelect={handleSelect}>
-            {SHELL_BOTTOM_MENU_ITEMS.map((item) => (
-              <MenuItem key={item.key} itemKey={item.key} icon={renderItemIcon(item.icon)}>
-                {item.label}
-              </MenuItem>
-            ))}
-          </Menu>
+            onSelect={handleSelect}
+          />
         </div>
 
         {/* 折叠按钮 */}
