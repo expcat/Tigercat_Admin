@@ -174,3 +174,36 @@
   text-overflow: ellipsis;
 }
 
+/* collapsed menu styles when expanding downwards inline */
+.menu-collapsed {
+  min-width: 64px !important;
+}
+
+.menu-collapsed [role="menuitem"] {
+  justify-content: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.menu-collapsed [role="menuitem"] .flex-1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.menu-collapsed [role="menuitem"] .mr-2,
+.menu-collapsed [role="menuitem"] .flex-shrink-0 {
+  margin-right: 0 !important;
+}
+
+.menu-collapsed [role="menuitem"] svg.ml-2 {
+  display: none !important;
+}
+
+

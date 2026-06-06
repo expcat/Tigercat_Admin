@@ -79,12 +79,11 @@ export function MainSidebar({
         <nav className="min-h-0 flex-1 overflow-y-auto py-2">
           <Menu
             selectedKeys={[activeMenu]}
-            openKeys={menuOpenKeys}
-            collapsed={displayCollapsed}
+            openKeys={expandedKeys}
+            collapsed={false}
             mode="inline"
-            popupPortal
             items={filteredMenuItems}
-            className="!min-w-0"
+            className={`!min-w-0 ${displayCollapsed ? 'menu-collapsed' : ''}`}
             onSelect={handleSelect}
             onOpenChange={(_key, info) => setExpandedKeys(info.openKeys)}
           />
@@ -94,10 +93,10 @@ export function MainSidebar({
         <div className="shrink-0 border-t border-(--tiger-border,#e2e8f0) py-2">
           <Menu
             selectedKeys={[activeMenu]}
-            collapsed={displayCollapsed}
+            collapsed={false}
             mode="inline"
             items={filteredBottomMenuItems}
-            className="!min-w-0"
+            className={`!min-w-0 ${displayCollapsed ? 'menu-collapsed' : ''}`}
             onSelect={handleSelect}
           />
         </div>

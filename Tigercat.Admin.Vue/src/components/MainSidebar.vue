@@ -104,12 +104,12 @@ const bottomMenuItems = computed(() => toMenuItems(filteredBottomMenuItems.value
       <nav class="min-h-0 flex-1 overflow-y-auto py-2">
         <Menu
           :selected-keys="[activeMenu]"
-          :open-keys="menuOpenKeys"
-          :collapsed="displayCollapsed"
+          :open-keys="expandedKeys"
+          :collapsed="false"
           mode="inline"
-          popup-portal
           :items="mainMenuItems"
           class="!min-w-0"
+          :class="{ 'menu-collapsed': displayCollapsed }"
           @select="handleMenuSelect"
           @update:open-keys="(keys: (string | number)[]) => expandedKeys = keys"
         />
@@ -119,10 +119,11 @@ const bottomMenuItems = computed(() => toMenuItems(filteredBottomMenuItems.value
       <div class="shrink-0 border-t border-(--tiger-border,#e2e8f0) py-2">
         <Menu
           :selected-keys="[activeMenu]"
-          :collapsed="displayCollapsed"
+          :collapsed="false"
           mode="inline"
           :items="bottomMenuItems"
           class="!min-w-0"
+          :class="{ 'menu-collapsed': displayCollapsed }"
           @select="handleMenuSelect"
         />
       </div>
