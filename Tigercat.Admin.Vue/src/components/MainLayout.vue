@@ -14,7 +14,6 @@ import {
 } from '../utils/shell-navigation'
 
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)'
-const MOBILE_SIDEBAR_ANIMATION_MS = 300
 const DEMO_MODE = import.meta.env.VITE_TIGERCAT_DEMO === 'true'
 
 interface Session {
@@ -39,7 +38,6 @@ const router = useRouter()
 const collapsed = ref(props.compactMode ?? false)
 const isMobile = ref(false)
 const sidebarOpen = ref(false)
-const sidebarRendered = ref(false)
 
 const activeMenu = ref<ShellPageKey>('home')
 
@@ -48,39 +46,23 @@ const breadcrumbItems = computed(() => getShellBreadcrumbItems(activeMenu.value)
 
 const handleMenuSelect = (key: string) => {
   const menuKey = key as ShellPageKey
+  const routeName = SHELL_MENU_ROUTES[menuKey]
+  if (!routeName) {
+    return
+  }
+
   activeMenu.value = menuKey
   if (isMobile.value) {
     handleSidebarClose()
   }
-  router.push({ name: SHELL_MENU_ROUTES[menuKey] })
+  router.push({ name: routeName })
 }
 
 const handleSidebarToggle = () => {
   if (isMobile.value) {
-    if (sidebarOpen.value) {
-      handleSidebarClose()
-    } else {
-      handleSidebarOpen()
-    }
+    sidebarOpen.value = !sidebarOpen.value
   } else {
     collapsed.value = !collapsed.value
-  }
-}
-
-let sidebarCloseTimer: number | null = null
-let sidebarOpenFrame: number | null = null
-
-const clearSidebarCloseTimer = () => {
-  if (sidebarCloseTimer !== null) {
-    window.clearTimeout(sidebarCloseTimer)
-    sidebarCloseTimer = null
-  }
-}
-
-const clearSidebarOpenFrame = () => {
-  if (sidebarOpenFrame !== null) {
-    window.cancelAnimationFrame(sidebarOpenFrame)
-    sidebarOpenFrame = null
   }
 }
 
@@ -92,34 +74,17 @@ const focusSidebarToggle = () => {
   })
 }
 
-const handleSidebarOpen = () => {
-  clearSidebarCloseTimer()
-  clearSidebarOpenFrame()
-  if (sidebarRendered.value) {
-    sidebarOpen.value = true
-    return
-  }
-
-  sidebarRendered.value = true
-  nextTick(() => {
-    sidebarOpenFrame = window.requestAnimationFrame(() => {
-      sidebarOpen.value = true
-      sidebarOpenFrame = null
-    })
-  })
+const handleDrawerOpenChange = (value: boolean) => {
+  sidebarOpen.value = value
 }
 
 const handleSidebarClose = () => {
-  clearSidebarOpenFrame()
   sidebarOpen.value = false
 }
 
 const syncMobileState = (matches: boolean) => {
-  clearSidebarCloseTimer()
-  clearSidebarOpenFrame()
   isMobile.value = matches
   sidebarOpen.value = false
-  sidebarRendered.value = false
 }
 
 const handleViewportChange = (event: MediaQueryListEvent) => {
@@ -142,8 +107,6 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  clearSidebarCloseTimer()
-  clearSidebarOpenFrame()
   mediaQuery?.removeEventListener('change', handleViewportChange)
   window.removeEventListener('keydown', handleWindowKeydown)
 })
@@ -163,45 +126,30 @@ watch(
   },
   { immediate: true }
 )
-
-watch(
-  [isMobile, sidebarOpen, sidebarRendered],
-  ([mobile, open, rendered]) => {
-    clearSidebarCloseTimer()
-    if (!mobile || open || !rendered) {
-      return
-    }
-
-    sidebarCloseTimer = window.setTimeout(() => {
-      if (!sidebarOpen.value) {
-        sidebarRendered.value = false
-        focusSidebarToggle()
-      }
-      sidebarCloseTimer = null
-    }, MOBILE_SIDEBAR_ANIMATION_MS)
-  }
-)
 </script>
 
 <template>
   <Layout class="h-screen w-full overflow-hidden !flex-row">
     <!-- Sidebar -->
     <Drawer
-      v-if="isMobile && sidebarRendered"
+      v-if="isMobile"
       placement="left"
-      :open="sidebarRendered"
+      :open="sidebarOpen"
       :closable="false"
       :mask="true"
       :mask-closable="true"
+      :destroy-on-close="true"
+      :destroy-on-close-after-leave="true"
+      :fullscreen-on-mobile="false"
       width="240px"
-      :style="{
-        maxWidth: '240px',
-        transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-        transition: `transform ${MOBILE_SIDEBAR_ANIMATION_MS}ms ease-in-out`
+      :panel-style="{
+        width: '240px',
+        maxWidth: '240px'
       }"
       body-class-name="!p-0 h-full"
-      @update:open="(value) => { if (!value) handleSidebarClose() }"
+      @update:open="handleDrawerOpenChange"
       @close="handleSidebarClose"
+      @after-leave="focusSidebarToggle"
     >
       <div id="main-sidebar" class="h-full">
         <MainSidebar 

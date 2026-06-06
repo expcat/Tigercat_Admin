@@ -50,6 +50,7 @@ export function MainSidebar({
   };
 
   const displayCollapsed = showCollapseToggle ? collapsed : false;
+  const menuOpenKeys = displayCollapsed ? [] : expandedKeys;
 
   const renderItemIcon = (icon: React.ReactNode) => {
     return icon || <PlaceholderIcon size={18} />;
@@ -79,10 +80,11 @@ export function MainSidebar({
         <nav className="min-h-0 flex-1 overflow-y-auto py-2">
           <Menu
             selectedKeys={[activeMenu]}
-            openKeys={expandedKeys}
+            openKeys={menuOpenKeys}
             collapsed={displayCollapsed}
-            mode="inline"
+            mode={displayCollapsed ? 'vertical' : 'inline'}
             inlineIndent={displayCollapsed ? 0 : 24}
+            popupPortal={displayCollapsed}
             className="!min-w-0"
             onSelect={handleSelect}
             onOpenChange={(_key, info) => setExpandedKeys(info.openKeys)}>
@@ -117,7 +119,7 @@ export function MainSidebar({
           <Menu
             selectedKeys={[activeMenu]}
             collapsed={displayCollapsed}
-            mode="inline"
+            mode={displayCollapsed ? 'vertical' : 'inline'}
             className="!min-w-0"
             onSelect={handleSelect}>
             {SHELL_BOTTOM_MENU_ITEMS.map((item) => (

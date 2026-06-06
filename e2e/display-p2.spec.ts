@@ -222,6 +222,15 @@ async function expectMobileDrawerHasTransition(drawerPanel: Locator) {
   expect(transition.duration).not.toBe('0s');
 }
 
+async function expectMobileDrawerClosed(page: Page) {
+  await expect(page.locator('[data-tiger-drawer]').first()).toBeHidden();
+  await expect(page.locator('#main-sidebar')).toHaveCount(0);
+}
+
+function getCollapsedSystemMenuTrigger(page: Page): Locator {
+  return page.locator('#main-sidebar').getByRole('menuitem').nth(1);
+}
+
 test.describe('P4 可访问性与响应式门禁', () => {
   test('认证页在移动端和暗色模式下不溢出', async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORT);
@@ -251,6 +260,9 @@ test.describe('P4 可访问性与响应式门禁', () => {
     await expectSidebarHasTransition(page);
     await page.getByRole('button', { name: '关闭导航菜单' }).click();
     await expectSidebarWidth(page, 64);
+    await getCollapsedSystemMenuTrigger(page).click();
+    await expectSidebarWidth(page, 64);
+    await expectNoPageHorizontalOverflow(page);
     await page.getByRole('button', { name: '打开导航菜单' }).click();
     await expectSidebarWidth(page, 240);
 
@@ -284,12 +296,14 @@ test.describe('P4 可访问性与响应式门禁', () => {
       )
       .toBe(240);
     await drawerMask.click({ position: { x: 320, y: 120 } });
-    await expect(drawerPanel).toBeVisible();
+    await expectMobileDrawerClosed(page);
     await expect(page.getByRole('button', { name: '打开导航菜单' })).toBeVisible();
+    await expectFocused(toggle);
 
     await toggle.click();
     await expect(drawerMask).toBeVisible();
     await page.keyboard.press('Escape');
+    await expectMobileDrawerClosed(page);
     await expect(page.getByRole('button', { name: '打开导航菜单' })).toBeVisible();
     await expectFocused(toggle);
 

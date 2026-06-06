@@ -44,6 +44,9 @@ const toggleCollapsed = () => {
 const displayCollapsed = computed(() =>
   props.showCollapseToggle ? props.collapsed : false
 )
+const menuOpenKeys = computed(() =>
+  displayCollapsed.value ? [] : expandedKeys.value
+)
 
 const { has: hasPerm } = usePermission()
 const filteredMenuItems = computed(() =>
@@ -86,10 +89,11 @@ const menuIcon = (name?: string, size = 20) => h(Icon, { name: name || 'placehol
       <nav class="min-h-0 flex-1 overflow-y-auto py-2">
         <Menu
           :selected-keys="[activeMenu]"
-          :open-keys="expandedKeys"
+          :open-keys="menuOpenKeys"
           :collapsed="displayCollapsed"
-          mode="inline"
+          :mode="displayCollapsed ? 'vertical' : 'inline'"
           :inline-indent="displayCollapsed ? 0 : 24"
+          :popup-portal="displayCollapsed"
           class="!min-w-0"
           @select="handleMenuSelect"
           @update:open-keys="(keys: (string | number)[]) => expandedKeys = keys"
@@ -128,7 +132,7 @@ const menuIcon = (name?: string, size = 20) => h(Icon, { name: name || 'placehol
         <Menu
           :selected-keys="[activeMenu]"
           :collapsed="displayCollapsed"
-          mode="inline"
+          :mode="displayCollapsed ? 'vertical' : 'inline'"
           class="!min-w-0"
           @select="handleMenuSelect"
         >

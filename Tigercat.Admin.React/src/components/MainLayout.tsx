@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Layout, Content, Drawer } from '@expcat/tigercat-react';
 import { MainHeader } from './MainHeader';
 import { MainSidebar } from './MainSidebar';
@@ -9,7 +9,6 @@ import {
 } from '../utils/shell-navigation';
 
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)';
-const MOBILE_SIDEBAR_ANIMATION_MS = 300;
 const DEMO_MODE = import.meta.env.VITE_TIGERCAT_DEMO === 'true';
 
 interface MainLayoutProps {
@@ -38,8 +37,6 @@ export function MainLayout({
   const [collapsed, setCollapsed] = useState(compactMode ?? false);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarRendered, setSidebarRendered] = useState(false);
-  const sidebarOpenFrame = useRef<number | null>(null);
   const [internalActiveMenu, setInternalActiveMenu] = useState(
     activeMenu ?? 'home',
   );
@@ -57,7 +54,6 @@ export function MainLayout({
     const syncMobileState = (matches: boolean) => {
       setIsMobile(matches);
       setSidebarOpen(false);
-      setSidebarRendered(false);
     };
 
     syncMobileState(mediaQuery.matches);
@@ -70,7 +66,6 @@ export function MainLayout({
 
     return () => {
       mediaQuery.removeEventListener('change', handleChange);
-      clearSidebarOpenFrame();
     };
   }, []);
 
@@ -92,39 +87,6 @@ export function MainLayout({
     };
   }, [isMobile, sidebarOpen]);
 
-  useEffect(() => {
-    if (!isMobile || sidebarOpen || !sidebarRendered) {
-      return undefined;
-    }
-
-    const timer = window.setTimeout(() => {
-      setSidebarRendered(false);
-      window.requestAnimationFrame(() => {
-        document
-          .querySelector<HTMLButtonElement>('[aria-controls="main-sidebar"]')
-          ?.focus();
-      });
-    }, MOBILE_SIDEBAR_ANIMATION_MS);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [isMobile, sidebarOpen, sidebarRendered]);
-
-  const handleSidebarOpen = () => {
-    clearSidebarOpenFrame();
-    if (sidebarRendered) {
-      setSidebarOpen(true);
-      return;
-    }
-
-    setSidebarRendered(true);
-    sidebarOpenFrame.current = window.requestAnimationFrame(() => {
-      setSidebarOpen(true);
-      sidebarOpenFrame.current = null;
-    });
-  };
-
   const handleMenuSelect = (key: string) => {
     setInternalActiveMenu(key);
     if (isMobile) {
@@ -135,27 +97,15 @@ export function MainLayout({
 
   const handleSidebarToggle = () => {
     if (isMobile) {
-      if (sidebarOpen) {
-        setSidebarOpen(false);
-      } else {
-        handleSidebarOpen();
-      }
+      setSidebarOpen((prev) => !prev);
     } else {
       setCollapsed((prev) => !prev);
     }
   };
 
   const handleSidebarClose = () => {
-    clearSidebarOpenFrame();
     setSidebarOpen(false);
   };
-
-  function clearSidebarOpenFrame() {
-    if (sidebarOpenFrame.current !== null) {
-      window.cancelAnimationFrame(sidebarOpenFrame.current);
-      sidebarOpenFrame.current = null;
-    }
-  }
 
   const pageTitle = getShellPageTitle(currentActiveMenu);
   const breadcrumbItems = getShellBreadcrumbItems(currentActiveMenu);
@@ -163,37 +113,42 @@ export function MainLayout({
   return (
     <Layout className="h-screen w-full overflow-hidden !flex-row">
       {/* Sidebar */}
-      {isMobile && sidebarRendered ? (
-        <>
-          <Drawer
-            placement="left"
-            open={sidebarRendered}
-            onClose={handleSidebarClose}
-            closable={false}
-            mask={true}
-            maskClosable={true}
-            width="240px"
-            style={{
-              maxWidth: '240px',
-              transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-              transition: `transform ${MOBILE_SIDEBAR_ANIMATION_MS}ms ease-in-out`,
-            }}
-            bodyClassName="!p-0 h-full"
-          >
-            <div id="main-sidebar" className="h-full">
-              <MainSidebar
-                collapsed={false}
-                activeMenu={currentActiveMenu}
-                showCollapseToggle={false}
-                sidebarWidth="240px"
-                collapsedWidth="64px"
-                onCollapsedChange={setCollapsed}
-                onMenuSelect={handleMenuSelect}
-              />
-            </div>
-          </Drawer>
-        </>
-      ) : !isMobile ? (
+      {isMobile ? (
+        <Drawer
+          placement="left"
+          open={sidebarOpen}
+          onClose={handleSidebarClose}
+          onAfterLeave={() => {
+            document
+              .querySelector<HTMLButtonElement>('[aria-controls="main-sidebar"]')
+              ?.focus();
+          }}
+          closable={false}
+          mask={true}
+          maskClosable={true}
+          destroyOnClose={true}
+          destroyOnCloseAfterLeave={true}
+          fullscreenOnMobile={false}
+          width="240px"
+          panelStyle={{
+            width: '240px',
+            maxWidth: '240px',
+          }}
+          bodyClassName="!p-0 h-full"
+        >
+          <div id="main-sidebar" className="h-full">
+            <MainSidebar
+              collapsed={false}
+              activeMenu={currentActiveMenu}
+              showCollapseToggle={false}
+              sidebarWidth="240px"
+              collapsedWidth="64px"
+              onCollapsedChange={setCollapsed}
+              onMenuSelect={handleMenuSelect}
+            />
+          </div>
+        </Drawer>
+      ) : (
         <div 
           id="main-sidebar" 
           className="relative h-full shrink-0 overflow-hidden"
@@ -208,7 +163,7 @@ export function MainLayout({
             onMenuSelect={handleMenuSelect}
           />
         </div>
-      ) : null}
+      )}
 
       {/* Main Content Area */}
       <Layout className="h-full min-h-0 min-w-0 flex-1">

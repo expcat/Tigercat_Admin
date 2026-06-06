@@ -47,7 +47,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 
 - 外层：`Layout` 横向布局，左侧 `MainSidebar`，右侧 `MainHeader + Content`。
 - 桌面侧栏：宽 `240px`，折叠宽 `64px`，使用 `Sidebar`、`Menu`、`SubMenu`、`MenuItem`。
-- 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭，Esc 关闭，并在关闭后恢复焦点到菜单按钮。
+- 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭，Esc 关闭；依赖 `destroyOnClose + destroyOnCloseAfterLeave + onAfterLeave/@after-leave` 完成离场后卸载与焦点恢复。
 - Header：使用 `Header`、`Breadcrumb`、`Button`、`Dropdown`、`Avatar`、`Tag`，包含侧栏开关、面包屑、主题切换、修改密码和退出。
 - Content：`min-h-0 overflow-auto p-3 sm:p-4 md:p-6`，内部最大宽度 `max-w-7xl`。
 - 访客页：登录和注册使用居中 Guest shell，不进入后台布局。
@@ -151,7 +151,5 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 | 组件 | 平台 | 诉求 | 当前规避 |
 | ---- | ---- | ---- | -------- |
-| `Drawer` | React / Vue | 移动端左侧抽屉希望支持遮罩可关闭、固定宽度滑入/滑出、离场动画结束后卸载的内置能力。 | `MainLayout` 拆分 `rendered` 与 `open` 状态，并维护计时器、`requestAnimationFrame` 和焦点恢复。 |
 | `Sidebar` | React / Vue | 希望补充官方后台 Shell 示例，覆盖 Logo 文案、底部折叠按钮和收缩动画。 | `MainSidebar` 手写 `max-width + opacity + transform` 动画。 |
-| `Menu` | React / Vue | 折叠状态仍有 min-width 与 hover 子菜单撑开问题，希望内置适配或 portal。 | 给 `Menu` 添加 `!min-w-0`，统一使用 `mode="inline"`，折叠时 `inline-indent=0`。 |
-
+| `Menu` | React / Vue | `popupPortal` 已由上游支持，但折叠态仍需验证 `min-width` 与 popup 定位在复杂容器里的稳定性。 | 展开态使用 `mode="inline"`；折叠态切换为 `mode="vertical"` 并启用 `popupPortal`，同时继续保留 `!min-w-0` 与 `inline-indent=0` 作为防御性规避。 |
