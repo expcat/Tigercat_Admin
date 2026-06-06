@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, inject, onMounted, h } from 'vue'
-import { DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tree, Tooltip, Message, Checkbox, Popover } from '@expcat/tigercat-vue'
+import { ref, computed, inject, onMounted, onUnmounted, h } from 'vue'
+import { DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tree, Tooltip, Message, Checkbox } from '@expcat/tigercat-vue'
 import type { TableColumn, SortState } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
@@ -514,10 +514,51 @@ async function handleExport() {
   }
 }
 
+const columnsPanelOpen = ref(false)
+const columnsTriggerRef = ref<HTMLDivElement | null>(null)
+const columnsPanelRef = ref<HTMLDivElement | null>(null)
+
+function closeColumnsPanel(restoreFocus = false) {
+  columnsPanelOpen.value = false
+  if (restoreFocus) {
+    window.setTimeout(() => {
+      columnsTriggerRef.value?.querySelector('button')?.focus()
+    }, 0)
+  }
+}
+
 // ---- Lifecycle ----
 onMounted(() => {
   loadRoles()
   loadAllPermissions()
+
+  const handlePointerDown = (event: MouseEvent) => {
+    if (!columnsPanelOpen.value) return
+    const target = event.target as Node
+    if (
+      columnsTriggerRef.value?.contains(target) ||
+      columnsPanelRef.value?.contains(target)
+    ) {
+      return
+    }
+    closeColumnsPanel()
+  }
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (!columnsPanelOpen.value) return
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      closeColumnsPanel(true)
+    }
+  }
+
+  document.addEventListener('mousedown', handlePointerDown)
+  document.addEventListener('keydown', handleKeyDown)
+
+  onUnmounted(() => {
+    document.removeEventListener('mousedown', handlePointerDown)
+    document.removeEventListener('keydown', handleKeyDown)
+  })
 })
 </script>
 
@@ -534,29 +575,42 @@ onMounted(() => {
     />
 
     <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-      <Popover trigger="click" placement="bottom-end" :width="180">
-        <template #reference>
-          <Button variant="outline" size="sm">
-            <span class="flex items-center gap-1">
-              <Icon name="settings" :size="14" />
-              列显隐
-            </span>
-          </Button>
-        </template>
-        <div class="space-y-2">
-          <label
-            v-for="key in ALL_COLUMN_KEYS.filter(k => k !== 'actions' || canEdit || canDelete)"
-            :key="key"
-            class="p2-checkbox-row text-sm"
-          >
-            <Checkbox
-              :model-value="!hiddenColumns.has(key)"
-              @update:model-value="() => toggleColumn(key)"
-            />
-            <span class="p2-checkbox-label">{{ columnLabels[key] || key }}</span>
-          </label>
+      <div class="p4-column-popover" ref="columnsTriggerRef">
+        <Button
+          variant="outline"
+          :aria-expanded="columnsPanelOpen"
+          aria-haspopup="dialog"
+          aria-controls="roles-column-panel"
+          @click="columnsPanelOpen = !columnsPanelOpen"
+        >
+          <span class="flex items-center gap-1">
+            <Icon name="settings" :size="14" />
+            列显隐
+          </span>
+        </Button>
+        <div
+          v-if="columnsPanelOpen"
+          id="roles-column-panel"
+          ref="columnsPanelRef"
+          role="dialog"
+          aria-label="角色表格列显隐"
+          class="p4-column-panel"
+        >
+          <div class="space-y-2">
+            <label
+              v-for="key in ALL_COLUMN_KEYS.filter(k => k !== 'actions' || canEdit || canDelete)"
+              :key="key"
+              class="p2-checkbox-row text-sm"
+            >
+              <Checkbox
+                :model-value="!hiddenColumns.has(key)"
+                @update:model-value="() => toggleColumn(key)"
+              />
+              <span class="p2-checkbox-label">{{ columnLabels[key] || key }}</span>
+            </label>
+          </div>
         </div>
-      </Popover>
+      </div>
       <Button
         v-permission="'role:view'"
         variant="outline"

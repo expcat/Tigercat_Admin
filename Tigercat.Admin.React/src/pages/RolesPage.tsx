@@ -692,7 +692,6 @@ function RolesPage() {
         <div className="p4-column-popover" ref={columnsTriggerRef}>
           <Button
             variant="outline"
-            size="sm"
             aria-expanded={columnsPanelOpen}
             aria-haspopup="dialog"
             aria-controls="roles-column-panel"

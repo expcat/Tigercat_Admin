@@ -118,6 +118,22 @@
     padding-right: 0.25rem;
   }
 
+  /* Fix sticky action cells covering the dropdown menu of previous rows */
+  tbody tr:has([aria-expanded="true"]) td {
+    z-index: 100 !important;
+  }
+
+  /* Premium styling for dropdown items in React */
+  .tiger-dropdown-item {
+    color: var(--tiger-text, #374151) !important;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+  .tiger-dropdown-item:hover {
+    background-color: color-mix(in srgb, var(--tiger-primary, #2563eb) 8%, transparent) !important;
+    color: var(--tiger-primary, #2563eb) !important;
+  }
+
 }
 @theme {
   --animate-shake: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
