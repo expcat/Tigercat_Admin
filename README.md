@@ -1,175 +1,107 @@
 # Tigercat_Admin
 
-Tigercat Admin 是一个基于 .NET Aspire、Vue3/React 和 Tigercat UI 的管理后台项目基础架构。
+Tigercat Admin 是一个基于 .NET Aspire、.NET 10 Minimal API、React 19、Vue 3 和 Tigercat UI 的管理后台基础架构。仓库同时维护 React 与 Vue 两套前端，用同一组 API、业务类型、权限模型和界面规范验证后台管理体验。
 
-## 🏗️ 项目结构
+## 文档地图
 
+| 文档 | 用途 |
+| ---- | ---- |
+| [AGENT.md](AGENT.md) | 代码代理工作规则、双端一致性和验证要求 |
+| [docs/frontend.md](docs/frontend.md) | React / Vue 前端蓝图、Tigercat UI 使用规范、LLM 生成指南 |
+| [docs/api.md](docs/api.md) | 后端 API 契约、认证、错误码和事件说明 |
+| [docs/operations.md](docs/operations.md) | 本地开发、数据库、部署、健康检查、CI 和发布 smoke |
+
+如果目标是让 LLM 基于 Tigercat UI 生成相似的 Admin 前端，请按顺序读取：
+
+```text
+README.md -> docs/frontend.md -> docs/api.md
 ```
+
+## 项目结构
+
+```text
 Tigercat_Admin/
-├── Tigercat.Aspire/              # Aspire 主控项目 (.NET 10)
+├── Tigercat.Aspire/              # Aspire 主控项目
 ├── Tigercat.ServiceDefaults/     # Aspire 服务默认配置
-├── Tigercat.Admin.Api/           # 后端 API (.NET 10 Minimal API)
-├── Tigercat.Admin.Vue/           # Vue3 前端项目
-└── Tigercat.Admin.React/         # React 前端项目
+├── Tigercat.Admin.Api/           # .NET 10 Minimal API 后端
+├── Tigercat.Admin.Api.Tests/     # 后端测试
+├── Tigercat.Admin.React/         # React + Vite 前端
+├── Tigercat.Admin.Vue/           # Vue 3 + Vite 前端
+├── Tigercat.Admin.MockApi/       # 前端静态演示 Mock API
+├── e2e/                          # Playwright 双端测试
+└── docs/                         # 保留的专题文档
 ```
 
-## 🚀 快速开始
+## 快速开始
 
-### 环境要求
+环境要求：
 
 - .NET 10 SDK
 - Node.js 20.11+
 - PNPM 10+
 
-### 安装依赖
+安装依赖：
 
 ```bash
-# 在仓库根目录安装 workspace 依赖
 pnpm install
 ```
 
-请优先使用仓库根目录的 `pnpm-lock.yaml` 安装依赖，不要在 `Tigercat.Admin.Vue` 或 `Tigercat.Admin.React` 目录单独执行安装并提交漂移后的 lockfile。
-
-### 运行项目
-
-#### 方式 1: 使用 Aspire 主控（推荐）
+优先通过 Aspire 启动完整系统：
 
 ```bash
 cd Tigercat.Aspire
 dotnet run
 ```
 
-访问 Aspire Dashboard 查看所有服务状态和管理。Dashboard 会自动启动所有配置的服务（API + 前端）。
-
-#### 方式 2: 使用解决方案构建
+也可以单独启动服务：
 
 ```bash
-# 构建整个解决方案
+cd Tigercat.Admin.Api && dotnet run
+cd Tigercat.Admin.React && pnpm dev
+cd Tigercat.Admin.Vue && pnpm dev
+```
+
+默认端口：
+
+| 服务 | 端口 |
+| ---- | ---- |
+| API | 5137 |
+| React | 5174 |
+| Vue | 5173 |
+| Aspire Dashboard | 动态 |
+
+## 常用命令
+
+```bash
 dotnet build Tigercat.Admin.sln
-
-# 运行 Aspire
-cd Tigercat.Aspire
-dotnet run
-```
-
-#### 方式 3: 单独运行各个项目
-
-**后端 API:**
-
-```bash
-cd Tigercat.Admin.Api
-dotnet run
-```
-
-**Vue3 前端:**
-
-```bash
-cd Tigercat.Admin.Vue
-pnpm dev
-```
-
-**React 前端:**
-
-```bash
-cd Tigercat.Admin.React
-pnpm dev
-```
-
-## 📦 项目特性
-
-- ✅ .NET 10 Aspire 主控和编排
-- ✅ .NET 10 Minimal API 后端
-- ✅ Vue3 + Vite 前端
-- ✅ React 19 + Vite 前端
-- ✅ Tigercat UI 集成 (@expcat/tigercat-vue/react)
-- ✅ PNPM Workspace 管理
-- ✅ 认证、用户、角色、权限、统计、导出、设置 API
-- ✅ CORS 跨域支持
-- ✅ API 代理配置
-- ✅ API / React / Vue 生产 Dockerfile
-- ✅ PostgreSQL 迁移 SQL 生成与发布门禁
-- ✅ OpenTelemetry 与生产安全健康检查
-- ✅ 解决方案文件 (Tigercat.Admin.sln)
-- ✅ 双端路由、权限守卫与主布局
-- ✅ 用户/角色/设置/仪表板核心页面
-
-## 🧩 架构说明
-
-### Aspire 主控
-
-使用 .NET Aspire 进行服务编排，统一管理后端 API 和前端项目。
-
-### 后端 API
-
-- 使用 .NET 10 Minimal API
-- 集成 Aspire ServiceDefaults
-
-### 前端 UI 规范
-
-- **Vue**: 尽量使用 [@expcat/tigercat-vue](https://expcat.github.io/Tigercat/vue/) 组件。
-- **React**: 尽量使用 [@expcat/tigercat-react](https://expcat.github.io/Tigercat/react/) 组件。
-- **约束**: 避免过多冗余样式，保持两端一致。
-- **反馈机制**: 发现组件库功能缺失或不满足需求时，请在 [docs/upstream-requirements.md](docs/upstream-requirements.md) 中记录。
-- 配置 CORS 支持跨域
-- 提供基础 API 端点:
-  - `/api/health` - 健康检查
-  - `/api/info` - 应用信息
-
-### 前端项目
-
-- Vue3 和 React 两套独立实现
-- 使用 Vite 作为构建工具
-- 配置 API 代理
-- Tigercat UI 1.2.16 管理后台界面
-- Tailwind CSS v4 modern 插件接入
-
-## 📝 开发说明
-
-发布与生产化基线见 [docs/deployment.md](docs/deployment.md)，其中包含 PostgreSQL、Redis、CORS、前端 API 地址、健康检查、CI 和回滚策略。
-
-常用发布门禁：
-
-```bash
 dotnet test Tigercat.Admin.sln
-pnpm build
+pnpm build:frontend
 pnpm build:demo
+pnpm e2e:react
+pnpm e2e:vue
 pnpm db:script:postgres
 pnpm run check:links
 ```
 
-生产镜像构建：
+前端依赖以仓库根目录的 `pnpm-lock.yaml` 为准；不要在 `Tigercat.Admin.React` 或 `Tigercat.Admin.Vue` 目录单独安装并提交漂移后的 lockfile。
 
-```bash
-docker build -f Tigercat.Admin.Api/Dockerfile -t tigercat-admin-api .
-docker build -f Tigercat.Admin.React/Dockerfile -t tigercat-admin-react .
-docker build -f Tigercat.Admin.Vue/Dockerfile -t tigercat-admin-vue .
-```
+## 核心能力
 
-### 数据库提供程序
+- Aspire 编排 API、React、Vue 和 Redis。
+- .NET 10 Minimal API，支持认证、用户、角色、权限、统计、导出、设置、媒体、通知、任务和审计日志。
+- React / Vue 双端共用业务概念，并保持页面、交互、状态命名和权限入口一致。
+- Tigercat UI 1.2.16：`@expcat/tigercat-react`、`@expcat/tigercat-vue`、`@expcat/tigercat-core`。
+- Tailwind CSS v4 通过 Tigercat modern 插件接入主题 token。
+- SQLite 本地默认开发，PostgreSQL 生产发布，Redis 用于缓存与事件流。
+- Playwright 覆盖 React / Vue 双端主流程和显示门禁。
 
-后端现在支持三种数据库提供程序切换：
+## 开发约定
 
-- `Sqlite`：默认开发配置，使用 `tigercat_admin.db` 作为本地持久化文件。
-- `InMemory`：仅用于测试或一次性验证，进程退出后数据会丢失。
-- `PostgreSql`：用于生产或独立部署，通过 `Database__Provider=PostgreSql` 显式启用。
+- 新增前端能力时先读 [docs/frontend.md](docs/frontend.md)，优先使用 Tigercat UI 组件。
+- 涉及后端接口时同步维护 [docs/api.md](docs/api.md)。
+- 数据库、部署、健康检查和 CI 事项见 [docs/operations.md](docs/operations.md)。
+- 自动化代理或 LLM 修改代码前应先读 [AGENT.md](AGENT.md)。
 
-配置键统一为：
-
-- `Database:Provider`
-- `ConnectionStrings:DefaultConnection`
-
-完整说明、环境变量示例和回归步骤见 [docs/database.md](docs/database.md)。
-
-### 添加新功能
-
-1. 在对应的前端项目中添加组件和页面
-2. 在后端 API 中添加对应的端点
-3. 确保两套前端实现保持界面和交互一致
-
-### Tigercat UI 集成
-
-当前已集成 `@expcat/tigercat-vue`、`@expcat/tigercat-react` 与 `@expcat/tigercat-core` 1.2.16。前端样式入口通过 Tailwind CSS v4 的 `@plugin "@expcat/tigercat-core/tailwind/modern"` 接入 Tigercat 现代主题，并通过 `@source` 扫描组件库产物。
-
-## 📄 许可证
+## 许可证
 
 [LICENSE](LICENSE)
