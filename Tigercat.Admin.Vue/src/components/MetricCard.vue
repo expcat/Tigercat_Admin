@@ -23,10 +23,7 @@ withDefaults(
     :class="framed === false ? '' : 'hover:shadow-lg transition-shadow duration-300'"
   >
     <div class="flex items-center gap-3">
-      <div
-        v-if="$slots.icon"
-        class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center transition-transform group-hover:scale-110"
-      >
+      <template v-if="$slots.icon">
         <Badge
           v-if="badge !== undefined"
           :content="badge"
@@ -34,10 +31,17 @@ withDefaults(
           :show-zero="true"
           :standalone="false"
         >
-          <slot name="icon" />
+          <div class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center transition-transform group-hover:scale-110">
+            <slot name="icon" />
+          </div>
         </Badge>
-        <slot v-else name="icon" />
-      </div>
+        <div
+          v-else
+          class="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center transition-transform group-hover:scale-110"
+        >
+          <slot name="icon" />
+        </div>
+      </template>
       <div class="min-w-0">
         <template v-if="loading">
           <Text size="sm" color="secondary">{{ title }}</Text>

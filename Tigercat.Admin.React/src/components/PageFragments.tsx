@@ -50,21 +50,24 @@ export function MetricCard({
   loading = false,
   framed = true,
 }: MetricCardProps) {
-  const iconNode = badge === undefined ? (
-    icon
-  ) : (
-    <Badge content={badge} type="number" showZero standalone={false}>
+  const chipNode = icon ? (
+    <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center transition-transform group-hover:scale-110">
       {icon}
-    </Badge>
-  );
+    </div>
+  ) : null;
+
+  const iconNode =
+    badge === undefined || chipNode === null ? (
+      chipNode
+    ) : (
+      <Badge content={badge} type="number" showZero standalone={false}>
+        {chipNode}
+      </Badge>
+    );
 
   const content = (
     <div className="flex items-center gap-3">
-      {iconNode ? (
-        <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center transition-transform group-hover:scale-110">
-          {iconNode}
-        </div>
-      ) : null}
+      {iconNode}
       <div className="min-w-0">
         {loading ? (
           <>
