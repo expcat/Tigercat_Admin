@@ -4,10 +4,10 @@
 
 ## LLM 读取顺序
 
-生成或改造前端时按以下顺序读取：
+生成或改造前端时先经过按需入口，再读取本专题：
 
 ```text
-README.md -> docs/frontend.md -> docs/api.md
+docs/llm.md -> docs/frontend.md -> docs/api.md
 ```
 
 实现时遵循：

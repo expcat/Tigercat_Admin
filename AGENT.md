@@ -6,10 +6,13 @@
 
 ## 权威文档
 
-- [README.md](README.md)：项目入口、快速开始、文档地图。
-- [docs/frontend.md](docs/frontend.md)：前端架构、Tigercat UI 用法、LLM 生成指南、组件缺口。
-- [docs/api.md](docs/api.md)：唯一 API 契约入口。
-- [docs/operations.md](docs/operations.md)：本地开发、数据库、部署、健康检查和 CI。
+| 文档 | 用途 |
+| ---- | ---- |
+| [docs/llm.md](docs/llm.md) | LLM 按需读取入口、任务路由、Skill 使用提示 |
+| [README.md](README.md) | 项目入口、快速开始、文档地图 |
+| [docs/frontend.md](docs/frontend.md) | 前端架构、Tigercat UI 用法、LLM 生成指南、组件缺口 |
+| [docs/api.md](docs/api.md) | API 契约索引；细节分布在 [docs/api](docs/api) |
+| [docs/operations.md](docs/operations.md) | 本地开发、数据库、部署、健康检查和 CI |
 
 ## 工作方式
 
@@ -29,6 +32,13 @@
 - `Tigercat.Admin.React` 与 `Tigercat.Admin.Vue` 同时维护，界面、交互逻辑、状态命名和业务行为需保持一致。
 - `Tigercat.Admin.MockApi` 支撑前端静态演示模式。
 
+## Skill 使用
+
+- 支持 skills 时，编码、审查、重构和文档整理优先使用 `karpathy-guidelines`。
+- 涉及 Tigercat UI、主题、跨框架迁移、组件属性映射或显示问题时，先读 [docs/frontend.md](docs/frontend.md)，再查现有 React / Vue 实现。
+- 只有缺少本仓库事实或需要核对最新 breaking change 时，才查 Tigercat 官方文档。
+- 使用 Skill 后仍以仓库现有代码和文档为事实来源，不新增未经验证的接口或行为。
+
 ## 前端规则
 
 - 前端必须使用 TypeScript；React 使用 `.tsx`，Vue 使用 `<script setup lang="ts">`。
@@ -37,17 +47,16 @@
 - 重组件继续使用子路径导入，例如 `@expcat/tigercat-react/TaskBoard` 或 `@expcat/tigercat-vue/TaskBoard`。
 - 公共业务类型放在双端各自的 `src/utils/types.ts`，避免页面内重复定义。
 - API 请求走 `apiRequest`，认证头走 `getAuthHeaders()`，权限判断走现有 `permission` 工具。
-- React 与 Vue 的状态变量、函数名和业务语义保持一致，例如不要一端使用 `permConfigRole`、另一端改成 `permEditingRole`。
-- Vue 端复用 `common.ts` 中的 `debounce()`；React 多个相关 `useRef` 优先合并为单个 ref 对象。
+- React 与 Vue 的状态变量、函数名和业务语义保持一致。
 - 移动端、暗色模式、弹层、菜单、表格固定列和焦点路径必须按现有 shell 与页面模式处理。
-- 若确认是 Tigercat UI 上游能力缺口，将场景、期望 API、当前规避方式和优先级补充到 [docs/frontend.md](docs/frontend.md) 的上游缺口章节。
 
-## 后端与文档规则
+## 后续文档同步
 
-- 添加或修改 API 端点时，必须同步更新 [docs/api.md](docs/api.md)。
-- 修改数据库、Redis、媒体存储、部署、CI 或健康检查时，同步更新 [docs/operations.md](docs/operations.md)。
-- 修改前端架构、Tigercat UI 用法、组件缺口或 LLM 生成指南时，同步更新 [docs/frontend.md](docs/frontend.md)。
-- 保持 [README.md](README.md) 只做总入口，不把专题细节重复写回根文档。
+- 新增或修改 API 端点、请求/响应字段、权限、错误码、事件、分页/排序规则时，必须同步更新 [docs/api.md](docs/api.md) 和对应 [docs/api](docs/api) 专题；没有合适专题时新增专题文档。
+- 新增或修改前端页面、路由、菜单、权限入口、Tigercat UI 用法、双端映射、组件缺口或页面生成规则时，必须同步更新 [docs/frontend.md](docs/frontend.md)；独立主题可新增 `docs/frontend-*.md`，并在 [docs/llm.md](docs/llm.md) 与 [README.md](README.md) 登记。
+- 修改数据库、Redis、媒体存储、部署、CI、健康检查、观测、Docker、发布 smoke 或回滚流程时，必须同步更新 [docs/operations.md](docs/operations.md)；内容过长时拆出专题并在入口文档链接。
+- 新增跨领域能力时，先更新 [docs/llm.md](docs/llm.md) 的按需读取路由，再更新或新增对应专题文档。
+- 文档更新优先复用现有专题，避免同一事实在多个文件重复维护；入口文件只写导航和决策规则。
 
 ## 验证要求
 
