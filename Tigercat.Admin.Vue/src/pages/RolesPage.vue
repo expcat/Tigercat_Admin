@@ -398,6 +398,13 @@ const paginationConfig = computed(() => ({
   showSizeChanger: true,
   showTotal: true,
   pageSizeOptions: [10, 20, 50],
+  totalText: (value: number, range: [number, number]) =>
+    `显示第 ${range[0]} 到 ${range[1]} 条，共 ${value} 条`,
+  prevText: '上一页',
+  nextText: '下一页',
+  pageIndicatorText: (current: number, totalPages: number) =>
+    `第 ${current} 页，共 ${totalPages} 页`,
+  pageSizeText: (size: number) => `${size} 条/页`,
 }))
 
 function handlePageChange(current: number, nextPageSize: number) {
