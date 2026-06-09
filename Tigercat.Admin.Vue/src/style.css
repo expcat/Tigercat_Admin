@@ -196,4 +196,30 @@
   display: none !important;
 }
 
+/* ==========================================================================
+   表格锁定列样式优化（解决与整行背景色在 hover/striped/暗色模式下的冲突）
+   ========================================================================== */
+
+/* 1. 表头固定列背景色覆盖 */
+thead tr th[style*="position: sticky"] {
+  background-color: var(--tiger-component-table-header-bg, var(--tiger-bg-page, #fafafa)) !important;
+}
+
+/* 2. 表格体固定列默认状态背景色（使用卡片/普通行背景） */
+tbody tr td[style*="position: sticky"] {
+  background-color: var(--tiger-bg-card, #ffffff) !important;
+}
+
+/* 3. 表格体固定列斑马纹偶数行背景色 */
+tbody tr:nth-child(even) td[style*="position: sticky"] {
+  background-color: var(--tiger-component-table-stripe-bg, var(--tiger-bg-page, #fafafa)) !important;
+}
+
+/* 4. 表格体固定列在鼠标划过行（hover）时的背景色 */
+tbody tr:hover td[style*="position: sticky"],
+tbody tr.group:hover td[style*="position: sticky"] {
+  background-color: var(--tiger-component-table-hover-bg, var(--tiger-bg-hover, #f0f9ff)) !important;
+}
+
+
 

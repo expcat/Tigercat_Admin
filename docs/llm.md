@@ -8,7 +8,7 @@
 | ---- | ---- | ---------- |
 | 理解项目或快速开始 | [README.md](../README.md) | [docs/operations.md](operations.md) |
 | 编码、审查、重构、文档整理 | [AGENT.md](../AGENT.md) | 相关专题和现有实现 |
-| 前端页面、布局、Tigercat UI | [docs/frontend.md](frontend.md) | [docs/api.md](api.md)、双端同名页面 |
+| 前端页面、布局、Tigercat UI | [docs/frontend.md](frontend.md) | [docs/api.md](api.md)、[上游建议](frontend-upstream-suggestions.md)、双端同名页面 |
 | API 对接或后端端点 | [docs/api.md](api.md) | 对应 [docs/api](api) 专题、`Tigercat.Admin.Api/Endpoints/*` |
 | 数据库、Redis、媒体、部署、CI | [docs/operations.md](operations.md) | API 或前端专题 |
 | 新增跨领域能力 | 本文件 + 受影响专题 | 必要时新增专题文档 |

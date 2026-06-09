@@ -154,3 +154,4 @@ LLM 生成新页面或复刻页面时，至少满足：
 | ---- | ---- | -------- | --------------------- |
 | `Sidebar` | React / Vue | 上游 `LayoutDemo` 已提供官方后台 Shell 侧栏示例，覆盖 Logo 文案、主菜单和底部折叠按钮的组合用法。 | `MainSidebar` 继续保留 `max-width + opacity + transform` 的品牌文案和折叠按钮动画。 |
 | `Menu` | React / Vue | 上游在 `inline + collapsed + popupPortal` 下会自动退化为 popup 子菜单，并补充了双端测试。 | 主菜单保持 `mode="inline"`，继续保留 `!min-w-0` 作为 flex / overflow 容器下的布局 glue。 |
+| `Table` | React / Vue | 锁定列硬编码了背景类名，在暗色模式、hover 或 striped 下与整行背景色存在显示冲突。 | 本项目通过全局 CSS 覆盖解决冲突，详情与上游重构方案参见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 |
