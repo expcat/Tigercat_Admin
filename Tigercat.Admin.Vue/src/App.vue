@@ -2,7 +2,7 @@
 import { computed, ref, watch, provide, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ConfigProvider, Message, MessageContainer } from '@expcat/tigercat-vue'
-import { zhCN } from '@expcat/tigercat-core/locales/zh-CN'
+import { appText } from './utils/tigercatText'
 import {
   SESSION_KEY,
   safeParse,
@@ -191,7 +191,7 @@ provide('updateTheme', updateTheme)
 </script>
 
 <template>
-  <ConfigProvider :locale="zhCN">
+  <ConfigProvider :locale="appText">
     <RouterView v-slot="{ Component }">
       <component :is="Component" @success="onLoginSuccess" />
     </RouterView>

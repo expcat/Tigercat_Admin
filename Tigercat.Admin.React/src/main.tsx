@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, HashRouter } from 'react-router-dom';
 import { ConfigProvider, MessageContainer } from '@expcat/tigercat-react';
-import { zhCN } from '@expcat/tigercat-core/locales/zh-CN';
+import { appText } from './utils/tigercatText';
 import {
   installTigercatMockApi,
   isTigercatDemoEnabled,
@@ -22,7 +22,7 @@ const routerBase = import.meta.env.VITE_TIGERCAT_ROUTER_BASE ?? basePath;
 installTigercatMockApi({ enabled: demoEnabled });
 
 const app = (
-  <ConfigProvider locale={zhCN}>
+  <ConfigProvider locale={appText}>
     <PermissionProvider>
       <App />
       <MessageContainer />
