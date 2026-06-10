@@ -110,7 +110,7 @@ export function MainHeader({
             演示模式
           </Tag>
         )}
-        <Dropdown trigger="click" placement="bottom-end">
+        <Dropdown trigger="click" placement="bottom-end" showArrow={false}>
           <button
             className="p2-header-user-btn"
             title={accountLabel}

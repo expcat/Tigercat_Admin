@@ -94,7 +94,7 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
       >
         演示模式
       </Tag>
-      <Dropdown trigger="click" placement="bottom-end">
+      <Dropdown trigger="click" placement="bottom-end" :show-arrow="false">
         <button 
           class="p2-header-user-btn"
           :title="getAccountLabel(props.session)"
