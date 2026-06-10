@@ -102,6 +102,149 @@
     z-index: 100 !important;
   }
 
+  /* ── MainHeader Premium Styling ── */
+  .p2-main-header {
+    background-color: color-mix(in srgb, var(--tiger-bg-card, #ffffff) 80%, transparent) !important;
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border-bottom: 1px solid color-mix(in srgb, var(--tiger-border, #e2e8f0) 60%, transparent) !important;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03), 0 2px 8px -1px rgba(0, 0, 0, 0.02) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark .p2-main-header {
+    background-color: color-mix(in srgb, var(--tiger-bg-card, #161b22) 75%, transparent) !important;
+    border-bottom-color: color-mix(in srgb, var(--tiger-border, #304050) 50%, transparent) !important;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3), 0 2px 8px -1px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  .p2-header-toggle-btn {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border-radius: 0.5rem !important;
+    border-color: color-mix(in srgb, var(--tiger-border, #e2e8f0) 60%, transparent) !important;
+  }
+
+  .p2-header-toggle-btn:hover {
+    transform: scale(1.03);
+    background-color: var(--tiger-bg-hover, #f3f4f6) !important;
+    border-color: var(--tiger-primary, #3b82f6) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  .p2-header-toggle-btn:active {
+    transform: scale(0.97);
+  }
+
+  .p2-header-toggle-btn svg {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .p2-header-toggle-btn:hover svg {
+    transform: rotate(90deg) scale(1.05);
+  }
+
+  .p2-header-title {
+    background: linear-gradient(135deg, var(--tiger-primary, #3b82f6) 0%, #10b981 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+    letter-spacing: -0.02em;
+    transition: opacity 0.3s;
+  }
+
+  .dark .p2-header-title {
+    background: linear-gradient(135deg, #6396ff 0%, #34d399 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .p2-header-demo-tag {
+    position: relative;
+    overflow: hidden;
+    background-color: color-mix(in srgb, #f59e0b 15%, transparent) !important;
+    border: 1px solid color-mix(in srgb, #f59e0b 40%, transparent) !important;
+    color: #d97706 !important;
+    animation: p2-pulse-glow 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark .p2-header-demo-tag {
+    color: #fbbf24 !important;
+    background-color: color-mix(in srgb, #fbbf24 12%, transparent) !important;
+    border: 1px solid color-mix(in srgb, #fbbf24 30%, transparent) !important;
+  }
+
+  @keyframes p2-pulse-glow {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.15);
+    }
+    50% {
+      transform: scale(1.02);
+      box-shadow: 0 0 8px 2px rgba(245, 158, 11, 0.25);
+    }
+  }
+
+  .p2-header-user-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--tiger-border, #e2e8f0) 50%, transparent);
+    background-color: color-mix(in srgb, var(--tiger-bg-card, #ffffff) 40%, transparent);
+    padding: 0.375rem 0.625rem;
+    text-align: left;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+  }
+
+  .dark .p2-header-user-btn {
+    border-color: color-mix(in srgb, var(--tiger-border, #304050) 40%, transparent);
+    background-color: color-mix(in srgb, var(--tiger-bg-card, #161b22) 40%, transparent);
+  }
+
+  .p2-header-user-btn:hover {
+    border-color: var(--tiger-primary, #3b82f6);
+    background-color: var(--tiger-bg-hover, #f3f4f6);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
+  }
+
+  .dark .p2-header-user-btn:hover {
+    background-color: var(--tiger-bg-hover, #1b212c);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .p2-header-user-btn:active {
+    transform: translateY(0);
+  }
+
+  /* Hover avatar ring effects */
+  .p2-header-user-btn:hover .p2-avatar {
+    box-shadow: 0 0 0 2px var(--tiger-bg-card), 0 0 0 4px var(--tiger-primary);
+    transform: scale(1.05);
+  }
+
+  .dark .p2-header-user-btn:hover .p2-avatar {
+    box-shadow: 0 0 0 2px var(--tiger-bg-card), 0 0 0 4px var(--tiger-primary-dark, #8db2ff);
+  }
+
+  .p2-header-user-btn .p2-avatar {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .p2-header-chevron {
+    color: var(--tiger-text-secondary, #64748b);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s ease;
+  }
+
+  .p2-header-user-btn:hover .p2-header-chevron {
+    color: var(--tiger-text, #1f2937);
+  }
+
+  .p2-header-user-btn[aria-expanded="true"] .p2-header-chevron,
+  .p2-header-user-btn[data-state="open"] .p2-header-chevron {
+    transform: rotate(180deg);
+  }
 }
 
 @theme {

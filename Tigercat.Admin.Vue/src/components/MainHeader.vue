@@ -57,7 +57,7 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
 </script>
 
 <template>
-  <Header height="auto" class="flex min-h-16 flex-wrap items-center justify-between gap-3 px-4 py-2 shadow-sm z-10 md:flex-nowrap md:px-6">
+  <Header height="auto" class="p2-main-header flex min-h-16 flex-wrap items-center justify-between gap-3 px-4 py-2 z-10 md:flex-nowrap md:px-6">
     <div class="flex min-w-0 flex-1 flex-col gap-1 py-2">
       <div class="flex items-center gap-2">
         <Button
@@ -66,12 +66,12 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
           aria-controls="main-sidebar"
           :aria-expanded="props.sidebarOpen"
           :aria-label="props.sidebarOpen ? '关闭导航菜单' : '打开导航菜单'"
-          class="h-10 w-10 !p-0 shrink-0"
+          class="p2-header-toggle-btn h-10 w-10 !p-0 shrink-0"
           @click="$emit('toggle-sidebar')"
         >
           <Icon :name="props.sidebarOpen ? 'x' : 'menu'" :size="18" />
         </Button>
-        <Text size="lg" weight="bold" class="text-(--tiger-text,#1f2937)">管理中心</Text>
+        <Text size="lg" weight="bold" class="p2-header-title">管理中心</Text>
       </div>
       <Breadcrumb class-name="min-w-0 max-w-full overflow-hidden text-sm text-(--tiger-text-secondary,#64748b)" :max-items="4">
         <BreadcrumbItem>管理中心</BreadcrumbItem>
@@ -90,20 +90,21 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
       <Tag
         v-if="props.demoMode"
         variant="warning"
-        class="rounded-full px-3 font-medium"
+        class="p2-header-demo-tag rounded-full px-3 font-medium"
       >
         演示模式
       </Tag>
       <Dropdown trigger="click" placement="bottom-end">
         <button 
-          class="flex max-w-[12rem] items-center gap-2 rounded-full border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-hover,#f3f4f6) px-2.5 py-1.5 text-left transition-colors hover:border-(--tiger-primary,#3b82f6) hover:text-(--tiger-text,#1f2937) sm:max-w-56 sm:gap-3 sm:px-3"
+          class="p2-header-user-btn"
           :title="getAccountLabel(props.session)"
           :aria-label="getAccountLabel(props.session)"
         >
-          <Avatar class="shrink-0 font-bold text-sm bg-gradient-to-tr from-(--tiger-primary,#3b82f6) to-blue-400 text-white">
+          <Avatar class="p2-avatar shrink-0 font-bold text-sm bg-gradient-to-tr from-(--tiger-primary,#3b82f6) to-blue-400 text-white">
             {{ getAccountLabel(props.session).charAt(0).toUpperCase() }}
           </Avatar>
           <span class="min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937)">{{ getAccountLabel(props.session) }}</span>
+          <Icon name="chevronDown" :size="14" class="p2-header-chevron shrink-0" />
         </button>
 
         <DropdownMenu class-name="w-56 max-w-[calc(100vw-2rem)]">
