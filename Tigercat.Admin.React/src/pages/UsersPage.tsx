@@ -11,7 +11,6 @@ import {
   Form,
   FormItem,
   Popconfirm,
-  Popover,
   Select,
   Tag,
   Tooltip,
@@ -29,7 +28,6 @@ import { PermissionGuard } from '../components/PermissionGuard';
 import {
   UsersIcon,
   UserPlusIcon,
-  SettingsIcon,
   DownloadIcon,
 } from '../components/Icons';
 import {
@@ -88,26 +86,6 @@ const FORMAT_OPTIONS = [
   { label: 'XLSX', value: 'xlsx' },
 ];
 
-const ALL_COLUMN_KEYS = [
-  'id',
-  'username',
-  'displayName',
-  'status',
-  'roles',
-  'createdAt',
-  'actions',
-] as const;
-
-const COLUMN_LABELS: Record<string, string> = {
-  id: 'ID',
-  username: '用户名',
-  displayName: '显示名',
-  status: '状态',
-  roles: '角色',
-  createdAt: '创建时间',
-  actions: '操作',
-};
-
 const STATUS_FILTER_OPTIONS = [
   { label: '正常', value: 0 },
   { label: '禁用', value: 1 },
@@ -156,7 +134,7 @@ function UsersPage() {
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(
     () => new Set(savedWorkbench.hiddenColumnKeys),
   );
-  const [columnsPanelOpen, setColumnsPanelOpen] = useState(false);
+  const hiddenColumnKeys = useMemo(() => Array.from(hiddenColumns), [hiddenColumns]);
 
   // Modal state
   const [modalVisible, setModalVisible] = useState(false);
@@ -546,23 +524,11 @@ function UsersPage() {
   };
 
   // ---- Column visibility ----
-  const toggleColumn = useCallback((key: string) => {
-    setHiddenColumns((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      saveWorkbenchState('users', {
-        hiddenColumnKeys: Array.from(next),
-      });
-      return next;
+  const handleHiddenColumnsChange = useCallback((nextHiddenKeys: string[]) => {
+    setHiddenColumns(new Set(nextHiddenKeys));
+    saveWorkbenchState('users', {
+      hiddenColumnKeys: nextHiddenKeys,
     });
-  }, []);
-
-  const handleColumnsOpenChange = useCallback((open: boolean) => {
-    setColumnsPanelOpen(open);
   }, []);
 
   // ---- Table columns ----
@@ -677,9 +643,8 @@ function UsersPage() {
       });
     }
 
-    // Filter out hidden columns
-    return cols.filter((c) => !hiddenColumns.has(c.key));
-  }, [canEdit, canDelete, hiddenColumns]);
+    return cols;
+  }, [canEdit, canDelete]);
 
   // ---- Pagination ----
   const paginationConfig = useMemo(
@@ -810,6 +775,7 @@ function UsersPage() {
           : undefined,
       selectedKeys: selectedRowKeys,
       selectedCount: selectedRowKeys.length,
+      showColumnSettings: true,
     }),
     [canDelete, canEdit, handleBatchDelete, keyword, selectedRowKeys, statusFilter],
   );
@@ -843,40 +809,6 @@ function UsersPage() {
       />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-        <Popover
-          trigger="click"
-          placement="bottom-end"
-          open={columnsPanelOpen}
-          onOpenChange={handleColumnsOpenChange}
-          contentContent={
-            <div className="space-y-2 text-[var(--tiger-text,#374151)]">
-              {ALL_COLUMN_KEYS.filter(
-                (k) => k !== 'actions' || canEdit || canDelete,
-              ).map((key) => (
-                <label
-                  key={key}
-                  className="p2-checkbox-row text-sm">
-                  <Checkbox
-                    checked={!hiddenColumns.has(key)}
-                    onChange={() => toggleColumn(key)}
-                  />
-                  <span className="p2-checkbox-label">
-                    {COLUMN_LABELS[key] || key}
-                  </span>
-                </label>
-              ))}
-            </div>
-          }>
-          <Button
-            id="users-columns-trigger"
-            variant="outline"
-            aria-expanded={columnsPanelOpen}>
-            <span className="flex items-center gap-1">
-              <SettingsIcon size={14} />
-              列显隐
-            </span>
-          </Button>
-        </Popover>
         <PermissionGuard code="user:view">
           <Button variant="outline" onClick={openExportModal}>
             <span className="flex items-center gap-1">
@@ -904,6 +836,7 @@ function UsersPage() {
         dataSource={users}
         loading={loading}
         pagination={paginationConfig}
+        hiddenColumnKeys={hiddenColumnKeys}
         rowSelection={{
           selectedRowKeys,
         }}
@@ -924,6 +857,7 @@ function UsersPage() {
         onPageSizeChange={handlePageSizeChange}
         onSelectionChange={handleSelectionChange}
         onSortChange={handleSortChange}
+        onHiddenColumnsChange={handleHiddenColumnsChange}
       />
 
       {/* Create / Edit Modal */}

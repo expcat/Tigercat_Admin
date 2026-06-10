@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, inject, onMounted, h } from 'vue'
-import { Avatar, DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Popover, Select, Tag, Tooltip, Message, Checkbox } from '@expcat/tigercat-vue'
+import { Avatar, DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tooltip, Message, Checkbox } from '@expcat/tigercat-vue'
 import { CropUpload } from '@expcat/tigercat-vue/CropUpload'
 import type { TableColumn, SortState, TableToolbarFilterValue } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
@@ -329,27 +329,11 @@ async function handleAvatarCropComplete(result: { blob: Blob }) {
 }
 
 // ---- Table columns ----
-const ALL_COLUMN_KEYS = ['id', 'username', 'displayName', 'status', 'roles', 'createdAt', 'actions'] as const
+const hiddenColumnKeys = computed(() => Array.from(hiddenColumns.value))
 
-const columnLabels: Record<string, string> = {
-  id: 'ID',
-  username: '用户名',
-  displayName: '显示名',
-  status: '状态',
-  roles: '角色',
-  createdAt: '创建时间',
-  actions: '操作',
-}
-
-function toggleColumn(key: string) {
-  const next = new Set(hiddenColumns.value)
-  if (next.has(key)) {
-    next.delete(key)
-  } else {
-    next.add(key)
-  }
-  hiddenColumns.value = next
-  saveWorkbenchState('users', { hiddenColumnKeys: Array.from(next) })
+function handleHiddenColumnsChange(nextHiddenKeys: string[]) {
+  hiddenColumns.value = new Set(nextHiddenKeys)
+  saveWorkbenchState('users', { hiddenColumnKeys: nextHiddenKeys })
 }
 
 const columns = computed<TableColumn[]>(() => {
@@ -470,8 +454,7 @@ const columns = computed<TableColumn[]>(() => {
     })
   }
 
-  // Filter out hidden columns
-  return cols.filter(c => !hiddenColumns.value.has(c.key))
+  return cols
 })
 
 // ---- Pagination ----
@@ -600,6 +583,7 @@ const tableToolbar = computed(() => ({
     : undefined,
   selectedKeys: selectedRowKeys.value,
   selectedCount: selectedRowKeys.value.length,
+  showColumnSettings: true,
 }))
 
 const serverPaginationHint = computed(() => {
@@ -667,12 +651,6 @@ async function handleExport() {
   }
 }
 
-const columnsPanelOpen = ref(false)
-
-function handleColumnsOpenChange(open: boolean) {
-  columnsPanelOpen.value = open
-}
-
 // ---- Lifecycle ----
 onMounted(() => {
   loadUsers()
@@ -693,38 +671,6 @@ onMounted(() => {
     />
 
     <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-      <Popover
-        trigger="click"
-        placement="bottom-end"
-        :open="columnsPanelOpen"
-        @update:open="handleColumnsOpenChange"
-      >
-        <Button
-          id="users-columns-trigger"
-          variant="outline"
-          :aria-expanded="columnsPanelOpen"
-        >
-          <span class="flex items-center gap-1">
-            <Icon name="settings" :size="14" />
-            列显隐
-          </span>
-        </Button>
-        <template #content>
-          <div class="space-y-2 text-[var(--tiger-text,#374151)]">
-            <label
-              v-for="key in ALL_COLUMN_KEYS.filter(k => k !== 'actions' || canEdit || canDelete)"
-              :key="key"
-              class="p2-checkbox-row text-sm"
-            >
-              <Checkbox
-                :model-value="!hiddenColumns.has(key)"
-                @update:model-value="() => toggleColumn(key)"
-              />
-              <span class="p2-checkbox-label">{{ columnLabels[key] || key }}</span>
-            </label>
-          </div>
-        </template>
-      </Popover>
       <Button
         v-permission="'user:view'"
         variant="outline"
@@ -756,6 +702,7 @@ onMounted(() => {
       :data-source="users as any"
       :loading="loading"
       :pagination="paginationConfig"
+      :hidden-column-keys="hiddenColumnKeys"
       :row-selection="{
         selectedRowKeys: selectedRowKeys,
         type: 'checkbox',
@@ -775,6 +722,7 @@ onMounted(() => {
       @page-size-change="handlePageSizeChange"
       @selection-change="handleSelectionChange"
       @sort-change="handleSortChange"
+      @hidden-columns-change="handleHiddenColumnsChange"
     />
 
     <!-- Create / Edit Modal -->

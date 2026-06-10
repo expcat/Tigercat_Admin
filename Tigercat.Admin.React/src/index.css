@@ -97,11 +97,6 @@
     padding-right: 0.25rem;
   }
 
-  /* Fix sticky action cells covering the dropdown menu of previous rows */
-  tbody tr:has([aria-expanded="true"]) td {
-    z-index: 100 !important;
-  }
-
   /* Premium styling for dropdown items in React */
   .tiger-dropdown-item {
     color: var(--tiger-text, #374151) !important;
@@ -327,5 +322,4 @@
 .menu-collapsed [role="menuitem"] svg.ml-2 {
   display: none !important;
 }
-
 

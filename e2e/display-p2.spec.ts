@@ -157,7 +157,7 @@ async function openFirstRowMenu(page: Page, itemName: string) {
 }
 
 async function expectColumnToggleReachable(page: Page, checkboxName: string) {
-  const columnsTrigger = page.getByRole('button', { name: '列显隐' });
+  const columnsTrigger = page.getByRole('button', { name: '打开列设置' });
   const checkbox = page.getByRole('checkbox', { name: checkboxName }).first();
 
   await expect

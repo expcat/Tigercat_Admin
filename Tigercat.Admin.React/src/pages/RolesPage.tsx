@@ -10,7 +10,6 @@ import {
   Form,
   FormItem,
   Popconfirm,
-  Popover,
   Select,
   Checkbox,
   Tag,
@@ -24,7 +23,6 @@ import { PermissionGuard } from '../components/PermissionGuard';
 import {
   ShieldIcon,
   UserPlusIcon,
-  SettingsIcon,
   DownloadIcon,
 } from '../components/Icons';
 import {
@@ -74,26 +72,6 @@ const FORMAT_OPTIONS = [
   { label: 'XLSX', value: 'xlsx' },
 ];
 
-const ALL_COLUMN_KEYS = [
-  'id',
-  'name',
-  'description',
-  'permissions',
-  'users',
-  'createdAt',
-  'actions',
-] as const;
-
-const COLUMN_LABELS: Record<string, string> = {
-  id: 'ID',
-  name: '角色名称',
-  description: '描述',
-  permissions: '权限数',
-  users: '关联用户',
-  createdAt: '创建时间',
-  actions: '操作',
-};
-
 function RolesPage() {
   const { has: hasPerm } = usePermission();
   const savedWorkbench = useMemo(
@@ -132,7 +110,7 @@ function RolesPage() {
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(
     () => new Set(savedWorkbench.hiddenColumnKeys),
   );
-  const [columnsPanelOpen, setColumnsPanelOpen] = useState(false);
+  const hiddenColumnKeys = useMemo(() => Array.from(hiddenColumns), [hiddenColumns]);
 
   // Modal state — create / edit
   const [modalVisible, setModalVisible] = useState(false);
@@ -425,23 +403,11 @@ function RolesPage() {
   };
 
   // ---- Column visibility ----
-  const toggleColumn = useCallback((key: string) => {
-    setHiddenColumns((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      saveWorkbenchState('roles', {
-        hiddenColumnKeys: Array.from(next),
-      });
-      return next;
+  const handleHiddenColumnsChange = useCallback((nextHiddenKeys: string[]) => {
+    setHiddenColumns(new Set(nextHiddenKeys));
+    saveWorkbenchState('roles', {
+      hiddenColumnKeys: nextHiddenKeys,
     });
-  }, []);
-
-  const handleColumnsOpenChange = useCallback((open: boolean) => {
-    setColumnsPanelOpen(open);
   }, []);
 
   // ---- Table columns ----
@@ -575,9 +541,8 @@ function RolesPage() {
       });
     }
 
-    // Filter out hidden columns
-    return cols.filter((c) => !hiddenColumns.has(c.key));
-  }, [canEdit, canDelete, hiddenColumns]);
+    return cols;
+  }, [canEdit, canDelete]);
 
   // ---- Pagination ----
   const paginationConfig = useMemo(
@@ -647,6 +612,7 @@ function RolesPage() {
       searchPlaceholder: '搜索角色名称或描述...',
       selectedKeys: selectedRowKeys,
       selectedCount: selectedRowKeys.length,
+      showColumnSettings: true,
     }),
     [keyword, selectedRowKeys],
   );
@@ -672,40 +638,6 @@ function RolesPage() {
       />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-        <Popover
-          trigger="click"
-          placement="bottom-end"
-          open={columnsPanelOpen}
-          onOpenChange={handleColumnsOpenChange}
-          contentContent={
-            <div className="space-y-2 text-[var(--tiger-text,#374151)]">
-              {ALL_COLUMN_KEYS.filter(
-                (k) => k !== 'actions' || canEdit || canDelete,
-              ).map((key) => (
-                <label
-                  key={key}
-                  className="p2-checkbox-row text-sm">
-                  <Checkbox
-                    checked={!hiddenColumns.has(key)}
-                    onChange={() => toggleColumn(key)}
-                  />
-                  <span className="p2-checkbox-label">
-                    {COLUMN_LABELS[key] || key}
-                  </span>
-                </label>
-              ))}
-            </div>
-          }>
-          <Button
-            id="roles-columns-trigger"
-            variant="outline"
-            aria-expanded={columnsPanelOpen}>
-            <span className="flex items-center gap-1">
-              <SettingsIcon size={14} />
-              列显隐
-            </span>
-          </Button>
-        </Popover>
         <PermissionGuard code="role:view">
           <Button variant="outline" onClick={openExportModal}>
             <span className="flex items-center gap-1">
@@ -733,6 +665,7 @@ function RolesPage() {
         dataSource={roles}
         loading={loading}
         pagination={paginationConfig}
+        hiddenColumnKeys={hiddenColumnKeys}
         rowSelection={{
           selectedRowKeys,
         }}
@@ -752,6 +685,7 @@ function RolesPage() {
         onPageSizeChange={handlePageSizeChange}
         onSelectionChange={handleSelectionChange}
         onSortChange={handleSortChange}
+        onHiddenColumnsChange={handleHiddenColumnsChange}
       />
 
       {/* Create / Edit Modal */}

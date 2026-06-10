@@ -47,6 +47,8 @@ export const appText = defineText({
     searchButtonText: '搜索',
     selectedText: '已选择',
     selectedItemsText: '项',
+    columnSettingsText: '列设置',
+    columnSettingsAriaLabel: '打开列设置',
   },
   formWizard: {
     prevText: '上一步',
