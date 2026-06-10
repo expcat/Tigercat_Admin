@@ -107,8 +107,7 @@ const goToRegister = () => {
         <p class="p2-text-secondary text-sm mt-1">请输入您的凭据登录系统</p>
       </div>
 
-      <!-- TODO: Request Card component enhancement to support variant="transparent" or a borderless prop -->
-      <Card class="border-0 shadow-none bg-transparent p-0">
+      <Card variant="transparent" class="p-0">
         <Form :model="form" :label-width="88">
           <FormItem name="username" label="用户名">
             <Input

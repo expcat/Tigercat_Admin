@@ -121,8 +121,7 @@ const goToLogin = () => {
         <p class="p2-text-secondary text-sm mt-1">注册 Tigercat Admin 账号</p>
       </div>
 
-      <!-- TODO: Request Card component enhancement to support variant="transparent" or a borderless prop -->
-      <Card class="border-0 shadow-none bg-transparent p-0">
+      <Card variant="transparent" class="p-0">
         <Form :model="form" :label-width="88">
           <FormItem prop="username" label="用户名">
             <Input

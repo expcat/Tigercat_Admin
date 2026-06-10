@@ -51,7 +51,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 - 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭；Esc 关闭为 Drawer 内置行为（经 `onClose/@close` 回调），不要再手动监听 keydown。依赖 `destroyOnClose + destroyOnCloseAfterLeave + onAfterLeave/@after-leave` 完成离场后卸载与焦点恢复。
 - Header：使用 `Header`、`Breadcrumb`、`Button`、`Dropdown`、`Avatar`、`Tag`，包含侧栏开关、面包屑、主题切换、修改密码和退出。
 - Content：`min-h-0 overflow-auto p-3 sm:p-4 md:p-6`，内部最大宽度 `max-w-7xl`。
-- 访客页：登录和注册使用居中 Guest shell，不进入后台布局。
+- 访客页：登录和注册使用居中 Guest shell，不进入后台布局；表单卡片用 `Card variant="transparent"`（v1.2.39+），不再用 `className` 手写透明/无边框/无阴影样式。由于 transparent 变体仍保留组件 size 内边距，Guest 页继续保留 `className="p-0"` / `class="p-0"`。
 
 路由与菜单：
 
@@ -111,11 +111,12 @@ import { ColorPicker } from '@expcat/tigercat-react/ColorPicker';
 
 Vue 端将包名替换为 `@expcat/tigercat-vue/...`。
 
-### 表格使用约定（v1.2.37+）
+### 表格使用约定（v1.2.39+）
 
-- **窄屏卡片模式**：用户/角色页的 `DataTableWithToolbar` 启用 `responsiveMode="card"`（Vue 为 `responsive-mode="card"`），断点用默认 `sm`（640px），低于断点时表格渲染为堆叠卡片。列级配置：`id` → `hideInCard: true`（卡片省略）、`username`/`name` → `cardTitle: true`（卡片标题），其余列保持原顺序（可用 `cardPriority` 调整权重）。卡片模式下行选择、列 `render`、分页均可用，`fixed` 固定列配置自动失效。
+- **窄屏卡片模式**：用户/角色页的 `DataTableWithToolbar` 启用 `responsiveMode="card"`（Vue 为 `responsive-mode="card"`），断点用默认 `sm`（640px），低于断点时表格渲染为堆叠卡片。列级配置：`id` → `hideInCard: true`（卡片省略）、`username`/`name` → `cardTitle: true`（卡片标题），其余列保持原顺序（可用 `cardPriority` 调整权重）。卡片模式下行选择、列 `render`、分页均可用，`fixed` 固定列配置自动失效。`v1.2.39` 起卡片增强为上游内置，无需页面适配：展开/收起、全选、排序文案走 locale；存在 `sortable` 列时卡片列表上方自动渲染排序 `Select`；行选择为主题 `Checkbox`/`Radio` 并带「全选」控件；空状态走 `Empty` 组件渲染 `emptyText`。需要深度定制时可用 `cardClassName` / `renderCard`（本项目暂未使用）。
+- **表格文案**：Table / DataTableWithToolbar 文案统一走 ConfigProvider locale 的 `table` 分节（见双端 `src/utils/tigercatText.ts` 的 `appText.table`，覆盖空状态、展开/收起、全选、排序、搜索按钮、已选择等 13 个 key）。页面级覆盖业务文案用 `emptyText`（如「暂无用户数据」）或 `labels` prop；不要再在 toolbar 上硬编码 `searchButtonText` / `bulkActionsLabel` 通用文案，业务化的 `searchPlaceholder`（如「搜索用户名或显示名...」）保留在页面。
 - **锁定列暗色背景**：上游锁定列背景读组件 Token 链 `--tiger-table-bg → --tiger-component-table-bg → --tiger-surface`（stripe/hover/header 同理）。本项目在双端全局 CSS 的 `.dark` 块中将 `--tiger-component-table-bg/stripe-bg/hover-bg/header-bg` 映射到 `--tiger-bg-card`/`--tiger-bg-page`/`--tiger-bg-hover`，不再使用 `[style*="position: sticky"]` 全局覆盖。需要进一步定制时使用列级 `fixedClassName` / `fixedHeaderClassName`。
-- **列显隐面板**：用户/角色页的「列显隐」按钮用 `Popover`（`trigger="click"` + 受控 `open`，React `contentContent` / Vue `#content` 插槽放 `Checkbox` 列表）实现，外部点击与 Escape 关闭由 Popover 内置处理，不要手动加 document 监听；关闭后的焦点恢复在 `onOpenChange/@update:open` 回调中处理。隐藏列集合仍由页面状态过滤 `columns` 实现（上游缺口见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)）。
+- **列显隐面板**：用户/角色页的「列显隐」按钮用 `Popover`（`trigger="click"` + 受控 `open`，React `contentContent` / Vue `#content` 插槽放 `Checkbox` 列表）实现，外部点击与 Escape 关闭、关闭后的触发器焦点恢复均为 Popover 内置行为（`v1.2.39+`），不要手动加 document 监听或还焦逻辑。隐藏列集合仍由页面状态过滤 `columns` 实现（上游缺口见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)）。
 
 ## React / Vue 映射
 
@@ -154,10 +155,12 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 ## 已对齐的上游能力
 
-截至 Tigercat UI `v1.2.23`，本项目此前记录的 Shell 相关上游诉求已经补齐：
+本项目此前记录的上游诉求多数已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.39`）：
 
 | 组件 | 平台 | 上游现状 | 本项目保留的布局 glue |
 | ---- | ---- | -------- | --------------------- |
 | `Sidebar` | React / Vue | 上游 `LayoutDemo` 已提供官方后台 Shell 侧栏示例，覆盖 Logo 文案、主菜单和底部折叠按钮的组合用法。 | `MainSidebar` 继续保留 `max-width + opacity + transform` 的品牌文案和折叠按钮动画。 |
 | `Menu` | React / Vue | 上游在 `inline + collapsed + popupPortal` 下会自动退化为 popup 子菜单，并补充了双端测试。 | 主菜单保持 `mode="inline"`，继续保留 `!min-w-0` 作为 flex / overflow 容器下的布局 glue。 |
-| `Table` | React / Vue | `v1.2.37` 起锁定列背景改读组件 Token 链（`--tiger-component-table-*`），并新增窄屏卡片模式（`responsiveMode="card"` + 列级 `hideInCard`/`cardTitle`/`cardPriority`）。 | 使用方式见上文「表格使用约定」；剩余上游缺口参见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 |
+| `Table` | React / Vue | `v1.2.37` 起锁定列背景改读组件 Token 链（`--tiger-component-table-*`），并新增窄屏卡片模式（`responsiveMode="card"` + 列级 `hideInCard`/`cardTitle`/`cardPriority`）。`v1.2.39` 起新增 `locale`/`labels` props 与 `TigerLocale.table` 分节，卡片模式补齐 i18n 文案、主题化选择框、全选、排序 Select、`Empty` 空状态与 `cardClassName`/`renderCard`。 | 使用方式见上文「表格使用约定」；剩余上游缺口（列显隐、sticky 层叠）参见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 |
+| `Card` | React / Vue | `v1.2.39` 起新增 `variant="transparent"`（透明、无边框、无阴影）。 | 登录/注册页改用该变体，并保留 `p-0` 类以延续页面级布局约定。 |
+| `Popover` / `Dropdown` | React / Vue | `v1.2.39` 起经 Escape 或外部点击关闭后自动恢复触发器焦点。 | 用户/角色页列显隐面板删除了手动还焦逻辑；自建列显隐面板本身保留（上游仍无列显隐 prop）。 |

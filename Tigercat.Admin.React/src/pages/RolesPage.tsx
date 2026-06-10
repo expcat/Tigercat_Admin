@@ -442,13 +442,6 @@ function RolesPage() {
 
   const handleColumnsOpenChange = useCallback((open: boolean) => {
     setColumnsPanelOpen(open);
-    if (open) return;
-    // Popover 关闭即卸载面板，焦点若因此落到 body 则还给触发按钮（如 Escape 关闭）
-    window.setTimeout(() => {
-      if (document.activeElement === document.body) {
-        document.getElementById('roles-columns-trigger')?.focus();
-      }
-    }, 0);
   }, []);
 
   // ---- Table columns ----
