@@ -354,12 +354,20 @@ function toggleColumn(key: string) {
 
 const columns = computed<TableColumn[]>(() => {
   const cols: TableColumn[] = [
-    { key: 'id', title: 'ID', width: 70, align: 'center', sortable: true },
+    {
+      key: 'id',
+      title: 'ID',
+      width: 70,
+      align: 'center',
+      sortable: true,
+      hideInCard: true,
+    },
     {
       key: 'username',
       title: '用户名',
       width: 190,
       sortable: true,
+      cardTitle: true,
       render: (record: any) =>
         h('div', { class: 'flex items-center gap-2' }, [
           h(Avatar, {
@@ -796,6 +804,7 @@ onMounted(() => {
       row-key="id"
       :hoverable="true"
       :striped="true"
+      responsive-mode="card"
       empty-text="暂无用户数据"
       :toolbar="tableToolbar"
       @search-change="handleSearch"

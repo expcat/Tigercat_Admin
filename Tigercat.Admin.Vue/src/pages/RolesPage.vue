@@ -284,8 +284,21 @@ function toggleColumn(key: string) {
 
 const columns = computed<TableColumn[]>(() => {
   const cols: TableColumn[] = [
-    { key: 'id', title: 'ID', width: 70, align: 'center', sortable: true },
-    { key: 'name', title: '角色名称', width: 150, sortable: true },
+    {
+      key: 'id',
+      title: 'ID',
+      width: 70,
+      align: 'center',
+      sortable: true,
+      hideInCard: true,
+    },
+    {
+      key: 'name',
+      title: '角色名称',
+      width: 150,
+      sortable: true,
+      cardTitle: true,
+    },
     {
       key: 'description',
       title: '描述',
@@ -658,6 +671,7 @@ onMounted(() => {
       row-key="id"
       :hoverable="true"
       :striped="true"
+      responsive-mode="card"
       empty-text="暂无角色数据"
       :toolbar="tableToolbar"
       @search-change="handleSearch"

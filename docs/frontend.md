@@ -87,8 +87,8 @@ React 通过 `ProtectedRoute` / `GuestRoute` 和 `react-router-dom` 管路由；
 | Shell | `Layout`、`Content`、`Header`、`Sidebar`、`Drawer`、`Menu`、`Breadcrumb`、`Dropdown`、`Avatar`、`Tag` | 折叠菜单、移动抽屉、主题切换、账号菜单 |
 | 登录/注册 | `Card`、`Form`、`FormItem`、`Input`、`Button`、`Message` | 表单校验、成功跳转、错误提示 |
 | 仪表盘 | `Alert`、`Card`、`Text`、`Tag`、`Select`、`Statistic`、`Loading`、`Empty`、`LineChart`、`BarChart`、`PieChart` | 概览指标、图表空状态、快捷跳转 |
-| 用户管理 | `DataTableWithToolbar`、`Avatar`、`Button`、`Input`、`Modal`、`Form`、`Select`、`Tag`、`Tooltip`、`Popover`、`Checkbox`、`CropUpload` | 分页搜索、排序、列显隐、批量状态、头像裁剪、角色选择 |
-| 角色管理 | `DataTableWithToolbar`、`Tree`、`Checkbox`、`Modal`、`Popconfirm`、`Select`、`Tag`、`Popover` | 权限树、角色用户配置、导出字段、删除确认 |
+| 用户管理 | `DataTableWithToolbar`、`Avatar`、`Button`、`Input`、`Modal`、`Form`、`Select`、`Tag`、`Tooltip`、`Popover`、`Checkbox`、`CropUpload` | 分页搜索、排序、列显隐、批量状态、头像裁剪、角色选择、窄屏卡片模式 |
+| 角色管理 | `DataTableWithToolbar`、`Tree`、`Checkbox`、`Modal`、`Popconfirm`、`Select`、`Tag`、`Popover` | 权限树、角色用户配置、导出字段、删除确认、窄屏卡片模式 |
 | 系统设置 | `Card`、`Input`、`InputNumber`、`ColorPicker`、`Segmented`、`Switch`、`Upload`、`Modal` | 分组设置、Logo 上传、保存确认、恢复默认值 |
 | 文件管理 | `FileManager`、`Upload`、`Button`、`Select`、`Tag`、`Modal`、`Message` | 上传、类型筛选、选择、普通删除、强制删除 |
 | 通知中心 | `NotificationCenter`、`Badge`、`Statistic`、`Card`、`Button`、`notification` | 已读/未读、批量已读、站内跳转 |
@@ -110,6 +110,11 @@ import { ColorPicker } from '@expcat/tigercat-react/ColorPicker';
 ```
 
 Vue 端将包名替换为 `@expcat/tigercat-vue/...`。
+
+### 表格使用约定（v1.2.37+）
+
+- **窄屏卡片模式**：用户/角色页的 `DataTableWithToolbar` 启用 `responsiveMode="card"`（Vue 为 `responsive-mode="card"`），断点用默认 `sm`（640px），低于断点时表格渲染为堆叠卡片。列级配置：`id` → `hideInCard: true`（卡片省略）、`username`/`name` → `cardTitle: true`（卡片标题），其余列保持原顺序（可用 `cardPriority` 调整权重）。卡片模式下行选择、列 `render`、分页均可用，`fixed` 固定列配置自动失效。
+- **锁定列暗色背景**：上游锁定列背景读组件 Token 链 `--tiger-table-bg → --tiger-component-table-bg → --tiger-surface`（stripe/hover/header 同理）。本项目在双端全局 CSS 的 `.dark` 块中将 `--tiger-component-table-bg/stripe-bg/hover-bg/header-bg` 映射到 `--tiger-bg-card`/`--tiger-bg-page`/`--tiger-bg-hover`，不再使用 `[style*="position: sticky"]` 全局覆盖。需要进一步定制时使用列级 `fixedClassName` / `fixedHeaderClassName`。
 
 ## React / Vue 映射
 
@@ -154,4 +159,4 @@ LLM 生成新页面或复刻页面时，至少满足：
 | ---- | ---- | -------- | --------------------- |
 | `Sidebar` | React / Vue | 上游 `LayoutDemo` 已提供官方后台 Shell 侧栏示例，覆盖 Logo 文案、主菜单和底部折叠按钮的组合用法。 | `MainSidebar` 继续保留 `max-width + opacity + transform` 的品牌文案和折叠按钮动画。 |
 | `Menu` | React / Vue | 上游在 `inline + collapsed + popupPortal` 下会自动退化为 popup 子菜单，并补充了双端测试。 | 主菜单保持 `mode="inline"`，继续保留 `!min-w-0` 作为 flex / overflow 容器下的布局 glue。 |
-| `Table` | React / Vue | 锁定列硬编码了背景类名，在暗色模式、hover 或 striped 下与整行背景色存在显示冲突。 | 本项目通过全局 CSS 覆盖解决冲突，详情与上游重构方案参见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 |
+| `Table` | React / Vue | `v1.2.37` 起锁定列背景改读组件 Token 链（`--tiger-component-table-*`），并新增窄屏卡片模式（`responsiveMode="card"` + 列级 `hideInCard`/`cardTitle`/`cardPriority`）。 | 使用方式见上文「表格使用约定」；剩余上游缺口参见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 |

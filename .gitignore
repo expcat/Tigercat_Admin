@@ -58,3 +58,6 @@ logs/
 # Playwright
 playwright-report/
 test-results/
+
+# Claude
+.claude/

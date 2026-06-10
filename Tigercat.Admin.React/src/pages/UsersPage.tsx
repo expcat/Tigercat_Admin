@@ -605,12 +605,20 @@ function UsersPage() {
   // ---- Table columns ----
   const columns = useMemo<TableColumn<UserItem>[]>(() => {
     const cols: TableColumn<UserItem>[] = [
-      { key: 'id', title: 'ID', width: 70, align: 'center', sortable: true },
+      {
+        key: 'id',
+        title: 'ID',
+        width: 70,
+        align: 'center',
+        sortable: true,
+        hideInCard: true,
+      },
       {
         key: 'username',
         title: '用户名',
         width: 190,
         sortable: true,
+        cardTitle: true,
         render: (record) => (
           <div className="flex items-center gap-2">
             <Avatar src={record.avatarUrl ?? undefined} className="h-8 w-8">
@@ -946,6 +954,7 @@ function UsersPage() {
         rowKey="id"
         hoverable
         striped
+        responsiveMode="card"
         emptyText="暂无用户数据"
         toolbar={tableToolbar}
         onSearchChange={handleSearch}
