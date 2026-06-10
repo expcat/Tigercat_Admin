@@ -91,24 +91,16 @@ const handleViewportChange = (event: MediaQueryListEvent) => {
   syncMobileState(event.matches)
 }
 
-const handleWindowKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && isMobile.value && sidebarOpen.value) {
-    handleSidebarClose()
-  }
-}
-
 let mediaQuery: MediaQueryList | null = null
 
 onMounted(() => {
   mediaQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY)
   syncMobileState(mediaQuery.matches)
   mediaQuery.addEventListener('change', handleViewportChange)
-  window.addEventListener('keydown', handleWindowKeydown)
 })
 
 onBeforeUnmount(() => {
   mediaQuery?.removeEventListener('change', handleViewportChange)
-  window.removeEventListener('keydown', handleWindowKeydown)
 })
 
 watch(

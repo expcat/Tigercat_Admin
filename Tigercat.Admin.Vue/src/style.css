@@ -102,32 +102,6 @@
     z-index: 100 !important;
   }
 
-  .p4-column-popover {
-    position: relative;
-    display: inline-block;
-    width: fit-content;
-  }
-
-  .p4-column-panel {
-    position: absolute;
-    left: 0;
-    z-index: 1000;
-    margin-top: 0.5rem;
-    min-width: 180px;
-    padding: 0.75rem;
-    border: 1px solid var(--tiger-border, #e5e7eb);
-    border-radius: var(--tiger-radius-md, 0.5rem);
-    background: var(--tiger-surface, #ffffff);
-    box-shadow: var(--tiger-shadow-lg, 0 10px 15px rgb(0 0 0 / 0.1));
-  }
-
-  @media (min-width: 640px) {
-    .p4-column-panel {
-      right: 0;
-      left: auto;
-    }
-  }
-
 }
 
 @theme {

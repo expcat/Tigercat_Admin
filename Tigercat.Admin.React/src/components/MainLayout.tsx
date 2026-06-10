@@ -69,24 +69,6 @@ export function MainLayout({
     };
   }, []);
 
-  useEffect(() => {
-    if (!isMobile || !sidebarOpen) {
-      return undefined;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setSidebarOpen(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isMobile, sidebarOpen]);
-
   const handleMenuSelect = (key: string) => {
     setInternalActiveMenu(key);
     if (isMobile) {

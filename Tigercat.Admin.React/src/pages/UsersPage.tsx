@@ -11,6 +11,7 @@ import {
   Form,
   FormItem,
   Popconfirm,
+  Popover,
   Select,
   Tag,
   Tooltip,
@@ -156,8 +157,6 @@ function UsersPage() {
     () => new Set(savedWorkbench.hiddenColumnKeys),
   );
   const [columnsPanelOpen, setColumnsPanelOpen] = useState(false);
-  const columnsTriggerRef = useRef<HTMLDivElement>(null);
-  const columnsPanelRef = useRef<HTMLDivElement>(null);
 
   // Modal state
   const [modalVisible, setModalVisible] = useState(false);
@@ -562,45 +561,16 @@ function UsersPage() {
     });
   }, []);
 
-  const closeColumnsPanel = useCallback((restoreFocus = false) => {
-    setColumnsPanelOpen(false);
-    if (restoreFocus) {
-      window.setTimeout(() => {
-        columnsTriggerRef.current?.querySelector('button')?.focus();
-      }, 0);
-    }
+  const handleColumnsOpenChange = useCallback((open: boolean) => {
+    setColumnsPanelOpen(open);
+    if (open) return;
+    // Popover 关闭即卸载面板，焦点若因此落到 body 则还给触发按钮（如 Escape 关闭）
+    window.setTimeout(() => {
+      if (document.activeElement === document.body) {
+        document.getElementById('users-columns-trigger')?.focus();
+      }
+    }, 0);
   }, []);
-
-  useEffect(() => {
-    if (!columnsPanelOpen) return;
-
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (
-        columnsTriggerRef.current?.contains(target) ||
-        columnsPanelRef.current?.contains(target)
-      ) {
-        return;
-      }
-
-      closeColumnsPanel();
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeColumnsPanel(true);
-      }
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [closeColumnsPanel, columnsPanelOpen]);
 
   // ---- Table columns ----
   const columns = useMemo<TableColumn<UserItem>[]>(() => {
@@ -880,45 +850,40 @@ function UsersPage() {
       />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-        <div className="p4-column-popover" ref={columnsTriggerRef}>
+        <Popover
+          trigger="click"
+          placement="bottom-end"
+          open={columnsPanelOpen}
+          onOpenChange={handleColumnsOpenChange}
+          contentContent={
+            <div className="space-y-2 text-[var(--tiger-text,#374151)]">
+              {ALL_COLUMN_KEYS.filter(
+                (k) => k !== 'actions' || canEdit || canDelete,
+              ).map((key) => (
+                <label
+                  key={key}
+                  className="p2-checkbox-row text-sm">
+                  <Checkbox
+                    checked={!hiddenColumns.has(key)}
+                    onChange={() => toggleColumn(key)}
+                  />
+                  <span className="p2-checkbox-label">
+                    {COLUMN_LABELS[key] || key}
+                  </span>
+                </label>
+              ))}
+            </div>
+          }>
           <Button
+            id="users-columns-trigger"
             variant="outline"
-            aria-expanded={columnsPanelOpen}
-            aria-haspopup="dialog"
-            aria-controls="users-column-panel"
-            onClick={() => setColumnsPanelOpen((open) => !open)}>
+            aria-expanded={columnsPanelOpen}>
             <span className="flex items-center gap-1">
               <SettingsIcon size={14} />
               列显隐
             </span>
           </Button>
-          {columnsPanelOpen && (
-            <div
-              id="users-column-panel"
-              ref={columnsPanelRef}
-              role="dialog"
-              aria-label="用户表格列显隐"
-              className="p4-column-panel">
-              <div className="space-y-2">
-                {ALL_COLUMN_KEYS.filter(
-                  (k) => k !== 'actions' || canEdit || canDelete,
-                ).map((key) => (
-                  <label
-                    key={key}
-                    className="p2-checkbox-row text-sm">
-                    <Checkbox
-                      checked={!hiddenColumns.has(key)}
-                      onChange={() => toggleColumn(key)}
-                    />
-                    <span className="p2-checkbox-label">
-                      {COLUMN_LABELS[key] || key}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        </Popover>
         <PermissionGuard code="user:view">
           <Button variant="outline" onClick={openExportModal}>
             <span className="flex items-center gap-1">

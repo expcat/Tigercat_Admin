@@ -48,7 +48,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 - 外层：`Layout` 横向布局，左侧 `MainSidebar`，右侧 `MainHeader + Content`。
 - 桌面侧栏：宽 `240px`，折叠宽 `64px`，使用 `Sidebar`、`Menu`、`SubMenu`、`MenuItem`。
 - 桌面侧栏主菜单保持 `mode="inline"`；折叠态继续传 `collapsed` 并开启 `popupPortal`，由上游在收缩时自动退化为 popup 子菜单，不再手动切换 `vertical`。
-- 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭，Esc 关闭；依赖 `destroyOnClose + destroyOnCloseAfterLeave + onAfterLeave/@after-leave` 完成离场后卸载与焦点恢复。
+- 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭；Esc 关闭为 Drawer 内置行为（经 `onClose/@close` 回调），不要再手动监听 keydown。依赖 `destroyOnClose + destroyOnCloseAfterLeave + onAfterLeave/@after-leave` 完成离场后卸载与焦点恢复。
 - Header：使用 `Header`、`Breadcrumb`、`Button`、`Dropdown`、`Avatar`、`Tag`，包含侧栏开关、面包屑、主题切换、修改密码和退出。
 - Content：`min-h-0 overflow-auto p-3 sm:p-4 md:p-6`，内部最大宽度 `max-w-7xl`。
 - 访客页：登录和注册使用居中 Guest shell，不进入后台布局。
@@ -115,6 +115,7 @@ Vue 端将包名替换为 `@expcat/tigercat-vue/...`。
 
 - **窄屏卡片模式**：用户/角色页的 `DataTableWithToolbar` 启用 `responsiveMode="card"`（Vue 为 `responsive-mode="card"`），断点用默认 `sm`（640px），低于断点时表格渲染为堆叠卡片。列级配置：`id` → `hideInCard: true`（卡片省略）、`username`/`name` → `cardTitle: true`（卡片标题），其余列保持原顺序（可用 `cardPriority` 调整权重）。卡片模式下行选择、列 `render`、分页均可用，`fixed` 固定列配置自动失效。
 - **锁定列暗色背景**：上游锁定列背景读组件 Token 链 `--tiger-table-bg → --tiger-component-table-bg → --tiger-surface`（stripe/hover/header 同理）。本项目在双端全局 CSS 的 `.dark` 块中将 `--tiger-component-table-bg/stripe-bg/hover-bg/header-bg` 映射到 `--tiger-bg-card`/`--tiger-bg-page`/`--tiger-bg-hover`，不再使用 `[style*="position: sticky"]` 全局覆盖。需要进一步定制时使用列级 `fixedClassName` / `fixedHeaderClassName`。
+- **列显隐面板**：用户/角色页的「列显隐」按钮用 `Popover`（`trigger="click"` + 受控 `open`，React `contentContent` / Vue `#content` 插槽放 `Checkbox` 列表）实现，外部点击与 Escape 关闭由 Popover 内置处理，不要手动加 document 监听；关闭后的焦点恢复在 `onOpenChange/@update:open` 回调中处理。隐藏列集合仍由页面状态过滤 `columns` 实现（上游缺口见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)）。
 
 ## React / Vue 映射
 
