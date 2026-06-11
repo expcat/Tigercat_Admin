@@ -1,9 +1,10 @@
 import { Card, Tag, Text } from '@expcat/tigercat-react';
+import type { TagVariant } from '@expcat/tigercat-core';
 import type { ReactNode } from 'react';
 
 export type PageHeaderTag = {
   label: string;
-  color: 'blue' | 'green' | 'red' | 'purple' | 'orange';
+  variant: TagVariant;
 };
 
 interface PageHeaderProps {
@@ -37,7 +38,7 @@ export function PageHeader({ title, subtitle, icon, tags }: PageHeaderProps) {
           {tags && tags.length > 0 && (
             <div className="hidden sm:flex items-center gap-2">
               {tags.map((tag) => (
-                <Tag key={tag.label} color={tag.color} size="sm">
+                <Tag key={tag.label} variant={tag.variant} size="sm">
                   {tag.label}
                 </Tag>
               ))}

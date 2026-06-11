@@ -295,8 +295,8 @@ function AuditLogsPage() {
         subtitle="查看认证与用户管理事件的最近活动轨迹"
         icon={<ActivityIcon size={24} className="text-white" />}
         tags={[
-          { label: 'ActivityFeed', color: 'blue' },
-          { label: 'Timeline', color: 'purple' },
+          { label: 'ActivityFeed', variant: 'primary' },
+          { label: 'Timeline', variant: 'info' },
         ]}
       />
 
@@ -327,13 +327,13 @@ function AuditLogsPage() {
               clearable={false}
               onChange={handleCategoryChange}
             />
-            <Tag color="blue" size="sm">
+            <Tag variant="primary" size="sm">
               认证事件 {authCount}
             </Tag>
-            <Tag color="green" size="sm">
+            <Tag variant="success" size="sm">
               用户事件 {userCount}
             </Tag>
-            <Tag color="purple" size="sm">
+            <Tag variant="info" size="sm">
               总计 {logs.length}
             </Tag>
             <Button variant="outline" onClick={loadAuditLogs}>

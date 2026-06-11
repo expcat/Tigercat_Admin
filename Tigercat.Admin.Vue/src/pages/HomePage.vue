@@ -148,8 +148,8 @@ const quickActions = [
             </div>
           </div>
           <div class="hidden sm:flex items-center gap-2">
-            <Tag color="blue" size="sm">管理员</Tag>
-            <Tag color="green" size="sm">已认证</Tag>
+            <Tag variant="primary" size="sm">管理员</Tag>
+            <Tag variant="success" size="sm">已认证</Tag>
           </div>
         </div>
       </div>

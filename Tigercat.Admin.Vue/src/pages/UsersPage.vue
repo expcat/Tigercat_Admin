@@ -369,7 +369,7 @@ const columns = computed<TableColumn[]>(() => {
       align: 'center',
       render: (record: any) =>
         h(Tag, {
-          color: record.status === 0 ? 'green' : 'red',
+          variant: record.status === 0 ? 'success' : 'danger',
           size: 'sm',
         }, () => record.status === 0 ? '正常' : '禁用'),
     },
@@ -381,7 +381,7 @@ const columns = computed<TableColumn[]>(() => {
         const roles = record.roles as RoleInfo[]
         if (!roles || roles.length === 0) return h('span', { class: 'p2-text-secondary text-sm' }, '无角色')
         return h('div', { class: 'flex flex-wrap gap-1' },
-          roles.map(r => h(Tag, { color: 'blue', size: 'sm', key: r.id }, () => r.name))
+          roles.map(r => h(Tag, { variant: 'primary', size: 'sm', key: r.id }, () => r.name))
         )
       },
     },
@@ -665,8 +665,8 @@ onMounted(() => {
       subtitle="管理平台用户账号、角色与权限"
       icon="users"
       :tags="[
-        { label: '核心模块', color: 'blue' },
-        { label: '运行中', color: 'green' }
+        { label: '核心模块', variant: 'primary' },
+        { label: '运行中', variant: 'success' }
       ]"
     />
 
@@ -713,6 +713,7 @@ onMounted(() => {
       :hoverable="true"
       :striped="true"
       responsive-mode="card"
+      card-breakpoint="md"
       empty-text="暂无用户数据"
       :toolbar="tableToolbar"
       @search-change="handleSearch"

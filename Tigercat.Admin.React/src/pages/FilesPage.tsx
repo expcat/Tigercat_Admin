@@ -221,7 +221,7 @@ function FilesPage() {
         title="文件管理"
         subtitle="管理站点 Logo、用户头像与后台媒体资源"
         icon={<FileTextIcon size={24} />}
-        tags={[{ label: '媒体资源', color: 'blue' }]}
+        tags={[{ label: '媒体资源', variant: 'primary' }]}
       />
 
       <Card>
@@ -235,7 +235,7 @@ function FilesPage() {
               onChange={handleContentTypeChange}
             />
             {selectedIds.length > 0 && (
-              <Tag color="blue" size="sm">
+              <Tag variant="primary" size="sm">
                 已选择 {selectedIds.length} 个
               </Tag>
             )}
@@ -379,7 +379,7 @@ function FilesPage() {
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {detail.references.map((reference) => (
-                    <Tag key={reference.id} color="blue" size="sm">
+                    <Tag key={reference.id} variant="primary" size="sm">
                       {referenceLabel(reference)}
                     </Tag>
                   ))}

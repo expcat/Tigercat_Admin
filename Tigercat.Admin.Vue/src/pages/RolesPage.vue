@@ -298,7 +298,7 @@ const columns = computed<TableColumn[]>(() => {
       align: 'center',
       render: (record: any) => {
         const perms = record.permissions as PermissionInfo[]
-        return h(Tag, { color: 'blue', size: 'sm' }, () => `${perms?.length ?? 0} 项`)
+        return h(Tag, { variant: 'primary', size: 'sm' }, () => `${perms?.length ?? 0} 项`)
       },
     },
     {
@@ -308,7 +308,7 @@ const columns = computed<TableColumn[]>(() => {
       align: 'center',
       render: (record: any) => {
         const users = record.users as RoleUserInfo[]
-        return h(Tag, { color: 'purple', size: 'sm' }, () => `${users?.length ?? 0} 人`)
+        return h(Tag, { variant: 'info', size: 'sm' }, () => `${users?.length ?? 0} 人`)
       },
     },
     {
@@ -532,8 +532,8 @@ onMounted(() => {
       subtitle="维护平台角色与权限配置"
       icon="shield"
       :tags="[
-        { label: '权限中心', color: 'blue' },
-        { label: '已启用', color: 'green' }
+        { label: '权限中心', variant: 'primary' },
+        { label: '已启用', variant: 'success' }
       ]"
     />
 
@@ -580,6 +580,7 @@ onMounted(() => {
       :hoverable="true"
       :striped="true"
       responsive-mode="card"
+      card-breakpoint="md"
       empty-text="暂无角色数据"
       :toolbar="tableToolbar"
       @search-change="handleSearch"
@@ -640,7 +641,7 @@ onMounted(() => {
       <div class="p2-modal-scroll space-y-3">
         <div class="flex flex-col gap-2 text-sm text-(--tiger-text-secondary,#64748b) sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <span>按分组勾选权限，保存时仍提交扁平 permissionIds。</span>
-          <Tag color="blue" size="sm">
+          <Tag variant="primary" size="sm">
             {{ permConfigIds.length }} / {{ allPermissions.length }}
           </Tag>
         </div>

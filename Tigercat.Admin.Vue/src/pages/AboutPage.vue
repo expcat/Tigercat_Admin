@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { Alert, Card, Text, Tag } from '@expcat/tigercat-vue'
+import type { TagVariant } from '@expcat/tigercat-core'
 import { apiRequest } from '../utils'
 import Icon from '../components/Icon.vue'
 import PageHeader from '../components/PageHeader.vue'
@@ -28,12 +29,12 @@ const getFriendlyErrorMessage = (error: unknown) => {
 
 const connectionStatus = computed(() => {
   if (loading.value) {
-    return { color: 'blue', label: '连接中' }
+    return { variant: 'primary', label: '连接中' }
   }
   if (errorMessage.value) {
-    return { color: 'red', label: '连接失败' }
+    return { variant: 'danger', label: '连接失败' }
   }
-  return { color: 'green', label: '已连接' }
+  return { variant: 'success', label: '已连接' }
 })
 
 const infoCards = computed(() => [
@@ -133,7 +134,7 @@ const systemInfo = computed(() => [
     value: connectionStatus.value.label,
     icon: 'globe',
     iconClass: 'bg-green-100 text-green-600',
-    tagColor: connectionStatus.value.color as 'blue' | 'red' | 'green'
+    tagVariant: connectionStatus.value.variant as TagVariant
   }
 ])
 
@@ -166,8 +167,8 @@ onMounted(() => {
       subtitle="了解平台版本与服务信息"
       icon="info"
       :tags="[
-        { label: '系统信息', color: 'blue' },
-        { label: connectionStatus.label, color: connectionStatus.color }
+        { label: '系统信息', variant: 'primary' },
+        { label: connectionStatus.label, variant: connectionStatus.variant }
       ]"
     />
 
@@ -250,7 +251,7 @@ onMounted(() => {
           </div>
           <div>
             <Text size="xs" color="secondary">{{ item.label }}</Text>
-            <Tag v-if="item.tagColor" :color="item.tagColor" size="sm">● {{ item.value }}</Tag>
+            <Tag v-if="item.tagVariant" :variant="item.tagVariant" size="sm">● {{ item.value }}</Tag>
             <Text v-else size="sm" weight="medium" class="text-slate-800">{{ item.value }}</Text>
           </div>
         </div>

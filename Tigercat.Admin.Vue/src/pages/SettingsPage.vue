@@ -116,7 +116,7 @@ watch([targetSettingKey, loading], scrollToTargetSetting)
       title="系统设置"
       subtitle="管理系统基础配置与安全策略"
       icon="settings"
-      :tags="[{ label: '配置中心', color: 'blue' }]"
+      :tags="[{ label: '配置中心', variant: 'primary' }]"
     />
 
     <Card v-if="loading">
@@ -134,7 +134,7 @@ watch([targetSettingKey, loading], scrollToTargetSetting)
                   上传后会写入 site.logo 表单值，保存设置后建立媒体引用。
                 </Text>
               </div>
-              <Tag color="blue" size="sm">Media</Tag>
+              <Tag variant="primary" size="sm">Media</Tag>
             </div>
 
             <div class="flex min-h-44 items-center justify-center rounded-lg bg-(--tiger-bg-hover,#f8fafc) p-4 sm:p-6">
@@ -184,7 +184,7 @@ watch([targetSettingKey, loading], scrollToTargetSetting)
             >
               <div class="flex items-center gap-2">
                 <Text size="sm" weight="medium">{{ item.description ?? item.key }}</Text>
-                <Tag :color="targetSettingKey === item.key ? 'orange' : 'blue'" size="sm">{{ item.key }}</Tag>
+                <Tag :variant="targetSettingKey === item.key ? 'warning' : 'primary'" size="sm">{{ item.key }}</Tag>
               </div>
 
               <Switch
@@ -270,7 +270,7 @@ watch([targetSettingKey, loading], scrollToTargetSetting)
             将提交 {{ changedSettings.length }} 项设置变更。保存后会立即影响当前系统配置。
           </Text>
           <div class="flex flex-wrap gap-2">
-            <Tag v-for="item in changedSettings" :key="item.key" color="blue" size="sm">
+            <Tag v-for="item in changedSettings" :key="item.key" variant="primary" size="sm">
               {{ item.key }}
             </Tag>
           </div>

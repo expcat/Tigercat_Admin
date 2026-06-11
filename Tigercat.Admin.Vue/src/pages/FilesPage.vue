@@ -220,7 +220,7 @@ onMounted(loadMedia)
       title="文件管理"
       subtitle="管理站点 Logo、用户头像与后台媒体资源"
       icon="fileText"
-      :tags="[{ label: '媒体资源', color: 'blue' }]"
+      :tags="[{ label: '媒体资源', variant: 'primary' }]"
     />
 
     <Card>
@@ -233,7 +233,7 @@ onMounted(loadMedia)
             :clearable="false"
             @update:model-value="handleContentTypeChange"
           />
-          <Tag v-if="selectedIds.length > 0" color="blue" size="sm">
+          <Tag v-if="selectedIds.length > 0" variant="primary" size="sm">
             已选择 {{ selectedIds.length }} 个
           </Tag>
         </div>
@@ -379,7 +379,7 @@ onMounted(loadMedia)
           <div class="mb-2 text-sm font-medium">引用来源</div>
           <Text v-if="detail.references.length === 0" size="sm" color="secondary">暂无引用</Text>
           <div v-else class="flex flex-wrap gap-2">
-            <Tag v-for="reference in detail.references" :key="reference.id" color="blue" size="sm">
+            <Tag v-for="reference in detail.references" :key="reference.id" variant="primary" size="sm">
               {{ referenceLabel(reference) }}
             </Tag>
           </div>

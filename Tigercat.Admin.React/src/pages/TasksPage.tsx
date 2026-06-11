@@ -33,7 +33,7 @@ import {
   countTaskBoardCards,
   describeTaskMove,
   findTaskBoardCard,
-  getTaskPriorityColor,
+  getTaskPriorityVariant,
   getTaskPriorityLabel,
 } from '../utils/task-board';
 import { apiRequest, getAuthHeaders, normalizeInput } from '../utils';
@@ -332,16 +332,16 @@ function TasksPage() {
 
         <div className="flex flex-wrap gap-2">
           {currentCard.priority && (
-            <Tag color={getTaskPriorityColor(currentCard.priority)} size="sm">
+            <Tag variant={getTaskPriorityVariant(currentCard.priority)} size="sm">
               {getTaskPriorityLabel(currentCard.priority)}
             </Tag>
           )}
           {currentCard.blocked && (
-            <Tag color="red" size="sm">
+            <Tag variant="danger" size="sm">
               阻塞中
             </Tag>
           )}
-          <Tag color="blue" size="sm">
+          <Tag variant="primary" size="sm">
             {currentCard.assignee ?? '待分配'}
           </Tag>
         </div>
@@ -374,9 +374,9 @@ function TasksPage() {
         subtitle="用 TaskBoard 把后续异步任务做成可拖拽的阶段看板，验证增列、加卡片、WIP 与移动规则。"
         icon={<ClipboardIcon size={24} className="text-white" />}
         tags={[
-          { label: 'TaskBoard', color: 'blue' },
-          { label: 'DragDrop', color: 'orange' },
-          { label: 'WIP', color: 'green' },
+          { label: 'TaskBoard', variant: 'primary' },
+          { label: 'DragDrop', variant: 'warning' },
+          { label: 'WIP', variant: 'success' },
         ]}
       />
 

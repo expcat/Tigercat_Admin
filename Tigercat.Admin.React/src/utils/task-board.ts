@@ -171,10 +171,10 @@ const PRIORITY_LABELS = {
   high: '高优先级',
 } as const;
 
-const PRIORITY_COLORS = {
-  low: 'green',
-  medium: 'orange',
-  high: 'red',
+const PRIORITY_VARIANTS = {
+  low: 'success',
+  medium: 'warning',
+  high: 'danger',
 } as const;
 
 export function createInitialTaskBoardColumns(): AdminTaskBoardColumn[] {
@@ -338,8 +338,8 @@ export function getTaskPriorityLabel(
   return PRIORITY_LABELS[priority];
 }
 
-export function getTaskPriorityColor(priority: AdminTaskBoardCard['priority']) {
-  return PRIORITY_COLORS[priority];
+export function getTaskPriorityVariant(priority: AdminTaskBoardCard['priority']) {
+  return PRIORITY_VARIANTS[priority];
 }
 
 export function describeTaskMove(

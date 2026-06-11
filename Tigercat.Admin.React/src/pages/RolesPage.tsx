@@ -467,7 +467,7 @@ function RolesPage() {
         width: 100,
         align: 'center',
         render: (record) => (
-          <Tag color="blue" size="sm">
+          <Tag variant="primary" size="sm">
             {record.permissions.length} 项
           </Tag>
         ),
@@ -478,7 +478,7 @@ function RolesPage() {
         width: 100,
         align: 'center',
         render: (record) => (
-          <Tag color="purple" size="sm">
+          <Tag variant="info" size="sm">
             {record.users.length} 人
           </Tag>
         ),
@@ -632,8 +632,8 @@ function RolesPage() {
         subtitle="维护平台角色与权限配置"
         icon={<ShieldIcon size={24} />}
         tags={[
-          { label: '权限中心', color: 'blue' },
-          { label: '已启用', color: 'green' },
+          { label: '权限中心', variant: 'primary' },
+          { label: '已启用', variant: 'success' },
         ]}
       />
 
@@ -675,6 +675,7 @@ function RolesPage() {
         hoverable
         striped
         responsiveMode="card"
+        cardBreakpoint="md"
         emptyText="暂无角色数据"
         toolbar={tableToolbar}
         onSearchChange={handleSearch}
@@ -740,7 +741,7 @@ function RolesPage() {
         <div className="p2-modal-scroll space-y-3">
           <div className="flex flex-col gap-2 text-sm text-(--tiger-text-secondary,#64748b) sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <span>按分组勾选权限，保存时仍提交扁平 permissionIds。</span>
-            <Tag color="blue" size="sm">
+            <Tag variant="primary" size="sm">
               {permConfigIds.length} / {allPermissions.length}
             </Tag>
           </div>

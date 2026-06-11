@@ -257,9 +257,9 @@ function NotificationsPage() {
         subtitle="集中查看系统运维、安全提醒与版本动态，并在同一页验证 Badge 与 Notification 交互。"
         icon={<BellIcon size={24} className="text-white" />}
         tags={[
-          { label: 'NotificationCenter', color: 'blue' },
-          { label: 'Badge', color: 'orange' },
-          { label: 'Notification', color: 'green' },
+          { label: 'NotificationCenter', variant: 'primary' },
+          { label: 'Badge', variant: 'warning' },
+          { label: 'Notification', variant: 'success' },
         ]}
       />
 

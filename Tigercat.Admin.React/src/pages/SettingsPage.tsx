@@ -149,7 +149,7 @@ function SettingsPage() {
         title="系统设置"
         subtitle="管理系统基础配置与安全策略"
         icon={<SettingsIcon size={24} />}
-        tags={[{ label: '配置中心', color: 'blue' }]}
+        tags={[{ label: '配置中心', variant: 'primary' }]}
       />
 
       {loading ? (
@@ -168,7 +168,7 @@ function SettingsPage() {
                       上传后会写入 site.logo 表单值，保存设置后建立媒体引用。
                     </Text>
                   </div>
-                  <Tag color="blue" size="sm">
+                  <Tag variant="primary" size="sm">
                     Media
                   </Tag>
                 </div>
@@ -228,7 +228,7 @@ function SettingsPage() {
                             {item.description ?? item.key}
                           </Text>
                           <Tag
-                            color={targetSettingKey === item.key ? 'orange' : 'blue'}
+                            variant={targetSettingKey === item.key ? 'warning' : 'primary'}
                             size="sm">
                             {item.key}
                           </Tag>
@@ -358,7 +358,7 @@ function SettingsPage() {
               </Text>
               <div className="flex flex-wrap gap-2">
                 {changedSettings.map((item) => (
-                  <Tag key={item.key} color="blue" size="sm">
+                  <Tag key={item.key} variant="primary" size="sm">
                     {item.key}
                   </Tag>
                 ))}

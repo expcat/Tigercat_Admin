@@ -32,7 +32,7 @@ import {
   countTaskBoardCards,
   describeTaskMove,
   findTaskBoardCard,
-  getTaskPriorityColor,
+  getTaskPriorityVariant,
   getTaskPriorityLabel
 } from '../utils/task-board'
 import { apiRequest, getAuthHeaders } from '../utils'
@@ -296,20 +296,20 @@ const renderCard = (card: TaskBoardCard) => {
             currentCard.priority
               ? {
                   type: Tag,
-                  props: { color: getTaskPriorityColor(currentCard.priority), size: 'sm' },
+                  props: { variant: getTaskPriorityVariant(currentCard.priority), size: 'sm' },
                   children: () => getTaskPriorityLabel(currentCard.priority)
                 }
               : null,
             currentCard.blocked
               ? {
                   type: Tag,
-                  props: { color: 'red', size: 'sm' },
+                  props: { variant: 'danger', size: 'sm' },
                   children: () => '阻塞中'
                 }
               : null,
             {
               type: Tag,
-              props: { color: 'blue', size: 'sm' },
+              props: { variant: 'primary', size: 'sm' },
               children: () => currentCard.assignee ?? '待分配'
             }
           ].filter(Boolean)
@@ -337,9 +337,9 @@ watch([filterText, assigneeFilter, blockedFilter, dueFrom, dueTo], () => {
       subtitle="用 TaskBoard 把后续异步任务做成可拖拽的阶段看板，验证增列、加卡片、WIP 与移动规则。"
       icon="clipboard"
       :tags="[
-        { label: 'TaskBoard', color: 'blue' },
-        { label: 'DragDrop', color: 'orange' },
-        { label: 'WIP', color: 'green' }
+        { label: 'TaskBoard', variant: 'primary' },
+        { label: 'DragDrop', variant: 'warning' },
+        { label: 'WIP', variant: 'success' }
       ]"
     />
 
@@ -431,15 +431,15 @@ watch([filterText, assigneeFilter, blockedFilter, dueFrom, dueTo], () => {
             <div class="flex flex-wrap gap-2">
               <Tag
                 v-if="card.priority"
-                :color="getTaskPriorityColor(card.priority)"
+                :variant="getTaskPriorityVariant(card.priority)"
                 size="sm"
               >
                 {{ getTaskPriorityLabel(card.priority) }}
               </Tag>
-              <Tag v-if="card.blocked" color="red" size="sm">
+              <Tag v-if="card.blocked" variant="danger" size="sm">
                 阻塞中
               </Tag>
-              <Tag color="blue" size="sm">
+              <Tag variant="primary" size="sm">
                 {{ card.assignee ?? '待分配' }}
               </Tag>
             </div>

@@ -564,7 +564,7 @@ function UsersPage() {
         width: 100,
         align: 'center',
         render: (record) => (
-          <Tag color={record.status === 0 ? 'green' : 'red'} size="sm">
+          <Tag variant={record.status === 0 ? 'success' : 'danger'} size="sm">
             {record.status === 0 ? '正常' : '禁用'}
           </Tag>
         ),
@@ -580,7 +580,7 @@ function UsersPage() {
           return (
             <div className="flex flex-wrap gap-1">
               {roles.map((r) => (
-                <Tag key={r.id} color="blue" size="sm">
+                <Tag key={r.id} variant="primary" size="sm">
                   {r.name}
                 </Tag>
               ))}
@@ -803,8 +803,8 @@ function UsersPage() {
         subtitle="管理平台用户账号、角色与权限"
         icon={<UsersIcon size={24} />}
         tags={[
-          { label: '核心模块', color: 'blue' },
-          { label: '运行中', color: 'green' },
+          { label: '核心模块', variant: 'primary' },
+          { label: '运行中', variant: 'success' },
         ]}
       />
 
@@ -846,6 +846,7 @@ function UsersPage() {
         hoverable
         striped
         responsiveMode="card"
+        cardBreakpoint="md"
         emptyText="暂无用户数据"
         toolbar={tableToolbar}
         onSearchChange={handleSearch}

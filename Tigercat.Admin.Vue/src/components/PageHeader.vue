@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Card, Text, Tag } from '@expcat/tigercat-vue'
+import type { TagVariant } from '@expcat/tigercat-core'
 import Icon from './Icon.vue'
 
 interface PageHeaderTag {
   label: string
-  color: 'blue' | 'green' | 'red' | 'purple' | 'orange'
+  variant: TagVariant
 }
 
 const props = defineProps<{
@@ -36,7 +37,7 @@ const props = defineProps<{
           </div>
         </div>
         <div v-if="props.tags?.length" class="hidden sm:flex items-center gap-2">
-          <Tag v-for="tag in props.tags" :key="tag.label" :color="tag.color" size="sm">
+          <Tag v-for="tag in props.tags" :key="tag.label" :variant="tag.variant" size="sm">
             {{ tag.label }}
           </Tag>
         </div>

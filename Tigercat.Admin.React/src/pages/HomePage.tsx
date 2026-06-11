@@ -256,10 +256,10 @@ function HomePage() {
               </div>
             </div>
             <div className="hidden sm:flex items-center gap-2">
-              <Tag color="blue" size="sm">
+              <Tag variant="primary" size="sm">
                 管理员
               </Tag>
-              <Tag color="green" size="sm">
+              <Tag variant="success" size="sm">
                 已认证
               </Tag>
             </div>

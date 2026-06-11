@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Card, Text, Tag } from '@expcat/tigercat-react';
+import type { TagVariant } from '@expcat/tigercat-core';
 import { apiRequest } from '../utils';
 import {
   PackageIcon,
@@ -87,10 +88,10 @@ function AboutPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const connectionStatus = loading
-    ? { color: 'blue' as const, label: '连接中' }
+    ? { variant: 'primary' as const, label: '连接中' }
     : errorMessage
-      ? { color: 'red' as const, label: '连接失败' }
-      : { color: 'green' as const, label: '已连接' };
+      ? { variant: 'danger' as const, label: '连接失败' }
+      : { variant: 'success' as const, label: '已连接' };
 
   useEffect(() => {
     const loadInfo = async () => {
@@ -158,7 +159,7 @@ function AboutPage() {
       value: connectionStatus.label,
       icon: <GlobeIcon size={20} />,
       iconClassName: 'bg-green-100 text-green-600',
-      tagColor: connectionStatus.color,
+      tagVariant: connectionStatus.variant,
     },
   ];
 
@@ -169,8 +170,8 @@ function AboutPage() {
         subtitle="了解平台版本与服务信息"
         icon={<InfoIcon size={24} className="text-white" />}
         tags={[
-          { label: '系统信息', color: 'blue' },
-          { label: connectionStatus.label, color: connectionStatus.color },
+          { label: '系统信息', variant: 'primary' },
+          { label: connectionStatus.label, variant: connectionStatus.variant },
         ]}
       />
 
@@ -274,9 +275,9 @@ function AboutPage() {
                 <Text size="xs" color="secondary">
                   {item.label}
                 </Text>
-                {'tagColor' in item ? (
+                {'tagVariant' in item ? (
                   <Tag
-                    color={item.tagColor as 'blue' | 'red' | 'green'}
+                    variant={item.tagVariant as TagVariant}
                     size="sm">
                     ● {item.value}
                   </Tag>
