@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, inject, onMounted, h } from 'vue'
 import { DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tree, Tooltip, Message, Checkbox } from '@expcat/tigercat-vue'
-import type { TableColumn, SortState } from '@expcat/tigercat-core'
+import type { TableColumn, TableCardLayoutItem, SortState } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
 import { apiRequest, debounce, loadWorkbenchState, saveWorkbenchState, type Session } from '../utils'
@@ -24,6 +24,13 @@ const authHeaders = computed(() =>
 )
 
 const DEFAULT_EXPORT_FIELDS = ['id', 'name', 'description', 'createdAt', 'permissions', 'userCount']
+const ROLE_CARD_LAYOUT: TableCardLayoutItem[] = [
+  { key: 'description', colSpan: 12, labelPosition: 'left' },
+  { key: 'permissions', colSpan: 12, labelPosition: 'left' },
+  { key: 'users', colSpan: 12, labelPosition: 'left' },
+  { key: 'createdAt', colSpan: 12, labelPosition: 'left' },
+  { key: 'actions', colSpan: 12, hideLabel: true },
+]
 const savedWorkbench = loadWorkbenchState('roles', {
   queryState: { page: 1, pageSize: 10 },
   selectedRowKeys: [],
@@ -581,6 +588,7 @@ onMounted(() => {
       :striped="true"
       responsive-mode="card"
       card-breakpoint="md"
+      :card-layout="ROLE_CARD_LAYOUT"
       empty-text="暂无角色数据"
       :toolbar="tableToolbar"
       @search-change="handleSearch"

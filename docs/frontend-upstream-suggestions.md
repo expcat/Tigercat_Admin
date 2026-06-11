@@ -6,7 +6,7 @@
 
 当前暂无待上游改进事项。
 
-本次核查：npm 最新 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` 为 `v1.2.43`（2026-06-11 发布）。当前仓库已升级到 `v1.2.43`，后续升级依赖时需重新验证前端页面。
+本次核查：npm 最新 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` 为 `v1.2.44`（2026-06-12 核查）。当前仓库已升级到 `^1.2.44` 并在用户/角色页启用 Card 网格排列；后续升级或更新 lockfile 时需重新验证前端页面。
 
 ## 已由上游完善
 
@@ -17,7 +17,7 @@
 - **建议修复**：斑马纹激活的 fixed 单元格改用等效不透明色，例如 `color-mix(in srgb, var(--tiger-table-stripe-bg, …) 50%, var(--tiger-table-bg, …))`，替换 `/50` 透明叠加。
 - **上游结果**：`@expcat/tigercat-core@1.2.43` 新增 `tableFixedCellStripedClasses`，`getTableFixedCellClasses` 在 `stripedActive` 时改用不透明 `color-mix(...)` 背景。
 - **本项目复现**：RolesPage（`striped` + `column-lockable`），锁定「操作」列后缩窄窗口横向滚动，观察第 1、3 行。
-- **本项目处理**：不做本地覆盖；当前仓库已升级到 `v1.2.43`，后续验证 RolesPage 时关注锁定列斑马纹背景即可。
+- **本项目处理**：不做本地覆盖；当前仓库已升级到 `v1.2.44`，后续验证 RolesPage 时关注锁定列斑马纹背景即可。
 
 ---
 

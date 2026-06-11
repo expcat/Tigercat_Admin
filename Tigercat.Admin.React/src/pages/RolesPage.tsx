@@ -17,7 +17,11 @@ import {
   Tooltip,
   Message,
 } from '@expcat/tigercat-react';
-import type { TableColumn, SortState } from '@expcat/tigercat-core';
+import type {
+  TableColumn,
+  TableCardLayoutItem,
+  SortState,
+} from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { PermissionGuard } from '../components/PermissionGuard';
 import {
@@ -50,6 +54,14 @@ type RoleFormData = {
   description: string;
   permissionIds: number[];
 };
+
+const ROLE_CARD_LAYOUT: TableCardLayoutItem[] = [
+  { key: 'description', colSpan: 12, labelPosition: 'left' },
+  { key: 'permissions', colSpan: 12, labelPosition: 'left' },
+  { key: 'users', colSpan: 12, labelPosition: 'left' },
+  { key: 'createdAt', colSpan: 12, labelPosition: 'left' },
+  { key: 'actions', colSpan: 12, hideLabel: true },
+];
 
 const INITIAL_FORM: RoleFormData = {
   name: '',
@@ -676,6 +688,7 @@ function RolesPage() {
         striped
         responsiveMode="card"
         cardBreakpoint="md"
+        cardLayout={ROLE_CARD_LAYOUT}
         emptyText="暂无角色数据"
         toolbar={tableToolbar}
         onSearchChange={handleSearch}

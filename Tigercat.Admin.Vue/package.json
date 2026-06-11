@@ -13,8 +13,8 @@
     "preview:demo": "cross-env VITE_TIGERCAT_DEMO=true VITE_TIGERCAT_ROUTER_MODE=hash VITE_TIGERCAT_BASE_PATH=/ vite preview"
   },
   "dependencies": {
-    "@expcat/tigercat-core": "^1.2.43",
-    "@expcat/tigercat-vue": "^1.2.43",
+    "@expcat/tigercat-core": "^1.2.44",
+    "@expcat/tigercat-vue": "^1.2.44",
     "@tigercat-admin/mock-api": "workspace:*",
     "autoprefixer": "^10.5.0",
     "postcss": "^8.5.15",

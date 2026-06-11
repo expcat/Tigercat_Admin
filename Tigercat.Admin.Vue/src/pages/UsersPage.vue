@@ -2,7 +2,7 @@
 import { ref, computed, inject, onMounted, h } from 'vue'
 import { Avatar, DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tooltip, Message, Checkbox } from '@expcat/tigercat-vue'
 import { CropUpload } from '@expcat/tigercat-vue/CropUpload'
-import type { TableColumn, SortState, TableToolbarFilterValue } from '@expcat/tigercat-core'
+import type { TableColumn, TableCardLayoutItem, SortState, TableToolbarFilterValue } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
 import { apiRequest, debounce, loadWorkbenchState, saveWorkbenchState, clearWorkbenchSelection, type Session } from '../utils'
@@ -23,6 +23,13 @@ const authHeaders = computed(() =>
 )
 
 const DEFAULT_EXPORT_FIELDS = ['id', 'username', 'displayName', 'status', 'createdAt', 'updatedAt', 'roles']
+const USER_CARD_LAYOUT: TableCardLayoutItem[] = [
+  { key: 'displayName', colSpan: 12, labelPosition: 'left' },
+  { key: 'status', colSpan: 12, labelPosition: 'left' },
+  { key: 'roles', colSpan: 12, labelPosition: 'left' },
+  { key: 'createdAt', colSpan: 12, labelPosition: 'left' },
+  { key: 'actions', colSpan: 12, hideLabel: true },
+]
 const savedWorkbench = loadWorkbenchState('users', {
   queryState: { page: 1, pageSize: 10, status: null },
   selectedRowKeys: [],
@@ -714,6 +721,7 @@ onMounted(() => {
       :striped="true"
       responsive-mode="card"
       card-breakpoint="md"
+      :card-layout="USER_CARD_LAYOUT"
       empty-text="暂无用户数据"
       :toolbar="tableToolbar"
       @search-change="handleSearch"

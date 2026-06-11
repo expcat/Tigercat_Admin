@@ -2,7 +2,7 @@
 
 本文件只约束**维护本仓库**的代码代理：编码、审查、重构或文档整理前，先阅读相关文件，理解当前结构、既有风格和已有实现，再开始修改。如果任务是以本仓库为蓝本在其他目录创建新项目，本文件不适用，请改走 [docs/guide/new-project.md](docs/guide/new-project.md)。
 
-如果当前代理支持 skills 或类似规则集，优先使用 `karpathy-guidelines`。涉及 Tigercat UI 组件、主题、跨框架迁移、属性映射或显示问题时，优先参考 [docs/frontend.md](docs/frontend.md) 和仓库现有实现；只有缺少信息或需要核对最新 breaking change 时，再查阅 Tigercat 官方文档。
+如果当前代理支持 skills 或类似规则集，优先使用 `karpathy-guidelines`。涉及 Tigercat UI 组件、主题、跨框架迁移、属性映射或显示问题时，优先参考 [docs/frontend.md](docs/frontend.md) 和仓库现有实现；涉及 `Table` / `DataTableWithToolbar`、Card 模式或卡片排列时，先读 [docs/frontend.md「表格使用约定」](docs/frontend.md#表格使用约定v1244)。只有缺少信息或需要核对最新 breaking change 时，再查阅 Tigercat 官方文档。
 
 ## 权威文档
 
@@ -37,9 +37,9 @@
 ## Skill 使用
 
 - 支持 skills 时，编码、审查、重构和文档整理优先使用 `karpathy-guidelines`。
-- 涉及 Tigercat UI、主题、跨框架迁移、组件属性映射或显示问题时，先读 [docs/frontend.md](docs/frontend.md)，再查现有 React / Vue 实现。
+- 涉及 Tigercat UI、主题、跨框架迁移、组件属性映射或显示问题时，先读 [docs/frontend.md](docs/frontend.md)，再查现有 React / Vue 实现；表格、Card 模式和卡片排列以 [表格使用约定](docs/frontend.md#表格使用约定v1244) 为入口。
 - 只有缺少本仓库事实或需要核对最新 breaking change 时，才查 Tigercat 官方文档。
-- 使用 Skill 后仍以仓库现有代码和文档为事实来源，不新增未经验证的接口或行为。
+- 使用 Skill 后仍以仓库现有代码、专题文档、已安装或已核验的 Tigercat 类型为事实来源，不新增未经验证的接口或行为。
 
 ## 前端规则
 

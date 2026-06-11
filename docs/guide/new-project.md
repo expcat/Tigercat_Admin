@@ -19,7 +19,7 @@ pnpm create vite my-admin --template react-ts   # React
 pnpm create vite my-admin --template vue-ts     # Vue
 ```
 
-依赖清单（版本以蓝本 [Tigercat.Admin.React/package.json](../../Tigercat.Admin.React/package.json) / [Tigercat.Admin.Vue/package.json](../../Tigercat.Admin.Vue/package.json) 为准，当前蓝本为 Tigercat `^1.2.43`）：
+依赖清单（版本以蓝本 [Tigercat.Admin.React/package.json](../../Tigercat.Admin.React/package.json) / [Tigercat.Admin.Vue/package.json](../../Tigercat.Admin.Vue/package.json) 为准，当前蓝本为 Tigercat `^1.2.44`）：
 
 | 类别 | React 端 | Vue 端 | 说明 |
 | ---- | -------- | ------ | ---- |
@@ -103,7 +103,7 @@ pnpm add -D @tailwindcss/postcss
 页面如何选组件、写表格、保持视觉一致，全部以 [frontend.md](../frontend.md) 为准：
 
 - [组件选择矩阵](../frontend.md#组件选择矩阵)：每类页面用什么 Tigercat 组件，重组件的子路径导入写法。
-- [表格使用约定（v1.2.43+）](../frontend.md#表格使用约定v1243)：`DataTableWithToolbar`、窄屏卡片模式、列显隐、锁定列。
+- [表格使用约定（v1.2.44+）](../frontend.md#表格使用约定v1244)：`DataTableWithToolbar`、窄屏卡片模式、Card 网格排列、列显隐、锁定列。
 - [视觉与布局规则](../frontend.md#视觉与布局规则)：token、`p2-*` 辅助类、`PageHeader` / `MetricGrid` 模式。
 - [React / Vue 映射](../frontend.md#react--vue-映射)：跨框架属性 / 事件对照。
 

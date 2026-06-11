@@ -20,6 +20,7 @@ import {
 import { CropUpload } from '@expcat/tigercat-react/CropUpload';
 import type {
   TableColumn,
+  TableCardLayoutItem,
   SortState,
   TableToolbarFilterValue,
 } from '@expcat/tigercat-core';
@@ -59,6 +60,14 @@ type UserFormData = {
   avatarUrl: string | null;
   roleIds: number[];
 };
+
+const USER_CARD_LAYOUT: TableCardLayoutItem[] = [
+  { key: 'displayName', colSpan: 12, labelPosition: 'left' },
+  { key: 'status', colSpan: 12, labelPosition: 'left' },
+  { key: 'roles', colSpan: 12, labelPosition: 'left' },
+  { key: 'createdAt', colSpan: 12, labelPosition: 'left' },
+  { key: 'actions', colSpan: 12, hideLabel: true },
+];
 
 const INITIAL_FORM: UserFormData = {
   username: '',
@@ -847,6 +856,7 @@ function UsersPage() {
         striped
         responsiveMode="card"
         cardBreakpoint="md"
+        cardLayout={USER_CARD_LAYOUT}
         emptyText="暂无用户数据"
         toolbar={tableToolbar}
         onSearchChange={handleSearch}

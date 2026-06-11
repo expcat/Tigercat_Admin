@@ -21,9 +21,9 @@
 ## Skill 路由
 
 - 支持 skills 时，编码、审查、重构和文档整理优先使用 `karpathy-guidelines`。
-- 涉及 Tigercat UI、主题、跨框架迁移、组件属性映射或显示问题时，先读 [docs/frontend.md](frontend.md) 和仓库现有实现。
+- 涉及 Tigercat UI、主题、跨框架迁移、组件属性映射或显示问题时，先读 [docs/frontend.md](frontend.md) 和仓库现有实现；表格、`DataTableWithToolbar`、Card 模式和卡片排列任务先读 [表格使用约定](frontend.md#表格使用约定v1244)。
 - 只有仓库缺少信息或需要核对最新 breaking change 时，才查 Tigercat 官方文档。
-- Skill 给出的是工作方法；本仓库事实以代码、配置和专题文档为准。
+- Skill 给出的是工作方法；本仓库事实以代码、配置、专题文档、已安装或已核验的 Tigercat 类型为准。
 
 ## API 按需读取
 
