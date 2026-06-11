@@ -82,3 +82,4 @@ JSON API 默认返回 `ApiResponse<T>`：
 - 新增或修改 API 端点、请求/响应字段、权限、错误码、事件、分页/排序规则时，同步更新本索引和对应专题。
 - 没有合适专题时新增 `docs/api/*.md`，并在本索引与 [llm.md](llm.md) 登记。
 - 不在 README 或 AGENT 中重复 API 细节；入口只保留导航和同步规则。
+- 本索引同时是 [guide/backend.md](guide/backend.md) 方案 A 的参考契约；guide 不复写字段，字段变更后无需同步 guide。

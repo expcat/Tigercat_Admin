@@ -1,6 +1,6 @@
 # Agent 项目指南
 
-本文件约束支持 `AGENT.md` 的代码代理在本仓库内的工作方式。开始编码、审查、重构或文档整理前，先阅读相关文件，理解当前结构、既有风格和已有实现，再开始修改。
+本文件只约束**维护本仓库**的代码代理：编码、审查、重构或文档整理前，先阅读相关文件，理解当前结构、既有风格和已有实现，再开始修改。如果任务是以本仓库为蓝本在其他目录创建新项目，本文件不适用，请改走 [docs/guide/new-project.md](docs/guide/new-project.md)。
 
 如果当前代理支持 skills 或类似规则集，优先使用 `karpathy-guidelines`。涉及 Tigercat UI 组件、主题、跨框架迁移、属性映射或显示问题时，优先参考 [docs/frontend.md](docs/frontend.md) 和仓库现有实现；只有缺少信息或需要核对最新 breaking change 时，再查阅 Tigercat 官方文档。
 
@@ -13,6 +13,8 @@
 | [docs/frontend.md](docs/frontend.md) | 前端架构、Tigercat UI 用法、LLM 生成指南、组件缺口 |
 | [docs/api.md](docs/api.md) | API 契约索引；细节分布在 [docs/api](docs/api) |
 | [docs/operations.md](docs/operations.md) | 本地开发、数据库、部署、健康检查和 CI |
+| [docs/guide/new-project.md](docs/guide/new-project.md) | 创建新项目线：bootstrap 指南（维护本仓库时也需保持其同步） |
+| [docs/guide/backend.md](docs/guide/backend.md) | 创建新项目线：后端抽象契约与三种方案 |
 
 ## 工作方式
 
@@ -55,6 +57,7 @@
 - 新增或修改 API 端点、请求/响应字段、权限、错误码、事件、分页/排序规则时，必须同步更新 [docs/api.md](docs/api.md) 和对应 [docs/api](docs/api) 专题；没有合适专题时新增专题文档。
 - 新增或修改前端页面、路由、菜单、权限入口、Tigercat UI 用法、双端映射、组件缺口或页面生成规则时，必须同步更新 [docs/frontend.md](docs/frontend.md)；独立主题可新增 `docs/frontend-*.md`，并在 [docs/llm.md](docs/llm.md) 与 [README.md](README.md) 登记。
 - 修改数据库、Redis、媒体存储、部署、CI、健康检查、观测、Docker、发布 smoke 或回滚流程时，必须同步更新 [docs/operations.md](docs/operations.md)；内容过长时拆出专题并在入口文档链接。
+- 修改脚手架步骤、依赖版本策略、App Shell 复制清单（页面/组件/工具文件的增删改名）或后端方案时，必须同步更新 [docs/guide/new-project.md](docs/guide/new-project.md) 或 [docs/guide/backend.md](docs/guide/backend.md)；升级 `@expcat/tigercat-*` 版本时更新 new-project.md 的「当前蓝本版本」。
 - 新增跨领域能力时，先更新 [docs/llm.md](docs/llm.md) 的按需读取路由，再更新或新增对应专题文档。
 - 文档更新优先复用现有专题，避免同一事实在多个文件重复维护；入口文件只写导航和决策规则。
 

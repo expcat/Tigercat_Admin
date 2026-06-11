@@ -1,6 +1,6 @@
 # 开发、部署与运维指南
 
-本文合并本地开发、数据库、部署、健康检查、CI 和发布 smoke。前端界面规范见 [frontend.md](frontend.md)，API 契约见 [api.md](api.md)。
+本文合并本地开发、数据库、部署、健康检查、CI 和发布 smoke，属「维护本仓库」文档线。前端界面规范见 [frontend.md](frontend.md)，API 契约见 [api.md](api.md)。新项目复用本仓库后端时只需读「数据库」和「生产配置」两节（由 [guide/backend.md](guide/backend.md) 引用）。
 
 ## 环境与安装
 

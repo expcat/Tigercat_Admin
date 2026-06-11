@@ -1,13 +1,14 @@
 # 前端与 Tigercat UI 指南
 
-本文是 React / Vue 双端前端的权威指南，也是 LLM 基于 Tigercat UI 生成相似 Admin 界面的主要入口。接口字段与返回结构以 [api.md](api.md) 为准，运行、部署和验证命令以 [operations.md](operations.md) 为准。
+本文是 Tigercat 前端模式的单一事实来源，服务两条文档线：维护本仓库时，它是 React / Vue 双端的权威指南；以本仓库为蓝本创建新项目时，由 [guide/new-project.md](guide/new-project.md) 按章节引用本文，不另行复写。接口字段与返回结构以 [api.md](api.md) 为准，运行、部署和验证命令以 [operations.md](operations.md) 为准。
 
 ## LLM 读取顺序
 
-生成或改造前端时先经过按需入口，再读取本专题：
+按任务进入本专题：
 
 ```text
-docs/llm.md -> docs/frontend.md -> docs/api.md
+维护本仓库：  docs/llm.md -> docs/frontend.md -> docs/api.md
+创建新项目：  docs/guide/new-project.md -> docs/frontend.md（按引用章节） -> docs/guide/backend.md
 ```
 
 实现时遵循：
@@ -53,7 +54,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 - Content：`min-h-0 overflow-auto p-3 sm:p-4 md:p-6`，内部最大宽度 `max-w-7xl`。
 - 访客页：登录和注册使用居中 Guest shell，不进入后台布局；表单卡片用 `Card variant="transparent"`（v1.2.39+），不再用 `className` 手写透明/无边框/无阴影样式。由于 transparent 变体仍保留组件 size 内边距，Guest 页继续保留 `className="p-0"` / `class="p-0"`。
 
-路由与菜单：
+路由与菜单（下表为本仓库示例；新项目按 [guide/new-project.md](guide/new-project.md) 复制结构、替换条目）：
 
 | 菜单 key | 路径 | 页面 | 权限 |
 | -------- | ---- | ---- | ---- |

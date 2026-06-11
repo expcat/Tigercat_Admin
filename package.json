@@ -21,7 +21,7 @@
     "e2e:demo": "pnpm build:demo && playwright test --config=playwright.demo.config.ts",
     "e2e:install": "playwright install chromium",
     "db:script:postgres": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/generate-postgres-sql.ps1",
-    "check:links": "pnpm dlx markdown-link-check README.md AGENT.md docs/llm.md docs/api.md docs/frontend.md docs/operations.md docs/api/auth.md docs/api/users.md docs/api/roles.md docs/api/dashboard-export.md docs/api/audit.md docs/api/notifications.md docs/api/tasks.md docs/api/settings.md docs/api/media.md Tigercat.Admin.Api/README.md"
+    "check:links": "pnpm dlx markdown-link-check README.md AGENT.md docs/llm.md docs/api.md docs/frontend.md docs/operations.md docs/guide/new-project.md docs/guide/backend.md docs/api/auth.md docs/api/users.md docs/api/roles.md docs/api/dashboard-export.md docs/api/audit.md docs/api/notifications.md docs/api/tasks.md docs/api/settings.md docs/api/media.md Tigercat.Admin.Api/README.md"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0"
