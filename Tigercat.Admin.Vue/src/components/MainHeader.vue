@@ -95,17 +95,24 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
         演示模式
       </Tag>
       <Dropdown trigger="click" placement="bottom-end" :show-arrow="false">
-        <button 
-          class="p2-header-user-btn"
-          :title="getAccountLabel(props.session)"
-          :aria-label="getAccountLabel(props.session)"
-        >
-          <Avatar class="p2-avatar shrink-0 font-bold text-sm bg-gradient-to-tr from-(--tiger-primary,#3b82f6) to-blue-400 text-white">
-            {{ getAccountLabel(props.session).charAt(0).toUpperCase() }}
-          </Avatar>
-          <span class="min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937)">{{ getAccountLabel(props.session) }}</span>
-          <Icon name="chevronDown" :size="14" class="p2-header-chevron shrink-0" />
-        </button>
+        <template #trigger="{ open }">
+          <button
+            class="p2-header-user-btn"
+            :title="getAccountLabel(props.session)"
+            :aria-label="getAccountLabel(props.session)"
+          >
+            <Avatar class="p2-avatar shrink-0 font-bold text-sm bg-gradient-to-tr from-(--tiger-primary,#3b82f6) to-blue-400 text-white">
+              {{ getAccountLabel(props.session).charAt(0).toUpperCase() }}
+            </Avatar>
+            <span class="min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937)">{{ getAccountLabel(props.session) }}</span>
+            <Icon
+              name="chevronDown"
+              :size="14"
+              class="p2-header-chevron shrink-0"
+              :class="{ 'rotate-180': open }"
+            />
+          </button>
+        </template>
 
         <DropdownMenu class-name="w-56 max-w-[calc(100vw-2rem)]">
           <DropdownItem @click="$emit('toggle-theme')">

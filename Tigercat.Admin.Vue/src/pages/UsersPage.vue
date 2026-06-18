@@ -419,11 +419,12 @@ const columns = computed<TableColumn[]>(() => {
             h(Tooltip, { content: '更多操作' }, {
               default: () =>
                 h(Dropdown, { trigger: 'click', placement: 'bottom-end' }, {
-                  default: () => [
+                  trigger: () =>
                     h(Button, {
                       size: 'sm',
                       variant: 'ghost',
                     }, () => '操作'),
+                  default: () => [
                     h(DropdownMenu, null, {
                       default: () => [
                         h(DropdownItem, {

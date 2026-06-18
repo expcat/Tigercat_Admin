@@ -621,10 +621,14 @@ function UsersPage() {
           <div className="flex items-center justify-center gap-2">
             {canEdit && (
               <Tooltip content="更多操作">
-                <Dropdown trigger="click" placement="bottom-end">
-                  <Button size="sm" variant="ghost">
-                    操作
-                  </Button>
+                <Dropdown
+                  trigger="click"
+                  placement="bottom-end"
+                  renderTrigger={() => (
+                    <Button size="sm" variant="ghost">
+                      操作
+                    </Button>
+                  )}>
                   <DropdownMenu className="w-28 max-w-[calc(100vw-2rem)]">
                     <DropdownItem onClick={() => openEditModal(record)}>
                       编辑用户

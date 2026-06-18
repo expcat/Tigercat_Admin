@@ -110,20 +110,27 @@ export function MainHeader({
             演示模式
           </Tag>
         )}
-        <Dropdown trigger="click" placement="bottom-end" showArrow={false}>
-          <button
-            className="p2-header-user-btn"
-            title={accountLabel}
-            aria-label={accountLabel}>
-            <Avatar className="p2-avatar shrink-0 font-bold text-sm bg-gradient-to-tr from-(--tiger-primary,#3b82f6) to-blue-400 text-white">
-              {accountLabel.charAt(0).toUpperCase()}
-            </Avatar>
-            <span className="min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937)">
-              {accountLabel}
-            </span>
-            <ChevronDownIcon size={14} className="p2-header-chevron shrink-0" />
-          </button>
-
+        <Dropdown
+          trigger="click"
+          placement="bottom-end"
+          showArrow={false}
+          renderTrigger={({ open }) => (
+            <button
+              className="p2-header-user-btn"
+              title={accountLabel}
+              aria-label={accountLabel}>
+              <Avatar className="p2-avatar shrink-0 font-bold text-sm bg-gradient-to-tr from-(--tiger-primary,#3b82f6) to-blue-400 text-white">
+                {accountLabel.charAt(0).toUpperCase()}
+              </Avatar>
+              <span className="min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937)">
+                {accountLabel}
+              </span>
+              <ChevronDownIcon
+                size={14}
+                className={`p2-header-chevron shrink-0 ${open ? 'rotate-180' : ''}`}
+              />
+            </button>
+          )}>
           <DropdownMenu className="w-56 max-w-[calc(100vw-2rem)]">
             <DropdownItem onClick={onToggleTheme}>
               <span className="flex items-center gap-2 text-sm">
