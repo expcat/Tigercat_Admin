@@ -335,7 +335,7 @@ function SettingsPage() {
                 </Button>
               </Popconfirm>
               <Button
-                color="primary"
+                variant="primary"
                 onClick={() => setSaveConfirmOpen(true)}
                 disabled={!hasChanges || saving}>
                 {saving ? '保存中…' : '保存修改'}

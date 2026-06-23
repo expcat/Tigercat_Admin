@@ -251,7 +251,7 @@ function FilesPage() {
             {canDelete && (
               <Button
                 variant="outline"
-                color="danger"
+                danger
                 disabled={selectedIds.length === 0}
                 onClick={openDeleteModal}>
                 删除选中
@@ -327,7 +327,7 @@ function FilesPage() {
           {deleteReferences.length > 0 && (
             <Button
               variant="outline"
-              color="danger"
+              danger
               disabled={deleting}
               onClick={() => confirmDelete(true)}>
               强制删除

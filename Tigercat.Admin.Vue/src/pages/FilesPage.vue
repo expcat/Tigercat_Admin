@@ -249,7 +249,7 @@ onMounted(loadMedia)
           <Button
             v-if="canDelete"
             variant="outline"
-            color="danger"
+            danger
             :disabled="selectedIds.length === 0"
             @click="openDeleteModal"
           >
@@ -320,7 +320,7 @@ onMounted(loadMedia)
         <Button
           v-if="deleteReferences.length > 0"
           variant="outline"
-          color="danger"
+          danger
           :disabled="deleting"
           @click="confirmDelete(true)"
         >

@@ -76,6 +76,7 @@ React 通过 `ProtectedRoute` / `GuestRoute` 和 `react-router-dom` 管路由；
 - 页面级辅助类可复用 `p2-text-primary`、`p2-page-accent`、`p2-muted-panel`、`p2-soft-surface`、`p2-icon-chip`、`p2-action-tile`、`p2-checkbox-row`、`p2-modal-scroll`。
 - 页面第一块通常使用 `PageHeader`：左侧图标芯片、标题、说明，右侧标签只在 `sm` 以上显示；`tags` 使用 `{ label, variant }`，`variant` 取 Tigercat `Tag` 支持的 `default` / `primary` / `success` / `warning` / `danger` / `info`。
 - `Tag` 只使用 `variant` 表达状态，不使用 `color`；历史颜色名映射为 `green -> success`、`red/rose -> danger`、`orange -> warning`、`blue -> primary`、`gray -> default`、`purple -> info`。
+- `Button` 不使用 `color`：主色用 `variant`（`primary` / `secondary` / `outline` / `ghost` / `link`，默认 `primary`），危险/删除操作改用布尔属性 `danger`（与 `variant` 叠加，如 `variant="ghost" danger`）。
 - 指标区使用 `MetricGrid` + `MetricCard`，桌面 3 或 4 列，移动端 1 列。
 - 页面操作说明使用 `PageActionPanel`，提示或说明用 `MutedPanel`，图表无数据用 `ChartEmptyState`。
 - 弹层内容长时使用 `p2-modal-scroll`，确认类操作优先用 Tigercat `Modal`、`Popconfirm`、`Message`。
@@ -119,7 +120,7 @@ Vue 端将包名替换为 `@expcat/tigercat-vue/...`。
 - **卡片排列**：`v1.2.44` 起 Card 模式支持网格排列。常规数据工作台先用默认顺序 + `hideInCard` / `cardTitle` / `cardPriority`；需要二维排布时优先在列配置里使用 `cardGrid`；需要跨页面复用或集中覆盖时使用表级 `cardLayout`（React prop 为 `cardLayout`，Vue 为 `:card-layout`）。`cardGrid` 与 `cardLayout` 都支持 `colSpan`（1-12）、`rowSpan`（1-6）、`hideLabel`、`labelPosition: 'left' | 'top'`；列级 `cardGrid` 双端都写在 `columns` 内，表级 `cardLayout` 通过 `key` 指向目标列。用户/角色页已用表级 `cardLayout` 在窄屏卡片中启用紧凑信息行：字段全宽、标签和值左右排列，操作区整行展示并隐藏字段标签。
 - **表格文案**：Table / DataTableWithToolbar 文案统一走 ConfigProvider locale 的 `table` 分节（见双端 `src/utils/tigercatText.ts` 的 `appText.table`，覆盖空状态、展开/收起、全选、排序、搜索按钮、列设置、已选择等 key）。页面级覆盖业务文案用 `emptyText`（如「暂无用户数据」）或 `labels` prop；不要再在 toolbar 上硬编码 `searchButtonText` / `bulkActionsLabel` 通用文案，业务化的 `searchPlaceholder`（如「搜索用户名或显示名...」）保留在页面。
 - **锁定列背景**：上游锁定列背景读组件 Token 链 `--tiger-table-bg → --tiger-component-table-bg → --tiger-surface`（stripe/hover/header 同理），`v1.2.43+` 已对 `striped + fixed` 单元格使用不透明 `color-mix(...)` 背景，避免横向滚动时透出下层内容。本项目在双端全局 CSS 的 `.dark` 块中将 `--tiger-component-table-bg/stripe-bg/hover-bg/header-bg` 映射到 `--tiger-bg-card`/`--tiger-bg-page`/`--tiger-bg-hover`，不再使用 `[style*="position: sticky"]` 全局覆盖。需要进一步定制时使用列级 `fixedClassName` / `fixedHeaderClassName`。
-- **列显隐面板**：用户/角色页在 `DataTableWithToolbar` 的 `toolbar` 中启用 `showColumnSettings: true`，并使用 Table 受控隐藏列能力保存状态：React 传 `hiddenColumnKeys` + `onHiddenColumnsChange`，Vue 传 `:hidden-column-keys` + `@hidden-columns-change`。不要再自建 `Popover + Checkbox` 列显隐面板，也不要在页面侧过滤 `columns`；隐藏列由上游 Table 统一处理，sessionStorage 仍保存 `hiddenColumnKeys`。
+- **列显隐面板**：用户/角色页在 `DataTableWithToolbar` 的 `toolbar` 中启用 `showColumnSettings: true`，并使用 Table 受控隐藏列能力保存状态：React 传 `hiddenColumnKeys` + `onHiddenColumnKeysChange`，Vue 传 `:hidden-column-keys` + `@hidden-column-keys-change`。不要再自建 `Popover + Checkbox` 列显隐面板，也不要在页面侧过滤 `columns`；隐藏列由上游 Table 统一处理，sessionStorage 仍保存 `hiddenColumnKeys`。
 
 ## React / Vue 映射
 

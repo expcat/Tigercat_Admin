@@ -452,7 +452,7 @@ const columns = computed<TableColumn[]>(() => {
                 h(Button, {
                   size: 'sm',
                   variant: 'ghost',
-                  color: 'danger',
+                  danger: true,
                 }, () => '删除'),
             })
           )
@@ -691,7 +691,7 @@ onMounted(() => {
       </Button>
       <Button
         v-permission="'user:create'"
-        color="primary"
+        variant="primary"
         @click="openCreateModal"
       >
         <span class="flex items-center gap-1">
@@ -732,7 +732,7 @@ onMounted(() => {
       @page-size-change="handlePageSizeChange"
       @selection-change="handleSelectionChange"
       @sort-change="handleSortChange"
-      @hidden-columns-change="handleHiddenColumnsChange"
+      @hidden-column-keys-change="handleHiddenColumnsChange"
     />
 
     <!-- Create / Edit Modal -->
@@ -795,7 +795,7 @@ onMounted(() => {
             <Button
               v-if="formData.avatarMediaId"
               variant="ghost"
-              color="danger"
+              danger
               :disabled="avatarUploading"
               @click="formData.avatarMediaId = null; formData.avatarUrl = null"
             >

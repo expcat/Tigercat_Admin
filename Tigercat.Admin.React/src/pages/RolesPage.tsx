@@ -547,7 +547,7 @@ function RolesPage() {
                 okType="danger"
                 placement="left"
                 onConfirm={() => handleDelete(record)}>
-                <Button size="sm" variant="ghost" color="danger">
+                <Button size="sm" variant="ghost" danger>
                   删除
                 </Button>
               </Popconfirm>
@@ -663,7 +663,7 @@ function RolesPage() {
           </Button>
         </PermissionGuard>
         <PermissionGuard code="role:create">
-          <Button color="primary" onClick={openCreateModal}>
+          <Button variant="primary" onClick={openCreateModal}>
             <span className="flex items-center gap-1">
               <UserPlusIcon size={16} />
               新增角色
@@ -703,7 +703,7 @@ function RolesPage() {
         onPageSizeChange={handlePageSizeChange}
         onSelectionChange={handleSelectionChange}
         onSortChange={handleSortChange}
-        onHiddenColumnsChange={handleHiddenColumnsChange}
+        onHiddenColumnKeysChange={handleHiddenColumnsChange}
       />
 
       {/* Create / Edit Modal */}

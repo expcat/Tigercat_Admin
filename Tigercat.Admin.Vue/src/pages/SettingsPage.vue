@@ -251,7 +251,7 @@ watch([targetSettingKey, loading], scrollToTargetSetting)
             恢复默认值
           </Button>
         </Popconfirm>
-        <Button color="primary" :disabled="!hasChanges || saving" @click="saveConfirmOpen = true">
+        <Button variant="primary" :disabled="!hasChanges || saving" @click="saveConfirmOpen = true">
           {{ saving ? '保存中…' : '保存修改' }}
         </Button>
       </div>

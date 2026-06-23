@@ -646,7 +646,7 @@ function UsersPage() {
                 okType="danger"
                 placement="left"
                 onConfirm={() => handleDelete(record)}>
-                <Button size="sm" variant="ghost" color="danger">
+                <Button size="sm" variant="ghost" danger>
                   删除
                 </Button>
               </Popconfirm>
@@ -831,7 +831,7 @@ function UsersPage() {
           </Button>
         </PermissionGuard>
         <PermissionGuard code="user:create">
-          <Button color="primary" onClick={openCreateModal}>
+          <Button variant="primary" onClick={openCreateModal}>
             <span className="flex items-center gap-1">
               <UserPlusIcon size={16} />
               新增用户
@@ -872,7 +872,7 @@ function UsersPage() {
         onPageSizeChange={handlePageSizeChange}
         onSelectionChange={handleSelectionChange}
         onSortChange={handleSortChange}
-        onHiddenColumnsChange={handleHiddenColumnsChange}
+        onHiddenColumnKeysChange={handleHiddenColumnsChange}
       />
 
       {/* Create / Edit Modal */}
@@ -940,7 +940,7 @@ function UsersPage() {
                 {formData.avatarMediaId && (
                   <Button
                     variant="ghost"
-                    color="danger"
+                    danger
                     disabled={avatarUploading}
                     onClick={() =>
                       setFormData((prev) => ({
