@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type {
-  TaskBoardCard,
+  InputType,
   TaskBoardCardMoveEvent,
   TaskBoardColumn,
   TaskBoardColumnMoveEvent
@@ -43,6 +43,8 @@ const assigneeFilter = ref('')
 const blockedFilter = ref('')
 const dueFrom = ref('')
 const dueTo = ref('')
+// Tigercat InputType 未含 'date'，但 Input 会把 type 透传给原生 input，断言以保留原生日期选择器
+const dateInputType = 'date' as unknown as InputType
 const columns = ref<AdminTaskBoardColumn[]>([])
 const selectedTask = ref<AdminTaskBoardCard | null>(null)
 const detailOpen = ref(false)
@@ -258,72 +260,6 @@ const beforeCardMove = (event: TaskBoardCardMoveEvent) => {
   return false
 }
 
-const renderCard = (card: TaskBoardCard) => {
-  const currentCard = card as TaskBoardCard & {
-    assignee?: string
-    priority?: 'low' | 'medium' | 'high'
-    dueAt?: string
-    estimateHours?: number
-    blocked?: boolean
-  }
-
-  return [
-    {
-      type: 'div',
-      props: { class: 'space-y-3' },
-      children: [
-        {
-          type: 'div',
-          children: [
-            {
-              type: Text,
-              props: { weight: 'bold' },
-              children: () => currentCard.title
-            },
-            currentCard.description
-              ? {
-                  type: Text,
-                  props: { size: 'sm', color: 'secondary', class: 'mt-1' },
-                  children: () => currentCard.description
-                }
-              : null
-          ].filter(Boolean)
-        },
-        {
-          type: 'div',
-          props: { class: 'flex flex-wrap gap-2' },
-          children: [
-            currentCard.priority
-              ? {
-                  type: Tag,
-                  props: { variant: getTaskPriorityVariant(currentCard.priority), size: 'sm' },
-                  children: () => getTaskPriorityLabel(currentCard.priority)
-                }
-              : null,
-            currentCard.blocked
-              ? {
-                  type: Tag,
-                  props: { variant: 'danger', size: 'sm' },
-                  children: () => '阻塞中'
-                }
-              : null,
-            {
-              type: Tag,
-              props: { variant: 'primary', size: 'sm' },
-              children: () => currentCard.assignee ?? '待分配'
-            }
-          ].filter(Boolean)
-        },
-        {
-          type: Text,
-          props: { size: 'sm', color: 'secondary' },
-          children: () => `截止 ${currentCard.dueAt ? formatDateTime(currentCard.dueAt) : '--'} · 预估 ${currentCard.estimateHours ?? 0}h`
-        }
-      ]
-    }
-  ]
-}
-
 onMounted(loadTasks)
 watch([filterText, assigneeFilter, blockedFilter, dueFrom, dueTo], () => {
   void loadTasks()
@@ -360,13 +296,13 @@ watch([filterText, assigneeFilter, blockedFilter, dueFrom, dueTo], () => {
           />
           <Input
             :value="dueFrom"
-            type="date"
+            :type="dateInputType"
             placeholder="开始日期"
             @change="(value) => dueFrom = String(value ?? '')"
           />
           <Input
             :value="dueTo"
-            type="date"
+            :type="dateInputType"
             placeholder="结束日期"
             @change="(value) => dueTo = String(value ?? '')"
           />

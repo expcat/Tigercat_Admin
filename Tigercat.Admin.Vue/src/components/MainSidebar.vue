@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, h, watch } from 'vue'
 import { Sidebar, Menu } from '@expcat/tigercat-vue'
+import type { MenuItem } from '@expcat/tigercat-core'
 import Icon from './Icon.vue'
 import AppLogo from './AppLogo.vue'
 import { usePermission } from '../utils/permission'
@@ -44,9 +45,6 @@ const toggleCollapsed = () => {
 const displayCollapsed = computed(() =>
   props.showCollapseToggle ? props.collapsed : false
 )
-const menuOpenKeys = computed(() =>
-  displayCollapsed.value ? [] : expandedKeys.value
-)
 
 const { has: hasPerm } = usePermission()
 const filteredMenuItems = computed(() =>
@@ -66,7 +64,7 @@ watch(
 
 const menuIcon = (name?: string, size = 20) => h(Icon, { name: name || 'placeholder', size })
 
-function toMenuItems(items: typeof SHELL_MENU_ITEMS) {
+function toMenuItems(items: typeof SHELL_MENU_ITEMS): MenuItem[] {
   return items.map((item) => ({
     key: item.key,
     label: item.label,

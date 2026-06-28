@@ -19,9 +19,11 @@ const canDelete = computed(() => hasPerm('role:delete'))
 
 // ---- Session ----
 const session = inject<import('vue').Ref<Session | null>>('session')!
-const authHeaders = computed(() =>
-  session.value?.token ? { Authorization: `Bearer ${session.value.token}` } : {}
-)
+const authHeaders = computed<Record<string, string>>(() => {
+  const headers: Record<string, string> = {}
+  if (session.value?.token) headers.Authorization = `Bearer ${session.value.token}`
+  return headers
+})
 
 const DEFAULT_EXPORT_FIELDS = ['id', 'name', 'description', 'createdAt', 'permissions', 'userCount']
 const ROLE_CARD_LAYOUT: TableCardLayoutItem[] = [

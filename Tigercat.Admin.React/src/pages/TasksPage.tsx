@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type {
+  InputType,
   TaskBoardCard,
   TaskBoardCardMoveEvent,
   TaskBoardColumn,
@@ -360,7 +361,7 @@ function TasksPage() {
         <Button
           size="sm"
           variant="outline"
-          onClick={() => openTaskDetail(card as AdminTaskBoardCard)}>
+          onClick={() => openTaskDetail(card as unknown as AdminTaskBoardCard)}>
           详情
         </Button>
       </div>
@@ -397,13 +398,13 @@ function TasksPage() {
             />
             <Input
               value={dueFrom}
-              type="date"
+              type={'date' as unknown as InputType}
               placeholder="开始日期"
               onChange={(event) => setDueFrom(normalizeInput(event))}
             />
             <Input
               value={dueTo}
-              type="date"
+              type={'date' as unknown as InputType}
               placeholder="结束日期"
               onChange={(event) => setDueTo(normalizeInput(event))}
             />
@@ -450,7 +451,7 @@ function TasksPage() {
         />
 
         <TaskBoard
-          columns={columns}
+          columns={columns as unknown as TaskBoardColumn[]}
           filterText={filterText}
           showCardCount
           allowAddCard
@@ -472,7 +473,6 @@ function TasksPage() {
         showDefaultFooter
         okText={completing ? '完成中...' : '确认完成'}
         cancelText="关闭"
-        confirmLoading={completing}
         onOk={handleCompleteTask}
         onCancel={closeTaskDetail}>
         {selectedTask ? (

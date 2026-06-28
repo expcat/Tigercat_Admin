@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   Alert,
@@ -242,8 +242,8 @@ function AuditLogsPage() {
     }
   }, [loadAuditLogs]);
 
-  const handleKeywordChange = (value: string) => {
-    const next = normalizeInput(value);
+  const handleKeywordChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const next = normalizeInput(event.target.value);
     setKeyword(next);
     saveWorkbenchState('audit-logs', {
       queryState: { keyword: next, category },
@@ -449,7 +449,6 @@ function AuditLogsPage() {
         showDefaultFooter
         okText={exporting ? '导出中…' : '导出 CSV'}
         cancelText="取消"
-        confirmLoading={exporting}
         onOk={handleConfirmExport}
         onCancel={() => setExportConfirmOpen(false)}>
         <Text color="secondary">
@@ -463,7 +462,6 @@ function AuditLogsPage() {
         showDefaultFooter
         okText={cleaningRetention ? '清理中...' : '执行清理'}
         cancelText="关闭"
-        confirmLoading={cleaningRetention}
         onOk={() => runRetentionCleanup(false)}
         onCancel={() => setCleanupConfirmOpen(false)}>
         <div className="space-y-3">

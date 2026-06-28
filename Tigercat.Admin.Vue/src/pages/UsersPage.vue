@@ -2,7 +2,7 @@
 import { ref, computed, inject, onMounted, h } from 'vue'
 import { Avatar, DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tooltip, Message, Checkbox } from '@expcat/tigercat-vue'
 import { CropUpload } from '@expcat/tigercat-vue/CropUpload'
-import type { TableColumn, TableCardLayoutItem, SortState, TableToolbarFilterValue } from '@expcat/tigercat-core'
+import type { TableColumn, TableCardLayoutItem, SortState, TableToolbarFilterValue, TableToolbarAction } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
 import { apiRequest, debounce, loadWorkbenchState, saveWorkbenchState, clearWorkbenchSelection, type Session } from '../utils'
@@ -18,9 +18,11 @@ const canDelete = computed(() => hasPerm('user:delete'))
 
 // ---- Session ----
 const session = inject<import('vue').Ref<Session | null>>('session')!
-const authHeaders = computed(() =>
-  session.value?.token ? { Authorization: `Bearer ${session.value.token}` } : {}
-)
+const authHeaders = computed<Record<string, string>>(() => {
+  const headers: Record<string, string> = {}
+  if (session.value?.token) headers.Authorization = `Bearer ${session.value.token}`
+  return headers
+})
 
 const DEFAULT_EXPORT_FIELDS = ['id', 'username', 'displayName', 'status', 'createdAt', 'updatedAt', 'roles']
 const USER_CARD_LAYOUT: TableCardLayoutItem[] = [
@@ -542,6 +544,23 @@ function handleSearch(val: string) {
   debouncedLoad()
 }
 
+// ---- Bulk actions ----
+// 集中分发工具栏批量动作（v1.5.0 onBulkAction），按 action.key 路由到具体处理器
+function handleBulkAction(action: TableToolbarAction, keys: (string | number)[]) {
+  const ids = keys.map(Number).filter(id => Number.isFinite(id))
+  switch (action.key) {
+    case 'batch-enable':
+      handleBatchStatus(0, ids)
+      break
+    case 'batch-disable':
+      handleBatchStatus(1, ids)
+      break
+    case 'batch-delete':
+      handleBatchDelete(ids)
+      break
+  }
+}
+
 // Role select options
 const roleOptions = computed(() =>
   allRoles.value.map(r => ({ label: r.name, value: r.id }))
@@ -566,14 +585,12 @@ const tableToolbar = computed(() => ({
               {
                 key: 'batch-enable',
                 label: '批量启用',
-                variant: 'outline',
-                onClick: (keys: (string | number)[]) => handleBatchStatus(0, keys as number[]),
+                variant: 'outline' as const,
               },
               {
                 key: 'batch-disable',
                 label: '批量禁用',
-                variant: 'outline',
-                onClick: (keys: (string | number)[]) => handleBatchStatus(1, keys as number[]),
+                variant: 'outline' as const,
               },
             ]
           : []),
@@ -582,8 +599,7 @@ const tableToolbar = computed(() => ({
               {
                 key: 'batch-delete',
                 label: '批量删除',
-                variant: 'outline',
-                onClick: (keys: (string | number)[]) => handleBatchDelete(keys as number[]),
+                variant: 'outline' as const,
               },
             ]
           : []),
@@ -732,6 +748,7 @@ onMounted(() => {
       @page-size-change="handlePageSizeChange"
       @selection-change="handleSelectionChange"
       @sort-change="handleSortChange"
+      @bulk-action="handleBulkAction"
       @hidden-column-keys-change="handleHiddenColumnsChange"
     />
 

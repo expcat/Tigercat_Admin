@@ -53,7 +53,11 @@ applyTheme(themePrefs.value)
 const unwatchSystem = watchSystemTheme(() => themePrefs.value)
 onUnmounted(() => unwatchSystem())
 
-const authHeaders = computed(() => (session.value?.token ? { Authorization: `Bearer ${session.value.token}` } : {}))
+const authHeaders = computed<Record<string, string>>(() => {
+  const headers: Record<string, string> = {}
+  if (session.value?.token) headers.Authorization = `Bearer ${session.value.token}`
+  return headers
+})
 
 function getSafeReturnTo(value: unknown): string {
   if (typeof value !== 'string' || !value.startsWith('/')) {

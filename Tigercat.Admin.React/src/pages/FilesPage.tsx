@@ -19,6 +19,11 @@ import { usePermission } from '../utils/permission';
 import { ApiError } from '../utils/request';
 import { clearWorkbenchSelection, loadWorkbenchState, saveWorkbenchState } from '../utils/workbench';
 import type { DuplicateMediaResult, MediaDetail, MediaItem, MediaReference } from '../utils/types';
+import { appText } from '../utils/tigercatText';
+
+// FileManager 的搜索框占位符走 common.searchPlaceholder，而 appText 未覆盖该字段（回退英文 "Search"）。
+// 用 v1.5.0 新增的逐组件 locale 覆盖补齐为中文（在 ConfigProvider locale 之上合并）。
+const FILE_MANAGER_LOCALE = { common: { ...appText.common, searchPlaceholder: '搜索' } };
 
 const TYPE_OPTIONS = [
   { label: '全部类型', value: '' },
@@ -280,6 +285,7 @@ function FilesPage() {
           loading={loading}
           selectedKeys={selectedKeys}
           searchText={searchText}
+          locale={FILE_MANAGER_LOCALE}
           emptyText="暂无媒体资源"
           onSelectedKeysChange={handleSelectedKeysChange}
           onSearchTextChange={handleSearchTextChange}

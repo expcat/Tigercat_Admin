@@ -2,7 +2,7 @@
 import { ref, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, Card, Form, FormItem, Input, Message } from '@expcat/tigercat-vue'
-import { type AuthForm, debounce, useAuthForm, apiRequest } from '../utils'
+import { debounce, useAuthForm, apiRequest } from '../utils'
 import AppLogo from '../components/AppLogo.vue'
 
 interface RegisterResult {
@@ -127,7 +127,7 @@ const goToLogin = () => {
             <Input
               :model-value="form.username"
               placeholder="请输入用户名"
-              :status="errors?.username ? 'error' : ''"
+              :status="errors?.username ? 'error' : undefined"
               :error-message="errors?.username"
               @update:model-value="(val) => setField('username', val)"
             />
@@ -137,7 +137,7 @@ const goToLogin = () => {
               :model-value="form.password"
               type="password"
               placeholder="请输入密码"
-              :status="errors?.password ? 'error' : ''"
+              :status="errors?.password ? 'error' : undefined"
               :error-message="errors?.password"
               @update:model-value="(val) => setField('password', val)"
             />

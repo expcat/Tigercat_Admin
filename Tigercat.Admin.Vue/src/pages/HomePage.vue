@@ -18,9 +18,11 @@ const homeError = inject<import('vue').Ref<string>>('homeError', ref(''))
 const session = inject<import('vue').Ref<Session | null>>('session', ref(null))
 
 // 认证 headers
-const authHeaders = computed(() =>
-  session.value?.token ? { Authorization: `Bearer ${session.value.token}` } : {}
-)
+const authHeaders = computed<Record<string, string>>(() => {
+  const headers: Record<string, string> = {}
+  if (session.value?.token) headers.Authorization = `Bearer ${session.value.token}`
+  return headers
+})
 
 // --- 统计数据状态 ---
 const overview = ref<StatsOverview | null>(null)
@@ -246,7 +248,7 @@ const quickActions = [
       <Card title="快捷操作" class="lg:col-span-1">
         <div class="grid grid-cols-2 gap-3">
           <button
-            v-for="(action, index) in quickActions"
+            v-for="action in quickActions"
             :key="action.key"
             @click="handleQuickAction(action.key)"
             class="p2-action-tile group flex min-h-24 flex-col items-center justify-center p-4 transition-all duration-300 hover:shadow-md"

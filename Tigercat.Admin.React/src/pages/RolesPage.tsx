@@ -42,7 +42,6 @@ import type { ExportFormat } from '../utils/export';
 import { usePermission } from '../utils/permission';
 import type {
   PermissionInfo,
-  RoleUserInfo,
   RoleItem,
   PagedResult,
   MessageResult,
@@ -677,8 +676,8 @@ function RolesPage() {
       </div>
 
       <DataTableWithToolbar
-        columns={columns}
-        dataSource={roles}
+        columns={columns as unknown as TableColumn<Record<string, unknown>>[]}
+        dataSource={roles as unknown as Record<string, unknown>[]}
         loading={loading}
         pagination={paginationConfig}
         hiddenColumnKeys={hiddenColumnKeys}
@@ -784,9 +783,8 @@ function RolesPage() {
         open={exportModalVisible}
         title="导出角色数据"
         showDefaultFooter
-        okText="导出"
+        okText={exporting ? '导出中…' : '导出'}
         cancelText="取消"
-        confirmLoading={exporting}
         onOk={handleExport}
         onCancel={() => setExportModalVisible(false)}>
         <div className="p2-modal-scroll">

@@ -160,7 +160,7 @@ function ProtectedLayout({
       onChangePassword={onChangePassword}
       onToggleTheme={onToggleTheme}
       activeMenu={activeMenu}
-      onNavigate={onNavigate}>
+      onNavigate={onNavigate as (key: string) => void}>
       <Suspense fallback={<PageLoader />}>
         <Outlet context={homeContext} />
       </Suspense>
@@ -217,12 +217,6 @@ function App() {
   /* ── Theme ────────────────────────────────────── */
   const [themePrefs, setThemePrefs] =
     useState<ThemePreferences>(getThemePreferences);
-
-  const updateTheme = useCallback((prefs: ThemePreferences) => {
-    setThemePrefs(prefs);
-    saveThemePreferences(prefs);
-    applyTheme(prefs);
-  }, []);
 
   const toggleThemeMode = useCallback(() => {
     setThemePrefs((prev) => {

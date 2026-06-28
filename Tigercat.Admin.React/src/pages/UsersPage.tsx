@@ -23,6 +23,7 @@ import type {
   TableCardLayoutItem,
   SortState,
   TableToolbarFilterValue,
+  TableToolbarAction,
 } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { PermissionGuard } from '../components/PermissionGuard';
@@ -532,6 +533,23 @@ function UsersPage() {
     debouncedLoad();
   };
 
+  // ---- Bulk actions ----
+  // 集中分发工具栏批量动作（v1.5.0 onBulkAction），按 action.key 路由到具体处理器
+  const handleBulkAction = (action: TableToolbarAction, keys: (string | number)[]) => {
+    const ids = keys.map(Number).filter((id) => Number.isFinite(id));
+    switch (action.key) {
+      case 'batch-enable':
+        handleBatchStatus(0, ids);
+        break;
+      case 'batch-disable':
+        handleBatchStatus(1, ids);
+        break;
+      case 'batch-delete':
+        handleBatchDelete(ids);
+        break;
+    }
+  };
+
   // ---- Column visibility ----
   const handleHiddenColumnsChange = useCallback((nextHiddenKeys: string[]) => {
     setHiddenColumns(new Set(nextHiddenKeys));
@@ -689,7 +707,7 @@ function UsersPage() {
     loadUsers();
   };
 
-  const handlePageSizeChange = (current: number, nextPageSize: number) => {
+  const handlePageSizeChange = (_current: number, nextPageSize: number) => {
     persistQuery({ pageSize: nextPageSize, page: 1 });
     setPageSize(nextPageSize);
     setCurrentPage(1);
@@ -761,15 +779,11 @@ function UsersPage() {
                       key: 'batch-enable',
                       label: '批量启用',
                       variant: 'outline' as const,
-                      onClick: (keys: (string | number)[]) =>
-                        handleBatchStatus(0, keys as number[]),
                     },
                     {
                       key: 'batch-disable',
                       label: '批量禁用',
                       variant: 'outline' as const,
-                      onClick: (keys: (string | number)[]) =>
-                        handleBatchStatus(1, keys as number[]),
                     },
                   ]
                 : []),
@@ -779,8 +793,6 @@ function UsersPage() {
                       key: 'batch-delete',
                       label: '批量删除',
                       variant: 'outline' as const,
-                      onClick: (keys: (string | number)[]) =>
-                        handleBatchDelete(keys as number[]),
                     },
                   ]
                 : []),
@@ -790,7 +802,7 @@ function UsersPage() {
       selectedCount: selectedRowKeys.length,
       showColumnSettings: true,
     }),
-    [canDelete, canEdit, handleBatchDelete, keyword, selectedRowKeys, statusFilter],
+    [canDelete, canEdit, keyword, selectedRowKeys, statusFilter],
   );
 
   const serverPaginationHint = useMemo(() => {
@@ -845,8 +857,8 @@ function UsersPage() {
       </div>
 
       <DataTableWithToolbar
-        columns={columns}
-        dataSource={users}
+        columns={columns as unknown as TableColumn<Record<string, unknown>>[]}
+        dataSource={users as unknown as Record<string, unknown>[]}
         loading={loading}
         pagination={paginationConfig}
         hiddenColumnKeys={hiddenColumnKeys}
@@ -872,6 +884,7 @@ function UsersPage() {
         onPageSizeChange={handlePageSizeChange}
         onSelectionChange={handleSelectionChange}
         onSortChange={handleSortChange}
+        onBulkAction={handleBulkAction}
         onHiddenColumnKeysChange={handleHiddenColumnsChange}
       />
 
@@ -973,9 +986,8 @@ function UsersPage() {
         open={exportModalVisible}
         title="导出用户数据"
         showDefaultFooter
-        okText="导出"
+        okText={exporting ? '导出中…' : '导出'}
         cancelText="取消"
-        confirmLoading={exporting}
         onOk={handleExport}
         onCancel={() => setExportModalVisible(false)}>
         <div className="p2-modal-scroll">

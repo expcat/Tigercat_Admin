@@ -138,7 +138,7 @@ function RegisterPage() {
         </div>
 
         <Card variant="transparent" className="p-0">
-          <Form model={form} labelWidth={88}>
+          <Form model={form as unknown as Record<string, unknown>} labelWidth={88}>
             <FormItem name="username" label="用户名">
               <Input
                 value={form.username || ''}

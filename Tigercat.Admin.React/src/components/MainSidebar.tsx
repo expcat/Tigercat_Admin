@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Sidebar, Menu } from '@expcat/tigercat-react';
+import type { MenuItem } from '@expcat/tigercat-core';
 import { LogoIcon, ChevronRightIcon, ChevronLeftIcon } from './Icons';
 import { usePermission } from '../utils/permission';
 import {
@@ -53,7 +54,6 @@ export function MainSidebar({
   };
 
   const displayCollapsed = showCollapseToggle ? collapsed : false;
-  const menuOpenKeys = displayCollapsed ? [] : expandedKeys;
 
   return (
     <Sidebar
@@ -82,7 +82,7 @@ export function MainSidebar({
             openKeys={expandedKeys}
             collapsed={false}
             mode="inline"
-            items={filteredMenuItems}
+            items={filteredMenuItems as MenuItem[]}
             className={`!min-w-0 ${displayCollapsed ? 'menu-collapsed' : ''}`}
             onSelect={handleSelect}
             onOpenChange={(_key, info) => setExpandedKeys(info.openKeys)}
@@ -95,7 +95,7 @@ export function MainSidebar({
             selectedKeys={[activeMenu]}
             collapsed={false}
             mode="inline"
-            items={filteredBottomMenuItems}
+            items={filteredBottomMenuItems as MenuItem[]}
             className={`!min-w-0 ${displayCollapsed ? 'menu-collapsed' : ''}`}
             onSelect={handleSelect}
           />

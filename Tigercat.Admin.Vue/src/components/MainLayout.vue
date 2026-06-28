@@ -26,7 +26,7 @@ const props = defineProps<{
   compactMode?: boolean
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'logout'): void
   (e: 'change-password'): void
   (e: 'toggle-theme'): void

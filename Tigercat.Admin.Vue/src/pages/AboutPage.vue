@@ -168,7 +168,7 @@ onMounted(() => {
       icon="info"
       :tags="[
         { label: '系统信息', variant: 'primary' },
-        { label: connectionStatus.label, variant: connectionStatus.variant }
+        { label: connectionStatus.label, variant: connectionStatus.variant as TagVariant }
       ]"
     />
 

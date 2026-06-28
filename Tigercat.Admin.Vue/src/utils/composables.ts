@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue';
+import { ref } from 'vue';
 import { type AuthForm, type AuthErrors, validate } from './validation';
 
 export function useAuthForm(initialState: AuthForm) {
