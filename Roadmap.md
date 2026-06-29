@@ -129,6 +129,7 @@
 - **交互**：375px 移动端、暗色模式、弹层 Esc/外部点击关闭与焦点恢复、菜单不被锁定列遮挡、空/错误状态。
 - **e2e**：在 `e2e/` 下按现有 Playwright 用例风格，为关键新页补冒烟用例（`playwright.demo.config.ts`）。
 - **文档**：每完成一个阶段，更新 `docs/frontend.md` 的"组件选择矩阵"和下文「组件覆盖对照」勾选表。
+- **收尾**：阶段内主动推迟的人工核验（移动端/暗色/弹层焦点）与 workaround 清理统一记入 [docs/roadmap-followups.md](docs/roadmap-followups.md)，全部阶段完成后批量处理。
 
 ---
 
