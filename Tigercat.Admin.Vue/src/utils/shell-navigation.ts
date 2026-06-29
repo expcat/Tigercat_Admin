@@ -1,6 +1,8 @@
 export type ShellPageKey =
   | 'home'
   | 'analytics'
+  | 'tickets'
+  | 'calendar'
   | 'users'
   | 'roles'
   | 'settings'
@@ -10,7 +12,11 @@ export type ShellPageKey =
   | 'audit'
   | 'about'
   | 'profile';
-export type ShellMenuKey = ShellPageKey | 'system' | 'analyticsGroup';
+export type ShellMenuKey =
+  | ShellPageKey
+  | 'system'
+  | 'analyticsGroup'
+  | 'collaborationGroup';
 
 export interface ShellMenuItemDef {
   key: ShellMenuKey;
@@ -34,6 +40,18 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     label: '数据分析看板',
     icon: 'trendingUp',
     routeName: 'analytics',
+  },
+  tickets: {
+    key: 'tickets',
+    label: '工单中心',
+    icon: 'ticket',
+    routeName: 'tickets',
+  },
+  calendar: {
+    key: 'calendar',
+    label: '团队日历',
+    icon: 'calendar',
+    routeName: 'calendar',
   },
   users: {
     key: 'users',
@@ -103,6 +121,12 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
     children: [pageMenuItems.analytics],
   },
   {
+    key: 'collaborationGroup',
+    label: '协作',
+    icon: 'message',
+    children: [pageMenuItems.tickets, pageMenuItems.calendar],
+  },
+  {
     key: 'system',
     label: '系统管理',
     icon: 'server',
@@ -130,6 +154,8 @@ export const SHELL_HIDDEN_MENU_ITEMS: ShellMenuItemDef[] = [
 export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   home: 'dashboard',
   analytics: 'analytics',
+  tickets: 'tickets',
+  calendar: 'calendar',
   users: 'users',
   roles: 'roles',
   settings: 'settings',
@@ -144,6 +170,8 @@ export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
 export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> = {
   dashboard: 'home',
   analytics: 'analytics',
+  tickets: 'tickets',
+  calendar: 'calendar',
   users: 'users',
   roles: 'roles',
   settings: 'settings',

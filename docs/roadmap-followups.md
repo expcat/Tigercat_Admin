@@ -43,4 +43,20 @@
 
 ---
 
-*后续阶段（2–6）的推迟项请按相同结构追加到本文。*
+## 阶段 2 — 协作沟通（工单中心 / 团队日历）
+
+### 人工核验（自动化 e2e 未覆盖）
+
+- [ ] **移动端 375px**：`/tickets` 主从分栏在窄屏切换为上下 `Splitter`（`vertical`），列表/详情、`Resizable` 对话面板、`ChatWindow`、`CommentThread`、`Mentions` 不溢出、不横向滚动溢出视口；`/calendar` 月视图 `Calendar`、倒计时卡、当日日程列表与“新建事件” `Drawer` 在窄屏不溢出。
+- [ ] **暗色模式（`.dark`）**：两页 `Splitter`/`Resizable` 分隔条、`Steps` 连接线、`CommentThread` 分隔线、`Calendar` 单元格与今日高亮、`Badge` 圆点、`Popover` 浮层背景在暗色下可读、不透出底层内容。
+- [ ] **弹层焦点与键盘路径**：`/tickets` 新建/关闭 `Drawer`、字段 `Popover` 的 Esc 与外部点击关闭、关闭后焦点恢复到触发器；`/calendar` 新建事件 `Drawer` 内 `DatePicker`/`TimePicker` 浮层 Esc 与外部点击关闭、关闭后焦点恢复；日程 `Popover` 键盘可达。（demo e2e 已覆盖导航与关键内容渲染，焦点恢复尚未断言。）
+
+### workaround / 点到为止待回访
+
+- [ ] **Calendar 格内事件标记**：当前 `Calendar` 类型签名未暴露按日期格的事件渲染插槽，事件标记以右侧“当日日程”列表 + `Badge`/`Popover` 近似呈现；后续若上游补齐单元格渲染插槽，可在日历格内直接标注事件圆点。
+- [ ] **协作数据为内存态**：`/tickets` 的对话、内部备注、附件与 `/calendar` 事件均为页面内内存数据（与阶段 1 一致，未接 MockApi/真实端点），刷新后重置；如需“类服务端”分页/筛选，再按 [api.md](api.md) 约定补 demo/mock 契约。
+- [ ] **Resizable 对话面板**：`/tickets` 详情对话区用 `Resizable`（`axis=vertical`）演示竖向调整高度，统一核验时确认与 `ChatWindow` 内部滚动、窄屏上下分栏的交互无冲突。
+
+---
+
+*后续阶段（3–6）的推迟项请按相同结构追加到本文。*

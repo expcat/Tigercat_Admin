@@ -167,3 +167,41 @@ test.describe('阶段 1 — 个人中心与数据分析', () => {
     await expect(page.getByText('个人中心').first()).toBeVisible();
   });
 });
+
+test.describe('阶段 2 — 协作沟通', () => {
+  test('工单中心可展示主从详情并打开新建抽屉', async ({ page }) => {
+    const consoleErrors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+
+    await login(page);
+
+    await page.goto('/#/tickets');
+    await expect(page.getByText('工单中心').first()).toBeVisible();
+    // 默认选中第一条工单，右侧详情应渲染生命周期与工单信息。
+    await expect(page.getByText('导出报表时偶发 500 错误').first()).toBeVisible();
+    await expect(page.getByText('工单生命周期', { exact: true })).toBeVisible();
+    await expect(page.getByText('工单信息', { exact: true })).toBeVisible();
+
+    // 新建工单抽屉可打开。
+    await page.getByRole('button', { name: '新建工单' }).click();
+    await expect(page.getByRole('button', { name: '创建工单' })).toBeVisible();
+
+    expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
+  });
+
+  test('团队日历可展示日程并打开新建事件', async ({ page }) => {
+    await login(page);
+
+    await page.goto('/#/calendar');
+    await expect(page.getByText('团队日历').first()).toBeVisible();
+    // 默认日期 2026-06-29 含两条日程。
+    await expect(page.getByText('迭代站会').first()).toBeVisible();
+    await expect(page.getByText('即将到来')).toBeVisible();
+
+    // 新建事件抽屉可打开。
+    await page.getByRole('button', { name: '新建事件' }).click();
+    await expect(page.getByRole('button', { name: '创建事件' })).toBeVisible();
+  });
+});

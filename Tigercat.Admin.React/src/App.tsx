@@ -47,6 +47,8 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const TicketsPage = lazy(() => import('./pages/TicketsPage'));
+const CalendarPage = lazy(() => import('./pages/CalendarPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 const RolesPage = lazy(() => import('./pages/RolesPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
@@ -59,6 +61,8 @@ const AboutPage = lazy(() => import('./pages/AboutPage'));
 const MENU_ROUTES = {
   home: '/dashboard',
   analytics: '/analytics',
+  tickets: '/tickets',
+  calendar: '/calendar',
   profile: '/profile',
   users: '/users',
   roles: '/roles',
@@ -452,6 +456,8 @@ function App() {
           }>
           <Route path="/dashboard" element={<HomePage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/tickets" element={<TicketsPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/roles" element={<RolesPage />} />

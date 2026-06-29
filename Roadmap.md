@@ -183,14 +183,14 @@
 - [x] 图表基元：ChartCanvas / ChartAxis / ChartGrid / ChartSeries / ChartLegend / ChartTooltip（自定义图表演示，点到为止）
 
 ### 阶段 2 — 协作沟通
-- [ ] Splitter
-- [ ] Resizable
-- [ ] CommentThread
-- [ ] Mentions
-- [ ] Steps
+- [x] Splitter
+- [x] Resizable
+- [x] CommentThread
+- [x] Mentions
+- [x] Steps
 - [x] List（首次用于阶段 1 个人中心登录设备）
-- [ ] Calendar
-- [ ] Countdown
+- [x] Calendar
+- [x] Countdown
 
 ### 阶段 3 — 内容与媒体
 - [ ] RichTextEditor

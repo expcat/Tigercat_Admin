@@ -2,13 +2,16 @@ import React from 'react';
 import {
   ActivityIcon,
   BellIcon,
+  CalendarIcon,
   ClipboardIcon,
   DashboardIcon,
   FileTextIcon,
   InfoIcon,
+  MessageIcon,
   ServerIcon,
   SettingsIcon,
   ShieldIcon,
+  TicketIcon,
   TrendingUpIcon,
   UserIcon,
   UsersIcon,
@@ -17,6 +20,8 @@ import {
 export type ShellPageKey =
   | 'home'
   | 'analytics'
+  | 'tickets'
+  | 'calendar'
   | 'users'
   | 'roles'
   | 'settings'
@@ -26,7 +31,11 @@ export type ShellPageKey =
   | 'audit'
   | 'about'
   | 'profile';
-export type ShellMenuKey = ShellPageKey | 'system' | 'analyticsGroup';
+export type ShellMenuKey =
+  | ShellPageKey
+  | 'system'
+  | 'analyticsGroup'
+  | 'collaborationGroup';
 
 export interface ShellMenuItemDef {
   key: ShellMenuKey;
@@ -47,6 +56,16 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     key: 'analytics',
     label: '数据分析看板',
     icon: <TrendingUpIcon size={18} />,
+  },
+  tickets: {
+    key: 'tickets',
+    label: '工单中心',
+    icon: <TicketIcon size={18} />,
+  },
+  calendar: {
+    key: 'calendar',
+    label: '团队日历',
+    icon: <CalendarIcon size={18} />,
   },
   users: {
     key: 'users',
@@ -105,6 +124,12 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
     label: '数据分析',
     icon: <TrendingUpIcon size={20} />,
     children: [pageMenuItems.analytics],
+  },
+  {
+    key: 'collaborationGroup',
+    label: '协作',
+    icon: <MessageIcon size={20} />,
+    children: [pageMenuItems.tickets, pageMenuItems.calendar],
   },
   {
     key: 'system',

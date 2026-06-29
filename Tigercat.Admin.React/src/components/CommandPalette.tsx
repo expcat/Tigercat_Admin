@@ -28,6 +28,8 @@ type CommandData =
 const ROUTE_PATHS: Record<string, string> = {
   home: '/dashboard',
   analytics: '/analytics',
+  tickets: '/tickets',
+  calendar: '/calendar',
   users: '/users',
   roles: '/roles',
   settings: '/settings',
