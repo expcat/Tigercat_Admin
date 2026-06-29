@@ -2,6 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Layout, Content, Drawer } from '@expcat/tigercat-react';
 import { MainHeader } from './MainHeader';
 import { MainSidebar } from './MainSidebar';
+import { CommandPalette } from './CommandPalette';
+import { ChatDock } from './ChatDock';
+import { ShellQuickActions } from './ShellQuickActions';
+import { OnboardingTour } from './OnboardingTour';
 import type { ThemeMode } from '../utils/types';
 import {
   getShellBreadcrumbItems,
@@ -37,6 +41,7 @@ export function MainLayout({
   const [collapsed, setCollapsed] = useState(compactMode ?? false);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [internalActiveMenu, setInternalActiveMenu] = useState(
     activeMenu ?? 'home',
   );
@@ -165,10 +170,21 @@ export function MainLayout({
         />
 
         {/* Content */}
-        <Content className="min-h-0 overflow-auto p-3 scroll-smooth sm:p-4 md:p-6">
+        <Content id="main-content-scroll" className="min-h-0 overflow-auto p-3 scroll-smooth sm:p-4 md:p-6">
           <div className="mx-auto max-w-7xl animate-fade-in">{children}</div>
         </Content>
       </Layout>
+
+      {/* 全局 Shell 挂件 */}
+      <CommandPalette
+        onToggleTheme={onToggleTheme}
+        onChangePassword={onChangePassword}
+        onLogout={onLogout}
+        onOpenChat={() => setChatOpen(true)}
+      />
+      <ChatDock open={chatOpen} onOpenChange={setChatOpen} />
+      <ShellQuickActions />
+      <OnboardingTour />
     </Layout>
   );
 }

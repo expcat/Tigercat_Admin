@@ -88,6 +88,7 @@ React 通过 `ProtectedRoute` / `GuestRoute` 和 `react-router-dom` 管路由；
 | 页面/区域 | 主要 Tigercat 组件 | 关键交互 |
 | --------- | ------------------ | -------- |
 | Shell | `Layout`、`Content`、`Header`、`Sidebar`、`Drawer`、`Menu`、`Breadcrumb`、`Dropdown`、`Avatar`、`Tag` | 折叠菜单、移动抽屉、主题切换、账号菜单 |
+| Shell 全局挂件 | `Spotlight`、`Tour`、`FloatButton`/`FloatButtonGroup`、`BackTop`、`Badge`、`Popover`、`Drawer`、`ChatWindow`、`Notification` | 命令面板 ⌘K、首登引导、右下快捷动作/回到顶部、消息铃铛、在线客服坞、富交互提示 |
 | 登录/注册 | `Card`、`Form`、`FormItem`、`Input`、`Button`、`Message` | 表单校验、成功跳转、错误提示 |
 | 仪表盘 | `Alert`、`Card`、`Text`、`Tag`、`Select`、`Statistic`、`Loading`、`Empty`、`LineChart`、`BarChart`、`PieChart` | 概览指标、图表空状态、快捷跳转 |
 | 用户管理 | `DataTableWithToolbar`、`Avatar`、`Button`、`Input`、`Modal`、`Form`、`Select`、`Tag`、`Tooltip`、`Checkbox`、`CropUpload` | 分页搜索、排序、列显隐、批量状态、头像裁剪、角色选择、窄屏卡片模式 |

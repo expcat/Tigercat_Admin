@@ -12,6 +12,7 @@ import {
   Tag,
 } from '@expcat/tigercat-vue'
 import Icon from './Icon.vue'
+import NotificationBell from './NotificationBell.vue'
 import type { ThemeMode } from '../utils/types'
 import { resolveEffectiveMode } from '../utils/theme'
 
@@ -94,6 +95,7 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
       >
         演示模式
       </Tag>
+      <NotificationBell />
       <Dropdown trigger="click" placement="bottom-end" :show-arrow="false">
         <template #trigger="{ open }">
           <button

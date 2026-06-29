@@ -22,6 +22,7 @@ import {
 } from './Icons';
 import type { ThemeMode } from '../utils/types';
 import { resolveEffectiveMode } from '../utils/theme';
+import { NotificationBell } from './NotificationBell';
 
 interface MainHeaderProps {
   session: { username: string } | null;
@@ -109,6 +110,7 @@ export function MainHeader({
             演示模式
           </Tag>
         )}
+        <NotificationBell />
         <Dropdown
           trigger="click"
           placement="bottom-end"

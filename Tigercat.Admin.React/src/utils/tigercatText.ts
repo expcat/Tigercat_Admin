@@ -55,6 +55,12 @@ export const appText = defineText({
     nextText: '下一步',
     finishText: '完成',
   },
+  tour: {
+    prevText: '上一步',
+    nextText: '下一步',
+    finishText: '完成',
+    closeAriaLabel: '关闭引导',
+  },
   taskBoard: {
     emptyColumnText: '暂无任务',
     addCardText: '添加任务',

@@ -137,16 +137,16 @@
 > 勾选规则：组件首次在某新功能中被真实使用即可勾选。少数仅作"点到为止"演示的图表基元单独标注。
 
 ### 阶段 0 — 全局 Shell 增强
-- [ ] Spotlight
-- [ ] Tour
-- [ ] FloatButton
-- [ ] FloatButtonGroup
-- [ ] BackTop
-- [ ] Badge
-- [ ] Popover
-- [ ] Notification
-- [ ] ChatWindow（亦见阶段 2）
-- [ ] Drawer（已在 Shell 移动端用，全局聊天坞复用）
+- [x] Spotlight
+- [x] Tour
+- [x] FloatButton
+- [x] FloatButtonGroup
+- [x] BackTop
+- [x] Badge
+- [x] Popover
+- [x] Notification
+- [x] ChatWindow（亦见阶段 2）
+- [x] Drawer（已在 Shell 移动端用，全局聊天坞复用）
 
 ### 阶段 1 — 个人中心 / 数据分析
 - [ ] Tabs / TabPane

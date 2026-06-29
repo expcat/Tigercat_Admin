@@ -4,6 +4,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { Layout, Content, Drawer } from '@expcat/tigercat-vue'
 import MainHeader from './MainHeader.vue'
 import MainSidebar from './MainSidebar.vue'
+import CommandPalette from './CommandPalette.vue'
+import ChatDock from './ChatDock.vue'
+import ShellQuickActions from './ShellQuickActions.vue'
+import OnboardingTour from './OnboardingTour.vue'
 import type { ThemeMode } from '../utils/types'
 import {
   getShellBreadcrumbItems,
@@ -38,6 +42,7 @@ const router = useRouter()
 const collapsed = ref(props.compactMode ?? false)
 const isMobile = ref(false)
 const sidebarOpen = ref(false)
+const chatOpen = ref(false)
 
 const activeMenu = ref<ShellPageKey>('home')
 
@@ -190,11 +195,22 @@ watch(
       />
 
       <!-- Content -->
-      <Content class="min-h-0 overflow-auto p-3 scroll-smooth sm:p-4 md:p-6">
+      <Content id="main-content-scroll" class="min-h-0 overflow-auto p-3 scroll-smooth sm:p-4 md:p-6">
         <div class="mx-auto max-w-7xl animate-fade-in">
           <slot></slot>
         </div>
       </Content>
     </Layout>
+
+    <!-- 全局 Shell 挂件 -->
+    <CommandPalette
+      @toggle-theme="$emit('toggle-theme')"
+      @change-password="$emit('change-password')"
+      @logout="$emit('logout')"
+      @open-chat="chatOpen = true"
+    />
+    <ChatDock v-model:open="chatOpen" />
+    <ShellQuickActions />
+    <OnboardingTour />
   </Layout>
 </template>
