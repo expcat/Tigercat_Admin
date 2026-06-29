@@ -27,6 +27,7 @@ type CommandData =
 // 菜单 key 到路由路径的映射（与 App.tsx 的 MENU_ROUTES 保持一致）
 const ROUTE_PATHS: Record<string, string> = {
   home: '/dashboard',
+  analytics: '/analytics',
   users: '/users',
   roles: '/roles',
   settings: '/settings',

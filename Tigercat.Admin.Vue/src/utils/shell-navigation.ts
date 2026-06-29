@@ -1,5 +1,6 @@
 export type ShellPageKey =
   | 'home'
+  | 'analytics'
   | 'users'
   | 'roles'
   | 'settings'
@@ -7,8 +8,9 @@ export type ShellPageKey =
   | 'notifications'
   | 'tasks'
   | 'audit'
-  | 'about';
-export type ShellMenuKey = ShellPageKey | 'system';
+  | 'about'
+  | 'profile';
+export type ShellMenuKey = ShellPageKey | 'system' | 'analyticsGroup';
 
 export interface ShellMenuItemDef {
   key: ShellMenuKey;
@@ -26,6 +28,12 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     icon: 'dashboard',
     permission: 'dashboard:view',
     routeName: 'dashboard',
+  },
+  analytics: {
+    key: 'analytics',
+    label: '数据分析看板',
+    icon: 'trendingUp',
+    routeName: 'analytics',
   },
   users: {
     key: 'users',
@@ -78,10 +86,22 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     icon: 'info',
     routeName: 'about',
   },
+  profile: {
+    key: 'profile',
+    label: '个人中心',
+    icon: 'user',
+    routeName: 'profile',
+  },
 };
 
 export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
   pageMenuItems.home,
+  {
+    key: 'analyticsGroup',
+    label: '数据分析',
+    icon: 'trendingUp',
+    children: [pageMenuItems.analytics],
+  },
   {
     key: 'system',
     label: '系统管理',
@@ -102,8 +122,14 @@ export const SHELL_BOTTOM_MENU_ITEMS: ShellMenuItemDef[] = [
   pageMenuItems.about,
 ];
 
+// 不进左侧菜单、仅供标题/面包屑解析的页面（如头像下拉进入的个人中心）。
+export const SHELL_HIDDEN_MENU_ITEMS: ShellMenuItemDef[] = [
+  pageMenuItems.profile,
+];
+
 export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   home: 'dashboard',
+  analytics: 'analytics',
   users: 'users',
   roles: 'roles',
   settings: 'settings',
@@ -112,10 +138,12 @@ export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   tasks: 'tasks',
   audit: 'audit',
   about: 'about',
+  profile: 'profile',
 };
 
 export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> = {
   dashboard: 'home',
+  analytics: 'analytics',
   users: 'users',
   roles: 'roles',
   settings: 'settings',
@@ -124,6 +152,7 @@ export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> = {
   tasks: 'tasks',
   audit: 'audit',
   about: 'about',
+  profile: 'profile',
 };
 
 function isShellMenuItemPermitted(
@@ -211,7 +240,11 @@ function findShellMenuItem(
 
 export function getShellBreadcrumbItems(
   key: string,
-  items: ShellMenuItemDef[] = [...SHELL_MENU_ITEMS, ...SHELL_BOTTOM_MENU_ITEMS],
+  items: ShellMenuItemDef[] = [
+    ...SHELL_MENU_ITEMS,
+    ...SHELL_BOTTOM_MENU_ITEMS,
+    ...SHELL_HIDDEN_MENU_ITEMS,
+  ],
 ): string[] {
   return findShellMenuTrail(items, key)?.map((item) => item.label) ?? [];
 }
@@ -226,7 +259,13 @@ export function getShellExpandedKeys(
 
 export function getShellPageTitle(key: string): string {
   return (
-    findShellMenuItem([...SHELL_MENU_ITEMS, ...SHELL_BOTTOM_MENU_ITEMS], key)
-      ?.label ?? '仪表盘'
+    findShellMenuItem(
+      [
+        ...SHELL_MENU_ITEMS,
+        ...SHELL_BOTTOM_MENU_ITEMS,
+        ...SHELL_HIDDEN_MENU_ITEMS,
+      ],
+      key,
+    )?.label ?? '仪表盘'
   );
 }

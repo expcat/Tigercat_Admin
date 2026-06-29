@@ -45,6 +45,8 @@ import {
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 const RolesPage = lazy(() => import('./pages/RolesPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
@@ -56,6 +58,8 @@ const AboutPage = lazy(() => import('./pages/AboutPage'));
 
 const MENU_ROUTES = {
   home: '/dashboard',
+  analytics: '/analytics',
+  profile: '/profile',
   users: '/users',
   roles: '/roles',
   settings: '/settings',
@@ -125,6 +129,7 @@ interface ProtectedLayoutProps {
   onLogout: () => void;
   onChangePassword: () => void;
   onToggleTheme: () => void;
+  onProfile: () => void;
   compactMode: boolean;
   onNavigate: (key: MenuKey) => void;
   changeOpen: boolean;
@@ -143,6 +148,7 @@ function ProtectedLayout({
   onLogout,
   onChangePassword,
   onToggleTheme,
+  onProfile,
   onNavigate,
   changeOpen,
   changeForm,
@@ -159,6 +165,7 @@ function ProtectedLayout({
       onLogout={onLogout}
       onChangePassword={onChangePassword}
       onToggleTheme={onToggleTheme}
+      onProfile={onProfile}
       activeMenu={activeMenu}
       onNavigate={onNavigate as (key: string) => void}>
       <Suspense fallback={<PageLoader />}>
@@ -433,6 +440,7 @@ function App() {
               onLogout={handleLogout}
               onChangePassword={() => setChangeOpen(true)}
               onToggleTheme={toggleThemeMode}
+              onProfile={() => navigate('/profile')}
               onNavigate={handleNavigate}
               changeOpen={changeOpen}
               changeForm={changeForm}
@@ -443,6 +451,8 @@ function App() {
             />
           }>
           <Route path="/dashboard" element={<HomePage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/roles" element={<RolesPage />} />
           <Route path="/settings" element={<SettingsPage />} />

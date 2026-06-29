@@ -19,6 +19,7 @@ import {
   MenuIcon,
   XIcon,
   ChevronDownIcon,
+  UserIcon,
 } from './Icons';
 import type { ThemeMode } from '../utils/types';
 import { resolveEffectiveMode } from '../utils/theme';
@@ -34,6 +35,7 @@ interface MainHeaderProps {
   onLogout: () => void;
   onChangePassword: () => void;
   onToggleTheme: () => void;
+  onProfile: () => void;
   onToggleSidebar?: () => void;
   demoMode?: boolean;
 }
@@ -63,6 +65,7 @@ export function MainHeader({
   onLogout,
   onChangePassword,
   onToggleTheme,
+  onProfile,
   onToggleSidebar,
   demoMode,
 }: MainHeaderProps) {
@@ -133,7 +136,13 @@ export function MainHeader({
             </button>
           )}>
           <DropdownMenu className="w-56 max-w-[calc(100vw-2rem)]">
-            <DropdownItem onClick={onToggleTheme}>
+            <DropdownItem onClick={onProfile}>
+              <span className="flex items-center gap-2 text-sm">
+                <UserIcon size={16} />
+                <span>个人中心</span>
+              </span>
+            </DropdownItem>
+            <DropdownItem divided onClick={onToggleTheme}>
               <span className="flex items-center gap-2 text-sm">
                 <ThemeIcon mode={themeMode} />
                 <span>主题模式：{getThemeLabel(themeMode)}</span>

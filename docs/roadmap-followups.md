@@ -28,4 +28,19 @@
 
 ---
 
-*后续阶段（1–6）的推迟项请按相同结构追加到本文。*
+## 阶段 1 — 个人中心 / 数据分析
+
+### 人工核验（自动化 e2e 未覆盖）
+
+- [ ] **移动端 375px**：`/analytics` 图表网格、KPI 卡、工具栏（Segmented + DatePicker + ButtonGroup）与明细表分页在窄屏不溢出、不横向滚动溢出视口；`/profile` 的 Tabs 在窄屏可横向滑动/换行，QRCode、Signature 画布、ColorSwatch、Slider 不超出卡片。
+- [ ] **暗色模式（`.dark`）**：两页所有图表（含 Heatmap/TreeMap/Sunburst/Gauge/Org 与图表基元自定义图）配色、坐标轴与文本在暗色下可读；Descriptions 边框、Timeline 连接线、Progress 轨道 token 生效。
+- [ ] **弹层焦点与键盘路径**：`/profile` 的 DatePicker / TimePicker 浮层 Esc 与外部点击关闭、关闭后焦点恢复；Tabs 方向键切换；`/analytics` DatePicker 区间选择浮层同上。（demo e2e 已覆盖选项卡切换、头像下拉进入、Segmented 切换与图表渲染，焦点恢复尚未断言。）
+
+### workaround / 点到为止待回访
+
+- [ ] **图表基元自定义图（ChartCanvas + ChartAxis/Grid/Series/Legend/Tooltip）**：当前为「点到为止」演示，序列点用 `createBandScale`/`createLinearScale` 预映射为像素坐标，未做坐标系/坐标轴位置的精细对齐与交互式 Tooltip 联动；后续可视觉打磨或改用高层图表组件。
+- [ ] **ScatterChart / HeatmapChart 视觉**：使用静态构造数据，未接入真实区间/坐标轴格式化，统一核验时确认坐标轴刻度与 tooltip 文案。
+
+---
+
+*后续阶段（2–6）的推迟项请按相同结构追加到本文。*

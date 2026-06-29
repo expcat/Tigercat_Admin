@@ -150,37 +150,37 @@
 - [x] Drawer（已在 Shell 移动端用，全局聊天坞复用）
 
 ### 阶段 1 — 个人中心 / 数据分析
-- [ ] Tabs / TabPane
-- [ ] Descriptions
-- [ ] Radio / RadioGroup
-- [ ] Textarea
-- [ ] DatePicker
-- [ ] TimePicker
-- [ ] Slider
-- [ ] QRCode
-- [ ] Signature
-- [ ] Rate
-- [ ] Statistic
-- [ ] ColorSwatch
-- [ ] Divider
-- [ ] Space
-- [ ] AreaChart
-- [ ] DonutChart
-- [ ] FunnelChart
-- [ ] GaugeChart
-- [ ] HeatmapChart
-- [ ] RadarChart
-- [ ] ScatterChart
-- [ ] TreeMapChart
-- [ ] SunburstChart
-- [ ] OrgChart
-- [ ] Segmented
-- [ ] Skeleton
-- [ ] Progress
-- [ ] ButtonGroup
-- [ ] Pagination（原生）
-- [ ] Table（原生）
-- [ ] 图表基元：ChartCanvas / ChartAxis / ChartGrid / ChartSeries / ChartLegend / ChartTooltip（自定义图表演示，点到为止）
+- [x] Tabs / TabPane
+- [x] Descriptions
+- [x] Radio / RadioGroup
+- [x] Textarea
+- [x] DatePicker
+- [x] TimePicker
+- [x] Slider
+- [x] QRCode
+- [x] Signature
+- [x] Rate
+- [x] Statistic
+- [x] ColorSwatch
+- [x] Divider
+- [x] Space
+- [x] AreaChart
+- [x] DonutChart
+- [x] FunnelChart
+- [x] GaugeChart
+- [x] HeatmapChart
+- [x] RadarChart
+- [x] ScatterChart
+- [x] TreeMapChart
+- [x] SunburstChart
+- [x] OrgChart
+- [x] Segmented
+- [x] Skeleton
+- [x] Progress
+- [x] ButtonGroup
+- [x] Pagination（原生）
+- [x] Table（原生）
+- [x] 图表基元：ChartCanvas / ChartAxis / ChartGrid / ChartSeries / ChartLegend / ChartTooltip（自定义图表演示，点到为止）
 
 ### 阶段 2 — 协作沟通
 - [ ] Splitter
@@ -188,7 +188,7 @@
 - [ ] CommentThread
 - [ ] Mentions
 - [ ] Steps
-- [ ] List
+- [x] List（首次用于阶段 1 个人中心登录设备）
 - [ ] Calendar
 - [ ] Countdown
 

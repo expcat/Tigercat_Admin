@@ -23,6 +23,7 @@ interface MainLayoutProps {
   onLogout: () => void;
   onChangePassword: () => void;
   onToggleTheme: () => void;
+  onProfile: () => void;
   activeMenu?: string;
   onNavigate?: (key: string) => void;
 }
@@ -35,6 +36,7 @@ export function MainLayout({
   onLogout,
   onChangePassword,
   onToggleTheme,
+  onProfile,
   activeMenu,
   onNavigate,
 }: MainLayoutProps) {
@@ -165,6 +167,7 @@ export function MainLayout({
           onLogout={onLogout}
           onChangePassword={onChangePassword}
           onToggleTheme={onToggleTheme}
+          onProfile={onProfile}
           onToggleSidebar={handleSidebarToggle}
           demoMode={DEMO_MODE}
         />

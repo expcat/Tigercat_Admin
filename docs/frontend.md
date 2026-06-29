@@ -59,6 +59,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 | 菜单 key | 路径 | 页面 | 权限 |
 | -------- | ---- | ---- | ---- |
 | `home` | `/dashboard` | 仪表盘 | `dashboard:view` |
+| `analytics` | `/analytics` | 数据分析（分组「数据分析」） | 无入口权限 |
 | `users` | `/users` | 用户管理 | `user:view` |
 | `roles` | `/roles` | 角色管理 | `role:view` |
 | `settings` | `/settings` | 系统设置 | 无入口权限 |
@@ -67,6 +68,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 | `tasks` | `/tasks` | 任务面板 | 无入口权限 |
 | `audit` | `/audit-logs` | 审计日志 | 无入口权限 |
 | `about` | `/about` | 关于 | 无入口权限 |
+| `profile` | `/profile` | 个人中心（头像下拉进入，不在左侧菜单） | 无入口权限 |
 
 React 通过 `ProtectedRoute` / `GuestRoute` 和 `react-router-dom` 管路由；Vue 通过 `vue-router`、`ProtectedShell`、`GuestShell` 管路由。刷新后都从 `SESSION_KEY` 读取会话并加载权限。
 
@@ -98,6 +100,8 @@ React 通过 `ProtectedRoute` / `GuestRoute` 和 `react-router-dom` 管路由；
 | 通知中心 | `NotificationCenter`、`Badge`、`Statistic`、`Card`、`Button`、`notification` | 已读/未读、批量已读、站内跳转 |
 | 任务面板 | `TaskBoard`、`Statistic`、`Card`、`Input`、`Tag`、`Modal`、`notification` | 拖拽流转、WIP 限制、详情、完成确认 |
 | 审计日志 | `ActivityFeed`、`Timeline`、`Input`、`Select`、`Statistic`、`Empty`、`Modal` | 筛选、详情、JSON 预览、CSV 导出、保留清理 |
+| 个人中心 | `Tabs`/`TabPane`、`Descriptions`、`Avatar`、`Badge`、`Statistic`、`Rate`、`QRCode`、`Signature`、`ColorSwatch`、`Radio`/`RadioGroup`、`Slider`、`DatePicker`、`TimePicker`、`Textarea`、`Switch`、`Divider`、`Space`、`Timeline`、`List` | 选项卡分区、资料只读视图、两步验证绑定、电子签名、偏好设置、登录设备与历史 |
+| 数据分析 | `Segmented`、`DatePicker`、`ButtonGroup`、`Statistic`、`Progress`、`Skeleton`、`AreaChart`、`DonutChart`、`FunnelChart`、`GaugeChart`、`HeatmapChart`、`RadarChart`、`ScatterChart`、`TreeMapChart`、`SunburstChart`、`OrgChart`、`ChartCanvas`/`ChartAxis`/`ChartGrid`/`ChartSeries`/`ChartLegend`/`ChartTooltip`、`Table`、`Pagination` | 时间范围切换、KPI 进度、多类型图表、组织分布、图表基元自定义、明细分页 |
 | 关于 | `Alert`、`Card`、`Text`、`Tag` | 技术栈和版本信息 |
 
 重组件使用子路径导入，减少页面 chunk 压力：

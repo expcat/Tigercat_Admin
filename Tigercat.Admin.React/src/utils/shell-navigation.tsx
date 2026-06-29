@@ -9,11 +9,14 @@ import {
   ServerIcon,
   SettingsIcon,
   ShieldIcon,
+  TrendingUpIcon,
+  UserIcon,
   UsersIcon,
 } from '../components/Icons';
 
 export type ShellPageKey =
   | 'home'
+  | 'analytics'
   | 'users'
   | 'roles'
   | 'settings'
@@ -21,8 +24,9 @@ export type ShellPageKey =
   | 'notifications'
   | 'tasks'
   | 'audit'
-  | 'about';
-export type ShellMenuKey = ShellPageKey | 'system';
+  | 'about'
+  | 'profile';
+export type ShellMenuKey = ShellPageKey | 'system' | 'analyticsGroup';
 
 export interface ShellMenuItemDef {
   key: ShellMenuKey;
@@ -38,6 +42,11 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     label: '仪表盘',
     icon: <DashboardIcon size={20} />,
     permission: 'dashboard:view',
+  },
+  analytics: {
+    key: 'analytics',
+    label: '数据分析看板',
+    icon: <TrendingUpIcon size={18} />,
   },
   users: {
     key: 'users',
@@ -82,10 +91,21 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     label: '关于',
     icon: <InfoIcon size={20} />,
   },
+  profile: {
+    key: 'profile',
+    label: '个人中心',
+    icon: <UserIcon size={18} />,
+  },
 };
 
 export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
   pageMenuItems.home,
+  {
+    key: 'analyticsGroup',
+    label: '数据分析',
+    icon: <TrendingUpIcon size={20} />,
+    children: [pageMenuItems.analytics],
+  },
   {
     key: 'system',
     label: '系统管理',
@@ -104,6 +124,11 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
 
 export const SHELL_BOTTOM_MENU_ITEMS: ShellMenuItemDef[] = [
   pageMenuItems.about,
+];
+
+// 不进左侧菜单、仅供标题/面包屑解析的页面（如头像下拉进入的个人中心）。
+export const SHELL_HIDDEN_MENU_ITEMS: ShellMenuItemDef[] = [
+  pageMenuItems.profile,
 ];
 
 function isShellMenuItemPermitted(
@@ -191,7 +216,11 @@ function findShellMenuItem(
 
 export function getShellBreadcrumbItems(
   key: string,
-  items: ShellMenuItemDef[] = [...SHELL_MENU_ITEMS, ...SHELL_BOTTOM_MENU_ITEMS],
+  items: ShellMenuItemDef[] = [
+    ...SHELL_MENU_ITEMS,
+    ...SHELL_BOTTOM_MENU_ITEMS,
+    ...SHELL_HIDDEN_MENU_ITEMS,
+  ],
 ): string[] {
   return findShellMenuTrail(items, key)?.map((item) => item.label) ?? [];
 }
@@ -206,7 +235,13 @@ export function getShellExpandedKeys(
 
 export function getShellPageTitle(key: string): string {
   return (
-    findShellMenuItem([...SHELL_MENU_ITEMS, ...SHELL_BOTTOM_MENU_ITEMS], key)
-      ?.label ?? '仪表盘'
+    findShellMenuItem(
+      [
+        ...SHELL_MENU_ITEMS,
+        ...SHELL_BOTTOM_MENU_ITEMS,
+        ...SHELL_HIDDEN_MENU_ITEMS,
+      ],
+      key,
+    )?.label ?? '仪表盘'
   );
 }

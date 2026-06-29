@@ -117,3 +117,53 @@ test.describe('全局 Shell 挂件', () => {
     await expect(page.getByText('欢迎使用管理中心')).toBeHidden();
   });
 });
+
+test.describe('阶段 1 — 个人中心与数据分析', () => {
+  test('数据分析看板加载图表并可切换时间范围', async ({ page }) => {
+    const consoleErrors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+
+    await login(page);
+
+    await page.goto('/#/analytics');
+    await expect(page.getByText('数据分析').first()).toBeVisible();
+    // Skeleton 结束后，图表与明细渲染成功（任一卡片崩溃都会导致整页空白）。
+    await expect(page.getByText('直接访问').first()).toBeVisible();
+    await expect(page.getByText('渠道明细')).toBeVisible();
+
+    // Segmented 切换时间范围后仍停留在分析页且内容可见。
+    await page.getByText('近 7 天').click();
+    await expect(page).toHaveURL(/#\/analytics$/);
+    await expect(page.getByText('直接访问').first()).toBeVisible();
+
+    expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
+  });
+
+  test('个人中心可切换选项卡', async ({ page }) => {
+    await login(page);
+
+    await page.goto('/#/profile');
+    await expect(page.getByText('个人中心').first()).toBeVisible();
+
+    await page.getByText('安全设置', { exact: true }).click();
+    await expect(page.getByText('两步验证').first()).toBeVisible();
+
+    await page.getByText('偏好', { exact: true }).click();
+    await expect(page.getByText('主题色').first()).toBeVisible();
+
+    await page.getByText('登录设备', { exact: true }).click();
+    await expect(page.getByText('当前登录设备').first()).toBeVisible();
+  });
+
+  test('头像下拉可进入个人中心', async ({ page }) => {
+    await login(page);
+
+    await page.locator('.p2-header-user-btn').click();
+    await page.getByText('个人中心').click();
+
+    await expect(page).toHaveURL(/#\/profile$/);
+    await expect(page.getByText('个人中心').first()).toBeVisible();
+  });
+});

@@ -192,6 +192,7 @@ watch(
         @change-password="$emit('change-password')"
         @toggle-theme="$emit('toggle-theme')"
         @toggle-sidebar="handleSidebarToggle"
+        @profile="router.push({ name: 'profile' })"
       />
 
       <!-- Content -->

@@ -35,6 +35,7 @@ defineEmits<{
   (e: 'change-password'): void
   (e: 'toggle-theme'): void
   (e: 'toggle-sidebar'): void
+  (e: 'profile'): void
 }>()
 
 function getThemeIcon(mode: ThemeMode): string {
@@ -117,7 +118,13 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
         </template>
 
         <DropdownMenu class-name="w-56 max-w-[calc(100vw-2rem)]">
-          <DropdownItem @click="$emit('toggle-theme')">
+          <DropdownItem @click="$emit('profile')">
+            <span class="flex items-center gap-2 text-sm">
+              <Icon name="user" :size="16" />
+              <span>个人中心</span>
+            </span>
+          </DropdownItem>
+          <DropdownItem divided @click="$emit('toggle-theme')">
             <span class="flex items-center gap-2 text-sm">
               <Icon :name="getThemeIcon(themeMode)" :size="16" />
               <span>主题模式：{{ getThemeLabel(themeMode) }}</span>

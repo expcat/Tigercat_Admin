@@ -112,6 +112,13 @@ export const UserPlusIcon = (props: IconProps) => (
   </IconBase>
 );
 
+export const UserIcon = (props: IconProps) => (
+  <IconBase {...props}>
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </IconBase>
+);
+
 export const UploadIcon = (props: IconProps) => (
   <IconBase {...props}>
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
