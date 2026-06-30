@@ -205,3 +205,44 @@ test.describe('阶段 2 — 协作沟通', () => {
     await expect(page.getByRole('button', { name: '创建事件' })).toBeVisible();
   });
 });
+
+test.describe('阶段 3 — 内容管理与图库', () => {
+  test('内容编辑可切换编辑器并发布', async ({ page }) => {
+    const consoleErrors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+
+    await login(page);
+
+    await page.goto('/#/content');
+    await expect(page.getByText('内容编辑').first()).toBeVisible();
+    await expect(page.getByText('正文', { exact: true })).toBeVisible();
+
+    // Segmented 切换到 Markdown 编辑器后仍停留在内容页。
+    await page.getByText('Markdown', { exact: true }).click();
+    await expect(page).toHaveURL(/#\/content$/);
+    await expect(page.getByText('正文', { exact: true })).toBeVisible();
+
+    // 发布后展示成功结果。
+    await page.getByRole('button', { name: '发布', exact: true }).click();
+    await expect(page.getByText('发布成功').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: '继续编辑' })).toBeVisible();
+
+    expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
+  });
+
+  test('媒体图库可浏览图片并展示空相册', async ({ page }) => {
+    await login(page);
+
+    await page.goto('/#/gallery');
+    await expect(page.getByText('媒体图库').first()).toBeVisible();
+    await expect(page.getByText('精选轮播')).toBeVisible();
+    // 默认“全部”相册含示例图片。
+    await expect(page.getByText('产品概览').first()).toBeVisible();
+
+    // 切换到空相册展示 Empty 状态。
+    await page.getByText('空相册', { exact: true }).click();
+    await expect(page.getByText(/该相册暂无图片/).first()).toBeVisible();
+  });
+});

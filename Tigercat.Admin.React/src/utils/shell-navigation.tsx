@@ -5,9 +5,12 @@ import {
   CalendarIcon,
   ClipboardIcon,
   DashboardIcon,
+  EditIcon,
   FileTextIcon,
+  ImageIcon,
   InfoIcon,
   MessageIcon,
+  PaletteIcon,
   ServerIcon,
   SettingsIcon,
   ShieldIcon,
@@ -22,6 +25,8 @@ export type ShellPageKey =
   | 'analytics'
   | 'tickets'
   | 'calendar'
+  | 'content'
+  | 'gallery'
   | 'users'
   | 'roles'
   | 'settings'
@@ -35,7 +40,8 @@ export type ShellMenuKey =
   | ShellPageKey
   | 'system'
   | 'analyticsGroup'
-  | 'collaborationGroup';
+  | 'collaborationGroup'
+  | 'contentGroup';
 
 export interface ShellMenuItemDef {
   key: ShellMenuKey;
@@ -66,6 +72,16 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     key: 'calendar',
     label: '团队日历',
     icon: <CalendarIcon size={18} />,
+  },
+  content: {
+    key: 'content',
+    label: '内容编辑',
+    icon: <EditIcon size={18} />,
+  },
+  gallery: {
+    key: 'gallery',
+    label: '媒体图库',
+    icon: <ImageIcon size={18} />,
   },
   users: {
     key: 'users',
@@ -130,6 +146,12 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
     label: '协作',
     icon: <MessageIcon size={20} />,
     children: [pageMenuItems.tickets, pageMenuItems.calendar],
+  },
+  {
+    key: 'contentGroup',
+    label: '内容管理',
+    icon: <PaletteIcon size={20} />,
+    children: [pageMenuItems.content, pageMenuItems.gallery],
   },
   {
     key: 'system',

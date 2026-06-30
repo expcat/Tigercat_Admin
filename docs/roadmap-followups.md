@@ -59,4 +59,21 @@
 
 ---
 
-*后续阶段（3–6）的推迟项请按相同结构追加到本文。*
+## 阶段 3 — 内容与媒体（内容编辑 / 媒体图库）
+
+### 人工核验（自动化 e2e 未覆盖）
+
+- [ ] **移动端 375px**：`/content` 编辑器工具条（`Segmented` + `Switch` + 操作按钮）、富文本/Markdown/代码编辑区、元数据侧栏（`TreeSelect`/`Cascader`/`AutoComplete`/`Mentions`/`Upload`）在窄屏堆叠不溢出；`/gallery` 精选 `Carousel`、图片网格、`Skeleton` 骨架、`ImageViewer`/`ImagePreview` 灯箱与标注/裁剪 `Drawer` 在窄屏不溢出。
+- [ ] **暗色模式（`.dark`）**：两页编辑器边框/占位、`Watermark` 水印对比度、`Result` 图标配色、图片卡背景、`ImageViewer`/`ImagePreview` 遮罩与工具条、`Empty` 插画在暗色下可读、不透出底层内容。
+- [ ] **弹层焦点与键盘路径**：`/content` `TreeSelect`/`Cascader`/`AutoComplete` 下拉浮层 Esc 与外部点击关闭、关闭后焦点恢复；`/gallery` `ImageViewer`/`ImagePreview` 与标注/裁剪 `Drawer` 的 Esc 关闭与焦点恢复。（demo e2e 已覆盖编辑器切换/发布与相册切换/空态，焦点恢复尚未断言。）
+
+### workaround / 点到为止待回访
+
+- [ ] **编辑器为内置演示引擎**：`RichTextEditor`/`MarkdownEditor`/`CodeEditor` 使用组件内置引擎（contenteditable / 内置高亮），未接 Quill/TipTap/Prism 等可插拔 `engine`/`highlighter`；如需富功能再按上游 `engine` 接口替换。
+- [ ] **图片为 SVG 占位**：`/gallery` 图片用内联 SVG data-URI 占位（离线、确定性、e2e 友好）；`ImageAnnotation`/`ImageCropper` 基于该占位图演示，统一核验时确认换用真实位图后裁剪输出（`getCropResult` 的 canvas/blob）与标注坐标无异常。
+- [ ] **内容与图库数据为内存态**：`/content` 草稿正文、标签、协作者与 `/gallery` 标注/裁剪结果均为页面内内存数据（与阶段 1–2 一致，未接 MockApi/真实端点），刷新后重置；如需持久化或“类服务端”分页/筛选，再按 [api.md](api.md) 约定补 demo/mock 契约。
+- [ ] **Upload 未接后端**：`/content` 附件 `Upload` 设为 `autoUpload=false` 仅做选择演示，不触发上传请求；接入真实存储时再补 `customRequest`/`action`。
+
+---
+
+*后续阶段（4–6）的推迟项请按相同结构追加到本文。*

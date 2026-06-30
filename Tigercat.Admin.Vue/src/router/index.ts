@@ -71,6 +71,16 @@ const router = createRouter({
           component: () => import('../pages/CalendarPage.vue'),
         },
         {
+          path: 'content',
+          name: 'content',
+          component: () => import('../pages/ContentPage.vue'),
+        },
+        {
+          path: 'gallery',
+          name: 'gallery',
+          component: () => import('../pages/GalleryPage.vue'),
+        },
+        {
           path: 'users',
           name: 'users',
           component: () => import('../pages/UsersPage.vue'),

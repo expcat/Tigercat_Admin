@@ -261,6 +261,21 @@ export const FileTextIcon = (props: IconProps) => (
   </IconBase>
 );
 
+export const EditIcon = (props: IconProps) => (
+  <IconBase {...props}>
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z" />
+  </IconBase>
+);
+
+export const ImageIcon = (props: IconProps) => (
+  <IconBase {...props}>
+    <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+    <circle cx="9" cy="9" r="2" />
+    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+  </IconBase>
+);
+
 export const ActivityIcon = (props: IconProps) => (
   <IconBase {...props}>
     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -470,6 +485,8 @@ export const Icons = {
   TrendingUp: TrendingUpIcon,
   CheckCircle: CheckCircleIcon,
   FileText: FileTextIcon,
+  Edit: EditIcon,
+  Image: ImageIcon,
   Activity: ActivityIcon,
   Clipboard: ClipboardIcon,
   Globe: GlobeIcon,

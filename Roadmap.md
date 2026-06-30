@@ -193,21 +193,21 @@
 - [x] Countdown
 
 ### 阶段 3 — 内容与媒体
-- [ ] RichTextEditor
-- [ ] MarkdownEditor
-- [ ] CodeEditor
-- [ ] TreeSelect
-- [ ] Cascader
-- [ ] AutoComplete
-- [ ] Watermark
-- [ ] Result
-- [ ] Image
-- [ ] ImageGroup
-- [ ] ImagePreview
-- [ ] ImageViewer
-- [ ] ImageAnnotation
-- [ ] ImageCropper
-- [ ] Carousel
+- [x] RichTextEditor
+- [x] MarkdownEditor
+- [x] CodeEditor
+- [x] TreeSelect
+- [x] Cascader
+- [x] AutoComplete
+- [x] Watermark
+- [x] Result
+- [x] Image
+- [x] ImageGroup
+- [x] ImagePreview
+- [x] ImageViewer
+- [x] ImageAnnotation
+- [x] ImageCropper
+- [x] Carousel
 
 ### 阶段 4 — 运维自动化
 - [ ] CronEditor
