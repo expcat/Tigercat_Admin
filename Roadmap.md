@@ -219,13 +219,13 @@
 - [x] Transfer
 
 ### 阶段 5 — 帮助与报表
-- [ ] Anchor / AnchorLink
-- [ ] ScrollSpy
-- [ ] Affix
-- [ ] Collapse / CollapsePanel
-- [ ] Code
-- [ ] Link
-- [ ] PrintLayout
+- [x] Anchor / AnchorLink
+- [x] ScrollSpy
+- [x] Affix
+- [x] Collapse / CollapsePanel
+- [x] Code
+- [x] Link
+- [x] PrintLayout
 
 ### 阶段 6（可选）— 性能 / 进阶
 - [ ] VirtualList

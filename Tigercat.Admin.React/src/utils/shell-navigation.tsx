@@ -8,6 +8,7 @@ import {
   DashboardIcon,
   EditIcon,
   FileTextIcon,
+  HelpIcon,
   ImageIcon,
   InfoIcon,
   MessageIcon,
@@ -32,6 +33,8 @@ export type ShellPageKey =
   | 'gallery'
   | 'jobs'
   | 'import'
+  | 'help'
+  | 'reports'
   | 'users'
   | 'roles'
   | 'settings'
@@ -47,7 +50,8 @@ export type ShellMenuKey =
   | 'analyticsGroup'
   | 'collaborationGroup'
   | 'contentGroup'
-  | 'opsGroup';
+  | 'opsGroup'
+  | 'helpGroup';
 
 export interface ShellMenuItemDef {
   key: ShellMenuKey;
@@ -98,6 +102,16 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     key: 'import',
     label: '数据导入',
     icon: <UploadIcon size={18} />,
+  },
+  help: {
+    key: 'help',
+    label: '帮助中心',
+    icon: <HelpIcon size={18} />,
+  },
+  reports: {
+    key: 'reports',
+    label: '报表打印',
+    icon: <FileTextIcon size={18} />,
   },
   users: {
     key: 'users',
@@ -174,6 +188,12 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
     label: '运维',
     icon: <TerminalIcon size={20} />,
     children: [pageMenuItems.jobs, pageMenuItems.import],
+  },
+  {
+    key: 'helpGroup',
+    label: '帮助支持',
+    icon: <HelpIcon size={20} />,
+    children: [pageMenuItems.help, pageMenuItems.reports],
   },
   {
     key: 'system',

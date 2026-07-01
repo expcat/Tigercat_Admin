@@ -289,3 +289,44 @@ test.describe('阶段 4 — 运维自动化', () => {
     await expect(page.getByRole('button', { name: '再次导入' })).toBeVisible();
   });
 });
+
+test.describe('阶段 5 — 帮助与报表', () => {
+  test('帮助中心加载并可展开常见问题', async ({ page }) => {
+    const consoleErrors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+
+    await login(page);
+
+    await page.goto('/#/help');
+    await expect(page.getByText('帮助中心').first()).toBeVisible();
+    // 长文档各章节与快捷键代码块渲染。
+    await expect(page.getByText('快速开始').first()).toBeVisible();
+    await expect(page.getByText('常见问题').first()).toBeVisible();
+    await expect(page.getByText('curl -X GET').first()).toBeVisible();
+
+    // FAQ 手风琴：点击另一问题后其答案可见。
+    await page.getByText('为什么某些菜单看不到？').click();
+    await expect(page.getByText('左侧菜单会根据角色权限码过滤').first()).toBeVisible();
+
+    expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
+  });
+
+  test('报表打印加载并可切换报表类型', async ({ page }) => {
+    await login(page);
+
+    await page.goto('/#/reports');
+    await expect(page.getByText('报表打印').first()).toBeVisible();
+    // 打印布局内的报表区块与明细渲染。
+    await expect(page.getByText('关键指标', { exact: true })).toBeVisible();
+    await expect(page.getByText('渠道明细', { exact: true })).toBeVisible();
+    await expect(page.getByText('自然搜索', { exact: true })).toBeVisible();
+    await expect(page.getByText('报表生成完成').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: '打印' })).toBeVisible();
+
+    // 切换到销售周报，统计区间随之更新。
+    await page.getByText('销售周报').first().click();
+    await expect(page.getByText('2026-06-25 ~ 2026-07-01').first()).toBeVisible();
+  });
+});

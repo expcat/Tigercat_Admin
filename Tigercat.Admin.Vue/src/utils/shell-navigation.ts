@@ -7,6 +7,8 @@ export type ShellPageKey =
   | 'gallery'
   | 'jobs'
   | 'import'
+  | 'help'
+  | 'reports'
   | 'users'
   | 'roles'
   | 'settings'
@@ -22,7 +24,8 @@ export type ShellMenuKey =
   | 'analyticsGroup'
   | 'collaborationGroup'
   | 'contentGroup'
-  | 'opsGroup';
+  | 'opsGroup'
+  | 'helpGroup';
 
 export interface ShellMenuItemDef {
   key: ShellMenuKey;
@@ -82,6 +85,18 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     label: '数据导入',
     icon: 'upload',
     routeName: 'import',
+  },
+  help: {
+    key: 'help',
+    label: '帮助中心',
+    icon: 'help',
+    routeName: 'help',
+  },
+  reports: {
+    key: 'reports',
+    label: '报表打印',
+    icon: 'fileText',
+    routeName: 'reports',
   },
   users: {
     key: 'users',
@@ -169,6 +184,12 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
     children: [pageMenuItems.jobs, pageMenuItems.import],
   },
   {
+    key: 'helpGroup',
+    label: '帮助支持',
+    icon: 'help',
+    children: [pageMenuItems.help, pageMenuItems.reports],
+  },
+  {
     key: 'system',
     label: '系统管理',
     icon: 'server',
@@ -202,6 +223,8 @@ export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   gallery: 'gallery',
   jobs: 'jobs',
   import: 'import',
+  help: 'help',
+  reports: 'reports',
   users: 'users',
   roles: 'roles',
   settings: 'settings',
@@ -222,6 +245,8 @@ export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> = {
   gallery: 'gallery',
   jobs: 'jobs',
   import: 'import',
+  help: 'help',
+  reports: 'reports',
   users: 'users',
   roles: 'roles',
   settings: 'settings',

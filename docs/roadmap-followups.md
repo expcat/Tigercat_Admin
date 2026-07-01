@@ -93,4 +93,22 @@
 
 ---
 
-*后续阶段（5–6）的推迟项请按相同结构追加到本文。*
+## 阶段 5 — 帮助与报表（帮助中心 / 报表打印）
+
+### 人工核验（自动化 e2e 未覆盖）
+
+- [ ] **移动端 375px**：`/help` 长文档在窄屏堆叠（侧边目录 `Affix`+`Anchor` 在 `lg` 以下隐藏）、横向 `ScrollSpy` 章节条、快捷键表格、FAQ `Collapse`、`Code` 代码块、`List`+`InfiniteScroll` 不溢出、不横向滚动溢出视口；`/reports` `PrintLayout` 报表、`Descriptions`、KPI 网格、渠道 `Table`（窄屏横向滚动）、`QRCode` 不溢出。
+- [ ] **暗色模式（`.dark`）**：两页 `Code` 代码块背景/文本、`Collapse` 分隔线与展开箭头、`Anchor`/`ScrollSpy` 激活态墨条、`Affix` 吸顶阴影、`Watermark` 水印对比度、`PrintLayout` 页边/页眉页脚、`Descriptions` 边框、`Result` 图标配色、`QRCode` 前景/背景在暗色下可读、不透出底层内容。
+- [ ] **弹层焦点与键盘路径**：`/help` `Anchor`/`ScrollSpy` 键盘可达、`Collapse` 面板可键盘展开/收起；`/reports` `Segmented` 方向键切换。（demo e2e 已覆盖导航、锚点点击滚动、FAQ 展开、报表类型切换与打印布局渲染，焦点/键盘细节尚未断言。）
+
+### workaround / 点到为止待回访
+
+- [ ] **锚点滚动容器耦合 Shell**：`/help` 的 `Anchor`/`ScrollSpy` 通过 `getContainer` 指向 `#main-content-scroll`（Shell 内容滚动区）、`Affix` 通过 `target="#main-content-scroll"` 吸顶。若上游支持组件内部自动探测最近滚动祖先或 Shell 改为 window 滚动，可移除该显式绑定。
+- [ ] **Anchor 与 ScrollSpy 双导航为点到为止**：同一批章节同时用侧栏 `Anchor`（纵向目录）与顶部 `ScrollSpy`（横向章节条）演示，功能重叠；真实项目二选一即可。
+- [ ] **帮助/报表数据为内存态**：`/help` 文章列表、FAQ 与 `/reports` 报表指标/明细均为页面内静态数据（与阶段 1–4 一致，未接 MockApi/真实端点），`InfiniteScroll` 用 `setTimeout` 模拟分页，刷新后重置。
+- [ ] **打印依赖 `window.print()`**：`/reports` 「打印」直接调用浏览器打印；`PrintLayout` 的 A4/页眉页脚/分页仅在打印介质（或另存 PDF）下完整生效，屏幕预览为近似呈现。统一核验时确认打印分页 `PrintPageBreak` 与水印在实际输出中的位置。
+- [ ] **Code 无语法高亮**：当前 `Code` 版本仅提供纯文本代码块 + 复制，未暴露 `language` 高亮参数；如需高亮再按上游接口补充。
+
+---
+
+*后续阶段（6）的推迟项请按相同结构追加到本文。*
