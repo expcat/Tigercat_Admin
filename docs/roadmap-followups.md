@@ -76,4 +76,21 @@
 
 ---
 
-*后续阶段（4–6）的推迟项请按相同结构追加到本文。*
+## 阶段 4 — 运维自动化（定时任务 / 数据导入）
+
+### 人工核验（自动化 e2e 未覆盖）
+
+- [ ] **移动端 375px**：`/jobs` 概览指标卡、任务表格（在窄屏横向滚动而非撑破布局）、`Gantt` 执行时间轴（横向滚动）、`Steps` 运行阶段、以及新建/编辑 `Drawer` 内 `CronEditor`（5 段字段）、`Stepper`、`InputGroup`、`NumberKeyboard` 键盘不溢出；`/import` `FormWizard` 步骤条、`Transfer` 穿梭双栏（窄屏可上下堆叠/横向滚动）、`Upload` 拖拽区、`Slider`、`Cascader` 浮层不溢出。
+- [ ] **暗色模式（`.dark`）**：两页 `Gantt` 色条/网格/今日参考线、`Progress` 轨道、`NumberKeyboard` 按键、`CronEditor` 输入框、`Transfer` 面板边框、`Descriptions` 边框、`Result` 图标配色在暗色下可读、不透出底层内容。
+- [ ] **弹层焦点与键盘路径**：`/jobs` 新建/编辑 `Drawer` 的 Esc 与外部点击关闭、关闭后焦点恢复到触发器；`CronEditor`/`Cascader` 下拉浮层 Esc 与外部点击关闭；`/import` `Cascader` 目标表浮层同上；`FormWizard` 上一步/下一步/完成按钮键盘可达。（demo e2e 已覆盖导航、表格渲染、抽屉打开、向导步进与完成结果，焦点恢复尚未断言。）
+
+### workaround / 点到为止待回访
+
+- [ ] **调度与执行数据为内存态**：`/jobs` 任务列表、启停、进度、运行阶段与 `/import` 向导选择均为页面内内存数据（与阶段 1–3 一致，未接 MockApi/真实端点），刷新后重置；如需“类服务端”分页/筛选或持久化，再按 [api.md](api.md) 约定补 demo/mock 契约。
+- [ ] **Gantt 为静态运行窗口**：`/jobs` 执行时间轴用手工构造的近一周窗口（`scale=day`），未接真实执行历史；接入真实运行记录后确认时间轴刻度、依赖连线与今日参考线对齐。
+- [ ] **Upload 未接后端**：`/import` 文件 `Upload` 设为 `autoUpload=false` 仅做选择演示，不触发上传/解析请求；示例数据用于字段映射与预览。接入真实存储/解析时再补 `customRequest`/`action` 与源字段动态探测。
+- [ ] **导入执行为定时器模拟**：`/import` 「开始导入」用 `setInterval` 按批推进 `Progress` 到 100% 后展示 `Result`，非真实批处理；接入真实导入时改为按后端进度回调驱动。
+
+---
+
+*后续阶段（5–6）的推迟项请按相同结构追加到本文。*

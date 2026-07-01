@@ -4,6 +4,7 @@ import {
   BellIcon,
   CalendarIcon,
   ClipboardIcon,
+  ClockIcon,
   DashboardIcon,
   EditIcon,
   FileTextIcon,
@@ -14,8 +15,10 @@ import {
   ServerIcon,
   SettingsIcon,
   ShieldIcon,
+  TerminalIcon,
   TicketIcon,
   TrendingUpIcon,
+  UploadIcon,
   UserIcon,
   UsersIcon,
 } from '../components/Icons';
@@ -27,6 +30,8 @@ export type ShellPageKey =
   | 'calendar'
   | 'content'
   | 'gallery'
+  | 'jobs'
+  | 'import'
   | 'users'
   | 'roles'
   | 'settings'
@@ -41,7 +46,8 @@ export type ShellMenuKey =
   | 'system'
   | 'analyticsGroup'
   | 'collaborationGroup'
-  | 'contentGroup';
+  | 'contentGroup'
+  | 'opsGroup';
 
 export interface ShellMenuItemDef {
   key: ShellMenuKey;
@@ -82,6 +88,16 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     key: 'gallery',
     label: '媒体图库',
     icon: <ImageIcon size={18} />,
+  },
+  jobs: {
+    key: 'jobs',
+    label: '定时任务',
+    icon: <ClockIcon size={18} />,
+  },
+  import: {
+    key: 'import',
+    label: '数据导入',
+    icon: <UploadIcon size={18} />,
   },
   users: {
     key: 'users',
@@ -152,6 +168,12 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
     label: '内容管理',
     icon: <PaletteIcon size={20} />,
     children: [pageMenuItems.content, pageMenuItems.gallery],
+  },
+  {
+    key: 'opsGroup',
+    label: '运维',
+    icon: <TerminalIcon size={20} />,
+    children: [pageMenuItems.jobs, pageMenuItems.import],
   },
   {
     key: 'system',

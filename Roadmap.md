@@ -210,13 +210,13 @@
 - [x] Carousel
 
 ### 阶段 4 — 运维自动化
-- [ ] CronEditor
-- [ ] Stepper
-- [ ] InputGroup / InputGroupAddon
-- [ ] NumberKeyboard
-- [ ] Gantt
-- [ ] FormWizard
-- [ ] Transfer
+- [x] CronEditor
+- [x] Stepper
+- [x] InputGroup / InputGroupAddon
+- [x] NumberKeyboard
+- [x] Gantt
+- [x] FormWizard
+- [x] Transfer
 
 ### 阶段 5 — 帮助与报表
 - [ ] Anchor / AnchorLink

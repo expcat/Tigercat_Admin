@@ -5,6 +5,8 @@ export type ShellPageKey =
   | 'calendar'
   | 'content'
   | 'gallery'
+  | 'jobs'
+  | 'import'
   | 'users'
   | 'roles'
   | 'settings'
@@ -19,7 +21,8 @@ export type ShellMenuKey =
   | 'system'
   | 'analyticsGroup'
   | 'collaborationGroup'
-  | 'contentGroup';
+  | 'contentGroup'
+  | 'opsGroup';
 
 export interface ShellMenuItemDef {
   key: ShellMenuKey;
@@ -67,6 +70,18 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     label: '媒体图库',
     icon: 'image',
     routeName: 'gallery',
+  },
+  jobs: {
+    key: 'jobs',
+    label: '定时任务',
+    icon: 'clock',
+    routeName: 'jobs',
+  },
+  import: {
+    key: 'import',
+    label: '数据导入',
+    icon: 'upload',
+    routeName: 'import',
   },
   users: {
     key: 'users',
@@ -148,6 +163,12 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
     children: [pageMenuItems.content, pageMenuItems.gallery],
   },
   {
+    key: 'opsGroup',
+    label: '运维',
+    icon: 'terminal',
+    children: [pageMenuItems.jobs, pageMenuItems.import],
+  },
+  {
     key: 'system',
     label: '系统管理',
     icon: 'server',
@@ -179,6 +200,8 @@ export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   calendar: 'calendar',
   content: 'content',
   gallery: 'gallery',
+  jobs: 'jobs',
+  import: 'import',
   users: 'users',
   roles: 'roles',
   settings: 'settings',
@@ -197,6 +220,8 @@ export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> = {
   calendar: 'calendar',
   content: 'content',
   gallery: 'gallery',
+  jobs: 'jobs',
+  import: 'import',
   users: 'users',
   roles: 'roles',
   settings: 'settings',

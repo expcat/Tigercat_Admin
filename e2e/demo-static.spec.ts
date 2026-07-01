@@ -246,3 +246,46 @@ test.describe('阶段 3 — 内容管理与图库', () => {
     await expect(page.getByText(/该相册暂无图片/).first()).toBeVisible();
   });
 });
+
+test.describe('阶段 4 — 运维自动化', () => {
+  test('定时任务看板加载并可打开新建抽屉', async ({ page }) => {
+    const consoleErrors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+
+    await login(page);
+
+    await page.goto('/#/jobs');
+    await expect(page.getByText('定时任务').first()).toBeVisible();
+    // 任务表格默认渲染示例任务，执行时间轴与运行阶段卡片可见。
+    await expect(page.getByText('每日对账批处理').first()).toBeVisible();
+    await expect(page.getByText('执行时间轴', { exact: true })).toBeVisible();
+    await expect(page.getByText('运行阶段', { exact: true })).toBeVisible();
+
+    // 新建任务抽屉可打开。
+    await page.getByRole('button', { name: '新建任务' }).click();
+    await expect(page.getByRole('button', { name: '创建任务' })).toBeVisible();
+
+    expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
+  });
+
+  test('数据导入向导可分步并完成导入', async ({ page }) => {
+    await login(page);
+
+    await page.goto('/#/import');
+    await expect(page.getByText('数据导入').first()).toBeVisible();
+    await expect(page.getByText('导入模式', { exact: true })).toBeVisible();
+
+    // 逐步推进向导到最后一步并执行导入。
+    const next = page.getByRole('button', { name: '下一步' });
+    await next.click();
+    await next.click();
+    await next.click();
+    await page.getByRole('button', { name: '开始导入' }).click();
+
+    // 导入完成后展示结果页。
+    await expect(page.getByText('导入完成').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: '再次导入' })).toBeVisible();
+  });
+});
