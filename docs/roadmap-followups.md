@@ -111,4 +111,26 @@
 
 ---
 
+## 阶段 6 — 异常页与路由健壮性
+
+### 人工核验（自动化 e2e 未覆盖）
+
+- [ ] **移动端 375px**：`/403` `/404` `/500` 独立居中布局在窄屏不溢出，`Result` 图标、标题、副标题、404 倒计时与操作按钮堆叠可读、不横向滚动。
+- [ ] **暗色模式（`.dark`）**：三页背景 `--tiger-bg-page` token、`Result` 状态图标配色、`Empty` 插画、`Countdown` 数字在暗色下可读、对比度足够。
+- [ ] **键盘路径与真实历史栈**：返回首页/返回上一页按钮可 Tab 聚焦、Enter 触发；404 倒计时自动跳转与「返回上一页」在真实会话历史（非直开标签页）下不误伤；无历史时的 `Empty` 提示仅在新开标签页场景出现。
+- [ ] **无权限直访刷新场景**：demo e2e 已覆盖登录后直访 `/users` → 403；直开受限路由并整页刷新（权限需守卫内补偿加载）的场景建议人工在 api 模式（真实后端）复核一次。
+
+### 说明
+- **MockApi `demo` 账号权限收窄**：静态演示模式下 `demo`/`demo` 现返回只读权限集（无 `user:view`/`role:view`），用于演示 403；`admin`/`admin123` 与真实 .NET 端行为不变。
+- **`/500` 为演示入口**：按 Roadmap 定义仅提供直访演示，未接入全局错误边界/请求失败自动跳转；后续如需真实兜底，在两端 request 层或错误边界统一处理。
+
+### 阶段内已处理（审查修复）
+
+- **权限加载失败不再误判 403**：React `PermissionRoute` 与 Vue `requiresPermission` 守卫在权限尚未 `loaded` 时保持加载/取消导航，而不是当成无权限。
+- **MockApi 权限按会话 token 解析用户名**：演示 token 形如 `demo-static-token:<username>`，避免多标签页共享 sessionStorage 时串权限。
+- **返回上一页不再依赖 `window.history.length`**：React 用 `useNavigationType() === 'PUSH'`，Vue 用 `history.state.back`；直开标签页才显示 Empty。
+- **`/files`（`media:view`）未做路由级 403**：Roadmap 阶段 6 示例只要求 `/users`/`roles`；菜单仍按权限隐藏，直访仍进页面。如需全菜单入口权限都走 403，放到后续阶段统一铺开。
+
+---
+
 *后续阶段（v2 阶段 6–10，见 [Roadmap.md](../Roadmap.md)）的推迟项请按相同结构追加到本文。*

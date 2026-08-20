@@ -198,7 +198,8 @@ test.describe('阶段 2 — 协作沟通', () => {
     await expect(page.getByText('团队日历').first()).toBeVisible();
     // 默认日期 2026-06-29 含两条日程。
     await expect(page.getByText('迭代站会').first()).toBeVisible();
-    await expect(page.getByText('即将到来')).toBeVisible();
+    // 精确匹配分区标题，避免与无日程时倒计时标题「暂无即将到来的日程」产生包含歧义。
+    await expect(page.getByText('即将到来', { exact: true })).toBeVisible();
 
     // 新建事件抽屉可打开。
     await page.getByRole('button', { name: '新建事件' }).click();

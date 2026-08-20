@@ -1,6 +1,10 @@
 import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router';
-import { SESSION_KEY, safeParse } from '../utils';
-import type { Session } from '../utils';
+import {
+  SESSION_KEY,
+  safeParse,
+  createPermissionContext,
+  type Session,
+} from '../utils';
 
 const routerMode = import.meta.env.VITE_TIGERCAT_ROUTER_MODE;
 const basePath = import.meta.env.VITE_TIGERCAT_BASE_PATH || '/';
@@ -104,11 +108,13 @@ const router = createRouter({
           path: 'users',
           name: 'users',
           component: () => import('../pages/UsersPage.vue'),
+          meta: { requiresPermission: 'user:view' },
         },
         {
           path: 'roles',
           name: 'roles',
           component: () => import('../pages/RolesPage.vue'),
+          meta: { requiresPermission: 'role:view' },
         },
         {
           path: 'settings',
@@ -143,25 +149,66 @@ const router = createRouter({
       ],
     },
     {
+      path: '/403',
+      name: 'exception403',
+      component: () => import('../pages/ExceptionPage.vue'),
+      props: { status: 403 },
+    },
+    {
+      path: '/404',
+      name: 'exception404',
+      component: () => import('../pages/ExceptionPage.vue'),
+      props: { status: 404 },
+    },
+    {
+      path: '/500',
+      name: 'exception500',
+      component: () => import('../pages/ExceptionPage.vue'),
+      props: { status: 500 },
+    },
+    {
       path: '/:pathMatch(.*)*',
-      redirect: '/login',
+      redirect: '/404',
     },
   ],
 });
 
-router.beforeEach((to, _from, next) => {
+const permission = createPermissionContext();
+
+router.beforeEach(async (to, _from, next) => {
   const session = safeParse<Session>(localStorage.getItem(SESSION_KEY));
   const isAuthed = Boolean(session?.token);
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
   const requiresGuest = to.matched.some((record) => record.meta.requiresGuest);
+  const requiresPermission = to.matched
+    .map((record) => record.meta.requiresPermission)
+    .find((code): code is string => typeof code === 'string');
 
   if (requiresAuth && !isAuthed) {
     next({ name: 'login', query: { redirect: to.fullPath } });
-  } else if (requiresGuest && isAuthed) {
-    next({ name: 'dashboard' });
-  } else {
-    next();
+    return;
   }
+
+  if (requiresGuest && isAuthed) {
+    next({ name: 'dashboard' });
+    return;
+  }
+
+  if (requiresPermission && isAuthed && session?.token) {
+    if (!permission.loaded.value) {
+      await permission.load(session.token);
+    }
+    if (!permission.loaded.value) {
+      next(false);
+      return;
+    }
+    if (!permission.has(requiresPermission)) {
+      next('/403');
+      return;
+    }
+  }
+
+  next();
 });
 
 export default router;

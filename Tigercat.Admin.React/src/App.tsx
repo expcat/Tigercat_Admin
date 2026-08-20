@@ -26,6 +26,7 @@ import {
 import { MainLayout } from './components/MainLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { GuestRoute } from './components/GuestRoute';
+import { PermissionRoute } from './components/PermissionRoute';
 import {
   SESSION_KEY,
   safeParse,
@@ -63,6 +64,7 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const TasksPage = lazy(() => import('./pages/TasksPage'));
 const AuditLogsPage = lazy(() => import('./pages/AuditLogsPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
+const ExceptionPage = lazy(() => import('./pages/ExceptionPage'));
 
 const MENU_ROUTES = {
   home: '/dashboard',
@@ -115,6 +117,10 @@ function getSafeReturnTo(value: unknown): string {
   }
 
   if (value.startsWith('//') || value === '/login' || value === '/register') {
+    return '/dashboard';
+  }
+
+  if (value === '/403' || value === '/404' || value === '/500') {
     return '/dashboard';
   }
 
@@ -477,8 +483,12 @@ function App() {
           <Route path="/help" element={<HelpPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/users" element={<UsersPage />} />
-          <Route path="/roles" element={<RolesPage />} />
+          <Route element={<PermissionRoute code="user:view" />}>
+            <Route path="/users" element={<UsersPage />} />
+          </Route>
+          <Route element={<PermissionRoute code="role:view" />}>
+            <Route path="/roles" element={<RolesPage />} />
+          </Route>
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/files" element={<FilesPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
@@ -489,7 +499,31 @@ function App() {
       </Route>
 
       <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route
+        path="/403"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <ExceptionPage status={403} />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/404"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <ExceptionPage status={404} />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/500"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <ExceptionPage status={500} />
+          </Suspense>
+        }
+      />
+      <Route path="*" element={<Navigate to="/404" replace />} />
     </Routes>
   );
 }

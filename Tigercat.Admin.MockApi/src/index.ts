@@ -180,6 +180,20 @@ const permissions: PermissionInfo[] = [
 
 const allPermissionIds = permissions.map((item) => item.id);
 
+/**
+ * Permissions granted to the read-only `demo` account: it can browse
+ * view-only pages but lacks user/role management, so hitting /users or
+ * /roles redirects to /403 (stage 6 exception-page demo).
+ */
+const DEMO_ACCOUNT_PERMISSIONS = [
+  'dashboard:view',
+  'setting:view',
+  'media:view',
+  'audit:view',
+  'notification:view',
+  'task:view',
+];
+
 function initialState(): DemoState {
   return {
     users: [
@@ -536,7 +550,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
       return makeError('账号或密码错误', 401);
     }
     return makeJson({
-      token: DEMO_TOKEN,
+      token: `${DEMO_TOKEN}:${username}`,
       username,
       expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
     });
@@ -550,7 +564,22 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   if (path === '/api/auth/logout' && method === 'POST') return makeJson({ message: '退出成功' });
 
   if (path === '/api/auth/permissions' && method === 'GET') {
-    return makeJson({ username: 'admin', permissions });
+    const authHeader =
+      request?.headers.get('Authorization') ||
+      (init.headers instanceof Headers
+        ? init.headers.get('Authorization')
+        : Array.isArray(init.headers)
+          ? init.headers.find(([key]) => key.toLowerCase() === 'authorization')?.[1]
+          : (init.headers as Record<string, string> | undefined)?.Authorization);
+    const token = String(authHeader ?? '').replace(/^Bearer\s+/i, '');
+    const username = token.startsWith(`${DEMO_TOKEN}:`)
+      ? token.slice(DEMO_TOKEN.length + 1) || 'admin'
+      : 'admin';
+    const accountPermissions =
+      username === 'demo'
+        ? permissions.filter((item) => DEMO_ACCOUNT_PERMISSIONS.includes(item.code))
+        : permissions;
+    return makeJson({ username, permissions: accountPermissions });
   }
 
   if (path === '/api/stats/overview' && method === 'GET') {
