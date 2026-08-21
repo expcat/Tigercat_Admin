@@ -68,6 +68,10 @@ function getSafeReturnTo(value: unknown): string {
     return '/dashboard'
   }
 
+  if (value === '/forgot-password' || value === '/register-success') {
+    return '/dashboard'
+  }
+
   if (value === '/403' || value === '/404' || value === '/500') {
     return '/dashboard'
   }

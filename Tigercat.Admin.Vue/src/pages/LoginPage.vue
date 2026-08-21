@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, Card, Form, FormItem, Input, Message } from '@expcat/tigercat-vue'
+import { Alert, Button, Card, Form, FormItem, Input, Message } from '@expcat/tigercat-vue'
+import { NumberKeyboard } from '@expcat/tigercat-vue/NumberKeyboard'
+import { Countdown } from '@expcat/tigercat-vue/Countdown'
 import { debounce, useAuthForm, apiRequest, type Session } from '../utils'
 import AppLogo from '../components/AppLogo.vue'
 
@@ -13,24 +15,59 @@ const emit = defineEmits<{
 
 const { form, errors, setField, validateForm } = useAuthForm({ username: '', password: '' })
 const loading = ref(false)
+const otpStep = ref(false)
+const otpUsername = ref('')
+const otpCode = ref('')
+const otpLoading = ref(false)
+const resendUntil = ref(0)
+
+interface LoginResult {
+  requiresTwoFactor?: boolean
+  token?: string
+  username?: string
+  expiresAt?: string
+}
+
+function startResendCountdown() {
+  resendUntil.value = Date.now() + 60_000
+}
+
+function applySession(data: { token: string; username: string; expiresAt: string }) {
+  emit('success', {
+    token: data.token,
+    username: data.username,
+    expiresAt: data.expiresAt,
+  })
+}
 
 const doLogin = debounce(async () => {
   try {
-    const payload = await apiRequest<{ token: string; username: string; expiresAt: string }>('/api/auth/login', {
+    const payload = await apiRequest<LoginResult>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(form.value),
     })
-    
+
     if (!payload?.data) {
       throw new Error('API request failed');
     }
 
-    const nextSession: Session = {
+    if (payload.data.requiresTwoFactor) {
+      otpUsername.value = payload.data.username || form.value.username || ''
+      otpCode.value = ''
+      otpStep.value = true
+      startResendCountdown()
+      return
+    }
+
+    if (!payload.data.token || !payload.data.username || !payload.data.expiresAt) {
+      throw new Error('API request failed')
+    }
+
+    applySession({
       token: payload.data.token,
       username: payload.data.username,
       expiresAt: payload.data.expiresAt,
-    }
-    emit('success', nextSession)
+    })
   } catch (error: any) {
     Message.error({
       content: error.message,
@@ -50,6 +87,70 @@ const handleLogin = () => {
 const goToRegister = () => {
   router.push({ name: 'register' })
 }
+
+const goToForgotPassword = () => {
+  router.push({ name: 'forgot-password' })
+}
+
+const backToLogin = () => {
+  otpStep.value = false
+  otpCode.value = ''
+  otpUsername.value = ''
+  otpLoading.value = false
+}
+
+const handleResendFinish = () => {
+  resendUntil.value = 0
+}
+
+const handleResend = () => {
+  if (resendUntil.value > Date.now()) return
+  startResendCountdown()
+  Message.success({
+    content: '验证码已重新发送（演示验证码：123456）',
+    duration: 2500,
+  })
+}
+
+const handleVerifyOtp = debounce(async () => {
+  if (otpCode.value.length !== 6) {
+    Message.warning({
+      content: '请输入 6 位验证码',
+      duration: 2000,
+    })
+    return
+  }
+
+  otpLoading.value = true
+  try {
+    const payload = await apiRequest<Session>('/api/auth/two-factor/verify', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: otpUsername.value,
+        code: otpCode.value,
+      }),
+    })
+
+    if (!payload?.data?.token) {
+      throw new Error('API request failed')
+    }
+    if (!payload.data.username || !payload.data.expiresAt) {
+      throw new Error('API request failed')
+    }
+    applySession({
+      token: payload.data.token,
+      username: payload.data.username,
+      expiresAt: payload.data.expiresAt,
+    })
+  } catch (error: any) {
+    Message.error({
+      content: error.message,
+      duration: 3000,
+    })
+  } finally {
+    otpLoading.value = false
+  }
+}, 300)
 </script>
 
 <template>
@@ -103,12 +204,12 @@ const goToRegister = () => {
       </div>
       
       <div class="mb-6 text-center md:text-left">
-        <h1 class="p2-text-primary text-2xl font-bold tracking-tight">欢迎回来</h1>
-        <p class="p2-text-secondary text-sm mt-1">请输入您的凭据登录系统</p>
+        <h1 class="p2-text-primary text-2xl font-bold tracking-tight">{{ otpStep ? '两步验证' : '欢迎回来' }}</h1>
+        <p class="p2-text-secondary text-sm mt-1">{{ otpStep ? `请输入账号 ${otpUsername} 的 6 位验证码` : '请输入您的凭据登录系统' }}</p>
       </div>
 
       <Card variant="transparent" class="p-0">
-        <Form :model="form" :label-width="88">
+        <Form v-if="!otpStep" :model="form" :label-width="88">
           <FormItem name="username" label="用户名">
             <Input
               :model-value="form.username || ''"
@@ -128,6 +229,15 @@ const goToRegister = () => {
               :error-message="errors?.password"
             />
           </FormItem>
+          <div class="mt-2 text-right text-sm">
+            <button
+              type="button"
+              class="font-medium text-[var(--tiger-primary,#3b82f6)] hover:underline"
+              @click="goToForgotPassword"
+            >
+              忘记密码？
+            </button>
+          </div>
           <div class="mt-8 flex flex-col gap-3">
             <Button
               variant="primary"
@@ -150,6 +260,46 @@ const goToRegister = () => {
             </div>
           </div>
         </Form>
+        <div v-else class="flex flex-col gap-4">
+          <Alert type="info" title="演示验证码：123456" description="验证通过后才会写入会话，返回登录可重新输入凭据。" />
+          <NumberKeyboard v-model="otpCode" mode="number" :max-length="6" />
+          <div class="flex flex-col items-center gap-2">
+            <Countdown
+              v-if="resendUntil > 0"
+              :value="resendUntil"
+              format="s"
+              suffix="秒"
+              title="后可重新发送"
+              @finish="handleResendFinish"
+            />
+            <Button
+              v-else
+              variant="outline"
+              size="sm"
+              html-type="button"
+              @click="handleResend"
+            >
+            重新发送验证码
+            </Button>
+          </div>
+          <Button
+            variant="primary"
+            block
+            :loading="otpLoading"
+            :disabled="otpCode.length !== 6"
+            html-type="button"
+            @click="handleVerifyOtp"
+          >
+            验证
+          </Button>
+          <button
+            type="button"
+            class="text-center text-sm font-medium text-[var(--tiger-primary,#3b82f6)] hover:underline"
+            @click="backToLogin"
+          >
+            返回登录
+          </button>
+        </div>
       </Card>
     </div>
   </div>

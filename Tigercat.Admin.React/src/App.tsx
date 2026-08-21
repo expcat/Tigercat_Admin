@@ -45,6 +45,8 @@ import {
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const RegisterSuccessPage = lazy(() => import('./pages/RegisterSuccessPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -117,6 +119,10 @@ function getSafeReturnTo(value: unknown): string {
   }
 
   if (value.startsWith('//') || value === '/login' || value === '/register') {
+    return '/dashboard';
+  }
+
+  if (value === '/forgot-password' || value === '/register-success') {
     return '/dashboard';
   }
 
@@ -446,6 +452,22 @@ function App() {
           element={
             <GuestLayout>
               <RegisterPage />
+            </GuestLayout>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <GuestLayout>
+              <ForgotPasswordPage />
+            </GuestLayout>
+          }
+        />
+        <Route
+          path="/register-success"
+          element={
+            <GuestLayout>
+              <RegisterSuccessPage />
             </GuestLayout>
           }
         />

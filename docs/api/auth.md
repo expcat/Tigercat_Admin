@@ -10,7 +10,10 @@
 | `GET /api/health/redis` | 否 | 无 | 无 | `status`、`timestamp` | Redis 不可用返回 `503` |
 | `GET /api/info` | 否 | 无 | 无 | `name`、`version`、`description` | - |
 | `POST /api/auth/register` | 否 | 无 | `username`、`password` 必填 | `username` | `400` 用户名/密码为空或密码策略不满足；`409` 用户已存在；事件 `auth.user.registered` 到 `stream:auth` |
-| `POST /api/auth/login` | 否 | 无 | `username`、`password` 必填 | `token`、`expiresAt`、`username` | `401` 账号或密码错误；`429` 登录失败次数过多；事件 `auth.user.login` 到 `stream:auth` |
+| `POST /api/auth/login` | 否 | 无 | `username`、`password` 必填 | `token`、`expiresAt`、`username`；MockApi 的 `demo/demo` 分支返回 `requiresTwoFactor: true`、`username: 'demo'`（无 token）。仅 MockApi 演示契约，真实后端未变更 | `401` 账号或密码错误；`429` 登录失败次数过多；事件 `auth.user.login` 到 `stream:auth` |
+| `POST /api/auth/two-factor/verify` | 否 | 无 | `username`、`code` | `token`、`expiresAt`、`username`。仅 MockApi 演示契约，真实后端未变更 | `401` 验证码错误 |
+| `POST /api/auth/forgot-password/code` | 否 | 无 | `channel`（`email` / `phone`）、`target` | `sentTo`。仅 MockApi 演示契约，真实后端未变更 | `400` 请输入邮箱或手机号 |
+| `POST /api/auth/forgot-password` | 否 | 无 | `channel`、`target`、`code`、`password` | `message`。仅 MockApi 演示契约，真实后端未变更 | `400` 验证码错误或密码长度不足 |
 | `POST /api/auth/change-password` | 是 | 无 | `oldPassword`、`newPassword` 必填 | `message` | `400` 新密码不满足策略；`401` 未登录或旧密码错误；事件 `auth.user.password.changed` 到 `stream:auth` |
 | `POST /api/auth/logout` | 是 | 无 | 无 | `message` | 事件 `auth.user.logout` 到 `stream:auth` |
 | `GET /api/home` | 是 | 无 | 无 | 字符串 `"Hello world"` | 示例受保护接口 |

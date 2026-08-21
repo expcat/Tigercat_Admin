@@ -52,7 +52,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 - 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭；Esc 关闭为 Drawer 内置行为（经 `onClose/@close` 回调），不要再手动监听 keydown。依赖 `destroyOnClose + destroyOnCloseAfterLeave + onAfterLeave/@after-leave` 完成离场后卸载与焦点恢复。
 - Header：使用 `Header`、`Breadcrumb`、`Button`、`Dropdown`、`Avatar`、`Tag`，包含侧栏开关、面包屑、主题切换、修改密码和退出。
 - Content：`min-h-0 overflow-auto p-3 sm:p-4 md:p-6`，内部最大宽度 `max-w-7xl`。
-- 访客页：登录和注册使用居中 Guest shell，不进入后台布局；表单卡片用 `Card variant="transparent"`（v1.2.39+），不再用 `className` 手写透明/无边框/无阴影样式。由于 transparent 变体仍保留组件 size 内边距，Guest 页继续保留 `className="p-0"` / `class="p-0"`。
+- 访客页：登录、注册、忘记密码与注册成功使用居中 Guest shell，不进入后台布局；表单卡片用 `Card variant="transparent"`（v1.2.39+），不再用 `className` 手写透明/无边框/无阴影样式。由于 transparent 变体仍保留组件 size 内边距，Guest 页继续保留 `className="p-0"` / `class="p-0"`。
 
 路由与菜单（下表为本仓库示例；新项目按 [guide/new-project.md](guide/new-project.md) 复制结构、替换条目）：
 
@@ -70,6 +70,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 | `about` | `/about` | 关于 | 无入口权限 |
 | `profile` | `/profile` | 个人中心（头像下拉进入，不在左侧菜单） | 无入口权限 |
 | — | `/403` `/404` `/500` | 异常页（公共独立布局，不进菜单） | 无（独立兜底页） |
+| — | `/login` `/register` `/forgot-password` `/register-success` | 游客认证页（Guest shell，不进菜单） | 无（游客路由） |
 
 React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-router-dom` 管路由；Vue 通过 `vue-router`、`ProtectedShell`、`GuestShell` 与路由 meta `requiresPermission` 守卫管理。未知路径统一重定向 `/404`；已登录但缺少入口权限（`/users` 需 `user:view`、`/roles` 需 `role:view`）重定向 `/403`，权限加载完成前守卫保持加载态避免误判。刷新后都从 `SESSION_KEY` 读取会话并加载权限；MockApi 演示账号 `demo` 为只读权限（无 `user:view`/`role:view`），用于演示 403 场景。
 
@@ -112,6 +113,7 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 | 帮助中心 | `Anchor`/`AnchorLink`、`ScrollSpy`、`Affix`、`Collapse`/`CollapsePanel`、`Code`、`Link`、`List`、`InfiniteScroll`、`Card`、`BackTop`（全局） | 长文档章节锚点导航（`getContainer` 指向 `#main-content-scroll`）、横向滚动高亮、侧栏吸顶、FAQ 手风琴、可复制代码块、内联链接、更多文章无限加载、回到顶部 |
 | 报表打印 | `PrintLayout`/`PrintPageBreak`、`Watermark`、`Descriptions`、`Statistic`、`QRCode`、`Result`、`Segmented`、`Divider`、原生 `Table` | A4 打印布局、草稿水印、报表元信息、KPI 汇总、渠道明细、分页分隔、二维码校验、报表类型切换、`window.print()` 输出 |
 | 异常页 | `Result`、`Countdown`、`Button`、`Empty` | 403/404/500 独立居中布局、返回首页/上一页、404 倒计时自动回首页、无历史记录时 Empty 提示、无权限路由重定向 `/403` |
+| 登录流程增强 | `Steps`、`Input`、`InputGroup`、`NumberKeyboard`、`Countdown`、`Alert`、`Result`、`Button` | 忘记密码三步重置（验证身份 → 新密码 → 完成）、demo 账号两步验证 OTP（验证通过才写会话、60s 重发倒计时）、注册成功结果页与倒计时回登录 |
 | 关于 | `Alert`、`Card`、`Text`、`Tag` | 技术栈和版本信息 |
 
 重组件使用子路径导入，减少页面 chunk 压力：

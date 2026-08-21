@@ -8,12 +8,26 @@ import {
   Input,
   Message,
 } from '@expcat/tigercat-react';
+import { Alert } from '@expcat/tigercat-react/Alert';
+import { Countdown } from '@expcat/tigercat-react/Countdown';
+import { NumberKeyboard } from '@expcat/tigercat-react/NumberKeyboard';
 import { debounce, useAuthForm, apiRequest, type Session } from '../utils';
 import { LogoIcon } from '../components/Icons';
 
 interface LoginPageProps {
   onSuccess: (session: Session) => void;
 }
+
+interface LoginData {
+  requiresTwoFactor?: boolean;
+  token?: string;
+  username?: string;
+  expiresAt?: string;
+}
+
+const OTP_LENGTH = 6;
+const OTP_RESEND_MS = 60_000;
+const DEMO_OTP_CODE = '123456';
 
 function LoginPage({ onSuccess }: LoginPageProps) {
   const navigate = useNavigate();
@@ -22,21 +36,41 @@ function LoginPage({ onSuccess }: LoginPageProps) {
     password: '',
   });
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<'login' | 'otp'>('login');
+  const [otpUsername, setOtpUsername] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpDeadline, setOtpDeadline] = useState<number | null>(null);
+  const [otpCanResend, setOtpCanResend] = useState(false);
+
+  const startOtp = (username: string) => {
+    setOtpUsername(username);
+    setOtpCode('');
+    setOtpCanResend(false);
+    setOtpDeadline(Date.now() + OTP_RESEND_MS);
+    setStep('otp');
+  };
 
   const doLogin = useMemo(
     () =>
       debounce(async () => {
         try {
-          const payload = await apiRequest('/api/auth/login', {
+          const payload = await apiRequest<LoginData>('/api/auth/login', {
             method: 'POST',
             body: JSON.stringify(form),
           });
-          const nextSession: Session = {
-            token: payload?.data?.token,
-            username: payload?.data?.username,
-            expiresAt: payload?.data?.expiresAt,
-          };
-          onSuccess(nextSession);
+          const data = payload?.data;
+          if (data?.requiresTwoFactor) {
+            startOtp(data.username || form.username || '');
+            return;
+          }
+          if (!data?.token || !data.username || !data.expiresAt) {
+            throw new Error('API request failed');
+          }
+          onSuccess({
+            token: data.token,
+            username: data.username,
+            expiresAt: data.expiresAt,
+          });
         } catch (error: any) {
           Message.error({
             content: error.message,
@@ -49,15 +83,76 @@ function LoginPage({ onSuccess }: LoginPageProps) {
     [form, onSuccess],
   );
 
+  const doVerify = useMemo(
+    () =>
+      debounce(async () => {
+        try {
+          const payload = await apiRequest<Session>('/api/auth/two-factor/verify', {
+            method: 'POST',
+            body: JSON.stringify({ username: otpUsername, code: otpCode }),
+          });
+          const data = payload?.data;
+          if (!data?.token || !data.username || !data.expiresAt) {
+            throw new Error('API request failed');
+          }
+          onSuccess({
+            token: data.token,
+            username: data.username,
+            expiresAt: data.expiresAt,
+          });
+        } catch (error: any) {
+          Message.error({
+            content: error.message,
+            duration: 3000,
+          });
+        } finally {
+          setLoading(false);
+        }
+      }, 300),
+    [otpCode, otpUsername, onSuccess],
+  );
+
   const handleLogin = () => {
     if (!validateForm()) return;
     setLoading(true);
     doLogin();
   };
 
+  const handleVerify = () => {
+    if (otpCode.length !== OTP_LENGTH) {
+      Message.warning({ content: '请输入 6 位验证码', duration: 2000 });
+      return;
+    }
+    setLoading(true);
+    doVerify();
+  };
+
+  const handleResend = () => {
+    if (!otpCanResend) return;
+    setOtpCode('');
+    setOtpCanResend(false);
+    setOtpDeadline(Date.now() + OTP_RESEND_MS);
+    Message.success({ content: '已重新发送，演示验证码：' + DEMO_OTP_CODE, duration: 2000 });
+  };
+
+  const backToLogin = () => {
+    setStep('login');
+    setOtpCode('');
+    setOtpUsername('');
+    setOtpDeadline(null);
+    setOtpCanResend(false);
+    setLoading(false);
+  };
+
   const goToRegister = () => {
     navigate('/register');
   };
+
+  const goToForgotPassword = () => {
+    navigate('/forgot-password');
+  };
+
+  const otpDigits = Array.from({ length: OTP_LENGTH }, (_, i) => otpCode[i] ?? '');
 
   return (
     <div
@@ -107,62 +202,144 @@ function LoginPage({ onSuccess }: LoginPageProps) {
         </div>
       </div>
 
-      {/* Right side: login form */}
-      <div className="w-full md:w-[58%] p-8 md:p-10 flex flex-col justify-center">
+      {/* Right side: login / OTP form */}
+      <div className="w-full md:w-[58%] p-8 md:p-10 flex flex-col justify-center min-w-0">
         <div className="md:hidden flex items-center justify-center gap-3 mb-6">
           <LogoIcon size={48} className="shadow-md rounded-xl" />
           <h2 className="p2-text-primary text-xl font-bold">Tigercat Admin</h2>
         </div>
-        
-        <div className="mb-6 text-center md:text-left">
-          <h1 className="p2-text-primary text-2xl font-bold tracking-tight">欢迎回来</h1>
-          <p className="p2-text-secondary text-sm mt-1">请输入您的凭据登录系统</p>
-        </div>
 
-        <Card variant="transparent" className="p-0">
-          <Form model={form as unknown as Record<string, unknown>} labelWidth={88}>
-            <FormItem name="username" label="用户名">
-              <Input
-                value={form.username || ''}
-                placeholder="请输入用户名"
-                onChange={(value) => setField('username', value)}
-                status={errors?.username ? 'error' : undefined}
-                errorMessage={errors?.username}
-              />
-            </FormItem>
-            <FormItem name="password" label="密码">
-              <Input
-                value={form.password || ''}
-                type="password"
-                placeholder="请输入密码"
-                onChange={(value) => setField('password', value)}
-                status={errors?.password ? 'error' : undefined}
-                errorMessage={errors?.password}
-              />
-            </FormItem>
-            <div className="mt-8 flex flex-col gap-3">
-              <Button
-                variant="primary"
-                block
-                loading={loading}
-                htmlType="button"
-                onClick={handleLogin}
-              >
-                登录
-              </Button>
-              <div className="p2-text-secondary text-center text-sm">
-                还没有账号？
-                <button
-                  type="button"
-                  className="font-medium text-[var(--tiger-primary,#3b82f6)] hover:underline"
-                  onClick={goToRegister}
-                >
-                  立即注册
-                </button>
-              </div>
+        {step === 'login' ? (
+          <>
+            <div className="mb-6 text-center md:text-left">
+              <h1 className="p2-text-primary text-2xl font-bold tracking-tight">欢迎回来</h1>
+              <p className="p2-text-secondary text-sm mt-1">请输入您的凭据登录系统</p>
             </div>
-          </Form>
-        </Card>
+
+            <Card variant="transparent" className="p-0">
+              <Form model={form as unknown as Record<string, unknown>} labelWidth={88}>
+                <FormItem name="username" label="用户名">
+                  <Input
+                    value={form.username || ''}
+                    placeholder="请输入用户名"
+                    onChange={(value) => setField('username', value)}
+                    status={errors?.username ? 'error' : undefined}
+                    errorMessage={errors?.username}
+                  />
+                </FormItem>
+                <FormItem name="password" label="密码">
+                  <Input
+                    value={form.password || ''}
+                    type="password"
+                    placeholder="请输入密码"
+                    onChange={(value) => setField('password', value)}
+                    status={errors?.password ? 'error' : undefined}
+                    errorMessage={errors?.password}
+                  />
+                </FormItem>
+                <div className="mt-2 mb-2 text-right">
+                  <button
+                    type="button"
+                    className="text-sm font-medium text-[var(--tiger-primary,#3b82f6)] hover:underline"
+                    onClick={goToForgotPassword}
+                  >
+                    忘记密码？
+                  </button>
+                </div>
+                <div className="mt-6 flex flex-col gap-3">
+                  <Button
+                    variant="primary"
+                    block
+                    loading={loading}
+                    htmlType="button"
+                    onClick={handleLogin}
+                  >
+                    登录
+                  </Button>
+                  <div className="p2-text-secondary text-center text-sm">
+                    还没有账号？
+                    <button
+                      type="button"
+                      className="font-medium text-[var(--tiger-primary,#3b82f6)] hover:underline"
+                      onClick={goToRegister}
+                    >
+                      立即注册
+                    </button>
+                  </div>
+                </div>
+              </Form>
+            </Card>
+          </>
+        ) : (
+          <>
+            <div className="mb-6 text-center md:text-left">
+              <h1 className="p2-text-primary text-2xl font-bold tracking-tight">两步验证</h1>
+              <p className="p2-text-secondary text-sm mt-1">
+                请输入账号 {otpUsername} 的 6 位验证码
+              </p>
+            </div>
+
+            <Card variant="transparent" className="p-0">
+              <div className="space-y-4 min-w-0">
+                <Alert type="info" title="演示验证码：123456" showIcon />
+                <div className="flex justify-center gap-1.5 sm:gap-2" aria-label="验证码">
+                  {otpDigits.map((digit, index) => (
+                    <span
+                      key={index}
+                      className="flex h-11 w-9 sm:h-12 sm:w-10 items-center justify-center rounded-lg border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-page,#f8fafc) dark:border-slate-700 dark:bg-slate-800 p2-text-primary text-lg font-semibold"
+                    >
+                      {digit || '·'}
+                    </span>
+                  ))}
+                </div>
+                <NumberKeyboard
+                  value={otpCode}
+                  mode="number"
+                  maxLength={OTP_LENGTH}
+                  onChange={(value) => setOtpCode(value)}
+                />
+                <div className="flex items-center justify-center min-h-8">
+                  {otpDeadline && !otpCanResend ? (
+                    <Countdown
+                      value={otpDeadline}
+                      format="s"
+                      suffix="秒后可重发"
+                      title="验证码已发送"
+                      onFinish={() => setOtpCanResend(true)}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-[var(--tiger-primary,#3b82f6)] hover:underline"
+                      onClick={handleResend}
+                    >
+                      重新发送验证码
+                    </button>
+                  )}
+                </div>
+                <Button
+                  variant="primary"
+                  block
+                  loading={loading}
+                  disabled={otpCode.length !== OTP_LENGTH}
+                  htmlType="button"
+                  onClick={handleVerify}
+                >
+                  验证
+                </Button>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    className="text-sm p2-text-secondary hover:underline"
+                    onClick={backToLogin}
+                  >
+                    返回登录
+                  </button>
+                </div>
+              </div>
+            </Card>
+          </>
+        )}
       </div>
     </div>
   );

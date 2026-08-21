@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onBeforeUnmount } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, Card, Form, FormItem, Input, Message } from '@expcat/tigercat-vue'
 import { debounce, useAuthForm, apiRequest } from '../utils'
@@ -13,19 +13,6 @@ const router = useRouter()
 
 const { form, errors, setField, validateForm } = useAuthForm({ username: '', password: '' })
 const loading = ref(false)
-const registerNoticeDuration = 3
-const registerRedirectTimer = ref<number | null>(null)
-
-const clearRegisterRedirectTimer = () => {
-  if (registerRedirectTimer.value) {
-    window.clearTimeout(registerRedirectTimer.value)
-    registerRedirectTimer.value = null
-  }
-}
-
-onBeforeUnmount(() => {
-  clearRegisterRedirectTimer()
-})
 
 const doRegister = debounce(async () => {
   try {
@@ -33,22 +20,14 @@ const doRegister = debounce(async () => {
       method: 'POST',
       body: JSON.stringify(form.value),
     })
-    const message = `用户 ${payload?.data?.username || form.value.username} 注册成功，${registerNoticeDuration} 秒后跳转登录`
-    clearRegisterRedirectTimer()
-    
-    Message.success({
-      content: message,
-      duration: registerNoticeDuration * 1000
-    })
-
-    registerRedirectTimer.value = window.setTimeout(() => {
-      router.push({ name: 'login' })
-    }, registerNoticeDuration * 1000)
+    if (!payload?.data) {
+      throw new Error('API request failed')
+    }
+    router.push({ name: 'register-success' })
   } catch (error: any) {
-    clearRegisterRedirectTimer()
     Message.error({
       content: error.message,
-      duration: registerNoticeDuration * 1000
+      duration: 3000
     })
   } finally {
     loading.value = false

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -18,47 +18,20 @@ function RegisterPage() {
     password: '',
   });
   const [loading, setLoading] = useState(false);
-  const registerNoticeDuration = 3;
-  const registerRedirectTimerRef = useRef<number | null>(null);
-
-  const clearRegisterRedirectTimer = () => {
-    if (registerRedirectTimerRef.current) {
-      window.clearTimeout(registerRedirectTimerRef.current);
-      registerRedirectTimerRef.current = null;
-    }
-  };
-
-  useEffect(
-    () => () => {
-      clearRegisterRedirectTimer();
-    },
-    [],
-  );
 
   const doRegister = useMemo(
     () =>
       debounce(async () => {
         try {
-          const payload = await apiRequest('/api/auth/register', {
+          await apiRequest('/api/auth/register', {
             method: 'POST',
             body: JSON.stringify(form),
           });
-          const message = `用户 ${payload?.data?.username || form.username} 注册成功，${registerNoticeDuration} 秒后跳转登录`;
-
-          Message.success({
-            content: message,
-            duration: registerNoticeDuration * 1000,
-          });
-
-          clearRegisterRedirectTimer();
-          registerRedirectTimerRef.current = window.setTimeout(() => {
-            navigate('/login');
-          }, registerNoticeDuration * 1000);
+          navigate('/register-success');
         } catch (error: any) {
-          clearRegisterRedirectTimer();
           Message.error({
             content: error.message,
-            duration: registerNoticeDuration * 1000,
+            duration: 3000,
           });
         } finally {
           setLoading(false);

@@ -546,7 +546,10 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   if (path === '/api/auth/login' && method === 'POST') {
     const username = String(body.username ?? 'admin');
     const password = String(body.password ?? '');
-    if (!['admin', 'demo'].includes(username) || !['admin123', 'demo'].includes(password)) {
+    if (username === 'demo' && password === 'demo') {
+      return makeJson({ requiresTwoFactor: true, username: 'demo' });
+    }
+    if (username !== 'admin' || password !== 'admin123') {
       return makeError('账号或密码错误', 401);
     }
     return makeJson({
@@ -554,6 +557,33 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
       username,
       expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
     });
+  }
+
+  if (path === '/api/auth/two-factor/verify' && method === 'POST') {
+    const username = String(body.username ?? '');
+    const code = String(body.code ?? '');
+    if (username !== 'demo' || code !== '123456') {
+      return makeError('验证码错误', 401);
+    }
+    return makeJson({
+      token: `${DEMO_TOKEN}:demo`,
+      username: 'demo',
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+    });
+  }
+
+  if (path === '/api/auth/forgot-password/code' && method === 'POST') {
+    const target = String(body.target ?? '').trim();
+    if (!target) return makeError('请输入邮箱或手机号', 400);
+    return makeJson({ sentTo: target });
+  }
+
+  if (path === '/api/auth/forgot-password' && method === 'POST') {
+    const code = String(body.code ?? '');
+    const password = String(body.password ?? '');
+    if (code !== '123456') return makeError('验证码错误', 400);
+    if (password.length < 6) return makeError('密码长度不能少于 6 位', 400);
+    return makeJson({ message: '密码重置成功' });
   }
 
   if (path === '/api/auth/register' && method === 'POST') {

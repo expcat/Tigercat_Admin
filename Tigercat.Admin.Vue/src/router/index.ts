@@ -41,6 +41,30 @@ const router = createRouter({
       ],
     },
     {
+      path: '/forgot-password',
+      component: () => import('../components/GuestShell.vue'),
+      meta: { requiresGuest: true },
+      children: [
+        {
+          path: '',
+          name: 'forgot-password',
+          component: () => import('../pages/ForgotPasswordPage.vue'),
+        },
+      ],
+    },
+    {
+      path: '/register-success',
+      component: () => import('../components/GuestShell.vue'),
+      meta: { requiresGuest: true },
+      children: [
+        {
+          path: '',
+          name: 'register-success',
+          component: () => import('../pages/RegisterSuccessPage.vue'),
+        },
+      ],
+    },
+    {
       path: '/',
       component: () => import('../components/ProtectedShell.vue'),
       meta: { requiresAuth: true },

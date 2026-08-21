@@ -135,4 +135,25 @@
 
 ---
 
+## 阶段 7 — 登录流程增强（忘记密码 / 两步验证 / 注册成功）
+
+### 人工核验（自动化 e2e 未覆盖）
+
+- [ ] **移动端 375px**：两步验证 OTP 数字格与 `NumberKeyboard` 按键区、忘记密码三步表单（含 `InputGroup` 验证码 + 获取按钮 60s 倒计时）、注册成功 `Result` 在窄屏堆叠不溢出、不横向滚动。
+- [ ] **暗色模式（`.dark`）**：OTP 数字格边框/背景、`Alert` 提示条、`Countdown` 数字、`Steps` 连接线、`Result` 状态图标配色在暗色下可读、对比度足够。
+- [ ] **键盘路径**：`NumberKeyboard` 按键 Tab 可达、Enter 触发；OTP 长度校验与 60s 重发按钮恢复；忘记密码 Steps 上一步/下一步键盘可达。
+- [ ] **api 模式复核**：真实后端无 2FA/forgot 端点，`demo` 账号登录走原直通流程；建议在 api 模式人工登录一次确认游客路由（`/forgot-password`、`/register-success`）在真实后端下正常渲染。
+
+### 说明
+
+- **两步验证仅 MockApi 演示**：`demo`/`demo` 在静态演示模式返回 `requiresTwoFactor`，验证码固定 `123456`；真实 .NET 后端未加对应端点（Roadmap 约束 2，契约见 [api/auth.md](api/auth.md) 的 MockApi 标注）。
+- **忘记密码不真正改密**：Mock 契约只校验验证码与密码长度并返回成功，不落库；表单行为是演示目的。
+
+### 阶段内已处理
+
+- **双端文案与交互对齐**：忘记密码第二步按钮统一为「重置密码」，新密码占位符统一为「请输入新密码 / 请再次输入新密码」；OTP 不足 6 位时「验证」按钮双端统一禁用，重发按钮文案统一为「重新发送验证码」，一套 e2e 用例双端复用。
+- **主 e2e 套件排除 hash 用例**：`playwright.config.ts` 的 `testIgnore` 补齐阶段 6 遗留缺口（`exception-routes`）并加入 `auth-flows`，这两类 hash 路由 + MockApi 用例只在 demo 配置运行。
+
+---
+
 *后续阶段（v2 阶段 6–10，见 [Roadmap.md](../Roadmap.md)）的推迟项请按相同结构追加到本文。*

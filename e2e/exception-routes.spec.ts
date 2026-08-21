@@ -17,6 +17,14 @@ async function login(page: Page, account: 'admin' | 'demo') {
   await page.getByPlaceholder('请输入用户名').fill(account);
   await page.getByPlaceholder('请输入密码').fill(account === 'admin' ? 'admin123' : 'demo');
   await page.getByRole('button', { name: '登录' }).click();
+  if (account === 'demo') {
+    // demo 账号开启两步验证：输入 6 位演示验证码后才会进入会话。
+    await expect(page.getByRole('heading', { name: '两步验证' })).toBeVisible();
+    for (const digit of ['1', '2', '3', '4', '5', '6']) {
+      await page.locator(`[data-key="${digit}"]`).click();
+    }
+    await page.getByRole('button', { name: '验证', exact: true }).click();
+  }
   await expect(page).toHaveURL(/#\/dashboard$/);
 }
 
