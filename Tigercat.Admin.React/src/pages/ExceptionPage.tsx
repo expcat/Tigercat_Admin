@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useNavigationType } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@expcat/tigercat-react';
 import { Result } from '@expcat/tigercat-react/Result';
 import { Countdown } from '@expcat/tigercat-react/Countdown';
@@ -34,12 +34,13 @@ const EXCEPTION_META: Record<
 
 export default function ExceptionPage({ status }: ExceptionPageProps) {
   const navigate = useNavigate();
-  const navigationType = useNavigationType();
   const meta = EXCEPTION_META[status];
   // 进入页面时仅初始化一次倒计时目标
   const countdownTarget = useMemo(() => Date.now() + 5000, []);
   const [autoJumpEnabled, setAutoJumpEnabled] = useState(status === 404);
-  const canGoBack = navigationType === 'PUSH';
+  // React Router 把 idx 写进 history.state；未知路径走 Navigate replace 时
+  // navigationType 是 REPLACE，但上一页仍在栈里，idx > 0 才能返回。
+  const canGoBack = Number(window.history.state?.idx) > 0;
 
   const goBack = () => {
     setAutoJumpEnabled(false);

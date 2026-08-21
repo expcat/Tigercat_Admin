@@ -30,6 +30,7 @@ test.describe('异常页与路由健壮性', () => {
     // 用角色定位，避免与倒计时标题「即将自动返回首页」产生文本包含歧义。
     await expect(page.getByRole('button', { name: '返回首页' })).toBeVisible();
     await expect(page.getByRole('button', { name: '返回上一页' })).toBeVisible();
+    await expect(page.getByText('没有可返回的历史记录')).toHaveCount(0);
 
     // Countdown 自动跳转（5 秒），给足余量。
     await expect(page).toHaveURL(/#\/dashboard$/, { timeout: 12_000 });

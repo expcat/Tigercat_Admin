@@ -573,12 +573,16 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
           : (init.headers as Record<string, string> | undefined)?.Authorization);
     const token = String(authHeader ?? '').replace(/^Bearer\s+/i, '');
     const username = token.startsWith(`${DEMO_TOKEN}:`)
-      ? token.slice(DEMO_TOKEN.length + 1) || 'admin'
-      : 'admin';
+      ? token.slice(DEMO_TOKEN.length + 1)
+      : token === DEMO_TOKEN
+        ? 'admin'
+        : '';
     const accountPermissions =
       username === 'demo'
         ? permissions.filter((item) => DEMO_ACCOUNT_PERMISSIONS.includes(item.code))
-        : permissions;
+        : username === 'admin'
+          ? permissions
+          : [];
     return makeJson({ username, permissions: accountPermissions });
   }
 

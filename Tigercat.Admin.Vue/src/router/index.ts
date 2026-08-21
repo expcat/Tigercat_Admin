@@ -199,7 +199,13 @@ router.beforeEach(async (to, _from, next) => {
       await permission.load(session.token);
     }
     if (!permission.loaded.value) {
-      next(false);
+      // 权限接口失败时不要取消首次导航（会留下空白页）；
+      // 已有来源页则留在原地，直开受限路由则退回首页。
+      if (_from.matched.length === 0) {
+        next({ name: 'dashboard' });
+      } else {
+        next(false);
+      }
       return;
     }
     if (!permission.has(requiresPermission)) {

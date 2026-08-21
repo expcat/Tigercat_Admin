@@ -129,6 +129,8 @@
 - **权限加载失败不再误判 403**：React `PermissionRoute` 与 Vue `requiresPermission` 守卫在权限尚未 `loaded` 时保持加载/取消导航，而不是当成无权限。
 - **MockApi 权限按会话 token 解析用户名**：演示 token 形如 `demo-static-token:<username>`，避免多标签页共享 sessionStorage 时串权限。
 - **返回上一页不再依赖 `window.history.length`**：React 用 `useNavigationType() === 'PUSH'`，Vue 用 `history.state.back`；直开标签页才显示 Empty。
+- **返回上一页与 catch-all replace 对齐**：React 改为读 `history.state.idx > 0`（未知路径 `Navigate replace` 的 navigationType 是 REPLACE，但上一页仍在栈里）；Vue 继续用 `history.state.back`。
+- **权限加载失败**：Vue 直开受限路由且权限接口失败时改回首页，避免 `next(false)` 取消首次导航留下空白页。
 - **`/files`（`media:view`）未做路由级 403**：Roadmap 阶段 6 示例只要求 `/users`/`roles`；菜单仍按权限隐藏，直访仍进页面。如需全菜单入口权限都走 403，放到后续阶段统一铺开。
 
 ---
