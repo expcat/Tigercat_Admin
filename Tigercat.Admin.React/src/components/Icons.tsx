@@ -230,6 +230,14 @@ export const XIcon = (props: IconProps) => (
   </IconBase>
 );
 
+export const MoreHorizontalIcon = (props: IconProps) => (
+  <IconBase {...props}>
+    <circle cx="12" cy="12" r="1" />
+    <circle cx="19" cy="12" r="1" />
+    <circle cx="5" cy="12" r="1" />
+  </IconBase>
+);
+
 export const LinkIcon = (props: IconProps) => (
   <IconBase {...props}>
     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />

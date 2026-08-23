@@ -28,6 +28,12 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { GuestRoute } from './components/GuestRoute';
 import { PermissionRoute } from './components/PermissionRoute';
 import {
+  SHELL_MENU_ROUTES,
+  SHELL_ROUTE_TO_MENU,
+  isShellPageKey,
+  type ShellPageKey,
+} from './utils/shell-navigation';
+import {
   SESSION_KEY,
   safeParse,
   apiRequest,
@@ -68,35 +74,9 @@ const AuditLogsPage = lazy(() => import('./pages/AuditLogsPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ExceptionPage = lazy(() => import('./pages/ExceptionPage'));
 
-const MENU_ROUTES = {
-  home: '/dashboard',
-  analytics: '/analytics',
-  tickets: '/tickets',
-  calendar: '/calendar',
-  content: '/content',
-  gallery: '/gallery',
-  jobs: '/jobs',
-  import: '/import',
-  help: '/help',
-  reports: '/reports',
-  profile: '/profile',
-  users: '/users',
-  roles: '/roles',
-  settings: '/settings',
-  files: '/files',
-  notifications: '/notifications',
-  tasks: '/tasks',
-  audit: '/audit-logs',
-  about: '/about',
-} as const;
-
-type MenuKey = keyof typeof MENU_ROUTES;
+type MenuKey = ShellPageKey;
 
 const DEFAULT_MENU: MenuKey = 'home';
-
-const PATH_TO_MENU = Object.fromEntries(
-  Object.entries(MENU_ROUTES).map(([key, value]) => [value, key as MenuKey]),
-) as Record<string, MenuKey | undefined>;
 
 type ChangePasswordForm = { oldPassword: string; newPassword: string };
 type ChangePasswordField = keyof ChangePasswordForm;
@@ -159,7 +139,7 @@ interface ProtectedLayoutProps {
   onToggleTheme: () => void;
   onProfile: () => void;
   compactMode: boolean;
-  onNavigate: (key: MenuKey) => void;
+  onNavigate: (key: string) => void;
   changeOpen: boolean;
   changeForm: ChangePasswordForm;
   onChangeField: (field: ChangePasswordField, value: string) => void;
@@ -195,7 +175,7 @@ function ProtectedLayout({
       onToggleTheme={onToggleTheme}
       onProfile={onProfile}
       activeMenu={activeMenu}
-      onNavigate={onNavigate as (key: string) => void}>
+      onNavigate={onNavigate}>
       <Suspense fallback={<PageLoader />}>
         <Outlet context={homeContext} />
       </Suspense>
@@ -410,7 +390,7 @@ function App() {
   };
 
   const activeMenu = useMemo(
-    () => PATH_TO_MENU[location.pathname] ?? DEFAULT_MENU,
+    () => SHELL_ROUTE_TO_MENU[location.pathname] ?? DEFAULT_MENU,
     [location.pathname],
   );
   const homeContext = useMemo(
@@ -423,9 +403,11 @@ function App() {
     [notice, homeMessage, homeError, session?.username],
   );
   const handleNavigate = useCallback(
-    (key: MenuKey) => {
-      const nextPath = MENU_ROUTES[key];
-      navigate(nextPath);
+    (key: string) => {
+      if (!isShellPageKey(key)) {
+        return;
+      }
+      navigate(SHELL_MENU_ROUTES[key]);
     },
     [navigate],
   );

@@ -258,6 +258,13 @@ export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> = {
   profile: 'profile',
 };
 
+export function isShellPageKey(value: unknown): value is ShellPageKey {
+  return (
+    typeof value === 'string' &&
+    Object.prototype.hasOwnProperty.call(SHELL_MENU_ROUTES, value)
+  );
+}
+
 function isShellMenuItemPermitted(
   item: ShellMenuItemDef,
   hasPermission: (permission: string) => boolean,

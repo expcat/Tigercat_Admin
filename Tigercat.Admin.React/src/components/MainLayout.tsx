@@ -10,7 +10,11 @@ import type { ThemeMode } from '../utils/types';
 import {
   getShellBreadcrumbItems,
   getShellPageTitle,
+  isShellPageKey,
+  type ShellPageKey,
 } from '../utils/shell-navigation';
+import { useTagsView } from '../utils/tags-view';
+import { TagsView } from './TagsView';
 
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)';
 const DEMO_MODE = import.meta.env.VITE_TIGERCAT_DEMO === 'true';
@@ -48,6 +52,10 @@ export function MainLayout({
     activeMenu ?? 'home',
   );
   const currentActiveMenu = activeMenu ?? internalActiveMenu;
+  const currentPageKey: ShellPageKey = isShellPageKey(currentActiveMenu)
+    ? currentActiveMenu
+    : 'home';
+  const tagsView = useTagsView(currentPageKey, onNavigate);
 
   useEffect(() => {
     if (activeMenu) {
@@ -170,6 +178,16 @@ export function MainLayout({
           onProfile={onProfile}
           onToggleSidebar={handleSidebarToggle}
           demoMode={DEMO_MODE}
+        />
+
+        <TagsView
+          keys={tagsView.keys}
+          activeKey={currentPageKey}
+          onSelect={tagsView.selectTab}
+          onClose={tagsView.closeTab}
+          onCloseCurrent={tagsView.closeCurrent}
+          onCloseOthers={tagsView.closeOthers}
+          onCloseAll={tagsView.closeAll}
         />
 
         {/* Content */}

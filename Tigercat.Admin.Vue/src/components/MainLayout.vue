@@ -14,8 +14,11 @@ import {
   SHELL_MENU_ROUTES,
   SHELL_ROUTE_TO_MENU,
   getShellPageTitle,
+  isShellPageKey,
   type ShellPageKey
 } from '../utils/shell-navigation'
+import { useTagsView } from '../utils/tags-view'
+import TagsView from './TagsView.vue'
 
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)'
 const DEMO_MODE = import.meta.env.VITE_TIGERCAT_DEMO === 'true'
@@ -49,19 +52,34 @@ const activeMenu = ref<ShellPageKey>('home')
 const pageTitle = computed(() => getShellPageTitle(activeMenu.value))
 const breadcrumbItems = computed(() => getShellBreadcrumbItems(activeMenu.value))
 
-const handleMenuSelect = (key: string) => {
-  const menuKey = key as ShellPageKey
-  const routeName = SHELL_MENU_ROUTES[menuKey]
+const navigateToPage = (key: ShellPageKey) => {
+  const routeName = SHELL_MENU_ROUTES[key]
   if (!routeName) {
     return
   }
 
-  activeMenu.value = menuKey
+  activeMenu.value = key
   if (isMobile.value) {
     handleSidebarClose()
   }
   router.push({ name: routeName })
 }
+
+const handleMenuSelect = (key: string) => {
+  if (!isShellPageKey(key)) {
+    return
+  }
+  navigateToPage(key)
+}
+
+const {
+  keys: tagKeys,
+  selectTab,
+  closeTab,
+  closeCurrent,
+  closeOthers,
+  closeAll,
+} = useTagsView(activeMenu, navigateToPage)
 
 const handleSidebarToggle = () => {
   if (isMobile.value) {
@@ -193,6 +211,16 @@ watch(
         @toggle-theme="$emit('toggle-theme')"
         @toggle-sidebar="handleSidebarToggle"
         @profile="router.push({ name: 'profile' })"
+      />
+
+      <TagsView
+        :keys="tagKeys"
+        :active-key="activeMenu"
+        @select="selectTab"
+        @close="closeTab"
+        @close-current="closeCurrent"
+        @close-others="closeOthers"
+        @close-all="closeAll"
       />
 
       <!-- Content -->

@@ -220,6 +220,43 @@ export const SHELL_HIDDEN_MENU_ITEMS: ShellMenuItemDef[] = [
   pageMenuItems.profile,
 ];
 
+export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
+  home: '/dashboard',
+  analytics: '/analytics',
+  tickets: '/tickets',
+  calendar: '/calendar',
+  content: '/content',
+  gallery: '/gallery',
+  jobs: '/jobs',
+  import: '/import',
+  help: '/help',
+  reports: '/reports',
+  users: '/users',
+  roles: '/roles',
+  settings: '/settings',
+  files: '/files',
+  notifications: '/notifications',
+  tasks: '/tasks',
+  audit: '/audit-logs',
+  about: '/about',
+  profile: '/profile',
+};
+
+export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> =
+  Object.fromEntries(
+    Object.entries(SHELL_MENU_ROUTES).map(([key, path]) => [
+      path,
+      key as ShellPageKey,
+    ]),
+  ) as Record<string, ShellPageKey | undefined>;
+
+export function isShellPageKey(value: unknown): value is ShellPageKey {
+  return (
+    typeof value === 'string' &&
+    Object.prototype.hasOwnProperty.call(SHELL_MENU_ROUTES, value)
+  );
+}
+
 function isShellMenuItemPermitted(
   item: ShellMenuItemDef,
   hasPermission: (permission: string) => boolean,
