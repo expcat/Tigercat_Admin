@@ -12,6 +12,7 @@ import {
   ImageIcon,
   InfoIcon,
   MessageIcon,
+  MonitorIcon,
   PaletteIcon,
   ServerIcon,
   SettingsIcon,
@@ -27,6 +28,7 @@ import {
 export type ShellPageKey =
   | 'home'
   | 'analytics'
+  | 'monitor'
   | 'tickets'
   | 'calendar'
   | 'content'
@@ -72,6 +74,11 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     key: 'analytics',
     label: '数据分析看板',
     icon: <TrendingUpIcon size={18} />,
+  },
+  monitor: {
+    key: 'monitor',
+    label: '实时监控',
+    icon: <MonitorIcon size={18} />,
   },
   tickets: {
     key: 'tickets',
@@ -169,7 +176,7 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
     key: 'analyticsGroup',
     label: '数据分析',
     icon: <TrendingUpIcon size={20} />,
-    children: [pageMenuItems.analytics],
+    children: [pageMenuItems.analytics, pageMenuItems.monitor],
   },
   {
     key: 'collaborationGroup',
@@ -223,6 +230,7 @@ export const SHELL_HIDDEN_MENU_ITEMS: ShellMenuItemDef[] = [
 export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   home: '/dashboard',
   analytics: '/analytics',
+  monitor: '/monitor',
   tickets: '/tickets',
   calendar: '/calendar',
   content: '/content',

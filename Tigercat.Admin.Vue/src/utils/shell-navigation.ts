@@ -1,6 +1,7 @@
 export type ShellPageKey =
   | 'home'
   | 'analytics'
+  | 'monitor'
   | 'tickets'
   | 'calendar'
   | 'content'
@@ -49,6 +50,12 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     label: '数据分析看板',
     icon: 'trendingUp',
     routeName: 'analytics',
+  },
+  monitor: {
+    key: 'monitor',
+    label: '实时监控',
+    icon: 'monitor',
+    routeName: 'monitor',
   },
   tickets: {
     key: 'tickets',
@@ -163,7 +170,7 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
     key: 'analyticsGroup',
     label: '数据分析',
     icon: 'trendingUp',
-    children: [pageMenuItems.analytics],
+    children: [pageMenuItems.analytics, pageMenuItems.monitor],
   },
   {
     key: 'collaborationGroup',
@@ -217,6 +224,7 @@ export const SHELL_HIDDEN_MENU_ITEMS: ShellMenuItemDef[] = [
 export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   home: 'dashboard',
   analytics: 'analytics',
+  monitor: 'monitor',
   tickets: 'tickets',
   calendar: 'calendar',
   content: 'content',
@@ -239,6 +247,7 @@ export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
 export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> = {
   dashboard: 'home',
   analytics: 'analytics',
+  monitor: 'monitor',
   tickets: 'tickets',
   calendar: 'calendar',
   content: 'content',

@@ -55,6 +55,7 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const RegisterSuccessPage = lazy(() => import('./pages/RegisterSuccessPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
+const MonitorPage = lazy(() => import('./pages/MonitorPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const TicketsPage = lazy(() => import('./pages/TicketsPage'));
 const CalendarPage = lazy(() => import('./pages/CalendarPage'));
@@ -484,6 +485,7 @@ function App() {
           }>
           <Route path="/dashboard" element={<HomePage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/monitor" element={<MonitorPage />} />
           <Route path="/tickets" element={<TicketsPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/content" element={<ContentPage />} />

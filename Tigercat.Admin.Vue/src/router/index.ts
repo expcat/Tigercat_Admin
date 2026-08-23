@@ -84,6 +84,11 @@ const router = createRouter({
           component: () => import('../pages/AnalyticsPage.vue'),
         },
         {
+          path: 'monitor',
+          name: 'monitor',
+          component: () => import('../pages/MonitorPage.vue'),
+        },
+        {
           path: 'profile',
           name: 'profile',
           component: () => import('../pages/ProfilePage.vue'),

@@ -331,3 +331,37 @@ test.describe('阶段 5 — 帮助与报表', () => {
     await expect(page.getByText('2026-06-25 ~ 2026-07-01').first()).toBeVisible();
   });
 });
+
+test.describe('阶段 9 — 实时监控', () => {
+  test('实时监控页加载并可暂停或切换刷新间隔', async ({ page }) => {
+    const consoleErrors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+
+    await login(page);
+
+    await page.goto('/#/monitor');
+    await expect(page.getByText('实时监控').first()).toBeVisible();
+    await expect(page.getByText('CPU 水位').first()).toBeVisible();
+    await expect(page.getByText('内存 水位').first()).toBeVisible();
+    await expect(page.getByText('磁盘 水位').first()).toBeVisible();
+    await expect(page.getByText('QPS', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('实时事件').first()).toBeVisible();
+    await expect(page.getByText('刷新中').first()).toBeVisible();
+
+    await page.getByText('2 秒', { exact: true }).click();
+    await expect(page).toHaveURL(/#\/monitor$/);
+    await expect(page.getByText('CPU 水位').first()).toBeVisible();
+
+    await page.getByRole('button', { name: '暂停' }).click();
+    await expect(page.getByRole('button', { name: '继续' })).toBeVisible();
+    await expect(page.getByText('已暂停').first()).toBeVisible();
+
+    await page.getByRole('button', { name: '继续' }).click();
+    await expect(page.getByRole('button', { name: '暂停' })).toBeVisible();
+    await expect(page.getByText('刷新中').first()).toBeVisible();
+
+    expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
+  });
+});
