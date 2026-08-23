@@ -2,20 +2,33 @@
 import { ref, watch, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Layout, Content, Drawer } from '@expcat/tigercat-vue'
+import { Watermark } from '@expcat/tigercat-vue/Watermark'
 import MainHeader from './MainHeader.vue'
 import MainSidebar from './MainSidebar.vue'
 import CommandPalette from './CommandPalette.vue'
 import ChatDock from './ChatDock.vue'
 import ShellQuickActions from './ShellQuickActions.vue'
 import OnboardingTour from './OnboardingTour.vue'
-import type { ThemeMode } from '../utils/types'
+import type { ThemePreferences } from '../utils/types'
+import {
+  getWatermarkContent,
+  SHELL_WATERMARK_CLASS,
+  SHELL_WATERMARK_OVERLAY_CLASS,
+  SHELL_WATERMARK_PANE_CLASS,
+  useWatermarkEnabled,
+} from '../utils/watermark'
 import {
   getShellBreadcrumbItems,
   SHELL_MENU_ROUTES,
-  SHELL_ROUTE_TO_MENU,
   getShellPageTitle,
+  isShellPageKey,
+  resolveShellPageKey,
   type ShellPageKey
 } from '../utils/shell-navigation'
+import { useTagsView } from '../utils/tags-view'
+import { useLockScreen } from '../utils/lock-screen'
+import TagsView from './TagsView.vue'
+import LockScreen from './LockScreen.vue'
 
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)'
 const DEMO_MODE = import.meta.env.VITE_TIGERCAT_DEMO === 'true'
@@ -26,20 +39,20 @@ interface Session {
 
 const props = defineProps<{
   session: Session | null
-  themeMode: ThemeMode
-  compactMode?: boolean
+  themePrefs: ThemePreferences
 }>()
 
 defineEmits<{
   (e: 'logout'): void
   (e: 'change-password'): void
   (e: 'toggle-theme'): void
+  (e: 'update-theme', prefs: ThemePreferences): void
 }>()
 
 const route = useRoute()
 const router = useRouter()
 
-const collapsed = ref(props.compactMode ?? false)
+const collapsed = ref(props.themePrefs.compactMode)
 const isMobile = ref(false)
 const sidebarOpen = ref(false)
 const chatOpen = ref(false)
@@ -49,19 +62,38 @@ const activeMenu = ref<ShellPageKey>('home')
 const pageTitle = computed(() => getShellPageTitle(activeMenu.value))
 const breadcrumbItems = computed(() => getShellBreadcrumbItems(activeMenu.value))
 
-const handleMenuSelect = (key: string) => {
-  const menuKey = key as ShellPageKey
-  const routeName = SHELL_MENU_ROUTES[menuKey]
+const navigateToPage = (key: ShellPageKey) => {
+  const routeName = SHELL_MENU_ROUTES[key]
   if (!routeName) {
     return
   }
 
-  activeMenu.value = menuKey
+  activeMenu.value = key
   if (isMobile.value) {
     handleSidebarClose()
   }
   router.push({ name: routeName })
 }
+
+const handleMenuSelect = (key: string) => {
+  if (!isShellPageKey(key)) {
+    return
+  }
+  navigateToPage(key)
+}
+
+const {
+  keys: tagKeys,
+  selectTab,
+  closeTab,
+  closeCurrent,
+  closeOthers,
+  closeAll,
+} = useTagsView(activeMenu, navigateToPage)
+
+const { locked, lock, unlock } = useLockScreen()
+const { watermarkEnabled } = useWatermarkEnabled()
+const watermarkContent = computed(() => getWatermarkContent(props.session?.username))
 
 const handleSidebarToggle = () => {
   if (isMobile.value) {
@@ -109,13 +141,18 @@ onBeforeUnmount(() => {
 })
 
 watch(
+  () => props.themePrefs.compactMode,
+  (value) => {
+    collapsed.value = value
+  },
+)
+
+watch(
   () => route.name,
   (name) => {
-    if (typeof name === 'string') {
-      activeMenu.value = SHELL_ROUTE_TO_MENU[name] ?? 'home'
-    } else {
-      activeMenu.value = 'home'
-    }
+    activeMenu.value = resolveShellPageKey(
+      typeof name === 'string' ? name : undefined,
+    )
 
     if (isMobile.value) {
       handleSidebarClose()
@@ -126,6 +163,8 @@ watch(
 </script>
 
 <template>
+  <div class="relative h-screen w-full">
+    <div class="h-screen w-full" :inert="locked || undefined" :aria-hidden="locked || undefined">
   <Layout class="h-screen w-full overflow-hidden !flex-row">
     <!-- Sidebar -->
     <Drawer
@@ -184,23 +223,48 @@ watch(
         :session="session"
         :page-title="pageTitle"
         :breadcrumb-items="breadcrumbItems"
-        :theme-mode="themeMode"
+        :theme-prefs="themePrefs"
         :show-sidebar-toggle="true"
         :sidebar-open="!isMobile ? !collapsed : sidebarOpen"
         :demo-mode="DEMO_MODE"
         @logout="$emit('logout')"
         @change-password="$emit('change-password')"
         @toggle-theme="$emit('toggle-theme')"
+        @update-theme="$emit('update-theme', $event)"
         @toggle-sidebar="handleSidebarToggle"
         @profile="router.push({ name: 'profile' })"
+        @lock-screen="lock"
       />
 
-      <!-- Content -->
-      <Content id="main-content-scroll" class="min-h-0 overflow-auto p-3 scroll-smooth sm:p-4 md:p-6">
-        <div class="mx-auto max-w-7xl animate-fade-in">
-          <slot></slot>
+      <div class="relative" :class="SHELL_WATERMARK_PANE_CLASS">
+        <TagsView
+          :keys="tagKeys"
+          :active-key="activeMenu"
+          @select="selectTab"
+          @close="closeTab"
+          @close-current="closeCurrent"
+          @close-others="closeOthers"
+          @close-all="closeAll"
+        />
+        <Content id="main-content-scroll" class="min-h-0 flex-1 overflow-auto p-3 scroll-smooth sm:p-4 md:p-6">
+          <div class="mx-auto max-w-7xl animate-fade-in">
+            <slot></slot>
+          </div>
+        </Content>
+        <div
+          v-if="watermarkEnabled"
+          :class="SHELL_WATERMARK_OVERLAY_CLASS"
+          data-testid="shell-watermark"
+        >
+          <Watermark
+            :content="watermarkContent"
+            :class-name="SHELL_WATERMARK_CLASS"
+            :width="180"
+            :height="80"
+            :font="{ fontSize: 14 }"
+          />
         </div>
-      </Content>
+      </div>
     </Layout>
 
     <!-- 全局 Shell 挂件 -->
@@ -214,4 +278,7 @@ watch(
     <ShellQuickActions />
     <OnboardingTour />
   </Layout>
+    </div>
+    <LockScreen v-if="locked" :session="session" @unlock="unlock" />
+  </div>
 </template>

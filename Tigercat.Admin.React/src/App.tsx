@@ -28,6 +28,12 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { GuestRoute } from './components/GuestRoute';
 import { PermissionRoute } from './components/PermissionRoute';
 import {
+  SHELL_MENU_ROUTES,
+  isShellPageKey,
+  resolveShellPageKey,
+  type ShellPageKey,
+} from './utils/shell-navigation';
+import {
   SESSION_KEY,
   safeParse,
   apiRequest,
@@ -49,6 +55,9 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const RegisterSuccessPage = lazy(() => import('./pages/RegisterSuccessPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
+const MonitorPage = lazy(() => import('./pages/MonitorPage'));
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
+const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const TicketsPage = lazy(() => import('./pages/TicketsPage'));
 const CalendarPage = lazy(() => import('./pages/CalendarPage'));
@@ -56,6 +65,7 @@ const ContentPage = lazy(() => import('./pages/ContentPage'));
 const GalleryPage = lazy(() => import('./pages/GalleryPage'));
 const JobsPage = lazy(() => import('./pages/JobsPage'));
 const ImportPage = lazy(() => import('./pages/ImportPage'));
+const PerformancePage = lazy(() => import('./pages/PerformancePage'));
 const HelpPage = lazy(() => import('./pages/HelpPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
@@ -68,35 +78,9 @@ const AuditLogsPage = lazy(() => import('./pages/AuditLogsPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ExceptionPage = lazy(() => import('./pages/ExceptionPage'));
 
-const MENU_ROUTES = {
-  home: '/dashboard',
-  analytics: '/analytics',
-  tickets: '/tickets',
-  calendar: '/calendar',
-  content: '/content',
-  gallery: '/gallery',
-  jobs: '/jobs',
-  import: '/import',
-  help: '/help',
-  reports: '/reports',
-  profile: '/profile',
-  users: '/users',
-  roles: '/roles',
-  settings: '/settings',
-  files: '/files',
-  notifications: '/notifications',
-  tasks: '/tasks',
-  audit: '/audit-logs',
-  about: '/about',
-} as const;
-
-type MenuKey = keyof typeof MENU_ROUTES;
+type MenuKey = ShellPageKey;
 
 const DEFAULT_MENU: MenuKey = 'home';
-
-const PATH_TO_MENU = Object.fromEntries(
-  Object.entries(MENU_ROUTES).map(([key, value]) => [value, key as MenuKey]),
-) as Record<string, MenuKey | undefined>;
 
 type ChangePasswordForm = { oldPassword: string; newPassword: string };
 type ChangePasswordField = keyof ChangePasswordForm;
@@ -153,13 +137,13 @@ interface HomeContext {
 interface ProtectedLayoutProps {
   user: { username: string } | null;
   activeMenu: MenuKey;
-  themeMode: ThemeMode;
+  themePrefs: ThemePreferences;
   onLogout: () => void;
   onChangePassword: () => void;
   onToggleTheme: () => void;
+  onUpdateTheme: (prefs: ThemePreferences) => void;
   onProfile: () => void;
-  compactMode: boolean;
-  onNavigate: (key: MenuKey) => void;
+  onNavigate: (key: string) => void;
   changeOpen: boolean;
   changeForm: ChangePasswordForm;
   onChangeField: (field: ChangePasswordField, value: string) => void;
@@ -171,11 +155,11 @@ interface ProtectedLayoutProps {
 function ProtectedLayout({
   user,
   activeMenu,
-  themeMode,
-  compactMode,
+  themePrefs,
   onLogout,
   onChangePassword,
   onToggleTheme,
+  onUpdateTheme,
   onProfile,
   onNavigate,
   changeOpen,
@@ -188,14 +172,14 @@ function ProtectedLayout({
   return (
     <MainLayout
       user={user}
-      themeMode={themeMode}
-      compactMode={compactMode}
+      themePrefs={themePrefs}
       onLogout={onLogout}
       onChangePassword={onChangePassword}
       onToggleTheme={onToggleTheme}
+      onUpdateTheme={onUpdateTheme}
       onProfile={onProfile}
       activeMenu={activeMenu}
-      onNavigate={onNavigate as (key: string) => void}>
+      onNavigate={onNavigate}>
       <Suspense fallback={<PageLoader />}>
         <Outlet context={homeContext} />
       </Suspense>
@@ -252,6 +236,12 @@ function App() {
   /* ── Theme ────────────────────────────────────── */
   const [themePrefs, setThemePrefs] =
     useState<ThemePreferences>(getThemePreferences);
+
+  const updateTheme = useCallback((next: ThemePreferences) => {
+    saveThemePreferences(next);
+    applyTheme(next);
+    setThemePrefs(next);
+  }, []);
 
   const toggleThemeMode = useCallback(() => {
     setThemePrefs((prev) => {
@@ -410,7 +400,7 @@ function App() {
   };
 
   const activeMenu = useMemo(
-    () => PATH_TO_MENU[location.pathname] ?? DEFAULT_MENU,
+    () => resolveShellPageKey(location.pathname, DEFAULT_MENU),
     [location.pathname],
   );
   const homeContext = useMemo(
@@ -423,9 +413,11 @@ function App() {
     [notice, homeMessage, homeError, session?.username],
   );
   const handleNavigate = useCallback(
-    (key: MenuKey) => {
-      const nextPath = MENU_ROUTES[key];
-      navigate(nextPath);
+    (key: string) => {
+      if (!isShellPageKey(key)) {
+        return;
+      }
+      navigate(SHELL_MENU_ROUTES[key]);
     },
     [navigate],
   );
@@ -479,11 +471,11 @@ function App() {
             <ProtectedLayout
               user={session ? { username: session.username } : null}
               activeMenu={activeMenu}
-              themeMode={themePrefs.mode}
-              compactMode={themePrefs.compactMode}
+              themePrefs={themePrefs}
               onLogout={handleLogout}
               onChangePassword={() => setChangeOpen(true)}
               onToggleTheme={toggleThemeMode}
+              onUpdateTheme={updateTheme}
               onProfile={() => navigate('/profile')}
               onNavigate={handleNavigate}
               changeOpen={changeOpen}
@@ -496,12 +488,16 @@ function App() {
           }>
           <Route path="/dashboard" element={<HomePage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/monitor" element={<MonitorPage />} />
+          <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/projects/:id" element={<ProjectDetailPage />} />
           <Route path="/tickets" element={<TicketsPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/content" element={<ContentPage />} />
           <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/jobs" element={<JobsPage />} />
           <Route path="/import" element={<ImportPage />} />
+          <Route path="/performance" element={<PerformancePage />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/profile" element={<ProfilePage />} />

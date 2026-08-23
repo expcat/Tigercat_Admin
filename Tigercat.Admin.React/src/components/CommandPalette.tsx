@@ -5,7 +5,9 @@ import { Spotlight } from '@expcat/tigercat-react/Spotlight';
 import {
   SHELL_MENU_ITEMS,
   SHELL_BOTTOM_MENU_ITEMS,
+  SHELL_MENU_ROUTES,
   filterShellMenuItems,
+  isShellPageKey,
   type ShellMenuItemDef,
 } from '../utils/shell-navigation';
 import { usePermission } from '../utils/permission';
@@ -24,25 +26,13 @@ type CommandData =
       value: 'theme' | 'chat' | 'notifications' | 'password' | 'logout';
     };
 
-// 菜单 key 到路由路径的映射（与 App.tsx 的 MENU_ROUTES 保持一致）
-const ROUTE_PATHS: Record<string, string> = {
-  home: '/dashboard',
-  analytics: '/analytics',
-  tickets: '/tickets',
-  calendar: '/calendar',
-  users: '/users',
-  roles: '/roles',
-  settings: '/settings',
-  files: '/files',
-  notifications: '/notifications',
-  tasks: '/tasks',
-  audit: '/audit-logs',
-  about: '/about',
-};
-
 const flattenRoutes = (items: ShellMenuItemDef[]): ShellMenuItemDef[] =>
   items.flatMap((item) =>
-    item.children ? flattenRoutes(item.children) : ROUTE_PATHS[item.key] ? [item] : [],
+    item.children
+      ? flattenRoutes(item.children)
+      : isShellPageKey(item.key)
+        ? [item]
+        : [],
   );
 
 export function CommandPalette({
@@ -62,14 +52,22 @@ export function CommandPalette({
       [...SHELL_MENU_ITEMS, ...SHELL_BOTTOM_MENU_ITEMS],
       hasPerm,
     );
-    const navItems: SpotlightItem[] = flattenRoutes(permitted).map((item) => ({
-      key: `route:${item.key}`,
-      label: item.label,
-      description: `跳转到${item.label}`,
-      group: '页面导航',
-      keywords: [item.label, item.key],
-      data: { kind: 'route', value: ROUTE_PATHS[item.key] } as CommandData,
-    }));
+    const navItems: SpotlightItem[] = flattenRoutes(permitted).flatMap((item) => {
+      if (!isShellPageKey(item.key)) {
+        return [];
+      }
+
+      return [
+        {
+          key: `route:${item.key}`,
+          label: item.label,
+          description: `跳转到${item.label}`,
+          group: '页面导航',
+          keywords: [item.label, item.key],
+          data: { kind: 'route', value: SHELL_MENU_ROUTES[item.key] } as CommandData,
+        },
+      ];
+    });
 
     const actionItems: SpotlightItem[] = [
       {

@@ -331,3 +331,114 @@ test.describe('阶段 5 — 帮助与报表', () => {
     await expect(page.getByText('2026-06-25 ~ 2026-07-01').first()).toBeVisible();
   });
 });
+
+test.describe('阶段 9 — 实时监控', () => {
+  test('实时监控页加载并可暂停或切换刷新间隔', async ({ page }) => {
+    const consoleErrors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+
+    await login(page);
+
+    await page.goto('/#/monitor');
+    await expect(page.getByText('实时监控').first()).toBeVisible();
+    await expect(page.getByText('CPU 水位').first()).toBeVisible();
+    await expect(page.getByText('内存 水位').first()).toBeVisible();
+    await expect(page.getByText('磁盘 水位').first()).toBeVisible();
+    await expect(page.getByText('QPS', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('实时事件').first()).toBeVisible();
+    await expect(page.getByText('刷新中').first()).toBeVisible();
+
+    await page.getByText('2 秒', { exact: true }).click();
+    await expect(page).toHaveURL(/#\/monitor$/);
+    await expect(page.getByText('CPU 水位').first()).toBeVisible();
+
+    await page.getByRole('button', { name: '暂停' }).click();
+    await expect(page.getByRole('button', { name: '继续' })).toBeVisible();
+    await expect(page.getByText('已暂停').first()).toBeVisible();
+
+    await page.getByRole('button', { name: '继续' }).click();
+    await expect(page.getByRole('button', { name: '暂停' })).toBeVisible();
+    await expect(page.getByText('刷新中').first()).toBeVisible();
+
+    expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
+  });
+});
+
+test.describe('阶段 9 — 项目列表与详情', () => {
+  test('项目列表可进入详情，未知 id 显示空态并保持列表菜单高亮', async ({ page }) => {
+    const consoleErrors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+
+    await login(page);
+
+    await page.goto('/#/projects');
+    await expect(page.getByText('项目列表').first()).toBeVisible();
+    await expect(page.getByText('智能运营台').first()).toBeVisible();
+    await expect(page.getByTestId('project-card-1001')).toBeVisible();
+
+    await page.getByTestId('project-card-1001').click();
+    await expect(page).toHaveURL(/#\/projects\/1001$/);
+    await expect(page.getByText('智能运营台').first()).toBeVisible();
+    await expect(page.getByText('项目概要').first()).toBeVisible();
+    await expect(page.getByTestId('shell-tag-projects')).toHaveAttribute(
+      'data-active',
+      'true',
+    );
+
+    await page.getByRole('tab', { name: '成员' }).click();
+    await expect(page.getByText('王小虎').first()).toBeVisible();
+    await page.getByRole('tab', { name: '动态' }).click();
+    await expect(page.getByText('项目动态').first()).toBeVisible();
+
+    await page.getByRole('button', { name: '返回项目列表' }).click();
+    await expect(page).toHaveURL(/#\/projects$/);
+
+    await page.goto('/#/projects/missing');
+    await expect(page.getByText('未找到项目').first()).toBeVisible();
+    await expect(page.getByTestId('shell-tag-projects')).toHaveAttribute(
+      'data-active',
+      'true',
+    );
+
+    expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
+  });
+});
+
+test.describe('阶段 10 — 大数据演示', () => {
+  test('大数据演示页加载并切换四个分区', async ({ page }) => {
+    const consoleErrors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+
+    await login(page);
+
+    await page.goto('/#/performance');
+    await expect(page.getByText('大数据演示').first()).toBeVisible();
+    await expect(page.getByText('日志行数').first()).toBeVisible();
+    await expect(page.getByTestId('performance-virtual-list')).toBeVisible();
+    await expect(page.getByText('同步缓存分片完成 #1').first()).toBeVisible();
+
+    await page.getByRole('tab', { name: '万行多列' }).click();
+    await expect(page.getByTestId('performance-virtual-table')).toBeVisible();
+    await expect(page.getByText('编号').first()).toBeVisible();
+    await expect(page.getByText('EVT-00001').first()).toBeVisible();
+
+    await page.getByRole('tab', { name: '自由拖拽' }).click();
+    await expect(page.getByTestId('performance-drag-list')).toBeVisible();
+    await expect(page.getByText('日志检索超时排查').first()).toBeVisible();
+    await expect(page.getByText('当前顺序').first()).toBeVisible();
+
+    await page.getByRole('tab', { name: '低层看板' }).click();
+    await expect(page.getByTestId('performance-kanban')).toBeVisible();
+    await expect(page.getByText('接入').first()).toBeVisible();
+    await expect(page.getByText('低层看板组件').first()).toBeVisible();
+
+    expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
+  });
+});
+

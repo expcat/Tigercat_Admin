@@ -12,6 +12,8 @@ import {
   ImageIcon,
   InfoIcon,
   MessageIcon,
+  MonitorIcon,
+  PackageIcon,
   PaletteIcon,
   ServerIcon,
   SettingsIcon,
@@ -22,17 +24,20 @@ import {
   UploadIcon,
   UserIcon,
   UsersIcon,
+  ZapIcon,
 } from '../components/Icons';
 
 export type ShellPageKey =
   | 'home'
   | 'analytics'
+  | 'monitor'
   | 'tickets'
   | 'calendar'
   | 'content'
   | 'gallery'
   | 'jobs'
   | 'import'
+  | 'performance'
   | 'help'
   | 'reports'
   | 'users'
@@ -43,13 +48,15 @@ export type ShellPageKey =
   | 'tasks'
   | 'audit'
   | 'about'
-  | 'profile';
+  | 'profile'
+  | 'projects';
 export type ShellMenuKey =
   | ShellPageKey
   | 'system'
   | 'analyticsGroup'
   | 'collaborationGroup'
   | 'contentGroup'
+  | 'projectsGroup'
   | 'opsGroup'
   | 'helpGroup';
 
@@ -72,6 +79,16 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     key: 'analytics',
     label: '数据分析看板',
     icon: <TrendingUpIcon size={18} />,
+  },
+  monitor: {
+    key: 'monitor',
+    label: '实时监控',
+    icon: <MonitorIcon size={18} />,
+  },
+  projects: {
+    key: 'projects',
+    label: '项目列表',
+    icon: <PackageIcon size={18} />,
   },
   tickets: {
     key: 'tickets',
@@ -102,6 +119,11 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     key: 'import',
     label: '数据导入',
     icon: <UploadIcon size={18} />,
+  },
+  performance: {
+    key: 'performance',
+    label: '大数据演示',
+    icon: <ZapIcon size={18} />,
   },
   help: {
     key: 'help',
@@ -169,7 +191,7 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
     key: 'analyticsGroup',
     label: '数据分析',
     icon: <TrendingUpIcon size={20} />,
-    children: [pageMenuItems.analytics],
+    children: [pageMenuItems.analytics, pageMenuItems.monitor],
   },
   {
     key: 'collaborationGroup',
@@ -184,10 +206,16 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
     children: [pageMenuItems.content, pageMenuItems.gallery],
   },
   {
+    key: 'projectsGroup',
+    label: '项目',
+    icon: <PackageIcon size={20} />,
+    children: [pageMenuItems.projects],
+  },
+  {
     key: 'opsGroup',
     label: '运维',
     icon: <TerminalIcon size={20} />,
-    children: [pageMenuItems.jobs, pageMenuItems.import],
+    children: [pageMenuItems.jobs, pageMenuItems.import, pageMenuItems.performance],
   },
   {
     key: 'helpGroup',
@@ -219,6 +247,77 @@ export const SHELL_BOTTOM_MENU_ITEMS: ShellMenuItemDef[] = [
 export const SHELL_HIDDEN_MENU_ITEMS: ShellMenuItemDef[] = [
   pageMenuItems.profile,
 ];
+
+export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
+  home: '/dashboard',
+  analytics: '/analytics',
+  monitor: '/monitor',
+  projects: '/projects',
+  tickets: '/tickets',
+  calendar: '/calendar',
+  content: '/content',
+  gallery: '/gallery',
+  jobs: '/jobs',
+  import: '/import',
+  performance: '/performance',
+  help: '/help',
+  reports: '/reports',
+  users: '/users',
+  roles: '/roles',
+  settings: '/settings',
+  files: '/files',
+  notifications: '/notifications',
+  tasks: '/tasks',
+  audit: '/audit-logs',
+  about: '/about',
+  profile: '/profile',
+};
+
+export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> =
+  Object.fromEntries(
+    Object.entries(SHELL_MENU_ROUTES).map(([key, path]) => [
+      path,
+      key as ShellPageKey,
+    ]),
+  ) as Record<string, ShellPageKey | undefined>;
+
+export function resolveShellPageKey(
+  routeKey: string | null | undefined,
+  fallback: ShellPageKey = 'home',
+): ShellPageKey {
+  if (!routeKey) {
+    return fallback;
+  }
+
+  const exact = SHELL_ROUTE_TO_MENU[routeKey];
+  if (exact) {
+    return exact;
+  }
+
+  let matched: ShellPageKey | undefined;
+  let matchedLength = -1;
+  for (const [mappedRoute, pageKey] of Object.entries(SHELL_ROUTE_TO_MENU)) {
+    if (!pageKey || mappedRoute.length <= matchedLength) {
+      continue;
+    }
+    if (
+      routeKey.startsWith(`${mappedRoute}/`) ||
+      routeKey.startsWith(`${mappedRoute}-`)
+    ) {
+      matched = pageKey;
+      matchedLength = mappedRoute.length;
+    }
+  }
+
+  return matched ?? fallback;
+}
+
+export function isShellPageKey(value: unknown): value is ShellPageKey {
+  return (
+    typeof value === 'string' &&
+    Object.prototype.hasOwnProperty.call(SHELL_MENU_ROUTES, value)
+  );
+}
 
 function isShellMenuItemPermitted(
   item: ShellMenuItemDef,

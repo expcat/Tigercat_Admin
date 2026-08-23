@@ -63,6 +63,9 @@ export const SETTING_CONTROLS: Record<string, SettingControl> = {
   'theme.compactMode': {
     type: 'switch',
   },
+  'theme.watermark': {
+    type: 'switch',
+  },
 };
 
 /** 获取设置项的控件类型 */

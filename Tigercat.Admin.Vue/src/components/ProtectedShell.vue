@@ -11,16 +11,17 @@ const handleLogout = inject<() => void>('handleLogout')!
 const handleChangePassword = inject<() => void>('handleChangePassword')!
 const themePrefs = inject<import('vue').Ref<ThemePreferences>>('themePrefs')!
 const toggleThemeMode = inject<() => void>('toggleThemeMode')!
+const updateTheme = inject<(prefs: ThemePreferences) => void>('updateTheme')!
 </script>
 
 <template>
   <MainLayout
     :session="session"
-    :theme-mode="themePrefs.mode"
-    :compact-mode="themePrefs.compactMode"
+    :theme-prefs="themePrefs"
     @logout="handleLogout"
     @change-password="changeOpen = true"
     @toggle-theme="toggleThemeMode"
+    @update-theme="updateTheme"
   >
     <RouterView v-slot="{ Component }">
       <Suspense>

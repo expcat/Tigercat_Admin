@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue'
 import {
   Text,
   Avatar,
@@ -13,7 +14,8 @@ import {
 } from '@expcat/tigercat-vue'
 import Icon from './Icon.vue'
 import NotificationBell from './NotificationBell.vue'
-import type { ThemeMode } from '../utils/types'
+import ThemeConfigDrawer from './ThemeConfigDrawer.vue'
+import type { ThemeMode, ThemePreferences } from '../utils/types'
 import { resolveEffectiveMode } from '../utils/theme'
 
 interface Session {
@@ -24,7 +26,7 @@ const props = defineProps<{
   session: Session | null
   pageTitle: string
   breadcrumbItems: string[]
-  themeMode: ThemeMode
+  themePrefs: ThemePreferences
   showSidebarToggle?: boolean
   sidebarOpen?: boolean
   demoMode?: boolean
@@ -34,9 +36,14 @@ defineEmits<{
   (e: 'logout'): void
   (e: 'change-password'): void
   (e: 'toggle-theme'): void
+  (e: 'update-theme', prefs: ThemePreferences): void
   (e: 'toggle-sidebar'): void
   (e: 'profile'): void
+  (e: 'lock-screen'): void
 }>()
+
+const themeDrawerOpen = ref(false)
+const themeMode = computed(() => props.themePrefs.mode)
 
 function getThemeIcon(mode: ThemeMode): string {
   if (mode === 'system') return 'monitor'
@@ -96,6 +103,17 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
       >
         演示模式
       </Tag>
+      <button
+        type="button"
+        data-testid="shell-theme-config-trigger"
+        aria-label="主题配置"
+        title="主题配置"
+        class="flex h-10 w-10 items-center justify-center rounded-lg text-(--tiger-text,#1f2937) transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9)"
+        :class="{ 'bg-(--tiger-bg-hover,#f1f5f9)': themeDrawerOpen }"
+        @click="themeDrawerOpen = true"
+      >
+        <Icon name="palette" :size="20" />
+      </button>
       <NotificationBell />
       <Dropdown trigger="click" placement="bottom-end" :show-arrow="false">
         <template #trigger="{ open }">
@@ -136,6 +154,12 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
               <span>修改密码</span>
             </span>
           </DropdownItem>
+          <DropdownItem @click="$emit('lock-screen')">
+            <span class="flex items-center gap-2 text-sm">
+              <Icon name="lock" :size="16" />
+              <span>锁定屏幕</span>
+            </span>
+          </DropdownItem>
           <DropdownItem divided @click="$emit('logout')">
             <span class="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
               <Icon name="logout" :size="16" />
@@ -145,5 +169,12 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
         </DropdownMenu>
       </Dropdown>
     </div>
+    <ThemeConfigDrawer
+      :open="themeDrawerOpen"
+      :theme-prefs="props.themePrefs"
+      @update:open="(value: boolean) => (themeDrawerOpen = value)"
+      @close="themeDrawerOpen = false"
+      @update-theme="$emit('update-theme', $event)"
+    />
   </Header>
 </template>

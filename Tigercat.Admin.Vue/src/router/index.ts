@@ -84,6 +84,21 @@ const router = createRouter({
           component: () => import('../pages/AnalyticsPage.vue'),
         },
         {
+          path: 'monitor',
+          name: 'monitor',
+          component: () => import('../pages/MonitorPage.vue'),
+        },
+        {
+          path: 'projects',
+          name: 'projects',
+          component: () => import('../pages/ProjectsPage.vue'),
+        },
+        {
+          path: 'projects/:id',
+          name: 'projects-detail',
+          component: () => import('../pages/ProjectDetailPage.vue'),
+        },
+        {
           path: 'profile',
           name: 'profile',
           component: () => import('../pages/ProfilePage.vue'),
@@ -117,6 +132,11 @@ const router = createRouter({
           path: 'import',
           name: 'import',
           component: () => import('../pages/ImportPage.vue'),
+        },
+        {
+          path: 'performance',
+          name: 'performance',
+          component: () => import('../pages/PerformancePage.vue'),
         },
         {
           path: 'help',

@@ -80,14 +80,17 @@ pnpm add -D @tailwindcss/postcss
 
 | 蓝本文件（React 端 / Vue 端） | 用途 | 复制后修改点 |
 | --- | --- | --- |
-| `src/components/MainLayout.tsx` / `MainLayout.vue` | 后台 Shell 骨架（Sidebar + Header + Content） | 基本原样 |
+| `src/components/MainLayout.tsx` / `MainLayout.vue` | 后台 Shell 骨架（Sidebar + Header + 多标签条 + 可选全局水印 + Content） | 基本原样 |
 | `src/components/MainSidebar.tsx` / `MainSidebar.vue` | 侧栏（240px / 折叠 64px、移动 Drawer） | 替换 Logo、品牌文案 |
-| `src/components/MainHeader.tsx` / `MainHeader.vue` | 面包屑、主题切换、账号菜单 | 按需裁剪菜单项 |
+| `src/components/MainHeader.tsx` / `MainHeader.vue` | 面包屑、主题配置抽屉入口、主题切换、账号菜单 | 按需裁剪菜单项 |
+| `src/components/ThemeConfigDrawer.tsx` / `ThemeConfigDrawer.vue` | 主题配置抽屉（外观 / 主色 / 紧凑密度） | 原样（接 `utils/theme.ts`） |
+| `src/components/TagsView.tsx` / `TagsView.vue` | 多标签导航条 | 原样 |
+| `src/components/LockScreen.tsx` / `LockScreen.vue` | 锁屏全屏遮罩 | 原样（演示 PIN 可改） |
 | `src/components/Icons.tsx`（Vue：`Icon.vue` + `AppLogo.vue`） | 业务图标 | 按需增删 |
 | `src/components/PageHeader.tsx` + `PageFragments.tsx`（Vue：`PageHeader.vue`、`MetricCard.vue`、`MetricGrid.vue`、`MutedPanel.vue`、`PageActionPanel.vue`、`ChartEmptyState.vue`） | 页面级片段组件 | 原样 |
 | `src/components/ProtectedRoute.tsx` + `GuestRoute.tsx`（Vue：`ProtectedShell.vue` + `GuestShell.vue` + `src/router/index.ts`） | 路由守卫与路由表 | 路由表替换为自己的页面 |
 | `src/components/PermissionGuard.tsx`（Vue：`src/directives/permission.ts` + `directives/index.ts`） | 权限控件 / 指令 | 原样 |
-| `src/utils/`：`theme.ts`、`request.ts`、`auth.ts`、`permission.tsx`（Vue：`permission.ts`）、`permission-helpers.ts`、`types.ts`、`constants.ts`、`common.ts`、`hooks.ts`（Vue：`composables.ts`）、`shell-navigation.tsx`（Vue：`shell-navigation.ts`）、`tigercatText.ts`、`validation.ts` | 主题 / 请求 / 会话 / 权限 / 导航 / 文案 | `types.ts` 裁剪为自己的业务类型；`shell-navigation` 替换菜单表；`constants.ts` 检查 API 前缀 |
+| `src/utils/`：`theme.ts`、`request.ts`、`auth.ts`、`permission.tsx`（Vue：`permission.ts`）、`permission-helpers.ts`、`types.ts`、`constants.ts`、`common.ts`、`hooks.ts`（Vue：`composables.ts`）、`shell-navigation.tsx`（Vue：`shell-navigation.ts`）、`tags-view.ts`、`lock-screen.ts`、`watermark.ts`、`tigercatText.ts`、`validation.ts` | 主题 / 请求 / 会话 / 权限 / 导航 / 多标签 / 锁屏 / 水印 / 文案 | `types.ts` 裁剪为自己的业务类型；`shell-navigation` 替换菜单表；`constants.ts` 检查 API 前缀 |
 | `src/main.tsx` + `App.tsx`（Vue：`src/main.ts` + `App.vue`） | 应用入口（ConfigProvider locale、Router 模式） | **删除 `@tigercat-admin/mock-api` 的 import、`isTigercatDemoEnabled` 与 `installTigercatMockApi(...)` 调用**（除非选 backend.md 方案 C）；不需要 hash 路由时可删 `VITE_TIGERCAT_ROUTER_MODE` 分支 |
 
 蓝本中 `src/utils/` 其余文件（`notifications.ts`、`task-board.ts`、`settings.ts`、`media.ts`、`export.ts`、`workbench.ts`）是具体业务页面的 API 包装，按你实际要做的页面选择性复制。
@@ -96,7 +99,7 @@ pnpm add -D @tailwindcss/postcss
 
 - [frontend.md「App Shell 蓝图」](../frontend.md#app-shell-蓝图) 中的菜单-路由-权限表是**本仓库示例**；新项目复制其结构，把条目替换为自己的页面。
 - 权限码沿用 `资源:动作` 命名约定（如 `user:view`、`role:edit`），菜单和按钮按权限隐藏。
-- 主题与暗色模式：`utils/theme.ts` 切换根节点 `.dark` class，Tigercat token 自动生效；不要在页面内写孤立深色配色。
+- 主题与暗色模式：`utils/theme.ts` 切换根节点 `.dark` class，Tigercat token 自动生效；不要在页面内写孤立深色配色。`compactMode` 另加根节点 `.compact` 收紧内容区内边距。
 
 ## 4. 页面生成模式
 
