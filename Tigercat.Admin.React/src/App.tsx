@@ -133,12 +133,12 @@ interface HomeContext {
 interface ProtectedLayoutProps {
   user: { username: string } | null;
   activeMenu: MenuKey;
-  themeMode: ThemeMode;
+  themePrefs: ThemePreferences;
   onLogout: () => void;
   onChangePassword: () => void;
   onToggleTheme: () => void;
+  onUpdateTheme: (prefs: ThemePreferences) => void;
   onProfile: () => void;
-  compactMode: boolean;
   onNavigate: (key: string) => void;
   changeOpen: boolean;
   changeForm: ChangePasswordForm;
@@ -151,11 +151,11 @@ interface ProtectedLayoutProps {
 function ProtectedLayout({
   user,
   activeMenu,
-  themeMode,
-  compactMode,
+  themePrefs,
   onLogout,
   onChangePassword,
   onToggleTheme,
+  onUpdateTheme,
   onProfile,
   onNavigate,
   changeOpen,
@@ -168,11 +168,11 @@ function ProtectedLayout({
   return (
     <MainLayout
       user={user}
-      themeMode={themeMode}
-      compactMode={compactMode}
+      themePrefs={themePrefs}
       onLogout={onLogout}
       onChangePassword={onChangePassword}
       onToggleTheme={onToggleTheme}
+      onUpdateTheme={onUpdateTheme}
       onProfile={onProfile}
       activeMenu={activeMenu}
       onNavigate={onNavigate}>
@@ -232,6 +232,12 @@ function App() {
   /* ── Theme ────────────────────────────────────── */
   const [themePrefs, setThemePrefs] =
     useState<ThemePreferences>(getThemePreferences);
+
+  const updateTheme = useCallback((next: ThemePreferences) => {
+    saveThemePreferences(next);
+    applyTheme(next);
+    setThemePrefs(next);
+  }, []);
 
   const toggleThemeMode = useCallback(() => {
     setThemePrefs((prev) => {
@@ -461,11 +467,11 @@ function App() {
             <ProtectedLayout
               user={session ? { username: session.username } : null}
               activeMenu={activeMenu}
-              themeMode={themePrefs.mode}
-              compactMode={themePrefs.compactMode}
+              themePrefs={themePrefs}
               onLogout={handleLogout}
               onChangePassword={() => setChangeOpen(true)}
               onToggleTheme={toggleThemeMode}
+              onUpdateTheme={updateTheme}
               onProfile={() => navigate('/profile')}
               onNavigate={handleNavigate}
               changeOpen={changeOpen}

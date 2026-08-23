@@ -258,6 +258,31 @@
     transform: rotate(180deg);
   }
 }
+
+html.compact #main-content-scroll {
+  padding: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  html.compact #main-content-scroll {
+    padding: 0.75rem;
+  }
+}
+
+@media (min-width: 768px) {
+  html.compact #main-content-scroll {
+    padding: 1rem;
+  }
+}
+
+html.compact .p2-tags-view {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+html.compact .p2-main-header {
+  min-height: 3.5rem;
+}
 @theme {
   --animate-shake: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
   --animate-fade-in-up: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;

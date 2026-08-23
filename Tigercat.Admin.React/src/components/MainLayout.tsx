@@ -1,12 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { Layout, Content, Drawer } from '@expcat/tigercat-react';
+import { Watermark } from '@expcat/tigercat-react/Watermark';
 import { MainHeader } from './MainHeader';
 import { MainSidebar } from './MainSidebar';
 import { CommandPalette } from './CommandPalette';
 import { ChatDock } from './ChatDock';
 import { ShellQuickActions } from './ShellQuickActions';
 import { OnboardingTour } from './OnboardingTour';
-import type { ThemeMode } from '../utils/types';
+import type { ThemePreferences } from '../utils/types';
+import {
+  getWatermarkContent,
+  SHELL_WATERMARK_CLASS,
+  SHELL_WATERMARK_OVERLAY_CLASS,
+  SHELL_WATERMARK_PANE_CLASS,
+  useWatermarkEnabled,
+} from '../utils/watermark';
 import {
   getShellBreadcrumbItems,
   getShellPageTitle,
@@ -24,11 +32,11 @@ const DEMO_MODE = import.meta.env.VITE_TIGERCAT_DEMO === 'true';
 interface MainLayoutProps {
   children: React.ReactNode;
   user: { username: string } | null;
-  themeMode: ThemeMode;
-  compactMode?: boolean;
+  themePrefs: ThemePreferences;
   onLogout: () => void;
   onChangePassword: () => void;
   onToggleTheme: () => void;
+  onUpdateTheme: (prefs: ThemePreferences) => void;
   onProfile: () => void;
   activeMenu?: string;
   onNavigate?: (key: string) => void;
@@ -37,16 +45,17 @@ interface MainLayoutProps {
 export function MainLayout({
   children,
   user,
-  themeMode,
-  compactMode,
+  themePrefs,
   onLogout,
   onChangePassword,
   onToggleTheme,
+  onUpdateTheme,
   onProfile,
   activeMenu,
   onNavigate,
 }: MainLayoutProps) {
-  const [collapsed, setCollapsed] = useState(compactMode ?? false);
+  const compactMode = themePrefs.compactMode;
+  const [collapsed, setCollapsed] = useState(compactMode);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -59,12 +68,18 @@ export function MainLayout({
     : 'home';
   const tagsView = useTagsView(currentPageKey, onNavigate);
   const { locked, lock, unlock } = useLockScreen();
+  const { watermarkEnabled } = useWatermarkEnabled();
+  const watermarkContent = getWatermarkContent(user?.username);
 
   useEffect(() => {
     if (activeMenu) {
       setInternalActiveMenu(activeMenu);
     }
   }, [activeMenu]);
+
+  useEffect(() => {
+    setCollapsed(compactMode);
+  }, [compactMode]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
@@ -178,32 +193,47 @@ export function MainLayout({
           session={user}
           pageTitle={pageTitle}
           breadcrumbItems={breadcrumbItems}
-          themeMode={themeMode}
+          themePrefs={themePrefs}
           showSidebarToggle={true}
           sidebarOpen={!isMobile ? !collapsed : sidebarOpen}
           onLogout={onLogout}
           onChangePassword={onChangePassword}
           onToggleTheme={onToggleTheme}
+          onUpdateTheme={onUpdateTheme}
           onProfile={onProfile}
           onLockScreen={lock}
           onToggleSidebar={handleSidebarToggle}
           demoMode={DEMO_MODE}
         />
 
-        <TagsView
-          keys={tagsView.keys}
-          activeKey={currentPageKey}
-          onSelect={tagsView.selectTab}
-          onClose={tagsView.closeTab}
-          onCloseCurrent={tagsView.closeCurrent}
-          onCloseOthers={tagsView.closeOthers}
-          onCloseAll={tagsView.closeAll}
-        />
-
-        {/* Content */}
-        <Content id="main-content-scroll" className="min-h-0 overflow-auto p-3 scroll-smooth sm:p-4 md:p-6">
-          <div className="mx-auto max-w-7xl animate-fade-in">{children}</div>
-        </Content>
+        <div className={`relative ${SHELL_WATERMARK_PANE_CLASS}`}>
+          <TagsView
+            keys={tagsView.keys}
+            activeKey={currentPageKey}
+            onSelect={tagsView.selectTab}
+            onClose={tagsView.closeTab}
+            onCloseCurrent={tagsView.closeCurrent}
+            onCloseOthers={tagsView.closeOthers}
+            onCloseAll={tagsView.closeAll}
+          />
+          <Content id="main-content-scroll" className="min-h-0 flex-1 overflow-auto p-3 scroll-smooth sm:p-4 md:p-6">
+            <div className="mx-auto max-w-7xl animate-fade-in">{children}</div>
+          </Content>
+          {watermarkEnabled ? (
+            <div
+              className={SHELL_WATERMARK_OVERLAY_CLASS}
+              data-testid="shell-watermark"
+            >
+              <Watermark
+                content={watermarkContent}
+                className={SHELL_WATERMARK_CLASS}
+                width={180}
+                height={80}
+                font={{ fontSize: 14 }}
+              />
+            </div>
+          ) : null}
+        </div>
       </Layout>
 
       {/* 全局 Shell 挂件 */}

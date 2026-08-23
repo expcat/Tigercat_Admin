@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Text,
   Avatar,
@@ -20,21 +21,24 @@ import {
   XIcon,
   ChevronDownIcon,
   UserIcon,
+  PaletteIcon,
 } from './Icons';
-import type { ThemeMode } from '../utils/types';
+import type { ThemeMode, ThemePreferences } from '../utils/types';
 import { resolveEffectiveMode } from '../utils/theme';
 import { NotificationBell } from './NotificationBell';
+import { ThemeConfigDrawer } from './ThemeConfigDrawer';
 
 interface MainHeaderProps {
   session: { username: string } | null;
   pageTitle: string;
   breadcrumbItems: string[];
-  themeMode: ThemeMode;
+  themePrefs: ThemePreferences;
   showSidebarToggle?: boolean;
   sidebarOpen?: boolean;
   onLogout: () => void;
   onChangePassword: () => void;
   onToggleTheme: () => void;
+  onUpdateTheme: (prefs: ThemePreferences) => void;
   onProfile: () => void;
   onLockScreen: () => void;
   onToggleSidebar?: () => void;
@@ -60,17 +64,20 @@ export function MainHeader({
   session,
   pageTitle,
   breadcrumbItems,
-  themeMode,
+  themePrefs,
   showSidebarToggle,
   sidebarOpen,
   onLogout,
   onChangePassword,
   onToggleTheme,
+  onUpdateTheme,
   onProfile,
   onLockScreen,
   onToggleSidebar,
   demoMode,
 }: MainHeaderProps) {
+  const [themeDrawerOpen, setThemeDrawerOpen] = useState(false);
+  const themeMode = themePrefs.mode;
   const accountLabel = session?.username ?? '账户';
   const currentBreadcrumbItems =
     breadcrumbItems.length > 0 ? breadcrumbItems : [pageTitle];
@@ -115,6 +122,15 @@ export function MainHeader({
             演示模式
           </Tag>
         )}
+        <button
+          type="button"
+          data-testid="shell-theme-config-trigger"
+          aria-label="主题配置"
+          title="主题配置"
+          className={`flex h-10 w-10 items-center justify-center rounded-lg text-(--tiger-text,#1f2937) transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9) ${themeDrawerOpen ? 'bg-(--tiger-bg-hover,#f1f5f9)' : ''}`}
+          onClick={() => setThemeDrawerOpen(true)}>
+          <PaletteIcon size={20} />
+        </button>
         <NotificationBell />
         <Dropdown
           trigger="click"
@@ -171,6 +187,12 @@ export function MainHeader({
           </DropdownMenu>
         </Dropdown>
       </div>
+      <ThemeConfigDrawer
+        open={themeDrawerOpen}
+        themePrefs={themePrefs}
+        onClose={() => setThemeDrawerOpen(false)}
+        onUpdateTheme={onUpdateTheme}
+      />
     </Header>
   );
 }

@@ -69,6 +69,7 @@ export function applyTheme(prefs: ThemePreferences): void {
 
   // Toggle dark class
   root.classList.toggle('dark', effective === 'dark');
+  root.classList.toggle('compact', prefs.compactMode);
 
   // Apply primary color CSS variable
   root.style.setProperty('--tiger-primary', prefs.primaryColor);

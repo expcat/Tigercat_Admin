@@ -30,6 +30,10 @@ import {
 } from '../utils/settings';
 import type { SettingItem } from '../utils/types';
 import { uploadMediaFile } from '../utils/media';
+import {
+  WATERMARK_SETTING_KEY,
+  useWatermarkEnabled,
+} from '../utils/watermark';
 
 function SettingsPage() {
   const location = useLocation();
@@ -40,6 +44,7 @@ function SettingsPage() {
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const { has: hasPerm } = usePermission();
   const canEdit = hasPerm('setting:edit');
+  const { watermarkEnabled, setWatermarkEnabled } = useWatermarkEnabled();
   const targetSettingKey = useMemo(
     () => new URLSearchParams(location.search).get('key') ?? '',
     [location.search],
@@ -207,6 +212,34 @@ function SettingsPage() {
               <div className="p2-muted-panel flex items-center p-5 text-sm">
                 Logo 媒体被设置引用后，文件管理页会阻止直接删除；恢复默认值并保存后会解除引用。
               </div>
+            </div>
+          </Card>
+
+          <Card title="内容水印">
+            <div
+              id={`setting-${WATERMARK_SETTING_KEY}`}
+              data-testid="setting-theme-watermark"
+              className={`flex flex-col gap-3 rounded-md p-2 sm:flex-row sm:items-center sm:justify-between ${targetSettingKey === WATERMARK_SETTING_KEY ? 'ring-2 ring-(--tiger-color-primary,#2563eb)' : ''}`}>
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Text size="sm" weight="medium">
+                    全局内容水印
+                  </Text>
+                  <Tag
+                    variant={targetSettingKey === WATERMARK_SETTING_KEY ? 'warning' : 'primary'}
+                    size="sm">
+                    {WATERMARK_SETTING_KEY}
+                  </Tag>
+                </div>
+                <Text size="sm" color="secondary">
+                  在内容区（含多标签条）叠加当前用户名与日期。立即生效，保存在本机；不影响内容页草稿水印演示。
+                </Text>
+              </div>
+              <Switch
+                checked={watermarkEnabled}
+                onChange={(val) => setWatermarkEnabled(val)}
+                data-testid="setting-theme-watermark-switch"
+              />
             </div>
           </Card>
 
