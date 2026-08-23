@@ -134,6 +134,11 @@ const router = createRouter({
           component: () => import('../pages/ImportPage.vue'),
         },
         {
+          path: 'performance',
+          name: 'performance',
+          component: () => import('../pages/PerformancePage.vue'),
+        },
+        {
           path: 'help',
           name: 'help',
           component: () => import('../pages/HelpPage.vue'),

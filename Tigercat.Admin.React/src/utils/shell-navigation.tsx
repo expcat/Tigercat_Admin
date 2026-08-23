@@ -24,6 +24,7 @@ import {
   UploadIcon,
   UserIcon,
   UsersIcon,
+  ZapIcon,
 } from '../components/Icons';
 
 export type ShellPageKey =
@@ -36,6 +37,7 @@ export type ShellPageKey =
   | 'gallery'
   | 'jobs'
   | 'import'
+  | 'performance'
   | 'help'
   | 'reports'
   | 'users'
@@ -117,6 +119,11 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     key: 'import',
     label: '数据导入',
     icon: <UploadIcon size={18} />,
+  },
+  performance: {
+    key: 'performance',
+    label: '大数据演示',
+    icon: <ZapIcon size={18} />,
   },
   help: {
     key: 'help',
@@ -208,7 +215,7 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
     key: 'opsGroup',
     label: '运维',
     icon: <TerminalIcon size={20} />,
-    children: [pageMenuItems.jobs, pageMenuItems.import],
+    children: [pageMenuItems.jobs, pageMenuItems.import, pageMenuItems.performance],
   },
   {
     key: 'helpGroup',
@@ -252,6 +259,7 @@ export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   gallery: '/gallery',
   jobs: '/jobs',
   import: '/import',
+  performance: '/performance',
   help: '/help',
   reports: '/reports',
   users: '/users',

@@ -67,6 +67,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 | `monitor` | `/monitor` | 实时监控（分组「数据分析」） | 无入口权限 |
 | `projects` | `/projects` | 项目列表（分组「项目」） | 无入口权限 |
 | — | `/projects/:id` | 项目详情（动态参数 `id`，不进侧栏；列表菜单保持高亮） | 无入口权限 |
+| `performance` | `/performance` | 大数据演示（分组「运维」） | 无入口权限 |
 | `users` | `/users` | 用户管理 | `user:view` |
 | `roles` | `/roles` | 角色管理 | `role:view` |
 | `settings` | `/settings` | 系统设置 | 无入口权限 |
@@ -120,6 +121,7 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 | 媒体图库 | `Carousel`、`ImageGroup`、`Image`、`ImagePreview`、`ImageViewer`、`ImageAnnotation`、`ImageCropper`、`Segmented`、`Skeleton`、`Empty`、`Tag`、`Drawer` | 精选轮播、相册切换、网格灯箱预览、大图查看（缩放/旋转/导航）、矩形/椭圆标注、16:9 裁剪、刷新骨架屏、空相册空态 |
 | 定时任务 | `CronEditor`、`Stepper`、`InputGroup`/`InputGroupAddon`、`NumberKeyboard`、`Gantt`、`Switch`、`Progress`、`Steps`/`StepsItem`、`Badge`、`Tag`、`Drawer`、原生 `Table` | 调度表达式编辑、并发数步进、超时数值+单位、批量条数数字键盘、执行时间轴、启停切换、执行进度、运行阶段、新建/编辑任务 |
 | 数据导入 | `FormWizard`、`Transfer`、`Upload`、`Cascader`、`Slider`、`RadioGroup`/`Radio`、`Progress`、`Result`、`Descriptions` | 分步向导、字段映射穿梭框、文件上传、目标表级联、批量大小滑块、导入模式/冲突策略、导入进度、确认摘要、完成结果页 |
+| 大数据演示 | `VirtualList`、`VirtualTable`、`useDrag`、`Kanban`、`Tabs`/`TabPane`、`Tag`、`Card` | 万级日志流虚拟滚动、万行多列表格（stickyHeader + 固定行高）、`useDrag` 自由排序（无 `/Drag` 子路径组件）、低层看板（区别于任务面板 `TaskBoard`）；数据页面内生成 |
 | 帮助中心 | `Anchor`/`AnchorLink`、`ScrollSpy`、`Affix`、`Collapse`/`CollapsePanel`、`Code`、`Link`、`List`、`InfiniteScroll`、`Card`、`BackTop`（全局） | 长文档章节锚点导航（`getContainer` 指向 `#main-content-scroll`）、横向滚动高亮、侧栏吸顶、FAQ 手风琴、可复制代码块、内联链接、更多文章无限加载、回到顶部 |
 | 报表打印 | `PrintLayout`/`PrintPageBreak`、`Watermark`、`Descriptions`、`Statistic`、`QRCode`、`Result`、`Segmented`、`Divider`、原生 `Table` | A4 打印布局、草稿水印、报表元信息、KPI 汇总、渠道明细、分页分隔、二维码校验、报表类型切换、`window.print()` 输出 |
 | 异常页 | `Result`、`Countdown`、`Button`、`Empty` | 403/404/500 独立居中布局、返回首页/上一页、404 倒计时自动回首页、无历史记录时 Empty 提示、无权限路由重定向 `/403` |
@@ -137,9 +139,13 @@ import { Timeline } from '@expcat/tigercat-react/Timeline';
 import { Upload } from '@expcat/tigercat-react/Upload';
 import { CropUpload } from '@expcat/tigercat-react/CropUpload';
 import { ColorPicker } from '@expcat/tigercat-react/ColorPicker';
+import { VirtualList } from '@expcat/tigercat-react/VirtualList';
+import { VirtualTable } from '@expcat/tigercat-react/VirtualTable';
+import { Kanban } from '@expcat/tigercat-react/Kanban';
+import { useDrag } from '@expcat/tigercat-react';
 ```
 
-Vue 端将包名替换为 `@expcat/tigercat-vue/...`。
+Vue 端将包名替换为 `@expcat/tigercat-vue/...`。`useDrag` 从包入口导入（v1.5.0 没有 `/Drag` 子路径组件）；React 用 `getDragItemProps`，Vue 用 `getDragItemAttrs`。
 
 ### 表格使用约定（v1.2.44+）
 

@@ -8,6 +8,7 @@ export type ShellPageKey =
   | 'gallery'
   | 'jobs'
   | 'import'
+  | 'performance'
   | 'help'
   | 'reports'
   | 'users'
@@ -100,6 +101,12 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     label: '数据导入',
     icon: 'upload',
     routeName: 'import',
+  },
+  performance: {
+    key: 'performance',
+    label: '大数据演示',
+    icon: 'zap',
+    routeName: 'performance',
   },
   help: {
     key: 'help',
@@ -202,7 +209,7 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
     key: 'opsGroup',
     label: '运维',
     icon: 'terminal',
-    children: [pageMenuItems.jobs, pageMenuItems.import],
+    children: [pageMenuItems.jobs, pageMenuItems.import, pageMenuItems.performance],
   },
   {
     key: 'helpGroup',
@@ -246,6 +253,7 @@ export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   gallery: 'gallery',
   jobs: 'jobs',
   import: 'import',
+  performance: 'performance',
   help: 'help',
   reports: 'reports',
   users: 'users',
@@ -271,6 +279,7 @@ export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> = {
   gallery: 'gallery',
   jobs: 'jobs',
   import: 'import',
+  performance: 'performance',
   help: 'help',
   reports: 'reports',
   users: 'users',

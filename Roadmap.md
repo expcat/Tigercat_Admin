@@ -2,8 +2,8 @@
 
 本文规划 `Tigercat_Admin` 后续要新增的**示例功能**。v1 路线图（阶段 0–5，见「已完成归档」）以补齐 Tigercat 组件覆盖为纲，现已全部落地；v2 以**对照知名 Admin 竞品补齐场景完整性**为纲，竞品分析与差距结论见下节。
 
-- **现状**：双端各 24 个功能页（React 19 / Vue 3 等价实现，含 `/monitor` 与 `/projects*`），组件覆盖接近完成——组件库中明确未演示的仅剩 `VirtualList`、`VirtualTable`、`Drag`、`Kanban` 4 个（见文末勾选表）。
-- **目标**：通过阶段 6–10，补上与主流 Admin 模板对照后缺失的标配展示功能（异常页、登录流程、多标签导航、监控页、列表-详情模板等），并顺带覆盖最后 4 个组件。
+- **现状**：双端各 25 个功能页（React 19 / Vue 3 等价实现，含 `/monitor`、`/projects*` 与 `/performance`），组件覆盖已完成——`VirtualList`、`VirtualTable`、`useDrag`、`Kanban` 已在 `/performance` 演示（见文末勾选表）。
+- **目标**：通过阶段 6–10，补上与主流 Admin 模板对照后缺失的标配展示功能（异常页、登录流程、多标签导航、监控页、列表-详情模板等），并覆盖最后 4 个组件。
 - **约束**（沿用 v1，已确认）：
   1. **双端对齐**：每个新功能在 React 与 Vue 两端等价实现，页面顺序、业务状态、函数命名、权限语义保持一致。
   2. **数据来源**：以展示组件用法为主，数据走 `Tigercat.Admin.MockApi` 或页面内静态/内存数据，**不新增真实 .NET 后端端点**。
@@ -31,7 +31,7 @@
 | 主题/布局可视化配置面板 | – | ✓ | ✓ | ✓ | – | 已完成（Header 调色板抽屉，接 `utils/theme.ts`） | 阶段 8 |
 | 实时监控看板 | ✓ | – | – | – | ✓ | 已完成（`/monitor` 页内定时器 mock） | 阶段 9 |
 | 列表→详情模板页（动态路由详情） | ✓ | – | – | – | ✓ | 已完成（`/projects` 卡片列表 + `/projects/:id` 动态详情） | 阶段 9 |
-| 大数据虚拟滚动 / 自由拖拽看板 | – | ✓ | – | – | – | v1 原阶段 6 未实现 | 阶段 10 |
+| 大数据虚拟滚动 / 自由拖拽看板 | – | ✓ | – | – | – | 已完成（`/performance`：VirtualList / VirtualTable / useDrag / Kanban） | 阶段 10 |
 
 **Non-goals**（对照竞品后刻意不做，勿当缺陷）：
 
@@ -62,6 +62,7 @@
 | 7 | 登录流程增强 | `/forgot-password`、两步验证（登录内步骤）、`/register-success` | 已完成（无首次覆盖组件，全部复用；人工核验项见 followups） |
 | 8 | Shell 进阶 | 多标签页导航、锁屏、全局水印、主题配置抽屉 | 已完成 |
 | 9 | 监控页与列表-详情模板 | `/monitor`、`/projects*` | 已完成 |
+| 10 | 大数据性能 | `/performance` | 已完成 |
 
 ---
 
@@ -267,7 +268,7 @@
 > 阶段 6–9 的目标是场景完整性，涉及组件全部为复用——`Result` 全页路由形态、`Countdown` 自动跳转、`NumberKeyboard` OTP/锁屏、`Watermark` 全局形态、`Drawer` 配置抽屉、`GaugeChart`/`ActivityFeed` 实时刷新、`Descriptions`/`Steps`/`Tabs`/`Anchor` 详情页等。按「首次真实使用才勾选」规则不新增勾选项。
 
 ### 阶段 10 — 大数据性能
-- [ ] VirtualList
-- [ ] VirtualTable
-- [ ] Drag
-- [ ] Kanban
+- [x] VirtualList
+- [x] VirtualTable
+- [x] Drag（`useDrag`，v1.5.0 无 `/Drag` 子路径组件）
+- [x] Kanban

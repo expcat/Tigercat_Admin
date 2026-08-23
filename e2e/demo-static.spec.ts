@@ -407,3 +407,38 @@ test.describe('阶段 9 — 项目列表与详情', () => {
     expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
   });
 });
+
+test.describe('阶段 10 — 大数据演示', () => {
+  test('大数据演示页加载并切换四个分区', async ({ page }) => {
+    const consoleErrors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+
+    await login(page);
+
+    await page.goto('/#/performance');
+    await expect(page.getByText('大数据演示').first()).toBeVisible();
+    await expect(page.getByText('日志行数').first()).toBeVisible();
+    await expect(page.getByTestId('performance-virtual-list')).toBeVisible();
+    await expect(page.getByText('同步缓存分片完成 #1').first()).toBeVisible();
+
+    await page.getByRole('tab', { name: '万行多列' }).click();
+    await expect(page.getByTestId('performance-virtual-table')).toBeVisible();
+    await expect(page.getByText('编号').first()).toBeVisible();
+    await expect(page.getByText('EVT-00001').first()).toBeVisible();
+
+    await page.getByRole('tab', { name: '自由拖拽' }).click();
+    await expect(page.getByTestId('performance-drag-list')).toBeVisible();
+    await expect(page.getByText('日志检索超时排查').first()).toBeVisible();
+    await expect(page.getByText('当前顺序').first()).toBeVisible();
+
+    await page.getByRole('tab', { name: '低层看板' }).click();
+    await expect(page.getByTestId('performance-kanban')).toBeVisible();
+    await expect(page.getByText('接入').first()).toBeVisible();
+    await expect(page.getByText('低层看板组件').first()).toBeVisible();
+
+    expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
+  });
+});
+

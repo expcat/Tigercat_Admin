@@ -170,4 +170,21 @@
 
 ---
 
-*后续阶段（v2 阶段 8 余项–10，见 [Roadmap.md](../Roadmap.md)）的推迟项请按相同结构追加到本文。*
+## 阶段 10 — 大数据性能（`/performance`）
+
+### 人工核验（自动化 e2e 未覆盖）
+
+- [ ] **移动端 375px**：`/performance` 四个选项卡在窄屏可横向滑动/换行；VirtualList 视口不撑破布局；VirtualTable 区域横向滚动而非撑破视口；`useDrag` 排序卡片堆叠可读；低层 `Kanban` 列可横向滚动，不与侧栏重叠。
+- [ ] **暗色模式（`.dark`）**：日志行边框/级别 Tag、VirtualTable 表头与斑马纹、拖拽卡片边框、Kanban 列/泳道分隔线在暗色下可读、不透出底层内容。
+- [ ] **拖拽与键盘路径**：`useDrag` 队列可用鼠标拖放到新位置并更新「当前顺序」；「恢复顺序」按钮键盘可达；Kanban 卡片可跨列拖拽；Tabs 方向键切换。（demo e2e 已覆盖导航与四个分区渲染，拖拽结果与焦点恢复尚未断言。）
+
+### workaround / 点到为止待回访
+
+- [ ] **造数为页面内存态**：日志 12,000 行、表格 10,000 行、拖拽队列与看板卡片均为页面内生成（未接 MockApi / 真实端点），刷新后重置。
+- [ ] **Drag 以 `useDrag` 演示**：Tigercat v1.5.0 没有 `/Drag` 子路径组件，排序演示走包入口 `useDrag`（React `getDragItemProps` / Vue `getDragItemAttrs`）；若上游后续提供独立 Drag 组件，再评估是否替换。
+- [ ] **Kanban 区别于 TaskBoard**：本页使用低层 `Kanban`（含泳道），`/tasks` 仍走 `TaskBoard` 接任务工作流。统一核验时确认两侧文案与交互不会被当成同一块。
+- [ ] **万级数据首次进入**：VirtualList / VirtualTable 在选项卡首次激活时挂载（`lazy`）；统一核验时确认切到「万行多列」后表头吸顶与滚动窗口稳定。
+
+---
+
+*后续阶段如有推迟项，请按相同结构追加到本文。*

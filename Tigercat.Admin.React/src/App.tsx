@@ -65,6 +65,7 @@ const ContentPage = lazy(() => import('./pages/ContentPage'));
 const GalleryPage = lazy(() => import('./pages/GalleryPage'));
 const JobsPage = lazy(() => import('./pages/JobsPage'));
 const ImportPage = lazy(() => import('./pages/ImportPage'));
+const PerformancePage = lazy(() => import('./pages/PerformancePage'));
 const HelpPage = lazy(() => import('./pages/HelpPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
@@ -496,6 +497,7 @@ function App() {
           <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/jobs" element={<JobsPage />} />
           <Route path="/import" element={<ImportPage />} />
+          <Route path="/performance" element={<PerformancePage />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
