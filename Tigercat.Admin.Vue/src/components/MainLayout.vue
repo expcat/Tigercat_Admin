@@ -18,7 +18,9 @@ import {
   type ShellPageKey
 } from '../utils/shell-navigation'
 import { useTagsView } from '../utils/tags-view'
+import { useLockScreen } from '../utils/lock-screen'
 import TagsView from './TagsView.vue'
+import LockScreen from './LockScreen.vue'
 
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)'
 const DEMO_MODE = import.meta.env.VITE_TIGERCAT_DEMO === 'true'
@@ -80,6 +82,8 @@ const {
   closeOthers,
   closeAll,
 } = useTagsView(activeMenu, navigateToPage)
+
+const { locked, lock, unlock } = useLockScreen()
 
 const handleSidebarToggle = () => {
   if (isMobile.value) {
@@ -144,6 +148,8 @@ watch(
 </script>
 
 <template>
+  <div class="relative h-screen w-full">
+    <div class="h-screen w-full" :inert="locked || undefined" :aria-hidden="locked || undefined">
   <Layout class="h-screen w-full overflow-hidden !flex-row">
     <!-- Sidebar -->
     <Drawer
@@ -211,6 +217,7 @@ watch(
         @toggle-theme="$emit('toggle-theme')"
         @toggle-sidebar="handleSidebarToggle"
         @profile="router.push({ name: 'profile' })"
+        @lock-screen="lock"
       />
 
       <TagsView
@@ -242,4 +249,7 @@ watch(
     <ShellQuickActions />
     <OnboardingTour />
   </Layout>
+    </div>
+    <LockScreen v-if="locked" :session="session" @unlock="unlock" />
+  </div>
 </template>

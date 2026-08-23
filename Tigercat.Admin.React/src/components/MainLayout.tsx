@@ -15,6 +15,8 @@ import {
 } from '../utils/shell-navigation';
 import { useTagsView } from '../utils/tags-view';
 import { TagsView } from './TagsView';
+import { LockScreen } from './LockScreen';
+import { useLockScreen } from '../utils/lock-screen';
 
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)';
 const DEMO_MODE = import.meta.env.VITE_TIGERCAT_DEMO === 'true';
@@ -56,6 +58,7 @@ export function MainLayout({
     ? currentActiveMenu
     : 'home';
   const tagsView = useTagsView(currentPageKey, onNavigate);
+  const { locked, lock, unlock } = useLockScreen();
 
   useEffect(() => {
     if (activeMenu) {
@@ -108,6 +111,12 @@ export function MainLayout({
   const breadcrumbItems = getShellBreadcrumbItems(currentActiveMenu);
 
   return (
+    <div className="relative h-screen w-full">
+      <div
+        className="h-screen w-full"
+        inert={locked ? true : undefined}
+        aria-hidden={locked || undefined}
+      >
     <Layout className="h-screen w-full overflow-hidden !flex-row">
       {/* Sidebar */}
       {isMobile ? (
@@ -176,6 +185,7 @@ export function MainLayout({
           onChangePassword={onChangePassword}
           onToggleTheme={onToggleTheme}
           onProfile={onProfile}
+          onLockScreen={lock}
           onToggleSidebar={handleSidebarToggle}
           demoMode={DEMO_MODE}
         />
@@ -207,5 +217,8 @@ export function MainLayout({
       <ShellQuickActions />
       <OnboardingTour />
     </Layout>
+      </div>
+      {locked ? <LockScreen session={user} onUnlock={unlock} /> : null}
+    </div>
   );
 }

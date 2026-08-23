@@ -8,7 +8,7 @@ const vuePort = 54173;
 export default defineConfig({
   testDir: './e2e',
   // hash 路由 + MockApi 专用用例只在 demo 配置运行，主套件为 history 路由 + 真实后端。
-  testIgnore: /demo-static\.spec\.ts|exception-routes\.spec\.ts|auth-flows\.spec\.ts|tags-view\.spec\.ts/,
+  testIgnore: /demo-static\.spec\.ts|exception-routes\.spec\.ts|auth-flows\.spec\.ts|tags-view\.spec\.ts|lock-screen\.spec\.ts/,
   fullyParallel: false,
   workers: 1,
   timeout: 30_000,

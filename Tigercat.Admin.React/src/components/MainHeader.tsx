@@ -36,6 +36,7 @@ interface MainHeaderProps {
   onChangePassword: () => void;
   onToggleTheme: () => void;
   onProfile: () => void;
+  onLockScreen: () => void;
   onToggleSidebar?: () => void;
   demoMode?: boolean;
 }
@@ -66,6 +67,7 @@ export function MainHeader({
   onChangePassword,
   onToggleTheme,
   onProfile,
+  onLockScreen,
   onToggleSidebar,
   demoMode,
 }: MainHeaderProps) {
@@ -152,6 +154,12 @@ export function MainHeader({
               <span className="flex items-center gap-2 text-sm">
                 <LockIcon size={16} />
                 <span>修改密码</span>
+              </span>
+            </DropdownItem>
+            <DropdownItem onClick={onLockScreen}>
+              <span className="flex items-center gap-2 text-sm">
+                <LockIcon size={16} />
+                <span>锁定屏幕</span>
               </span>
             </DropdownItem>
             <DropdownItem divided onClick={onLogout}>

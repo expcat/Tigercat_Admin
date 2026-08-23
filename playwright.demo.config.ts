@@ -6,7 +6,7 @@ const vuePort = 55173;
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: /demo-static\.spec\.ts|exception-routes\.spec\.ts|auth-flows\.spec\.ts|tags-view\.spec\.ts/,
+  testMatch: /demo-static\.spec\.ts|exception-routes\.spec\.ts|auth-flows\.spec\.ts|tags-view\.spec\.ts|lock-screen\.spec\.ts/,
   fullyParallel: false,
   workers: 1,
   timeout: 30_000,

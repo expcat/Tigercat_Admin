@@ -36,6 +36,7 @@ defineEmits<{
   (e: 'toggle-theme'): void
   (e: 'toggle-sidebar'): void
   (e: 'profile'): void
+  (e: 'lock-screen'): void
 }>()
 
 function getThemeIcon(mode: ThemeMode): string {
@@ -134,6 +135,12 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
             <span class="flex items-center gap-2 text-sm">
               <Icon name="lock" :size="16" />
               <span>修改密码</span>
+            </span>
+          </DropdownItem>
+          <DropdownItem @click="$emit('lock-screen')">
+            <span class="flex items-center gap-2 text-sm">
+              <Icon name="lock" :size="16" />
+              <span>锁定屏幕</span>
             </span>
           </DropdownItem>
           <DropdownItem divided @click="$emit('logout')">
