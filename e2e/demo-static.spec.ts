@@ -365,3 +365,45 @@ test.describe('阶段 9 — 实时监控', () => {
     expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
   });
 });
+
+test.describe('阶段 9 — 项目列表与详情', () => {
+  test('项目列表可进入详情，未知 id 显示空态并保持列表菜单高亮', async ({ page }) => {
+    const consoleErrors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+
+    await login(page);
+
+    await page.goto('/#/projects');
+    await expect(page.getByText('项目列表').first()).toBeVisible();
+    await expect(page.getByText('智能运营台').first()).toBeVisible();
+    await expect(page.getByTestId('project-card-1001')).toBeVisible();
+
+    await page.getByTestId('project-card-1001').click();
+    await expect(page).toHaveURL(/#\/projects\/1001$/);
+    await expect(page.getByText('智能运营台').first()).toBeVisible();
+    await expect(page.getByText('项目概要').first()).toBeVisible();
+    await expect(page.getByTestId('shell-tag-projects')).toHaveAttribute(
+      'data-active',
+      'true',
+    );
+
+    await page.getByRole('tab', { name: '成员' }).click();
+    await expect(page.getByText('王小虎').first()).toBeVisible();
+    await page.getByRole('tab', { name: '动态' }).click();
+    await expect(page.getByText('项目动态').first()).toBeVisible();
+
+    await page.getByRole('button', { name: '返回项目列表' }).click();
+    await expect(page).toHaveURL(/#\/projects$/);
+
+    await page.goto('/#/projects/missing');
+    await expect(page.getByText('未找到项目').first()).toBeVisible();
+    await expect(page.getByTestId('shell-tag-projects')).toHaveAttribute(
+      'data-active',
+      'true',
+    );
+
+    expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
+  });
+});

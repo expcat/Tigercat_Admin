@@ -29,8 +29,8 @@ import { GuestRoute } from './components/GuestRoute';
 import { PermissionRoute } from './components/PermissionRoute';
 import {
   SHELL_MENU_ROUTES,
-  SHELL_ROUTE_TO_MENU,
   isShellPageKey,
+  resolveShellPageKey,
   type ShellPageKey,
 } from './utils/shell-navigation';
 import {
@@ -56,6 +56,8 @@ const RegisterSuccessPage = lazy(() => import('./pages/RegisterSuccessPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
 const MonitorPage = lazy(() => import('./pages/MonitorPage'));
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
+const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const TicketsPage = lazy(() => import('./pages/TicketsPage'));
 const CalendarPage = lazy(() => import('./pages/CalendarPage'));
@@ -397,7 +399,7 @@ function App() {
   };
 
   const activeMenu = useMemo(
-    () => SHELL_ROUTE_TO_MENU[location.pathname] ?? DEFAULT_MENU,
+    () => resolveShellPageKey(location.pathname, DEFAULT_MENU),
     [location.pathname],
   );
   const homeContext = useMemo(
@@ -486,6 +488,8 @@ function App() {
           <Route path="/dashboard" element={<HomePage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/monitor" element={<MonitorPage />} />
+          <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/projects/:id" element={<ProjectDetailPage />} />
           <Route path="/tickets" element={<TicketsPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/content" element={<ContentPage />} />

@@ -20,9 +20,9 @@ import {
 import {
   getShellBreadcrumbItems,
   SHELL_MENU_ROUTES,
-  SHELL_ROUTE_TO_MENU,
   getShellPageTitle,
   isShellPageKey,
+  resolveShellPageKey,
   type ShellPageKey
 } from '../utils/shell-navigation'
 import { useTagsView } from '../utils/tags-view'
@@ -150,11 +150,9 @@ watch(
 watch(
   () => route.name,
   (name) => {
-    if (typeof name === 'string') {
-      activeMenu.value = SHELL_ROUTE_TO_MENU[name] ?? 'home'
-    } else {
-      activeMenu.value = 'home'
-    }
+    activeMenu.value = resolveShellPageKey(
+      typeof name === 'string' ? name : undefined,
+    )
 
     if (isMobile.value) {
       handleSidebarClose()

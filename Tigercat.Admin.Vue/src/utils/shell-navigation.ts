@@ -18,13 +18,15 @@ export type ShellPageKey =
   | 'tasks'
   | 'audit'
   | 'about'
-  | 'profile';
+  | 'profile'
+  | 'projects';
 export type ShellMenuKey =
   | ShellPageKey
   | 'system'
   | 'analyticsGroup'
   | 'collaborationGroup'
   | 'contentGroup'
+  | 'projectsGroup'
   | 'opsGroup'
   | 'helpGroup';
 
@@ -56,6 +58,12 @@ const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
     label: '实时监控',
     icon: 'monitor',
     routeName: 'monitor',
+  },
+  projects: {
+    key: 'projects',
+    label: '项目列表',
+    icon: 'package',
+    routeName: 'projects',
   },
   tickets: {
     key: 'tickets',
@@ -185,6 +193,12 @@ export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
     children: [pageMenuItems.content, pageMenuItems.gallery],
   },
   {
+    key: 'projectsGroup',
+    label: '项目',
+    icon: 'package',
+    children: [pageMenuItems.projects],
+  },
+  {
     key: 'opsGroup',
     label: '运维',
     icon: 'terminal',
@@ -225,6 +239,7 @@ export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   home: 'dashboard',
   analytics: 'analytics',
   monitor: 'monitor',
+  projects: 'projects',
   tickets: 'tickets',
   calendar: 'calendar',
   content: 'content',
@@ -248,6 +263,8 @@ export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> = {
   dashboard: 'home',
   analytics: 'analytics',
   monitor: 'monitor',
+  projects: 'projects',
+  'projects-detail': 'projects',
   tickets: 'tickets',
   calendar: 'calendar',
   content: 'content',
@@ -266,6 +283,37 @@ export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> = {
   about: 'about',
   profile: 'profile',
 };
+
+export function resolveShellPageKey(
+  routeKey: string | null | undefined,
+  fallback: ShellPageKey = 'home',
+): ShellPageKey {
+  if (!routeKey) {
+    return fallback;
+  }
+
+  const exact = SHELL_ROUTE_TO_MENU[routeKey];
+  if (exact) {
+    return exact;
+  }
+
+  let matched: ShellPageKey | undefined;
+  let matchedLength = -1;
+  for (const [mappedRoute, pageKey] of Object.entries(SHELL_ROUTE_TO_MENU)) {
+    if (!pageKey || mappedRoute.length <= matchedLength) {
+      continue;
+    }
+    if (
+      routeKey.startsWith(`${mappedRoute}/`) ||
+      routeKey.startsWith(`${mappedRoute}-`)
+    ) {
+      matched = pageKey;
+      matchedLength = mappedRoute.length;
+    }
+  }
+
+  return matched ?? fallback;
+}
 
 export function isShellPageKey(value: unknown): value is ShellPageKey {
   return (

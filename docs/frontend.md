@@ -51,7 +51,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 - 桌面侧栏主菜单保持 `mode="inline"`；折叠态继续传 `collapsed` 并开启 `popupPortal`，由上游在收缩时自动退化为 popup 子菜单，不再手动切换 `vertical`。
 - 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭；Esc 关闭为 Drawer 内置行为（经 `onClose/@close` 回调），不要再手动监听 keydown。依赖 `destroyOnClose + destroyOnCloseAfterLeave + onAfterLeave/@after-leave` 完成离场后卸载与焦点恢复。
 - Header：使用 `Header`、`Breadcrumb`、`Button`、`Dropdown`、`Avatar`、`Tag`，包含侧栏开关、面包屑、主题配置抽屉入口、主题切换、修改密码、锁定屏幕和退出。
-- 多标签（tags-view）：受保护 Shell 在 Header 与 Content 之间显示标签条（`TagsView`）。打开受保护路由即生成标签；标题复用 `getShellPageTitle`，路由映射复用 `SHELL_MENU_ROUTES` / `SHELL_ROUTE_TO_MENU`。仪表盘（`home`）固定在最前且不可关闭；关闭当前时跳到相邻标签，关尽后回到仪表盘。刷新后从 `sessionStorage` 键 `tigercat-admin:tags-view` 恢复（损坏/缺失 JSON 时回退为仅仪表盘）。游客页与 `/403` `/404` `/500` 不套 `MainLayout`，因此不显示标签条。面包屑仍由 `MainHeader` + `getShellBreadcrumbItems` 负责，不要在标签条重复实现。
+- 多标签（tags-view）：受保护 Shell 在 Header 与 Content 之间显示标签条（`TagsView`）。打开受保护路由即生成标签；标题复用 `getShellPageTitle`，路由映射复用 `SHELL_MENU_ROUTES` / `resolveShellPageKey`（先精确查 `SHELL_ROUTE_TO_MENU`，再按前缀映射，使 `/projects/:id` 与 Vue `projects-detail` 仍高亮列表菜单 `projects`）。仪表盘（`home`）固定在最前且不可关闭；关闭当前时跳到相邻标签，关尽后回到仪表盘。刷新后从 `sessionStorage` 键 `tigercat-admin:tags-view` 恢复（损坏/缺失 JSON 时回退为仅仪表盘）。游客页与 `/403` `/404` `/500` 不套 `MainLayout`，因此不显示标签条。面包屑仍由 `MainHeader` + `getShellBreadcrumbItems` 负责，不要在标签条重复实现。
 - 锁屏：头像下拉「锁定屏幕」打开全屏遮罩（`LockScreen`），覆盖侧栏、标签条与内容；含当前用户 `Avatar`、`Statistic` 实时时钟、`NumberKeyboard` PIN 输入。演示 PIN 固定 `123456`（与登录 OTP 相同）。正确 PIN 关闭遮罩并留在当前路由；错误 PIN 提示后清空输入；Esc / ⌘K 不能绕过 PIN。锁定标记写入 `sessionStorage` 键 `tigercat-admin:lock-screen`。不进左侧菜单。
 - 全局水印：`/settings` 的 `theme.watermark` 开关控制是否在 Header 下方内容区（多标签条 + 页面出口）叠一层 Tigercat `Watermark`。水印文案为两行数组：当前用户名、当天日期 `YYYY-MM-DD`（如 `admin` / `2026-08-23`）。开关立即生效，写入 `localStorage` 键 `tigercat-admin:watermark`（无新 API 端点）。关闭时不渲染 Shell `Watermark`；内容编辑页 / 报表页的页内水印演示保持独立。覆盖层外框是 `absolute inset-0` 且 `pointer-events: none`；`Watermark` 本身保持 `relative h-full w-full`（组件总会加上 `relative`，不要把 `absolute` 写在 Watermark 上，否则与组件 class 冲突后高度为 0）。锁屏遮罩仍覆盖水印层。
 - 主题配置抽屉：Header 通知铃铛旁的调色板按钮打开右侧 `Drawer`。控件接 `utils/theme.ts`：`Segmented` 切换 light / dark / system，`ColorSwatch` 选 `COLOR_PRESETS` 主色，`Switch` 控制 `compactMode`。变更立即 `saveThemePreferences` + `applyTheme`（含根节点 `.dark` 与 `.compact`）。头像下拉「主题模式」循环切换仍保留。不进左侧菜单。
@@ -65,6 +65,8 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 | `home` | `/dashboard` | 仪表盘 | `dashboard:view` |
 | `analytics` | `/analytics` | 数据分析（分组「数据分析」） | 无入口权限 |
 | `monitor` | `/monitor` | 实时监控（分组「数据分析」） | 无入口权限 |
+| `projects` | `/projects` | 项目列表（分组「项目」） | 无入口权限 |
+| — | `/projects/:id` | 项目详情（动态参数 `id`，不进侧栏；列表菜单保持高亮） | 无入口权限 |
 | `users` | `/users` | 用户管理 | `user:view` |
 | `roles` | `/roles` | 角色管理 | `role:view` |
 | `settings` | `/settings` | 系统设置 | 无入口权限 |
@@ -77,7 +79,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 | — | `/403` `/404` `/500` | 异常页（公共独立布局，不进菜单） | 无（独立兜底页） |
 | — | `/login` `/register` `/forgot-password` `/register-success` | 游客认证页（Guest shell，不进菜单） | 无（游客路由） |
 
-React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-router-dom` 管路由；Vue 通过 `vue-router`、`ProtectedShell`、`GuestShell` 与路由 meta `requiresPermission` 守卫管理。未知路径统一重定向 `/404`；已登录但缺少入口权限（`/users` 需 `user:view`、`/roles` 需 `role:view`）重定向 `/403`，权限加载完成前守卫保持加载态避免误判。刷新后都从 `SESSION_KEY` 读取会话并加载权限；MockApi 演示账号 `demo` 为只读权限（无 `user:view`/`role:view`），用于演示 403 场景。
+React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-router-dom` 管路由；Vue 通过 `vue-router`、`ProtectedShell`、`GuestShell` 与路由 meta `requiresPermission` 守卫管理。未知路径统一重定向 `/404`；已登录但缺少入口权限（`/users` 需 `user:view`、`/roles` 需 `role:view`）重定向 `/403`，权限加载完成前守卫保持加载态避免误判。刷新后都从 `SESSION_KEY` 读取会话并加载权限；MockApi 演示账号 `demo` 为只读权限（无 `user:view`/`role:view`），用于演示 403 场景。项目详情是本仓库首个动态参数路由：双端参数名均为 `id`（React `useParams().id`，Vue `useRoute().params.id`）；未知 id 渲染页内空态，不跳出 Shell。
 
 ## 视觉与布局规则
 
@@ -110,6 +112,8 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 | 个人中心 | `Tabs`/`TabPane`、`Descriptions`、`Avatar`、`Badge`、`Statistic`、`Rate`、`QRCode`、`Signature`、`ColorSwatch`、`Radio`/`RadioGroup`、`Slider`、`DatePicker`、`TimePicker`、`Textarea`、`Switch`、`Divider`、`Space`、`Timeline`、`List` | 选项卡分区、资料只读视图、两步验证绑定、电子签名、偏好设置、登录设备与历史 |
 | 数据分析 | `Segmented`、`DatePicker`、`ButtonGroup`、`Statistic`、`Progress`、`Skeleton`、`AreaChart`、`DonutChart`、`FunnelChart`、`GaugeChart`、`HeatmapChart`、`RadarChart`、`ScatterChart`、`TreeMapChart`、`SunburstChart`、`OrgChart`、`ChartCanvas`/`ChartAxis`/`ChartGrid`/`ChartSeries`/`ChartLegend`/`ChartTooltip`、`Table`、`Pagination` | 时间范围切换、KPI 进度、多类型图表、组织分布、图表基元自定义、明细分页 |
 | 实时监控 | `Segmented`、`Statistic`、`GaugeChart`、`AreaChart`、`LineChart`、`ActivityFeed`、`Progress`、`Tag`、`Badge` | 页内定时器 mock 刷新（2s / 3s / 5s，默认 3s）、暂停/继续、CPU/内存/磁盘水位、QPS/延迟滚动窗口、节点状态、事件流封顶 |
+| 项目列表 | `Card`、`Statistic`、`Tag`、`Avatar`/`AvatarGroup`、`Progress`、`Input`、`Segmented`、`Pagination`、`Empty` | 卡片网格、名称/负责人/编号搜索、状态分段筛选（规划中/进行中/已暂停/已完成）、分页、点击卡片或「查看详情」进入 `/projects/:id` |
+| 项目详情 | `Descriptions`、`Steps`/`StepsItem`、`Tabs`/`TabPane`、`Anchor`/`AnchorLink`、`Timeline`、`CommentThread`、`Empty`、`Progress`、`Avatar`/`AvatarGroup` | 动态路由 `:id`、概览/成员/动态、页内锚点切 Tab、未知 id 空态仍保持列表菜单高亮；数据为页面内静态 mock |
 | 工单中心 | `Splitter`、`Resizable`、`Steps`/`StepsItem`、`ChatWindow`、`CommentThread`、`Mentions`、`Descriptions`、`Rate`、`Badge`、`Tag`、`Popover`、`Drawer`、`Upload`、`Textarea`、`RadioGroup`/`Radio`、`Input`、`Divider` | 主从分栏（宽屏左右 / 窄屏上下）、工单生命周期、对话、内部 @ 协作、附件、关闭确认、新建工单 |
 | 团队日历 | `Calendar`、`Countdown`、`Statistic`、`Badge`、`Popover`、`Tag`、`List`、`Drawer`、`DatePicker`、`TimePicker`、`RadioGroup`/`Radio`、`Input` | 月视图选择、下一日程倒计时、当日日程标记与详情、即将到来列表、新建事件 |
 | 内容编辑 | `Segmented`、`RichTextEditor`、`MarkdownEditor`、`CodeEditor`、`Watermark`、`Switch`、`Space`、`TreeSelect`、`Cascader`、`AutoComplete`、`Mentions`、`Upload`、`Result`、`Tag`、`Input` | 编辑器三态切换、草稿水印、分类树/栏目级联/标签自动完成、@ 协作者、附件上传、立即发布开关、发布成功结果页 |
