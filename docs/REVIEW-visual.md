@@ -1014,5 +1014,46 @@
   2. **技术栈 Trigger（shot）：** `/tmp/vue-about-nav-stack.png`（1280×800）。**技术栈** caret **朝上**（展开），弹出 **「了解前端、构建与 UI 组件」**（源码 `ABOUT_SECTIONS.stack.description`）。服务信息 / 特性 caret 朝下（收起）。**画面仍是页顶**——PageHeader、服务三格、亮点四格完整可见，技术栈仍只露 Vue 3 / Vite 上沿，**没有**滚到 `#about-stack` 整块或系统信息行。shot 只证明点了 **Trigger**；**没有**证明点了 Content 里的 `NavigationMenuLink`。特性（「浏览产品亮点与体验说明」）无独立 shot。
   3. **锚点 vs 可见内容（shot + 源码，非可见 heading）：** `#about-info` = 服务概览三格（shot 全见）；`#about-features` = 产品亮点四 chips（shot 全见）；`#about-stack` = 技术栈（shot 只见 Vue 3 / Vite；源码还有开发语言 TypeScript / UI 组件 Tigercat UI，折下）。系统信息 Card 仍折下（5.1 已记 y≈916）。源码 `scrollToAboutSection` 对 `href` 做 `preventDefault` + `document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })`，目标 id 即 `#about-info` / `#about-features` / `#about-stack`。
   4. **leftover `overflow-x-auto`（shot）：** 源码 `<NavigationMenu class-name="min-w-0 overflow-x-auto">`。1280 下三项「服务信息 特性 技术栈」同一行、右余白大，shot **看不见** nav 横向滚动条；页右是主区竖滚动条。三项之间有空隙，不像被裁切。`documentElement.scrollWidth===clientWidth` 与 nav 自身 scrollWidth **本条写 shot 时未测 → 缺口**（live 补）。
-- **严重度：** Trigger 打开 Content，文案与源码 description 一致：通过（信息，两张 1280×800 shot）。服务信息目标已在首屏、shot 无位移：信息（符合先验 scrollTop=0）。**点 Content link 后是否 smooth scroll 到 `#about-features` / `#about-stack`：缺口**（shot 未证明 Link 点击与滚动位移）。leftover `min-w-0 overflow-x-auto` 1280 下未见横条：**低**（Roadmap leftover；横溢数字待 live）。
+  5. **live scroll proof（vue-about-rest）：** 隔离上下文 **`vue-about-rest`**，`admin` / `admin123`，视口 **1280×800** 浅色。inspect Allow shot `/tmp/vue-about-rest-inspect-remote-debugging.png`。未改产品代码、未停 Api。
+     - **overflow：** `documentElement` `scrollWidth===clientWidth===1280`（无页级横溢）。`#main-content-scroll` `scrollWidth===clientWidth===1025`，`scrollHeight=889`，`clientHeight=658`，`scrollTop=0`。
+     - **NavigationMenu leftover `overflow-x-auto`：** `NAV.tiger-navigation-menu.min-w-0.overflow-x-auto` `scrollWidth===clientWidth===977` at **(264,255,977×44)**。1280 下无横条（补 复现 4 的横溢数字缺口）。
+     - **锚点矩形（scrollTop=0）：** `#about-info` **(264,323,977×108)** vis=true；`#about-features` **(264,455,977×198)** vis=true（全见）；`#about-stack` **(264,677,977×198)** vis=true 但底边 y **875>800**（部分）；系统信息 Card `title=系统信息` **(264,899,977×108)** vis=false。
+     - **点 服务信息 NavigationMenuLink 后：** `#main-content-scroll` `scrollTop` 仍 **0**，`location.hash` 空，`#about-info` 仍 y **323** vis=true。符合预期：目标已在屏内，`scrollIntoView` 无位移。
+     - **点 特性 NavigationMenuLink 后：** `scrollTop` 仍 **0**，hash 空，`#about-features` 仍 y **455–653** 全在屏内，PageHeader 仍 vis y **166**，系统信息仍 vis=false。点击打到 `<a href=#about-features class=tiger-navigation-menu-link>` 文案「浏览产品亮点与体验说明」。截图 `/tmp/vue-about-nav-features.png`（1280×800）：特性 caret 朝上，Content「浏览产品亮点与体验说明」，页面仍在顶（PageHeader + 服务三格 + 亮点四格 + 技术栈 Vue 3 / Vite 上沿）。`scrollIntoView` 位移 **未观察到**（目标已全见；`block:start` 未推动 `#main-content-scroll`）。
+     - **技术栈 Link + 滚到 `#about-stack` / 系统信息行：** 本 walk **未点** → **缺口**。系统信息 **.NET 10 + Vue 3** / **PNPM** / API **已连接** 在两次点击后仍折下（y **899**）。
+- **严重度：** Trigger 打开 Content，文案与源码 description 一致：通过（信息，两张 1280×800 shot）。服务信息 / 特性 NavigationMenuLink 点击打到对应 `<a href=#about-*>`，目标已全在 1280×800 首屏，`scrollTop` 保持 0、hash 空、`scrollIntoView` 无位移：通过（信息，`vue-about-rest` live + `/tmp/vue-about-nav-features.png`）。`documentElement` / `#main-content-scroll` / nav `scrollWidth===clientWidth`，1280 下无横条：通过（信息）。leftover `min-w-0 overflow-x-auto`：**低**（Roadmap leftover；1280 无横溢）。**点 技术栈 Link 后是否 smooth scroll 到 `#about-stack` 整块 / 系统信息行：缺口**（本 walk 未点；系统信息 y=899 仍折下）。
+
+### 5.3 Load-fail Alert
+
+- **模块：** About 信息加载失败 Alert（`title="信息加载失败"`）
+- **端：** Vue
+- **视口：** 桌面 **1280×800**，隔离上下文 `vue-about-rest`，浅色（未另开失败路径）
+- **复现：**
+  1. 成功路径已在 **5.1** live：`GET http://127.0.0.1:5173/api/info` **200**（Kestrel），PageHeader Tag **已连接**，无 Alert「信息加载失败」，无「正在加载服务信息...」。本条不重写 5.1。
+  2. 失败路径需要只在隔离上下文 `vue-about-rest` 内拦截 `/api/info`（DevTools offline / request blocking），**不能**停 Api `:5137`，**不能** block 全部 `/api`，**不能**留下任何拦截。
+  3. chrome-devtools MCP **没有** URL request-block / `Network.emulate` URL-block 工具。本会话拒绝停 Api、拒绝全局 `/api` 拦截。无法在 1–2 回合内做安全的 isolated-context-only block。
+  4. 因此失败 Alert 路径 **未 live 复现**。无失败 shot。源码路径仍在：`errorMessage` 非空时渲染 `<Alert type="error" title="信息加载失败" :description="errorMessage" closable>`；`getFriendlyErrorMessage` 无中文时落到「服务信息加载失败，请稍后重试。」；Tag 会切 `danger` / 「连接失败」。这些是源码契约，不是 live 失败画面。
+- **严重度：** 成功路径（5.1 GET `/api/info` 200 + Tag 已连接 + 无 Alert）：通过（信息）。失败 Alert「信息加载失败」live：**缺口**（无安全 URL-block 工具；拒绝杀 Api / 全局 `/api` 拦截）。无 shot。
+
+### 5.6 leftover CSS
+
+本期只写 5.6，不重写 5.1–5.3，不审 React About，不 attach Chrome。证据 = `AboutPage.vue` / `PageHeader.vue` 源码 + 已记 5.1/5.2 live（视口 **1280×800** 浅色，`vue-about` / `vue-about-rest`）。未改产品代码。双端对照留给 React About，本条 **未开** `5174`。写本条时 **5.4 Dark / 5.5 Mobile 375 尚未存在**，暗色与 ~375 leftover 标 **缺口**。
+
+- **模块：** About leftover CSS（PageHeader `p2-*` / NavigationMenu `overflow-x-auto` / infoCards·highlights·techStack·systemInfo 的 `slate` / `*-100` / `from-*-50` / `text-slate-800` vs `--tiger-*`）
+- **端：** Vue
+- **视口：** 桌面 **1280×800** 浅色（5.1/5.2 live）。深色 / ~375：**缺口**（5.4/5.5 写本条时未落）
+- **复现：**
+  1. **与 Home 4.8 对照：About 有 import PageHeader。** `AboutPage.vue` `<script setup>` `import PageHeader from '../components/PageHeader.vue'`，模板第一块 `<PageHeader title="关于 Tigercat" subtitle="了解平台版本与服务信息" icon="info" :tags="[系统信息, connectionStatus]">`。Home 4.8 明确 **不** import。5.1 live：`header.tiger-page-header` **977×65** at **(264,166)**，`class-name="min-w-0 overflow-hidden"`。
+  2. **PageHeader leftover `p2-icon-chip` + `p2-text-primary`（5.1 已量，绑 `--tiger-*`）：** 左芯片 `div.p2-icon-chip` **48×48**（`h-12 w-12`，内 Icon 24），底 `color(srgb 0.145 0.388 0.922 / 0.14)`、色 `rgb(37,99,235)` = `--tiger-primary` `#2563eb`。标题 leftover `p2-text-primary` **154×28**，色 `rgb(17,24,39)` = `--tiger-text` `#111827`。副文走 Tigercat `color=secondary`，不是 `p2-*`。`#actions` tags `hidden sm:flex`（1280 下 flex）。`PageHeader.vue` 定义同形。
+  3. **Card `title` 不是可见 heading（5.1 已记）：** 四张 Card `title="服务概览 / 产品亮点 / 技术栈 / 系统信息"` live 落到 HTML 原生 `title` tooltip，**没有** `tiger-card-header` / 可见标题。这是 leftover 呈现，不是 `--tiger-*` 色值问题。
+  4. **infoCards / techStack / systemInfo 共用格子 leftover：** 源码每格 `flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70`。5.1 服务概览三格 live：边 `oklch(0.929 0.013 255.508)`、底 `oklab(0.984 … / 0.7)`，**不是** `--tiger-border` `#e5e7eb` / `--tiger-bg-card`（宿主 Card 才是 `--tiger-surface` `#ffffff` + `--tiger-border` `#e5e7eb`）。数值 `Text` 同时带 `text-[var(--tiger-text,#111827)]` 与 leftover **`text-slate-800`**，实算 `oklch(0.279 0.041 260.031)`，不是 `--tiger-text` `#111827`。
+  5. **图标芯片 `bg-*-100 text-*-600`（Tailwind 色阶，不跟 `--tiger-primary`）：**
+     - infoCards：`bg-blue-100 text-blue-600` / `bg-purple-100 text-purple-600` / `bg-green-100 text-green-600`（5.1 live 已见）。
+     - techStack：`bg-green-100 text-green-600` / `bg-orange-100 text-orange-600` / `bg-blue-100 text-blue-600` / `bg-purple-100 text-purple-600`。
+     - systemInfo：`bg-indigo-100 text-indigo-600` / `bg-blue-100 text-blue-600` / `bg-green-100 text-green-600`。
+     1280 浅色下这些是 pastel 芯片；对照 token `--tiger-primary` / `--tiger-bg-card` / `--tiger-text` / `--tiger-surface` / `--tiger-border` 都不走这些 `*-100/*-600`。
+  6. **highlights leftover 渐变：** 四格 `border-slate-200 bg-linear-to-br` + `from-blue-50 to-blue-100` / `from-purple-50 to-purple-100` / `from-orange-50 to-orange-100` / `from-green-50 to-green-100`；图标 wrap `bg-white/70` + `text-*-600`；标题同样 leftover `text-slate-800`。5.2 shot 已见四枚 pastel chips（清晰导航体验蓝 / 安全认证体系紫 / 快速响应接口橙 / 一致视觉语言绿）。**本条未再 attach** 量 `from-*-50` 计算色。
+  7. **NavigationMenu leftover `min-w-0 overflow-x-auto`（5.2 live）：** `<NavigationMenu class-name="min-w-0 overflow-x-auto">`。1280 浅色 `NAV.tiger-navigation-menu` `scrollWidth===clientWidth===977` at **(264,255,977×44)**。`documentElement` 1280===1280，`#main-content-scroll` 1025===1025。无横条。leftover 类仍在，1280 无横溢。
+  8. **暗色 leftover / ~375 leftover：** 写本条时 **### 5.4 / ### 5.5 尚未存在**。`html.dark` 下 `slate-200` / `bg-slate-50/70` / `bg-*-100` / `from-*-50` / `text-slate-800` 是否仍是浅 pastel、375 下 `grid-cols-1` 与 nav `overflow-x-auto` 是否横溢：**缺口**（留给 5.4/5.5 live）。
+- **严重度：** About **有** PageHeader（与 Home 4.8 对照）+ `p2-icon-chip`/`p2-text-primary` 已绑 `--tiger-primary`/`--tiger-text`：通过（信息，5.1）。`Card title` 只剩 native tooltip：**中**（5.1 已记，本条不升档）。格子 leftover `border-slate-200` / `bg-slate-50/70` / `text-slate-800` / `bg-*-100 text-*-600` / `from-*-50 to-*-100` / `bg-linear-to-br` 不跟 `--tiger-primary` / `--tiger-bg-card` / `--tiger-text` / `--tiger-surface` / `--tiger-border`：**低**（Roadmap leftover；1280 浅色 5.1/5.2）。`min-w-0 overflow-x-auto`：**低**（1280 `scrollWidth===clientWidth===977`）。暗色 / 375 leftover 计算色与横溢：**缺口**。
 
