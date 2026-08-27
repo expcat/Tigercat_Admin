@@ -456,72 +456,29 @@
 - **双端：** Vue 2.20 副文「账号已创建，即将返回登录页」/ Countdown「即将自动返回登录」，且 Vue 走查记 Result **未**包 transparent Card。React 副文「即将自动跳转到登录页」/「即将自动跳转登录」，**有** Card。文案与 Card 包裹双端不完全一致，画面都是成功 Result + 倒计时。
 - **严重度：** 通过（信息）。文案/Card 包裹差异：**低**。
 
-### 2b.4 Login 错误密码 Message
+### 2b.13 ForgotPassword 邮箱 Input（空校验 / 发码 / OTP）
 
-- **模块：** Login 错误密码 Message
+- **模块：** ForgotPassword 验证身份（邮箱）
 - **端：** React
-- **视口：** 桌面 **1280×800**
+- **视口：** 桌面 **1280×800**，隔离上下文 `react-forgot-review`，浅色。先开 `chrome://inspect/#remote-debugging`（Allow 已勾选），再 `new_page` isolatedContext。未登录、无 cookie / localStorage。未改 admin 密码。
 - **复现：**
-  1. 用户名 `admin`，密码 `wrongpass`，点「登录」。
-  2. `POST /api/auth/login` **401**，body `message=用户名或密码错误`。
-  3. 顶栏 `#tiger-message-container` 出现 `role=alert` toast：白底红字 + 错误圆叉，「用户名或密码错误」，约 178×46，居中 `top-6`。入场从 `opacity-0 -translate-y-2` 到 `opacity-100`。约 3s 后消失。仍停在 `/login`，表单值保留。`/tmp/react-login-wrong-password-toast.png`。
-- **双端：** Vue 2.5 PNG 未拍到 toast（拍晚）；Vue 2.20 后补同一文案。React 本会话拍到可见 Message。
+  1. `http://127.0.0.1:5174/forgot-password`。游客双栏卡。左栏青绿渐变（`from-teal-600 via-cyan-600 to-sky-600`），标题「重置您的登录密码」；编号 1/2/3 卖点。右栏「忘记密码」「通过验证码重置账号密码」。Steps：当前 **1 验证身份**，2 设置新密码，3 完成。账号 Input 空占位「请输入邮箱或手机号」；6 格 InputOTP；「获取验证码」；「下一步」；「返回登录」。无侧栏 / Header / TagsView / 「演示模式」。`scrollWidth===clientWidth`（1280）。截图 `/tmp/react-r3-forgot-empty.png`。
+  2. 空账号点「获取验证码」：账号 `aria-invalid=true`，描边红（`text-red-900` / `border` 红），live **请输入邮箱或手机号**。无 fetch、无 Message。截图 `/tmp/react-r3-forgot-empty-validation.png`。
+  3. 填一次性邮箱 `rv3r.throwaway@example.test`（非 admin/demo），点「获取验证码」。`POST /api/auth/forgot-password/code` **200**（Kestrel），body `channel=email` `target=rv3r.throwaway@example.test`，`data.sentTo` 同值。按钮换成 Countdown **59** 秒；行内「验证码已发送至 rv3r.throwaway@example.test」；a11y status **验证码已发送**（toast 约 2s，截图拍到 Countdown 时已消失）。截图 `/tmp/react-r3-forgot-code-sent.png`。
+  4. 仍空 OTP 点「下一步」：六格 `invalid=true`，红字 **请输入验证码**。仍在步骤 1。截图 `/tmp/react-r3-forgot-otp-empty-validation.png`。桌面末格 `getBoundingClientRect` 未超出 form（未裁切）。
+  5. OTP 填 `123456` 点「下一步」→ 进入步骤 2「设置新密码」。截图 `/tmp/react-r3-forgot-otp-filled.png`。
+- **双端：** Vue 2.13 空校验同文案「请输入邮箱或手机号」。Vue 2.15 发码后 Countdown 同形；Vue 成功 toast 文案为「验证码已发送至 {sentTo}」，React toast 为「验证码已发送」，另有行内 sentTo。Vue 左栏「找回账号访问权限」+ 蓝紫渐变 + 副文「通过邮箱或手机号重置登录密码」；React 左栏「重置您的登录密码」+ 青绿渐变 + 副文「通过验证码重置账号密码」。步骤结构同形（身份 + OTP 同页）。
+- **严重度：** 通过（信息）。左栏文案/色板与 toast 文案差异：**低**。
+
+### 2b.14 ForgotPassword 手机 MaskInput
+
+- **模块：** ForgotPassword 手机 MaskInput
+- **端：** React
+- **视口：** 桌面 **1280×800**，同一隔离上下文（发码前在步骤 1 另测，未对手机发码、未重置密码）
+- **复现：**
+  1. 账号输入 `1` 后 DOM 出现 `data-testid="forgot-phone-mask"`，组件 `MaskInput`，`mask="### #### ####"`。
+  2. 继续键入到 `138`：画面明文 **`138`**，DOM `value="138 "`（尾空格，对应 mask 第一组分隔）。与 Vue 2.14 PNG / 2.20 DOM 同形。截图 `/tmp/react-r3-forgot-phone-mask.png`。
+  3. 再键入到七位：画面 **`138 1234`**，DOM `value="138 1234 "`。空格分组可见，即 mask 槽位，不是损坏的明文连写。截图 `/tmp/react-r3-forgot-phone-mask-slots.png`。未发短信、未点「获取验证码」。清掉后走邮箱路径。
+- **双端：** Vue 2.14 PNG 只拍到 `138` 中间态（未取证完成态）；Vue 2.20 后补 mask `### #### ####` + `"138 "`。React 本会话拍到分组空格。
 - **严重度：** 通过（信息）
-
-### 2b.5 Login admin 成功
-
-- **模块：** Login `admin` 直进后台
-- **端：** React
-- **视口：** 桌面 **1280×800**
-- **复现：** `admin` / `admin123` 点「登录」→ URL **`http://127.0.0.1:5174/dashboard`**。「欢迎回来，admin！」；侧栏 + Header `admin` + TagsView「仪表盘」；运行环境 `.NET 10 + React 19`；Header 无「演示模式」。隔离上下文首次登录出现 OnboardingTour 1/6「欢迎使用管理中心」（与项 1 同形，不阻塞 Auth）。`/tmp/react-login-admin-success.png`。
-- **双端：** Vue 2.6 无成功 PNG；Vue 2.20 与项 1 已记同一路径。React 本会话取证。
-- **严重度：** 通过（信息）
-
-### 2b.6 已登录访问游客路由
-
-- **模块：** 已登录重定向
-- **端：** React
-- **视口：** 桌面 **1280×800**，同一会话 `react-auth-review`
-- **复现：** 登录后分别打开 `/login` `/register` `/forgot-password` `/register-success`，`location.href` 均为 `/dashboard`。
-- **双端：** 与 Vue 2.20 行为一致。
-- **严重度：** 通过（信息）
-
-### 2b.7 2FA OTP 步
-
-- **模块：** Login 2FA OTP
-- **端：** React
-- **视口：** 桌面 **1280×800**，隔离上下文 `react-guest-2fa`
-- **复现：**
-  1. 新隔离上下文打开 `/login`，填 `demo` / `demo`，点「登录」。仍停在 `/login`。
-  2. 标题「两步验证」，副文「请输入账号 demo 的 6 位验证码」。
-  3. 信息条 `Alert`「演示验证码：123456」（带 info 图标）。
-  4. `InputOTP` 六格空，第一格紫描边/焦点。其下 Countdown「验证码已发送」+ **58** 秒后可重发（Roadmap 60s；拍到 58，未正好 60）。
-  5. 主按钮「验证」禁用。链接「返回登录」。截图 `/tmp/react-2fa-otp-step.png`。
-- **双端：** Vue 2.7 Alert 另有 description「验证通过后才会写入会话，返回登录可重新输入凭据。」React 只有 title + showIcon，**无该说明句**。其余布局同形。
-- **严重度：** 低（文案缺口，不阻塞 2FA 主路径）
-
-### 2b.8 2FA 错误码
-
-- **模块：** Login 2FA 错误码
-- **端：** React
-- **视口：** 桌面 **1280×800**
-- **复现：**
-  1. OTP 填 `000000`（与提示 `123456` 不同）。「验证」变为可点。
-  2. `POST /api/auth/two-factor/verify` **401** `message=验证码错误`（body `username=demo` `code=000000` + challengeId）。
-  3. 顶栏 Message toast「验证码错误」（红叉 + 白底红字）。仍停在两步验证卡，OTP 六格仍为 0。`/tmp/react-2fa-wrong-code-toast.png`。
-- **双端：** Vue 2.8 PNG 无错误文案；Vue 2.20 记 `#tiger-message-container` 无子节点、**Message 不可见（中）**。React 本会话 toast **可见**。
-- **严重度：** 通过（信息）。与 Vue 2.20 的「错码 Message 不可见」不一致，记 mismatch。
-
-### 2b.9 2FA 重发 Countdown
-
-- **模块：** Login 2FA 重发
-- **端：** React
-- **视口：** 桌面 **1280×800**
-- **复现：**
-  1. 倒计时结束后出现链接「重新发送验证码」。
-  2. 点击后 OTP 六格清空；「验证」恢复禁用；Countdown 回到 **59** 秒后可重发（Roadmap 60s；拍到 59，未正好 60）。截图 `/tmp/react-2fa-resend.png`。
-  3. 代码会 `Message.success`「已重新发送，演示验证码：123456」（duration 2s）。点击后 400ms 内 `#tiger-message-container` 无子节点；本步未拍到成功 toast。
-- **双端：** Countdown 行为与 Vue 2.9 一致。Vue 2.20 亦记重发 `Message.success` 未进容器。
-- **严重度：** Countdown 通过（信息）。重发成功 toast **未取证**（与 Vue 同类）。
-
 
