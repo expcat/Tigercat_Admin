@@ -269,7 +269,259 @@
 
 - **模块：** Auth guest 通用清单
 - **端：** Vue
-- **视口：** 未拍
-- **复现：** 13 张均为浅色 **1280×800**。未见 `.dark`、未见 `.compact`、未见 `≤767px` / `375px`、未见窄屏溢出。未见已登录态再打开 `/login` `/register` `/register-success` `/forgot-password` 后进仪表盘。
-- **严重度：** 未做（本会话）
+- **视口：** 未拍（仅 13 张浅色桌面 PNG 时）
+- **复现：** 上列 13 张均为浅色 **1280×800**。暗色 / 375px / 已登录重定向见 **2.20–2.22**（同会话后续补：chrome-devtools 走查 + CDP 隔离上下文）。
+- **严重度：** 见 2.20–2.22
+
+### 2.20 Vue 走查补证（a11y / 网络 / 交互，不只 PNG）
+
+上列 2.3–2.12 若干条标「未取证」是因为 PNG 没拍到 toast/成功页。下列来自同一 Vue 走查会话的 a11y 快照与网络，不是猜图。
+
+- **模块：** Login 空校验 / 错密 / admin 成功 / 已登录重定向
+- **端：** Vue
+- **视口：** 1280×800，隔离上下文 `vue-auth-review`
+- **复现：**
+  1. 空表单击「登录」：用户名/密码 `invalid=true`，live 区 **请输入用户名**、**请输入密码**。`/tmp/vue-login-empty-validation.png` 是随后 `fill_form` 只写入首字符后的误拍。
+  2. `admin` + `wrongpass`：按钮 busy/disabled；`#tiger-message-container` alert **用户名或密码错误**。PNG 拍晚，toast 已消失。
+  3. `admin` / `admin123` → `http://127.0.0.1:5173/dashboard`，「欢迎回来，admin！」，Header `admin`，无「演示模式」。
+  4. 同一会话再打开 `/login` `/register` `/forgot-password` `/register-success`，`location.href` 均为 `/dashboard`。
+- **严重度：** 通过（信息）
+
+- **模块：** 2FA 错码 Message / 成功
+- **端：** Vue
+- **视口：** 1280×800，`vue-guest-2fa`
+- **复现：**
+  1. 错码 `000000`：`POST /api/auth/two-factor/verify` **401** `message=验证码错误`（多次）。`#tiger-message-container` 无子节点（MutationObserver 空）。PNG 无 toast 与网络一致。
+  2. 重发：OTP 清空，Countdown 回到约 54s；`Message.success` 同样未进容器。
+  3. 「返回登录」后用户名仍 `demo`。再登录填 `123456` → `/dashboard`，「欢迎回来，demo！」。
+- **严重度：** 2FA 错码/重发 **Message 不可见**：**中**。成功路径通过。
+
+- **模块：** RegisterSuccess Result + 倒计时
+- **端：** Vue
+- **视口：** 1280×800，`vue-guest-rest`
+- **复现：** 唯一用户名 `rv2vue0827` / `Walk2vue!` → URL `/register-success`。a11y：Result **注册成功** / 「账号已创建，即将返回登录页」；Countdown「即将自动返回登录」当时 **3秒**；「立即登录」。右栏 Result **未**包 Tigercat transparent Card。倒计时结束后自动 `/login`。故 `/tmp/vue-register-success.png` 是跳转后的登录卡。
+- **严重度：** 通过（信息）
+
+- **模块：** ForgotPassword MaskInput
+- **端：** Vue
+- **视口：** 1280×800
+- **复现：** 输入 `138` 后 DOM 出现 `data-testid="forgot-phone-mask"`，mask `### #### ####`，值为 `"138 "`（尾空格）。PNG 只显示 `138`。邮箱路径用一次性 `rv2.throwaway@example.test`，未改 admin 密码。
+- **严重度：** 通过（信息）
+
+- **模块：** leftover CSS vs Tigercat
+- **端：** Vue
+- **视口：** 1280×800
+- **复现：** 外框 leftover（`shadow-2xl`、`animate-fade-in-up`、`dark:border-slate-850`、`dark:bg-slate-900/90`、渐变左栏）。内层表单是 Tigercat `Card variant="transparent"` + `p-0`。
+- **严重度：** 低（信息）
+
+### 2.21 Vue 暗色
+
+- **模块：** 游客页 `.dark`
+- **端：** Vue
+- **视口：** 1280×800 暗色（隔离上下文，只 reload 游客页，未再登录）
+- **复现：** `localStorage tigercat.admin.theme mode=dark` 后 reload。`html.dark`。Guest 背景 `rgb(13, 17, 23)`，右栏 `rgb(22, 27, 34)`，输入暗底。左栏渐变仍亮。无横向溢出。无「演示模式」。`/tmp/vue-login-dark.png` `/tmp/vue-forgot-dark.png`
+- **严重度：** 通过（信息）。游客页无主题抽屉，紧凑未切。
+
+### 2.22 Vue 移动 ~375px
+
+- **模块：** 游客页 375px 溢出
+- **端：** Vue
+- **视口：** **375×812** 暗色
+- **复现：**
+  1. 登录：左渐变 `display:none`，顶栏 AppLogo + 「Tigercat Admin」居中。`scrollWidth=375`，无横溢。`/tmp/vue-login-mobile-375.png`
+  2. 注册：同样单栏，无横溢。`/tmp/vue-register-mobile-375.png`
+  3. 忘记密码：Steps 仍完整。**InputOTP 第六格被卡片 `overflow-hidden` 裁切**；「手机号」的「号」叠进 OTP 行。`scrollWidth===clientWidth`（裁切而非可滑）。`/tmp/vue-forgot-mobile-375.png`
+- **严重度：** 忘记密码 375px OTP 裁切 / 标签叠字：**中**。登录/注册通过。
+
+---
+
+## 2b. Auth guest (React)
+
+本期只走 React `http://127.0.0.1:5174`。未开 Vue `5173` 页面、未重启三端（Api 5137 / Vue 5173 / React 5174 仍为项 1 进程）。不是 MockApi / `dev:demo` / Aspire。chrome-devtools：先开 `chrome://inspect/#remote-debugging`（Allow 已勾选），再在隔离上下文 `react-auth-review` 打开登录页，避免项 1 留下的 admin 会话与 OnboardingTour。账号：`admin` / `admin123`（无 2FA）；`demo` / `demo` + OTP `123456`。
+
+### 2b.1 Guest shell
+
+- **模块：** GuestLayout / 登录卡壳
+- **端：** React
+- **视口：** 桌面 **1280×800**，隔离上下文 `react-auth-review`，浅色
+- **复现：**
+  1. `http://127.0.0.1:5174/login`，标题 `tigercat-admin-react`。
+  2. 浅灰页底上居中圆角双栏卡（约 896×500，左右留白）。无侧栏、无 Header、无 TagsView、无「演示模式」Tag。`scrollWidth===clientWidth`（1280），无横溢。
+  3. 左栏蓝紫渐变铺满左半：圆角 SVG 标 +「Tigercat Admin」；标题「极速、精美的全栈管理系统解决方案」；编号 1/2/3 卖点；左下「© 2026 Tigercat Team. All rights reserved.」。第 2 条末字「模式」、第 3 条末字「验」单独一行（与 Vue 2.18 同形）。
+  4. 右栏白底：「欢迎回来」「请输入您的凭据登录系统」；用户名/密码空占位；「忘记密码？」；主按钮「登录」；「还没有账号？立即注册」。
+  5. 外框 leftover（`shadow-2xl`、`animate-fade-in-up`、`dark:border-slate-850`、`dark:bg-slate-900/90`、渐变左栏）。内层表单是 Tigercat `Card variant="transparent"` + `p-0`。`GuestLayout` 为居中 `min-h-screen` + `Container`，卡贴齐圆角边。
+  6. **品牌 vs Vue AppLogo：** React 左栏用 `LogoIcon` SVG（44×44，`shadow-lg rounded-xl`），不是 Vue `AppLogo` 组件。桌面观感与 Vue 游客卡同布局（圆角「T」形标 + 文案）。右栏另有一份 `md:hidden` 的 48px `LogoIcon`，桌面尺寸为 0。截图 `/tmp/react-login-desktop.png`。
+- **严重度：** 通过（信息）。双端壳对齐；品牌组件名不同、画面同形。
+
+### 2b.2 Login 空表单
+
+- **模块：** Login
+- **端：** React
+- **视口：** 桌面 **1280×800**
+- **复现：** 用户名/密码为空占位「请输入用户名」「请输入密码」。字段无红框、无红字、无 toast。主按钮可点。
+- **严重度：** 通过（信息）
+
+### 2b.3 Login 空态校验
+
+- **模块：** Login 空态校验
+- **端：** React
+- **视口：** 桌面 **1280×800**
+- **复现：** 空表单击「登录」。用户名/密码 `aria-invalid=true`，描边 `border-red-500`，红字 **请输入用户名**、**请输入密码**（live 区）。无网络请求、无 Message。`/tmp/react-login-empty-validation.png`。
+- **双端：** Vue 2.4 PNG 未拍到空校验；Vue 2.20 后补 a11y 同文案。React 本会话红框+红字均可见。
+- **严重度：** 通过（信息）
+
+### 2b.4 Login 错误密码 Message
+
+- **模块：** Login 错误密码 Message
+- **端：** React
+- **视口：** 桌面 **1280×800**，隔离上下文 `Target.createBrowserContext`（`browserContextId=8EE1A1AE…`），浅色。chrome-devtools-mcp `list_pages` 因第二份 MCP 占用 `chrome-profile` 失败；先开 `chrome://inspect/#remote-debugging`（Allow 已勾选，CDP `127.0.0.1:9227`），再用 browser-use CLI。
+- **复现：**
+  1. 填 `admin` / `wrongpass`，点「登录」。
+  2. 顶栏居中白底 toast：红圈叉 + **用户名或密码错误**（`role=alert` / live 区同文案）。字段无红框。仍停在 `/login`。
+  3. `#tiger-message-container` 为空（与 Vue 2.20 容器不同；React toast 不进该节点，但画面可见）。截图 `/tmp/react-r2-login-wrong-password.png`。旧图 `/tmp/react-login-wrong-password.png` 拍晚、无 toast。
+- **双端：** Vue 错密 Message 在 `#tiger-message-container`；React 同文案为顶栏 toast。两端均可见错误。
+- **严重度：** 通过（信息）
+
+### 2b.5 Login admin 成功
+
+- **模块：** Login `admin` 直进后台
+- **端：** React
+- **视口：** 桌面 **1280×800**
+- **复现：** 同一游客上下文改密码为 `admin123` 再点「登录」。URL **`http://127.0.0.1:5174/dashboard`**。「欢迎回来，admin !」；Header `admin`；侧栏 + TagsView「仪表盘」；无「演示模式」Tag。首登 OnboardingTour 1/6 overlay 出现（点 × 可关）。截图 `/tmp/react-r2-login-admin-dash.png`。
+- **严重度：** 通过（信息）。Tour overlay 属 Shell 期，不阻塞 Auth。
+
+### 2b.6 已登录游客路由重定向
+
+- **模块：** 已登录访问 `/login`
+- **端：** React
+- **视口：** 桌面 **1280×800**（admin 会话未清）
+- **复现：** 登录后依次打开 `/login` `/register` `/forgot-password` `/register-success`，`location.href` 均为 `http://127.0.0.1:5174/dashboard`。
+- **双端：** 与 Vue 2.20 一致。
+- **严重度：** 通过（信息）
+
+### 2b.7 2FA OTP 步
+
+- **模块：** Login 2FA OTP
+- **端：** React
+- **视口：** 桌面 **1280×800**，新隔离上下文（guest，无 cookie / localStorage）
+- **复现：** `demo` / `demo` 登录后停在 `/login` 两步验证卡。副文「请输入账号 demo 的 6 位验证码」。Alert「演示验证码：123456」。6 格 InputOTP 空；「验证」禁用。Countdown「验证码已发送」「**59** 秒后可重发」（`OTP_RESEND_MS=60000`；首帧拍到 59，未拍到正好 60）。「返回登录」链接。无横溢。截图 `/tmp/react-r2-2fa-otp-step.png`。
+- **双端：** 与 Vue 2.7 同形（hint / InputOTP / Countdown / 返回登录）。
+- **严重度：** 通过（信息）
+
+### 2b.8 2FA 错误码
+
+- **模块：** Login 2FA 错误码
+- **端：** React
+- **视口：** 桌面 **1280×800**
+- **复现：** 六格填 `000000`，「验证」可点。点后顶栏 toast **验证码错误**（live / `role=alert`）。OTP 仍为 `000000`，仍在两步验证卡。截图 `/tmp/react-r2-2fa-wrong-code.png`。
+- **双端：** Vue 2.20 错码 `POST …/verify` 401 但 `#tiger-message-container` 空、画面无 toast（中）。React 同文案 toast **可见**。双端不一致。
+- **严重度：** React 通过（信息）。双端错码 Message：**中**（Vue 不可见 / React 可见）。
+
+### 2b.9 2FA 重发 Countdown
+
+- **模块：** Login 2FA 重发
+- **端：** React
+- **视口：** 桌面 **1280×800**
+- **复现：** 从 59s 等到约 **58s** 后出现「重新发送验证码」。点击后：OTP 清空；Countdown 回到 **59** 秒；顶栏成功 toast「已重新发送，演示验证码：123456」；「验证」再禁用。截图 `/tmp/react-r2-2fa-resend.png`。
+- **双端：** Vue 2.20 重发后 Countdown 复位，但 `Message.success` 未进容器。React 成功 toast 可见。
+- **严重度：** 通过（信息）
+
+### 2b.10 2FA 返回登录 + 成功
+
+- **模块：** Login 2FA 成功
+- **端：** React
+- **视口：** 桌面 **1280×800**
+- **复现：**
+  1. 「返回登录」回到「欢迎回来」；用户名/密码仍为 `demo` / `demo`。
+  2. 再登录进入两步验证，填 `123456` 点「验证」→ **`http://127.0.0.1:5174/dashboard`**，「欢迎回来，demo！」；Header `demo`；无「演示模式」Tag。截图 `/tmp/react-r2-2fa-success.png`。
+- **双端：** 与 Vue 2.20 成功路径一致。
+- **严重度：** 通过（信息）
+
+### 2b.11 Register 表单与空校验
+
+- **模块：** Register
+- **端：** React
+- **视口：** 桌面 **1280×800**，新隔离上下文
+- **复现：**
+  1. `http://127.0.0.1:5174/register`。左栏品红渐变 + 勾选卖点「创建您的管理账号」（与登录蓝紫不同，与 Vue 2.11 同形）。第 3 条末字「略」单独一行。右栏「创建账号」；透明 Card 表单。无红框。
+  2. 空表点「注册」：用户名/密码 `aria-invalid=true`，红框 + live **请输入用户名** / **请输入密码**。截图 `/tmp/react-r2-register-empty-validation.png`。
+- **严重度：** 通过（信息）
+
+### 2b.12 RegisterSuccess
+
+- **模块：** RegisterSuccess Result + 倒计时
+- **端：** React
+- **视口：** 桌面 **1280×800**
+- **复现：** 一次性用户名 `rv2r0827c` / `Walk2rct!`（非 admin/demo）。跳转 `/register-success`。绿勾 Result **注册成功** / 「即将自动跳转到登录页」；Countdown「即将自动跳转登录」当时 **4秒**；「立即登录」。右栏 Result 包在 Tigercat `Card variant="transparent"`。约 5s 后自动 `/login`。截图 `/tmp/react-r2-register-success.png`。
+- **双端：** Vue 2.20 副文「账号已创建，即将返回登录页」/ Countdown「即将自动返回登录」，且 Vue 走查记 Result **未**包 transparent Card。React 副文「即将自动跳转到登录页」/「即将自动跳转登录」，**有** Card。文案与 Card 包裹双端不完全一致，画面都是成功 Result + 倒计时。
+- **严重度：** 通过（信息）。文案/Card 包裹差异：**低**。
+
+### 2b.4 Login 错误密码 Message
+
+- **模块：** Login 错误密码 Message
+- **端：** React
+- **视口：** 桌面 **1280×800**
+- **复现：**
+  1. 用户名 `admin`，密码 `wrongpass`，点「登录」。
+  2. `POST /api/auth/login` **401**，body `message=用户名或密码错误`。
+  3. 顶栏 `#tiger-message-container` 出现 `role=alert` toast：白底红字 + 错误圆叉，「用户名或密码错误」，约 178×46，居中 `top-6`。入场从 `opacity-0 -translate-y-2` 到 `opacity-100`。约 3s 后消失。仍停在 `/login`，表单值保留。`/tmp/react-login-wrong-password-toast.png`。
+- **双端：** Vue 2.5 PNG 未拍到 toast（拍晚）；Vue 2.20 后补同一文案。React 本会话拍到可见 Message。
+- **严重度：** 通过（信息）
+
+### 2b.5 Login admin 成功
+
+- **模块：** Login `admin` 直进后台
+- **端：** React
+- **视口：** 桌面 **1280×800**
+- **复现：** `admin` / `admin123` 点「登录」→ URL **`http://127.0.0.1:5174/dashboard`**。「欢迎回来，admin！」；侧栏 + Header `admin` + TagsView「仪表盘」；运行环境 `.NET 10 + React 19`；Header 无「演示模式」。隔离上下文首次登录出现 OnboardingTour 1/6「欢迎使用管理中心」（与项 1 同形，不阻塞 Auth）。`/tmp/react-login-admin-success.png`。
+- **双端：** Vue 2.6 无成功 PNG；Vue 2.20 与项 1 已记同一路径。React 本会话取证。
+- **严重度：** 通过（信息）
+
+### 2b.6 已登录访问游客路由
+
+- **模块：** 已登录重定向
+- **端：** React
+- **视口：** 桌面 **1280×800**，同一会话 `react-auth-review`
+- **复现：** 登录后分别打开 `/login` `/register` `/forgot-password` `/register-success`，`location.href` 均为 `/dashboard`。
+- **双端：** 与 Vue 2.20 行为一致。
+- **严重度：** 通过（信息）
+
+### 2b.7 2FA OTP 步
+
+- **模块：** Login 2FA OTP
+- **端：** React
+- **视口：** 桌面 **1280×800**，隔离上下文 `react-guest-2fa`
+- **复现：**
+  1. 新隔离上下文打开 `/login`，填 `demo` / `demo`，点「登录」。仍停在 `/login`。
+  2. 标题「两步验证」，副文「请输入账号 demo 的 6 位验证码」。
+  3. 信息条 `Alert`「演示验证码：123456」（带 info 图标）。
+  4. `InputOTP` 六格空，第一格紫描边/焦点。其下 Countdown「验证码已发送」+ **58** 秒后可重发（Roadmap 60s；拍到 58，未正好 60）。
+  5. 主按钮「验证」禁用。链接「返回登录」。截图 `/tmp/react-2fa-otp-step.png`。
+- **双端：** Vue 2.7 Alert 另有 description「验证通过后才会写入会话，返回登录可重新输入凭据。」React 只有 title + showIcon，**无该说明句**。其余布局同形。
+- **严重度：** 低（文案缺口，不阻塞 2FA 主路径）
+
+### 2b.8 2FA 错误码
+
+- **模块：** Login 2FA 错误码
+- **端：** React
+- **视口：** 桌面 **1280×800**
+- **复现：**
+  1. OTP 填 `000000`（与提示 `123456` 不同）。「验证」变为可点。
+  2. `POST /api/auth/two-factor/verify` **401** `message=验证码错误`（body `username=demo` `code=000000` + challengeId）。
+  3. 顶栏 Message toast「验证码错误」（红叉 + 白底红字）。仍停在两步验证卡，OTP 六格仍为 0。`/tmp/react-2fa-wrong-code-toast.png`。
+- **双端：** Vue 2.8 PNG 无错误文案；Vue 2.20 记 `#tiger-message-container` 无子节点、**Message 不可见（中）**。React 本会话 toast **可见**。
+- **严重度：** 通过（信息）。与 Vue 2.20 的「错码 Message 不可见」不一致，记 mismatch。
+
+### 2b.9 2FA 重发 Countdown
+
+- **模块：** Login 2FA 重发
+- **端：** React
+- **视口：** 桌面 **1280×800**
+- **复现：**
+  1. 倒计时结束后出现链接「重新发送验证码」。
+  2. 点击后 OTP 六格清空；「验证」恢复禁用；Countdown 回到 **59** 秒后可重发（Roadmap 60s；拍到 59，未正好 60）。截图 `/tmp/react-2fa-resend.png`。
+  3. 代码会 `Message.success`「已重新发送，演示验证码：123456」（duration 2s）。点击后 400ms 内 `#tiger-message-container` 无子节点；本步未拍到成功 toast。
+- **双端：** Countdown 行为与 Vue 2.9 一致。Vue 2.20 亦记重发 `Message.success` 未进容器。
+- **严重度：** Countdown 通过（信息）。重发成功 toast **未取证**（与 Vue 同类）。
+
 
