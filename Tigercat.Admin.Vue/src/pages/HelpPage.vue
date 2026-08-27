@@ -11,6 +11,8 @@ import { Code } from '@expcat/tigercat-vue/Code'
 import { Link } from '@expcat/tigercat-vue/Link'
 import { List } from '@expcat/tigercat-vue/List'
 import { InfiniteScroll } from '@expcat/tigercat-vue/InfiniteScroll'
+import { ScrollArea } from '@expcat/tigercat-vue/ScrollArea'
+import { Highlight } from '@expcat/tigercat-vue/Highlight'
 import type { ScrollSpyItem, ListItem } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import MetricGrid from '../components/MetricGrid.vue'
@@ -32,10 +34,15 @@ const SPY_ITEMS: ScrollSpyItem[] = SECTIONS.map((s) => ({
   label: s.label,
 }))
 
+const START_COPY =
+  '欢迎使用 Tigercat 管理后台演示。登录后可通过左侧菜单浏览各业务域，或使用命令面板（⌘/Ctrl + K）快速跳转。下面是一个调用受保护接口的示例：'
+
 const SAMPLE_CODE = `# 使用演示令牌登录后调用受保护接口
 curl -X GET https://api.tigercat.demo/v1/profile \\
   -H "Authorization: Bearer <your-token>" \\
   -H "Accept: application/json"`
+
+const HIGHLIGHT_KEYWORDS = ['权限', '令牌']
 
 const SHORTCUTS = [
   {
@@ -171,8 +178,20 @@ function submitFeedback() {
             <template #header><Text weight="bold">快速开始</Text></template>
             <div class="space-y-4">
               <Text size="sm" color="secondary">
-                欢迎使用 Tigercat 管理后台演示。登录后可通过左侧菜单浏览各业务域，或使用命令面板（⌘/Ctrl + K）快速跳转。下面是一个调用受保护接口的示例：
+                <Highlight
+                  :keywords="HIGHLIGHT_KEYWORDS"
+                  :text="START_COPY"
+                  :case-sensitive="false"
+                  :global="true"
+                />
               </Text>
+              <Highlight
+                :keywords="HIGHLIGHT_KEYWORDS"
+                :text="SAMPLE_CODE"
+                :case-sensitive="false"
+                :global="true"
+                class-name="block whitespace-pre-wrap font-mono text-sm"
+              />
               <Code :code="SAMPLE_CODE" copyable copy-label="复制" copied-label="已复制" />
               <div class="flex flex-wrap items-center gap-4">
                 <Link href="#help-faq" variant="primary" @click="onFaqLinkClick">
@@ -252,7 +271,16 @@ function submitFeedback() {
                 :panel-key="item.key"
                 :header="item.q"
               >
-                <Text size="sm" color="secondary">{{ item.a }}</Text>
+                <ScrollArea :max-height="240">
+                  <Text size="sm" color="secondary">
+                    <Highlight
+                      :keywords="HIGHLIGHT_KEYWORDS"
+                      :text="item.a"
+                      :case-sensitive="false"
+                      :global="true"
+                    />
+                  </Text>
+                </ScrollArea>
               </CollapsePanel>
             </Collapse>
           </Card>
@@ -261,15 +289,17 @@ function submitFeedback() {
         <div id="help-articles">
           <Card>
             <template #header><Text weight="bold">更多帮助文章</Text></template>
-            <InfiniteScroll
-              :has-more="hasMore"
-              :loading="loadingMore"
-              loading-text="加载中…"
-              end-text="没有更多帮助文章了"
-              @load-more="loadMore"
-            >
-              <List :data-source="visibleArticles" hoverable />
-            </InfiniteScroll>
+            <ScrollArea :max-height="320" shadow aria-label="更多帮助文章">
+              <InfiniteScroll
+                :has-more="hasMore"
+                :loading="loadingMore"
+                loading-text="加载中…"
+                end-text="没有更多帮助文章了"
+                @load-more="loadMore"
+              >
+                <List :data-source="visibleArticles" hoverable />
+              </InfiniteScroll>
+            </ScrollArea>
           </Card>
         </div>
       </div>

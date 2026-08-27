@@ -10,6 +10,8 @@ import { Code } from '@expcat/tigercat-react/Code';
 import { Link } from '@expcat/tigercat-react/Link';
 import { List } from '@expcat/tigercat-react/List';
 import { InfiniteScroll } from '@expcat/tigercat-react/InfiniteScroll';
+import { ScrollArea } from '@expcat/tigercat-react/ScrollArea';
+import { Highlight } from '@expcat/tigercat-react/Highlight';
 import type { ScrollSpyItem, ListItem } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { MetricCard, MetricGrid, MutedPanel } from '../components/PageFragments';
@@ -35,10 +37,15 @@ const SPY_ITEMS: ScrollSpyItem[] = SECTIONS.map((s) => ({
   label: s.label,
 }));
 
+const START_COPY =
+  '欢迎使用 Tigercat 管理后台演示。登录后可通过左侧菜单浏览各业务域，或使用命令面板（⌘/Ctrl + K）快速跳转。下面是一个调用受保护接口的示例：';
+
 const SAMPLE_CODE = `# 使用演示令牌登录后调用受保护接口
 curl -X GET https://api.tigercat.demo/v1/profile \\
   -H "Authorization: Bearer <your-token>" \\
   -H "Accept: application/json"`;
+
+const HIGHLIGHT_KEYWORDS = ['权限', '令牌'];
 
 const SHORTCUTS = [
   {
@@ -161,8 +168,20 @@ function HelpPage() {
             <Card header={<Text weight="bold">快速开始</Text>}>
               <div className="space-y-4">
                 <Text size="sm" color="secondary">
-                  欢迎使用 Tigercat 管理后台演示。登录后可通过左侧菜单浏览各业务域，或使用命令面板（⌘/Ctrl + K）快速跳转。下面是一个调用受保护接口的示例：
+                  <Highlight
+                    keywords={HIGHLIGHT_KEYWORDS}
+                    text={START_COPY}
+                    caseSensitive={false}
+                    global
+                  />
                 </Text>
+                <Highlight
+                  keywords={HIGHLIGHT_KEYWORDS}
+                  text={SAMPLE_CODE}
+                  caseSensitive={false}
+                  global
+                  className="block whitespace-pre-wrap font-mono text-sm"
+                />
                 <Code code={SAMPLE_CODE} copyable copyLabel="复制" copiedLabel="已复制" />
                 <div className="flex flex-wrap items-center gap-4">
                   <Link
@@ -241,9 +260,16 @@ function HelpPage() {
               <Collapse accordion defaultActiveKey="faq-account">
                 {FAQ.map((item) => (
                   <CollapsePanel key={item.key} panelKey={item.key} header={item.q}>
-                    <Text size="sm" color="secondary">
-                      {item.a}
-                    </Text>
+                    <ScrollArea maxHeight={240}>
+                      <Text size="sm" color="secondary">
+                        <Highlight
+                          keywords={HIGHLIGHT_KEYWORDS}
+                          text={item.a}
+                          caseSensitive={false}
+                          global
+                        />
+                      </Text>
+                    </ScrollArea>
                   </CollapsePanel>
                 ))}
               </Collapse>
@@ -252,14 +278,16 @@ function HelpPage() {
 
           <div id="help-articles">
             <Card header={<Text weight="bold">更多帮助文章</Text>}>
-              <InfiniteScroll
-                hasMore={hasMore}
-                loading={loadingMore}
-                loadingText="加载中…"
-                endText="没有更多帮助文章了"
-                onLoadMore={loadMore}>
-                <List dataSource={visibleArticles} hoverable />
-              </InfiniteScroll>
+              <ScrollArea maxHeight={320} shadow ariaLabel="更多帮助文章">
+                <InfiniteScroll
+                  hasMore={hasMore}
+                  loading={loadingMore}
+                  loadingText="加载中…"
+                  endText="没有更多帮助文章了"
+                  onLoadMore={loadMore}>
+                  <List dataSource={visibleArticles} hoverable />
+                </InfiniteScroll>
+              </ScrollArea>
             </Card>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { Alert, Card, Text, Tag, Select, Loading } from '@expcat/tigercat-vue'
 import { LineChart } from '@expcat/tigercat-vue/LineChart'
 import { BarChart } from '@expcat/tigercat-vue/BarChart'
 import { PieChart } from '@expcat/tigercat-vue/PieChart'
+import { Marquee } from '@expcat/tigercat-vue/Marquee'
 import type { Session, StatsOverview, StatsTrend } from '../utils'
 import { apiRequest } from '../utils'
 import Icon from '../components/Icon.vue'
@@ -127,6 +128,13 @@ const quickActions = [
   { label: '系统设置', icon: 'settings', key: 'settings' },
   { label: '查看日志', icon: 'fileText', key: 'logs' },
 ]
+
+const ANNOUNCEMENTS = [
+  '今晚 22:00–23:00 计划维护，仪表盘指标可能延迟刷新。',
+  '每日 02:00 自动备份已完成，可在审计日志核对结果。',
+  '媒体存储用量接近 80%，请及时清理过期文件。',
+  '演示环境将于本周日重启缓存节点，会话可能被重置。',
+]
 </script>
 
 <template>
@@ -165,6 +173,25 @@ const quickActions = [
       :description="homeError || statsError"
       closable
     />
+
+    <Marquee
+      direction="left"
+      :duration="28000"
+      :pause-on-hover="true"
+      :gap="24"
+      :repeat="2"
+      aria-label="运维公告"
+      class-name="rounded-lg border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-card,#ffffff) px-3 py-2"
+    >
+      <span
+        v-for="item in ANNOUNCEMENTS"
+        :key="item"
+        class="inline-flex items-center gap-2 whitespace-nowrap text-sm text-(--tiger-text,#0f172a)"
+      >
+        <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-(--tiger-primary,#3b82f6)"></span>
+        <span class="text-(--tiger-text-secondary,#64748b)">{{ item }}</span>
+      </span>
+    </Marquee>
 
     <!-- 统计卡片 -->
     <MetricGrid :columns="4">

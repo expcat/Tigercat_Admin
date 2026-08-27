@@ -9,6 +9,9 @@ import { ImageViewer } from '@expcat/tigercat-vue/ImageViewer'
 import { ImageAnnotation } from '@expcat/tigercat-vue/ImageAnnotation'
 import { ImageCropper } from '@expcat/tigercat-vue/ImageCropper'
 import { Carousel } from '@expcat/tigercat-vue/Carousel'
+import { Masonry } from '@expcat/tigercat-vue/Masonry'
+import { AspectRatio } from '@expcat/tigercat-vue/AspectRatio'
+import { ImageCompare } from '@expcat/tigercat-vue/ImageCompare'
 import { Empty } from '@expcat/tigercat-vue/Empty'
 import { Skeleton } from '@expcat/tigercat-vue/Skeleton'
 import { Drawer } from '@expcat/tigercat-vue/Drawer'
@@ -47,7 +50,18 @@ const IMAGES: GalleryImage[] = [
   { id: 't3', title: '协作白板', album: 'team', hue: 120 },
 ]
 
+const MASONRY_COLUMNS = { xs: 1, sm: 2, lg: 3 }
+const ASPECT_RATIOS = ['16/9', '4/3', '1/1'] as const
+
 const srcOf = (img: GalleryImage) => makePlaceholder(img.title, img.hue)
+
+function aspectRatioOf(img: GalleryImage): (typeof ASPECT_RATIOS)[number] {
+  const index = IMAGES.findIndex((item) => item.id === img.id)
+  return ASPECT_RATIOS[(index < 0 ? 0 : index) % ASPECT_RATIOS.length]
+}
+
+const compareBeforeSrc = makePlaceholder('改版前', 210)
+const compareAfterSrc = makePlaceholder('改版后', 20)
 
 const album = ref<AlbumKey>('all')
 const loading = ref(false)
@@ -173,13 +187,13 @@ function applyCrop() {
       </Card>
     </div>
 
-    <!-- 图片网格 -->
+    <!-- 图片瀑布流 -->
     <ImageGroup v-else-if="filtered.length">
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <Masonry :columns="MASONRY_COLUMNS" :gap="16">
         <Card v-for="(img, index) in filtered" :key="img.id">
-          <div class="h-40 w-full overflow-hidden rounded-lg">
+          <AspectRatio :ratio="aspectRatioOf(img)" class-name="overflow-hidden rounded-lg">
             <Image :src="srcOf(img)" :alt="img.title" fit="cover" class="h-full w-full" />
-          </div>
+          </AspectRatio>
           <div class="mt-3 flex items-center justify-between gap-2">
             <div class="min-w-0">
               <Text weight="medium" class="truncate block">{{ img.title }}</Text>
@@ -192,12 +206,30 @@ function applyCrop() {
             <Button size="sm" variant="outline" @click="openCrop(img)">裁剪</Button>
           </div>
         </Card>
-      </div>
+      </Masonry>
     </ImageGroup>
 
     <!-- 空相册 -->
     <Card v-else>
       <Empty preset="no-data" description="该相册暂无图片，切换到“产品 / 团队”查看示例素材。" />
+    </Card>
+
+    <Card>
+      <template #header><Text weight="bold">版本对比</Text></template>
+      <Text size="sm" color="secondary" class="mb-3 block">
+        拖动滑块对比改版前后的产品封面（演示占位图，不接入上传）。
+      </Text>
+      <ImageCompare
+        :before-src="compareBeforeSrc"
+        :after-src="compareAfterSrc"
+        before-alt="改版前"
+        after-alt="改版后"
+        fit="cover"
+        :default-position="50"
+        width="100%"
+        :height="320"
+        class-name="overflow-hidden rounded-lg"
+      />
     </Card>
 
     <!-- 大图查看 -->

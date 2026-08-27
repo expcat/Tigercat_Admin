@@ -8,6 +8,9 @@ import { ImageViewer } from '@expcat/tigercat-react/ImageViewer';
 import { ImageAnnotation } from '@expcat/tigercat-react/ImageAnnotation';
 import { ImageCropper, type ImageCropperRef } from '@expcat/tigercat-react/ImageCropper';
 import { Carousel } from '@expcat/tigercat-react/Carousel';
+import { Masonry } from '@expcat/tigercat-react/Masonry';
+import { AspectRatio } from '@expcat/tigercat-react/AspectRatio';
+import { ImageCompare } from '@expcat/tigercat-react/ImageCompare';
 import { Empty } from '@expcat/tigercat-react/Empty';
 import { Skeleton } from '@expcat/tigercat-react/Skeleton';
 import { Drawer } from '@expcat/tigercat-react/Drawer';
@@ -46,7 +49,18 @@ const IMAGES: GalleryImage[] = [
   { id: 't3', title: '协作白板', album: 'team', hue: 120 },
 ];
 
+const MASONRY_COLUMNS = { xs: 1, sm: 2, lg: 3 };
+const ASPECT_RATIOS = ['16/9', '4/3', '1/1'] as const;
+
 const srcOf = (img: GalleryImage) => makePlaceholder(img.title, img.hue);
+
+function aspectRatioOf(img: GalleryImage): (typeof ASPECT_RATIOS)[number] {
+  const index = IMAGES.findIndex((item) => item.id === img.id);
+  return ASPECT_RATIOS[(index < 0 ? 0 : index) % ASPECT_RATIOS.length];
+}
+
+const compareBeforeSrc = makePlaceholder('改版前', 210);
+const compareAfterSrc = makePlaceholder('改版后', 20);
 
 function GalleryPage() {
   const [album, setAlbum] = useState<AlbumKey>('all');
@@ -175,12 +189,12 @@ function GalleryPage() {
         </div>
       ) : filtered.length ? (
         <ImageGroup>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Masonry columns={MASONRY_COLUMNS} gap={16}>
             {filtered.map((img, index) => (
               <Card key={img.id}>
-                <div className="h-40 w-full overflow-hidden rounded-lg">
+                <AspectRatio ratio={aspectRatioOf(img)} className="overflow-hidden rounded-lg">
                   <Image src={srcOf(img)} alt={img.title} fit="cover" className="h-full w-full" />
-                </div>
+                </AspectRatio>
                 <div className="mt-3 flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <Text weight="medium" className="block truncate">
@@ -204,13 +218,30 @@ function GalleryPage() {
                 </div>
               </Card>
             ))}
-          </div>
+          </Masonry>
         </ImageGroup>
       ) : (
         <Card>
           <Empty preset="no-data" description="该相册暂无图片，切换到“产品 / 团队”查看示例素材。" />
         </Card>
       )}
+
+      <Card header={<Text weight="bold">版本对比</Text>}>
+        <Text size="sm" color="secondary" className="mb-3 block">
+          拖动滑块对比改版前后的产品封面（演示占位图，不接入上传）。
+        </Text>
+        <ImageCompare
+          beforeSrc={compareBeforeSrc}
+          afterSrc={compareAfterSrc}
+          beforeAlt="改版前"
+          afterAlt="改版后"
+          fit="cover"
+          defaultPosition={50}
+          width="100%"
+          height={320}
+          className="overflow-hidden rounded-lg"
+        />
+      </Card>
 
       <ImageViewer
         images={filteredSrcs}
