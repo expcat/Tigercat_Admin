@@ -68,4 +68,12 @@ export const appText = defineText({
     dragHintText: '拖拽以移动',
     boardAriaLabel: '任务看板',
   },
+  inputOtp: {
+    groupLabel: '一次性验证码',
+    slotLabel: '第 {index} 位，共 {total} 位',
+  },
+  tagsInput: {
+    removeTagLabel: '移除 {tag}',
+    clearAllLabel: '清空全部标签',
+  },
 });

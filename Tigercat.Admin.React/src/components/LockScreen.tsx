@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Avatar, Text } from '@expcat/tigercat-react';
 import { Alert } from '@expcat/tigercat-react/Alert';
 import { NumberKeyboard } from '@expcat/tigercat-react/NumberKeyboard';
+import { InputOTP } from '@expcat/tigercat-react/InputOTP';
 import { Statistic } from '@expcat/tigercat-react/Statistic';
 import {
   formatLockScreenClock,
@@ -123,17 +124,16 @@ export function LockScreen({ session, onUnlock }: LockScreenProps) {
           </Text>
         </div>
         <Statistic title={clock.title} value={clock.value} size="lg" animated={false} />
-        <div
-          className="flex justify-center gap-1.5 sm:gap-2"
-          aria-label="PIN"
-          data-testid="shell-lock-pin-dots">
-          {Array.from({ length: LOCK_SCREEN_PIN_LENGTH }, (_, index) => (
-            <span
-              key={index}
-              className="flex h-11 w-9 sm:h-12 sm:w-10 items-center justify-center rounded-lg border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-page,#f8fafc) dark:border-slate-700 dark:bg-slate-800 p2-text-primary text-lg font-semibold">
-              {index < pin.length ? '●' : '·'}
-            </span>
-          ))}
+        <div data-testid="shell-lock-pin-otp" className="flex justify-center">
+          <InputOTP
+            value={pin}
+            length={LOCK_SCREEN_PIN_LENGTH}
+            type="numeric"
+            masked
+            autoFocus
+            ariaLabel="PIN"
+            onChange={handlePinChange}
+          />
         </div>
         <Alert type="info" title={`演示 PIN：${LOCK_SCREEN_PIN}`} showIcon />
         {error ? (

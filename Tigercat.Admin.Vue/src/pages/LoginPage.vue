@@ -2,9 +2,18 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Alert, Button, Card, Form, FormItem, Input, Message } from '@expcat/tigercat-vue'
-import { NumberKeyboard } from '@expcat/tigercat-vue/NumberKeyboard'
+import { InputOTP } from '@expcat/tigercat-vue/InputOTP'
 import { Countdown } from '@expcat/tigercat-vue/Countdown'
-import { debounce, useAuthForm, apiRequest, type Session } from '../utils'
+import {
+  debounce,
+  useAuthForm,
+  apiRequest,
+  DEMO_OTP_CODE,
+  OTP_LENGTH,
+  OTP_RESEND_MS,
+  type LoginData,
+  type Session,
+} from '../utils'
 import AppLogo from '../components/AppLogo.vue'
 
 const router = useRouter()
@@ -15,21 +24,20 @@ const emit = defineEmits<{
 
 const { form, errors, setField, validateForm } = useAuthForm({ username: '', password: '' })
 const loading = ref(false)
-const otpStep = ref(false)
+const step = ref<'login' | 'otp'>('login')
 const otpUsername = ref('')
 const otpCode = ref('')
-const otpLoading = ref(false)
-const resendUntil = ref(0)
+const otpChallengeId = ref('')
+const otpDeadline = ref<number | null>(null)
+const otpCanResend = ref(false)
 
-interface LoginResult {
-  requiresTwoFactor?: boolean
-  token?: string
-  username?: string
-  expiresAt?: string
-}
-
-function startResendCountdown() {
-  resendUntil.value = Date.now() + 60_000
+function startOtp(username: string, challengeId?: string) {
+  otpUsername.value = username
+  otpCode.value = ''
+  otpChallengeId.value = challengeId || ''
+  otpCanResend.value = false
+  otpDeadline.value = Date.now() + OTP_RESEND_MS
+  step.value = 'otp'
 }
 
 function applySession(data: { token: string; username: string; expiresAt: string }) {
@@ -42,7 +50,7 @@ function applySession(data: { token: string; username: string; expiresAt: string
 
 const doLogin = debounce(async () => {
   try {
-    const payload = await apiRequest<LoginResult>('/api/auth/login', {
+    const payload = await apiRequest<LoginData>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(form.value),
     })
@@ -52,10 +60,7 @@ const doLogin = debounce(async () => {
     }
 
     if (payload.data.requiresTwoFactor) {
-      otpUsername.value = payload.data.username || form.value.username || ''
-      otpCode.value = ''
-      otpStep.value = true
-      startResendCountdown()
+      startOtp(payload.data.username || form.value.username || '', payload.data.challengeId)
       return
     }
 
@@ -93,27 +98,28 @@ const goToForgotPassword = () => {
 }
 
 const backToLogin = () => {
-  otpStep.value = false
+  step.value = 'login'
   otpCode.value = ''
   otpUsername.value = ''
-  otpLoading.value = false
-}
-
-const handleResendFinish = () => {
-  resendUntil.value = 0
+  otpChallengeId.value = ''
+  otpDeadline.value = null
+  otpCanResend.value = false
+  loading.value = false
 }
 
 const handleResend = () => {
-  if (resendUntil.value > Date.now()) return
-  startResendCountdown()
+  if (!otpCanResend.value) return
+  otpCode.value = ''
+  otpCanResend.value = false
+  otpDeadline.value = Date.now() + OTP_RESEND_MS
   Message.success({
-    content: '验证码已重新发送（演示验证码：123456）',
-    duration: 2500,
+    content: '已重新发送，演示验证码：' + DEMO_OTP_CODE,
+    duration: 2000,
   })
 }
 
-const handleVerifyOtp = debounce(async () => {
-  if (otpCode.value.length !== 6) {
+const handleVerify = debounce(async () => {
+  if (otpCode.value.length !== OTP_LENGTH) {
     Message.warning({
       content: '请输入 6 位验证码',
       duration: 2000,
@@ -121,13 +127,14 @@ const handleVerifyOtp = debounce(async () => {
     return
   }
 
-  otpLoading.value = true
+  loading.value = true
   try {
     const payload = await apiRequest<Session>('/api/auth/two-factor/verify', {
       method: 'POST',
       body: JSON.stringify({
         username: otpUsername.value,
         code: otpCode.value,
+        challengeId: otpChallengeId.value || undefined,
       }),
     })
 
@@ -148,7 +155,7 @@ const handleVerifyOtp = debounce(async () => {
       duration: 3000,
     })
   } finally {
-    otpLoading.value = false
+    loading.value = false
   }
 }, 300)
 </script>
@@ -204,12 +211,12 @@ const handleVerifyOtp = debounce(async () => {
       </div>
       
       <div class="mb-6 text-center md:text-left">
-        <h1 class="p2-text-primary text-2xl font-bold tracking-tight">{{ otpStep ? '两步验证' : '欢迎回来' }}</h1>
-        <p class="p2-text-secondary text-sm mt-1">{{ otpStep ? `请输入账号 ${otpUsername} 的 6 位验证码` : '请输入您的凭据登录系统' }}</p>
+        <h1 class="p2-text-primary text-2xl font-bold tracking-tight">{{ step === 'otp' ? '两步验证' : '欢迎回来' }}</h1>
+        <p class="p2-text-secondary text-sm mt-1">{{ step === 'otp' ? `请输入账号 ${otpUsername} 的 6 位验证码` : '请输入您的凭据登录系统' }}</p>
       </div>
 
       <Card variant="transparent" class="p-0">
-        <Form v-if="!otpStep" :model="form" :label-width="88">
+        <Form v-if="step === 'login'" :model="form" :label-width="88">
           <FormItem name="username" label="用户名">
             <Input
               :model-value="form.username || ''"
@@ -262,33 +269,40 @@ const handleVerifyOtp = debounce(async () => {
         </Form>
         <div v-else class="flex flex-col gap-4">
           <Alert type="info" title="演示验证码：123456" description="验证通过后才会写入会话，返回登录可重新输入凭据。" />
-          <NumberKeyboard v-model="otpCode" mode="number" :max-length="6" />
-          <div class="flex flex-col items-center gap-2">
-            <Countdown
-              v-if="resendUntil > 0"
-              :value="resendUntil"
-              format="s"
-              suffix="秒"
-              title="后可重新发送"
-              @finish="handleResendFinish"
+          <div data-testid="auth-otp-input" class="flex justify-center">
+            <InputOTP
+              v-model="otpCode"
+              :length="OTP_LENGTH"
+              type="numeric"
+              auto-focus
+              aria-label="验证码"
             />
-            <Button
+          </div>
+          <div class="flex flex-col items-center gap-2 min-h-8">
+            <Countdown
+              v-if="otpDeadline && !otpCanResend"
+              :value="otpDeadline"
+              format="s"
+              suffix="秒后可重发"
+              title="验证码已发送"
+              @finish="otpCanResend = true"
+            />
+            <button
               v-else
-              variant="outline"
-              size="sm"
-              html-type="button"
+              type="button"
+              class="text-sm font-medium text-[var(--tiger-primary,#3b82f6)] hover:underline"
               @click="handleResend"
             >
-            重新发送验证码
-            </Button>
+              重新发送验证码
+            </button>
           </div>
           <Button
             variant="primary"
             block
-            :loading="otpLoading"
-            :disabled="otpCode.length !== 6"
+            :loading="loading"
+            :disabled="otpCode.length !== OTP_LENGTH"
             html-type="button"
-            @click="handleVerifyOtp"
+            @click="handleVerify"
           >
             验证
           </Button>

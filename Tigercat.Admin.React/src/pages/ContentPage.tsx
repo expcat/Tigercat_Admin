@@ -8,7 +8,7 @@ import { MarkdownEditor } from '@expcat/tigercat-react/MarkdownEditor';
 import { CodeEditor } from '@expcat/tigercat-react/CodeEditor';
 import { TreeSelect } from '@expcat/tigercat-react/TreeSelect';
 import { Cascader } from '@expcat/tigercat-react/Cascader';
-import { AutoComplete } from '@expcat/tigercat-react/AutoComplete';
+import { TagsInput } from '@expcat/tigercat-react/TagsInput';
 import { Mentions } from '@expcat/tigercat-react/Mentions';
 import { Upload } from '@expcat/tigercat-react/Upload';
 import { Watermark } from '@expcat/tigercat-react/Watermark';
@@ -18,7 +18,6 @@ import type {
   TreeSelectValue,
   CascaderOption,
   CascaderValue,
-  AutoCompleteOption,
   MentionOption,
 } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
@@ -72,14 +71,6 @@ const COLUMN_OPTIONS: CascaderOption[] = [
   },
 ];
 
-const TAG_OPTIONS: AutoCompleteOption[] = [
-  { label: '发布', value: '发布' },
-  { label: '公告', value: '公告' },
-  { label: '教程', value: '教程' },
-  { label: '组件库', value: '组件库' },
-  { label: '设计规范', value: '设计规范' },
-];
-
 const MENTION_OPTIONS: MentionOption[] = [
   { value: 'alice', label: 'Alice（前端）' },
   { value: 'bob', label: 'Bob（设计）' },
@@ -114,22 +105,12 @@ function ContentPage() {
   const [title, setTitle] = useState('组件库 v1.6 发布说明');
   const [category, setCategory] = useState<TreeSelectValue>('frontend');
   const [column, setColumn] = useState<CascaderValue>(['docs', 'guide']);
-  const [tagInput, setTagInput] = useState<string | number>('');
   const [tags, setTags] = useState<string[]>(['发布', '组件库']);
   const [collaborators, setCollaborators] = useState('@Alice 请补充前端改动；@Bob 复核设计稿。');
   const [publishNow, setPublishNow] = useState(true);
   const [published, setPublished] = useState(false);
 
   const currentColumnText = useMemo(() => columnText(column), [column]);
-
-  const addTag = (value: string | number) => {
-    const text = String(value).trim();
-    if (text && !tags.includes(text)) {
-      setTags((prev) => [...prev, text]);
-    }
-    setTagInput('');
-  };
-  const removeTag = (text: string) => setTags((prev) => prev.filter((t) => t !== text));
 
   const saveDraft = () => Message.success({ content: '草稿已保存（演示）', duration: 2200 });
   const publish = () => {
@@ -260,26 +241,19 @@ function ContentPage() {
 
             <Card header={<Text weight="bold">标签</Text>}>
               <div className="space-y-3">
-                <AutoComplete
-                  value={tagInput}
-                  options={TAG_OPTIONS}
-                  placeholder="输入或选择标签后回车"
-                  allowFreeInput
-                  onChange={setTagInput}
-                  onSelect={(value) => addTag(value)}
+                <TagsInput
+                  value={tags}
+                  placeholder="输入标签后回车，可用逗号分隔"
+                  max={12}
+                  addOnBlur
+                  clearable
+                  onChange={setTags}
                 />
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((t) => (
-                    <Tag key={t} variant="primary" size="sm" closable onClose={() => removeTag(t)}>
-                      {t}
-                    </Tag>
-                  ))}
-                  {!tags.length && (
-                    <Text size="sm" color="secondary">
-                      暂无标签
-                    </Text>
-                  )}
-                </div>
+                {!tags.length && (
+                  <Text size="sm" color="secondary">
+                    暂无标签
+                  </Text>
+                )}
               </div>
             </Card>
 

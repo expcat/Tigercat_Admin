@@ -76,6 +76,8 @@ public static class DbInitializer
             ["dashboard:view", "user:view", "user:edit", "role:view", "role:edit", "setting:view", "setting:edit", "media:view", "media:upload", "audit:view", "notification:view", "notification:edit", "task:view", "task:create", "task:edit"]),
         ("Viewer", "只读用户，仅可查看",
             ["dashboard:view", "user:view", "role:view", "setting:view", "media:view", "audit:view", "notification:view", "task:view"]),
+        ("Demo", "演示账号，只读浏览（无用户/角色管理，用于 403 演示）",
+            ["dashboard:view", "setting:view", "media:view", "audit:view", "notification:view", "task:view"]),
     ];
 
     private static readonly (string PublicId, string GroupKey, string Title, string Description, string ToastType, bool Read, string? LinkUrl, string MetadataJson)[] SeedNotifications =
@@ -292,6 +294,7 @@ public static class DbInitializer
                 PasswordHash = PasswordHasher.Hash(adminPassword),
                 DisplayName = "管理员",
                 Status = UserStatus.Active,
+                TwoFactorEnabled = false,
                 CreatedAt = DateTime.UtcNow
             };
             context.Users.Add(adminUser);
@@ -307,6 +310,35 @@ public static class DbInitializer
             if (!alreadyAssigned)
             {
                 context.UserRoles.Add(new UserRoleEntity { UserId = adminUser.Id, RoleId = adminRoleId });
+                await context.SaveChangesAsync(ct);
+            }
+        }
+
+        // --- Seed demo user (2FA on, read-only Demo role; matches MockApi 403 semantics) ---
+        var demoUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "demo", ct);
+        if (demoUser is null)
+        {
+            demoUser = new UserEntity
+            {
+                Username = "demo",
+                PasswordHash = PasswordHasher.Hash("demo"),
+                DisplayName = "演示账号",
+                Status = UserStatus.Active,
+                TwoFactorEnabled = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.Users.Add(demoUser);
+            await context.SaveChangesAsync(ct);
+        }
+
+        if (roleLookup.TryGetValue("Demo", out var demoRoleId))
+        {
+            var demoAssigned = await context.UserRoles
+                .AnyAsync(ur => ur.UserId == demoUser.Id && ur.RoleId == demoRoleId, ct);
+
+            if (!demoAssigned)
+            {
+                context.UserRoles.Add(new UserRoleEntity { UserId = demoUser.Id, RoleId = demoRoleId });
                 await context.SaveChangesAsync(ct);
             }
         }

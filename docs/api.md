@@ -67,7 +67,7 @@ JSON API 默认返回 `ApiResponse<T>`：
 
 | 资源域 | 文档 | 端点概览 |
 | ------ | ---- | -------- |
-| 健康、应用信息、认证、权限 | [api/auth.md](api/auth.md) | `/api/health`、`/api/info`、`/api/auth/*`、`/api/home` |
+| 健康、应用信息、认证、权限 | [api/auth.md](api/auth.md) | `/api/health`、`/api/info`、`/api/auth/*`（login / 2FA / forgot-password / permissions）、`/api/home` |
 | 用户管理 | [api/users.md](api/users.md) | `/api/users`、批量删除、批量状态 |
 | 角色与权限 | [api/roles.md](api/roles.md) | `/api/roles`、角色权限、角色用户、权限列表 |
 | 仪表盘统计、导出 | [api/dashboard-export.md](api/dashboard-export.md) | `/api/stats/*`、`/api/export/*` |

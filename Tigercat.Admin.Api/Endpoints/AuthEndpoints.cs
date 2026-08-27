@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Tigercat.Admin.Api.Auth;
+using Tigercat.Admin.Api.Cache;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.EventBus;
@@ -23,6 +24,23 @@ public class AuthEndpoints : IEndpointDefinition
 
         group.MapPost("/login", Login)
             .WithName("Login");
+
+        group.MapPost("/two-factor/verify", VerifyTwoFactor)
+            .WithName("VerifyTwoFactor");
+
+        group.MapGet("/two-factor", GetTwoFactor)
+            .RequireLogin()
+            .WithName("GetTwoFactor");
+
+        group.MapPut("/two-factor", UpdateTwoFactor)
+            .RequireLogin()
+            .WithName("UpdateTwoFactor");
+
+        group.MapPost("/forgot-password/code", SendForgotPasswordCode)
+            .WithName("SendForgotPasswordCode");
+
+        group.MapPost("/forgot-password", ResetForgotPassword)
+            .WithName("ResetForgotPassword");
 
         group.MapPost("/change-password", ChangePassword)
             .RequireLogin()
@@ -98,6 +116,7 @@ public class AuthEndpoints : IEndpointDefinition
         LoginRequest request,
         IUserStore userStore,
         ISessionStore sessionStore,
+        ICacheService cache,
         IEventPublisher eventPublisher,
         AdminDbContext db,
         HttpContext httpContext,
@@ -135,7 +154,212 @@ public class AuthEndpoints : IEndpointDefinition
         }
 
         ClearLoginFailures(attemptKey);
-        var session = await sessionStore.CreateSessionAsync(username, policy.SessionTtl, ct);
+
+        if (await userStore.GetTwoFactorEnabledAsync(username, ct))
+        {
+            var challengeId = Guid.NewGuid().ToString("N");
+            await cache.SetAsync(CacheKeys.TwoFactorChallenge(challengeId), username, AuthDemoCodes.CodeTtl, ct);
+            await cache.SetAsync(CacheKeys.TwoFactorUser(username), challengeId, AuthDemoCodes.CodeTtl, ct);
+            AdminMetrics.RecordAuthEvent("login_2fa_challenge", true);
+            return Results.Json(
+                ApiResult.Ok(new LoginResponse(null, null, username, RequiresTwoFactor: true, ChallengeId: challengeId)),
+                AppJsonContext.Default.ApiResponseLoginResponse);
+        }
+
+        return await IssueLoginSessionAsync(username, sessionStore, eventPublisher, httpContext, policy.SessionTtl, ct);
+    }
+
+    private static async Task<IResult> VerifyTwoFactor(
+        TwoFactorVerifyRequest request,
+        IUserStore userStore,
+        ISessionStore sessionStore,
+        ICacheService cache,
+        IEventPublisher eventPublisher,
+        AdminDbContext db,
+        HttpContext httpContext,
+        CancellationToken ct)
+    {
+        var username = NormalizeUsername(request.Username ?? string.Empty);
+        var code = (request.Code ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(code))
+        {
+            return TwoFactorUnauthorized();
+        }
+
+        var pendingChallengeId = await cache.GetAsync<string>(CacheKeys.TwoFactorUser(username), ct);
+        if (string.IsNullOrWhiteSpace(pendingChallengeId))
+        {
+            return TwoFactorUnauthorized();
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.ChallengeId) &&
+            !string.Equals(request.ChallengeId, pendingChallengeId, StringComparison.Ordinal))
+        {
+            return TwoFactorUnauthorized();
+        }
+
+        var challengeUser = await cache.GetAsync<string>(CacheKeys.TwoFactorChallenge(pendingChallengeId), ct);
+        if (!string.Equals(challengeUser, username, StringComparison.Ordinal))
+        {
+            return TwoFactorUnauthorized();
+        }
+
+        if (!string.Equals(code, AuthDemoCodes.OtpCode, StringComparison.Ordinal))
+        {
+            AdminMetrics.RecordAuthEvent("login_2fa", false);
+            return TwoFactorUnauthorized();
+        }
+
+        if (!await userStore.ExistsAsync(username, ct) ||
+            !await userStore.GetTwoFactorEnabledAsync(username, ct))
+        {
+            return TwoFactorUnauthorized();
+        }
+
+        await cache.RemoveAsync(CacheKeys.TwoFactorUser(username), ct);
+        await cache.RemoveAsync(CacheKeys.TwoFactorChallenge(pendingChallengeId), ct);
+
+        var policy = await AuthPolicySettings.LoadAsync(db, ct);
+        AdminMetrics.RecordAuthEvent("login_2fa", true);
+        return await IssueLoginSessionAsync(username, sessionStore, eventPublisher, httpContext, policy.SessionTtl, ct);
+    }
+
+    private static async Task<IResult> GetTwoFactor(
+        HttpContext httpContext,
+        IUserStore userStore,
+        CancellationToken ct)
+    {
+        if (!TryGetUsername(httpContext, out var username))
+        {
+            return Results.Json(
+                ApiResult.Fail<TwoFactorStatusResponse>("未授权", 401),
+                AppJsonContext.Default.ApiResponseTwoFactorStatusResponse,
+                statusCode: 401);
+        }
+
+        var enabled = await userStore.GetTwoFactorEnabledAsync(username, ct);
+        return Results.Json(
+            ApiResult.Ok(new TwoFactorStatusResponse(enabled)),
+            AppJsonContext.Default.ApiResponseTwoFactorStatusResponse);
+    }
+
+    private static async Task<IResult> UpdateTwoFactor(
+        UpdateTwoFactorRequest request,
+        HttpContext httpContext,
+        IUserStore userStore,
+        CancellationToken ct)
+    {
+        if (!TryGetUsername(httpContext, out var username))
+        {
+            return Results.Json(
+                ApiResult.Fail<TwoFactorStatusResponse>("未授权", 401),
+                AppJsonContext.Default.ApiResponseTwoFactorStatusResponse,
+                statusCode: 401);
+        }
+
+        var updated = await userStore.SetTwoFactorEnabledAsync(username, request.Enabled, ct);
+        if (!updated)
+        {
+            return Results.Json(
+                ApiResult.Fail<TwoFactorStatusResponse>("更新失败", 500),
+                AppJsonContext.Default.ApiResponseTwoFactorStatusResponse,
+                statusCode: 500);
+        }
+
+        return Results.Json(
+            ApiResult.Ok(new TwoFactorStatusResponse(request.Enabled)),
+            AppJsonContext.Default.ApiResponseTwoFactorStatusResponse);
+    }
+
+    private static async Task<IResult> SendForgotPasswordCode(
+        ForgotPasswordCodeRequest request,
+        ICacheService cache,
+        CancellationToken ct)
+    {
+        var target = (request.Target ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            return Results.Json(
+                ApiResult.Fail<ForgotPasswordCodeResponse>("请输入邮箱或手机号", 400),
+                AppJsonContext.Default.ApiResponseForgotPasswordCodeResponse,
+                statusCode: 400);
+        }
+
+        var channel = NormalizeForgotChannel(request.Channel, target);
+        await cache.SetAsync(CacheKeys.ForgotPasswordCode(channel, NormalizeForgotTarget(target)), AuthDemoCodes.OtpCode, AuthDemoCodes.CodeTtl, ct);
+        return Results.Json(
+            ApiResult.Ok(new ForgotPasswordCodeResponse(target)),
+            AppJsonContext.Default.ApiResponseForgotPasswordCodeResponse);
+    }
+
+    private static async Task<IResult> ResetForgotPassword(
+        ForgotPasswordResetRequest request,
+        IUserStore userStore,
+        ICacheService cache,
+        AdminDbContext db,
+        CancellationToken ct)
+    {
+        var target = (request.Target ?? string.Empty).Trim();
+        var code = (request.Code ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>("请输入邮箱或手机号", 400),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 400);
+        }
+
+        var channel = NormalizeForgotChannel(request.Channel, target);
+        var cacheKey = CacheKeys.ForgotPasswordCode(channel, NormalizeForgotTarget(target));
+        var storedCode = await cache.GetAsync<string>(cacheKey, ct);
+        if (string.IsNullOrWhiteSpace(storedCode) ||
+            !string.Equals(code, storedCode, StringComparison.Ordinal) ||
+            !string.Equals(code, AuthDemoCodes.OtpCode, StringComparison.Ordinal))
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>("验证码错误", 400),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 400);
+        }
+
+        var policy = await AuthPolicySettings.LoadAsync(db, ct);
+        var passwordError = policy.ValidatePassword(request.Password ?? string.Empty);
+        if (passwordError is not null)
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>(passwordError, 400),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 400);
+        }
+
+        var username = ResolveForgotPasswordUsername(channel, target);
+        if (await userStore.ExistsAsync(username, ct))
+        {
+            var updated = await userStore.UpdatePasswordAsync(username, PasswordHasher.Hash(request.Password ?? string.Empty), ct);
+            if (!updated)
+            {
+                return Results.Json(
+                    ApiResult.Fail<MessageResponse>("密码重置失败", 500),
+                    AppJsonContext.Default.ApiResponseMessageResponse,
+                    statusCode: 500);
+            }
+        }
+
+        await cache.RemoveAsync(cacheKey, ct);
+        return Results.Json(
+            ApiResult.Ok(new MessageResponse("密码重置成功")),
+            AppJsonContext.Default.ApiResponseMessageResponse);
+    }
+
+    private static async Task<IResult> IssueLoginSessionAsync(
+        string username,
+        ISessionStore sessionStore,
+        IEventPublisher eventPublisher,
+        HttpContext httpContext,
+        TimeSpan sessionTtl,
+        CancellationToken ct)
+    {
+        var session = await sessionStore.CreateSessionAsync(username, sessionTtl, ct);
         var envelope = EventEnvelope.Create(
             "auth.user.login",
             new Dictionary<string, object?>
@@ -146,7 +370,9 @@ public class AuthEndpoints : IEndpointDefinition
             httpContext.TraceIdentifier);
         await eventPublisher.PublishAsync(envelope, EventBusConstants.AuthStream, ct);
         AdminMetrics.RecordAuthEvent("login", true);
-        return Results.Json(ApiResult.Ok(new LoginResponse(session.Token, session.ExpiresAt, session.Username)), AppJsonContext.Default.ApiResponseLoginResponse);
+        return Results.Json(
+            ApiResult.Ok(new LoginResponse(session.Token, session.ExpiresAt, session.Username)),
+            AppJsonContext.Default.ApiResponseLoginResponse);
     }
 
     private static async Task<IResult> ChangePassword(
@@ -272,6 +498,63 @@ public class AuthEndpoints : IEndpointDefinition
     private static string NormalizeUsername(string username)
     {
         return username.Trim().ToLowerInvariant();
+    }
+
+    private static bool TryGetUsername(HttpContext httpContext, out string username)
+    {
+        if (httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var userObj) &&
+            userObj is string value &&
+            !string.IsNullOrWhiteSpace(value))
+        {
+            username = value;
+            return true;
+        }
+
+        username = string.Empty;
+        return false;
+    }
+
+    private static IResult TwoFactorUnauthorized()
+    {
+        return Results.Json(
+            ApiResult.Fail<LoginResponse>("验证码错误", 401),
+            AppJsonContext.Default.ApiResponseLoginResponse,
+            statusCode: 401);
+    }
+
+    private static string NormalizeForgotChannel(string? channel, string target)
+    {
+        if (string.Equals(channel, "email", StringComparison.OrdinalIgnoreCase))
+        {
+            return "email";
+        }
+
+        if (string.Equals(channel, "phone", StringComparison.OrdinalIgnoreCase))
+        {
+            return "phone";
+        }
+
+        return target.Contains('@', StringComparison.Ordinal) ? "email" : "phone";
+    }
+
+    private static string NormalizeForgotTarget(string target)
+    {
+        return target.Trim().ToLowerInvariant();
+    }
+
+    private static string ResolveForgotPasswordUsername(string channel, string target)
+    {
+        var value = target.Trim();
+        if (string.Equals(channel, "email", StringComparison.Ordinal) || value.Contains('@', StringComparison.Ordinal))
+        {
+            var at = value.IndexOf('@');
+            if (at > 0)
+            {
+                return NormalizeUsername(value[..at]);
+            }
+        }
+
+        return NormalizeUsername(value);
     }
 
     private static string GetLoginAttemptKey(string username, HttpContext httpContext)

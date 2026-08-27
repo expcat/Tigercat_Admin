@@ -65,4 +65,26 @@ public class EfUserStore : IUserStore
     {
         return await _context.Users.AnyAsync(u => u.Username == username, ct);
     }
+
+    public async Task<bool> GetTwoFactorEnabledAsync(string username, CancellationToken ct = default)
+    {
+        return await _context.Users
+            .Where(u => u.Username == username)
+            .Select(u => u.TwoFactorEnabled)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<bool> SetTwoFactorEnabledAsync(string username, bool enabled, CancellationToken ct = default)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username, ct);
+        if (user is null)
+        {
+            return false;
+        }
+
+        user.TwoFactorEnabled = enabled;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync(ct);
+        return true;
+    }
 }

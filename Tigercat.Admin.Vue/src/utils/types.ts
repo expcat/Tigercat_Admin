@@ -4,6 +4,20 @@ export interface Session {
   expiresAt: string;
 }
 
+export interface LoginData {
+  requiresTwoFactor?: boolean;
+  token?: string;
+  username?: string;
+  expiresAt?: string;
+  challengeId?: string;
+}
+
+export interface TwoFactorStatus {
+  enabled: boolean;
+}
+
+export type ForgotChannel = 'email' | 'phone';
+
 export interface Notice {
   type: 'success' | 'error' | '';
   message: string;

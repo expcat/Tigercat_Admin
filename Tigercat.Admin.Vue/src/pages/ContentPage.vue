@@ -9,7 +9,7 @@ import { MarkdownEditor } from '@expcat/tigercat-vue/MarkdownEditor'
 import { CodeEditor } from '@expcat/tigercat-vue/CodeEditor'
 import { TreeSelect } from '@expcat/tigercat-vue/TreeSelect'
 import { Cascader } from '@expcat/tigercat-vue/Cascader'
-import { AutoComplete } from '@expcat/tigercat-vue/AutoComplete'
+import { TagsInput } from '@expcat/tigercat-vue/TagsInput'
 import { Mentions } from '@expcat/tigercat-vue/Mentions'
 import { Upload } from '@expcat/tigercat-vue/Upload'
 import { Watermark } from '@expcat/tigercat-vue/Watermark'
@@ -19,7 +19,6 @@ import type {
   TreeSelectValue,
   CascaderOption,
   CascaderValue,
-  AutoCompleteOption,
   MentionOption,
 } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
@@ -73,14 +72,6 @@ const COLUMN_OPTIONS: CascaderOption[] = [
   },
 ]
 
-const TAG_OPTIONS: AutoCompleteOption[] = [
-  { label: '发布', value: '发布' },
-  { label: '公告', value: '公告' },
-  { label: '教程', value: '教程' },
-  { label: '组件库', value: '组件库' },
-  { label: '设计规范', value: '设计规范' },
-]
-
 const MENTION_OPTIONS: MentionOption[] = [
   { value: 'alice', label: 'Alice（前端）' },
   { value: 'bob', label: 'Bob（设计）' },
@@ -97,22 +88,10 @@ const codeValue = ref('export const version = "1.6.0";\n\nexport function releas
 const title = ref('组件库 v1.6 发布说明')
 const category = ref<TreeSelectValue>('frontend')
 const column = ref<CascaderValue>(['docs', 'guide'])
-const tagInput = ref<string | number>('')
 const tags = ref<string[]>(['发布', '组件库'])
 const collaborators = ref('@Alice 请补充前端改动；@Bob 复核设计稿。')
 const publishNow = ref(true)
 const published = ref(false)
-
-function addTag(value: string | number) {
-  const text = String(value).trim()
-  if (text && !tags.value.includes(text)) {
-    tags.value = [...tags.value, text]
-  }
-  tagInput.value = ''
-}
-function removeTag(text: string) {
-  tags.value = tags.value.filter((t) => t !== text)
-}
 
 function saveDraft() {
   Message.success({ content: '草稿已保存（演示）', duration: 2200 })
@@ -259,26 +238,14 @@ const currentColumnText = computed(() => {
         <Card>
           <template #header><Text weight="bold">标签</Text></template>
           <div class="space-y-3">
-            <AutoComplete
-              v-model="tagInput"
-              :options="TAG_OPTIONS"
-              placeholder="输入或选择标签后回车"
-              allow-free-input
-              @select="addTag"
+            <TagsInput
+              v-model="tags"
+              placeholder="输入标签后回车，可用逗号分隔"
+              :max="12"
+              add-on-blur
+              clearable
             />
-            <div class="flex flex-wrap gap-2">
-              <Tag
-                v-for="t in tags"
-                :key="t"
-                variant="primary"
-                size="sm"
-                closable
-                @close="removeTag(t)"
-              >
-                {{ t }}
-              </Tag>
-              <Text v-if="!tags.length" size="sm" color="secondary">暂无标签</Text>
-            </div>
+            <Text v-if="!tags.length" size="sm" color="secondary">暂无标签</Text>
           </div>
         </Card>
 

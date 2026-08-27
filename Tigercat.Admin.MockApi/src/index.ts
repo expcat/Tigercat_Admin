@@ -139,6 +139,10 @@ type DemoState = {
   nextRoleId: number;
   nextMediaId: number;
   nextTaskId: number;
+  passwords: Record<string, string>;
+  twoFactorByUser: Record<string, boolean>;
+  pendingTwoFactor: Record<string, string>;
+  pendingForgot: Record<string, string>;
 };
 
 type InstallOptions = {
@@ -149,6 +153,7 @@ type InstallOptions = {
 const DEFAULT_STORAGE_KEY = 'tigercat.admin.demo.mock-state';
 const DEMO_TOKEN = 'demo-static-token';
 const CREATED_AT = '2026-06-03T02:00:00.000Z';
+const DEMO_OTP_CODE = '123456';
 
 const permissions: PermissionInfo[] = [
   ['dashboard:view', '查看仪表盘'],
@@ -332,6 +337,16 @@ function initialState(): DemoState {
     nextRoleId: 4,
     nextMediaId: 4,
     nextTaskId: 7,
+    passwords: {
+      admin: 'admin123',
+      demo: 'demo',
+    },
+    twoFactorByUser: {
+      admin: false,
+      demo: true,
+    },
+    pendingTwoFactor: {},
+    pendingForgot: {},
   };
 }
 
@@ -468,15 +483,60 @@ function makeBlob(text: string, filename: string, contentType = 'text/csv; chars
 }
 
 function readState(storageKey: string): DemoState {
+  const seeded = initialState();
   try {
     const raw = window.sessionStorage.getItem(storageKey);
-    if (raw) return JSON.parse(raw) as DemoState;
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<DemoState>;
+      return {
+        ...seeded,
+        ...parsed,
+        passwords: { ...seeded.passwords, ...(parsed.passwords ?? {}) },
+        twoFactorByUser: { ...seeded.twoFactorByUser, ...(parsed.twoFactorByUser ?? {}) },
+        pendingTwoFactor: parsed.pendingTwoFactor ?? {},
+        pendingForgot: parsed.pendingForgot ?? {},
+      };
+    }
   } catch {
     // Fall through and re-seed.
   }
-  const state = initialState();
-  writeState(storageKey, state);
-  return state;
+  writeState(storageKey, seeded);
+  return seeded;
+}
+
+function sessionUsername(request: Request | null, init: RequestInit): string {
+  const authHeader =
+    request?.headers.get('Authorization') ||
+    request?.headers.get('X-Token') ||
+    (init.headers instanceof Headers
+      ? init.headers.get('Authorization') || init.headers.get('X-Token')
+      : Array.isArray(init.headers)
+        ? init.headers.find(([key]) =>
+            ['authorization', 'x-token'].includes(key.toLowerCase()),
+          )?.[1]
+        : (init.headers as Record<string, string> | undefined)?.Authorization ||
+          (init.headers as Record<string, string> | undefined)?.['X-Token']);
+  const token = String(authHeader ?? '').replace(/^Bearer\s+/i, '');
+  if (token.startsWith(`${DEMO_TOKEN}:`)) return token.slice(DEMO_TOKEN.length + 1);
+  if (token === DEMO_TOKEN) return 'admin';
+  return '';
+}
+
+function issueSession(username: string) {
+  return {
+    token: `${DEMO_TOKEN}:${username}`,
+    username,
+    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+  };
+}
+
+function resolveForgotUsername(channel: string, target: string): string {
+  const value = target.trim();
+  if (channel === 'email' || value.includes('@')) {
+    const at = value.indexOf('@');
+    if (at > 0) return value.slice(0, at).trim().toLowerCase();
+  }
+  return value.toLowerCase();
 }
 
 function writeState(storageKey: string, state: DemoState) {
@@ -544,45 +604,73 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   if (path === '/api/home' && method === 'GET') return makeJson('Hello world');
 
   if (path === '/api/auth/login' && method === 'POST') {
-    const username = String(body.username ?? 'admin');
+    const username = String(body.username ?? '').trim().toLowerCase();
     const password = String(body.password ?? '');
-    if (username === 'demo' && password === 'demo') {
-      return makeJson({ requiresTwoFactor: true, username: 'demo' });
-    }
-    if (username !== 'admin' || password !== 'admin123') {
+    const expected = state.passwords[username];
+    if (!expected || expected !== password) {
       return makeError('账号或密码错误', 401);
     }
-    return makeJson({
-      token: `${DEMO_TOKEN}:${username}`,
-      username,
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
-    });
+    if (state.twoFactorByUser[username]) {
+      const challengeId = `challenge-${username}-${Date.now()}`;
+      state.pendingTwoFactor[username] = challengeId;
+      writeState(storageKey, state);
+      return makeJson({ requiresTwoFactor: true, username, challengeId });
+    }
+    return makeJson(issueSession(username));
   }
 
   if (path === '/api/auth/two-factor/verify' && method === 'POST') {
-    const username = String(body.username ?? '');
-    const code = String(body.code ?? '');
-    if (username !== 'demo' || code !== '123456') {
+    const username = String(body.username ?? '').trim().toLowerCase();
+    const code = String(body.code ?? '').trim();
+    const challengeId = body.challengeId ? String(body.challengeId) : '';
+    const pending = state.pendingTwoFactor[username];
+    if (!pending || (challengeId && challengeId !== pending) || code !== DEMO_OTP_CODE || !state.twoFactorByUser[username]) {
       return makeError('验证码错误', 401);
     }
-    return makeJson({
-      token: `${DEMO_TOKEN}:demo`,
-      username: 'demo',
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
-    });
+    delete state.pendingTwoFactor[username];
+    writeState(storageKey, state);
+    return makeJson(issueSession(username));
+  }
+
+  if (path === '/api/auth/two-factor' && method === 'GET') {
+    const username = sessionUsername(request, init);
+    if (!username) return makeError('未授权', 401);
+    return makeJson({ enabled: Boolean(state.twoFactorByUser[username]) });
+  }
+
+  if (path === '/api/auth/two-factor' && method === 'PUT') {
+    const username = sessionUsername(request, init);
+    if (!username) return makeError('未授权', 401);
+    const enabled = Boolean(body.enabled);
+    state.twoFactorByUser[username] = enabled;
+    writeState(storageKey, state);
+    return makeJson({ enabled });
   }
 
   if (path === '/api/auth/forgot-password/code' && method === 'POST') {
     const target = String(body.target ?? '').trim();
     if (!target) return makeError('请输入邮箱或手机号', 400);
+    const channel = String(body.channel ?? '').toLowerCase() === 'email' || target.includes('@') ? 'email' : 'phone';
+    state.pendingForgot[`${channel}:${target.toLowerCase()}`] = DEMO_OTP_CODE;
+    writeState(storageKey, state);
     return makeJson({ sentTo: target });
   }
 
   if (path === '/api/auth/forgot-password' && method === 'POST') {
+    const target = String(body.target ?? '').trim();
     const code = String(body.code ?? '');
     const password = String(body.password ?? '');
-    if (code !== '123456') return makeError('验证码错误', 400);
+    const channel = String(body.channel ?? '').toLowerCase() === 'email' || target.includes('@') ? 'email' : 'phone';
+    const pending = state.pendingForgot[`${channel}:${target.toLowerCase()}`];
+    if (!target) return makeError('请输入邮箱或手机号', 400);
+    if (!pending || code !== DEMO_OTP_CODE) return makeError('验证码错误', 400);
     if (password.length < 6) return makeError('密码长度不能少于 6 位', 400);
+    const username = resolveForgotUsername(channel, target);
+    if (state.passwords[username] !== undefined) {
+      state.passwords[username] = password;
+    }
+    delete state.pendingForgot[`${channel}:${target.toLowerCase()}`];
+    writeState(storageKey, state);
     return makeJson({ message: '密码重置成功' });
   }
 
@@ -594,19 +682,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   if (path === '/api/auth/logout' && method === 'POST') return makeJson({ message: '退出成功' });
 
   if (path === '/api/auth/permissions' && method === 'GET') {
-    const authHeader =
-      request?.headers.get('Authorization') ||
-      (init.headers instanceof Headers
-        ? init.headers.get('Authorization')
-        : Array.isArray(init.headers)
-          ? init.headers.find(([key]) => key.toLowerCase() === 'authorization')?.[1]
-          : (init.headers as Record<string, string> | undefined)?.Authorization);
-    const token = String(authHeader ?? '').replace(/^Bearer\s+/i, '');
-    const username = token.startsWith(`${DEMO_TOKEN}:`)
-      ? token.slice(DEMO_TOKEN.length + 1)
-      : token === DEMO_TOKEN
-        ? 'admin'
-        : '';
+    const username = sessionUsername(request, init);
     const accountPermissions =
       username === 'demo'
         ? permissions.filter((item) => DEMO_ACCOUNT_PERMISSIONS.includes(item.code))

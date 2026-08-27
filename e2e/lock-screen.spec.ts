@@ -21,8 +21,11 @@ async function login(page: Page) {
 }
 
 async function inputPin(page: Page, code: string) {
-  for (const digit of code.split('')) {
-    await page.locator(`[data-key="${digit}"]`).click();
+  const root = page.getByTestId('shell-lock-pin-otp');
+  await expect(root).toBeVisible();
+  const slots = root.locator('input:not([type="hidden"])');
+  for (let index = 0; index < code.length; index += 1) {
+    await slots.nth(index).fill(code[index]);
   }
 }
 

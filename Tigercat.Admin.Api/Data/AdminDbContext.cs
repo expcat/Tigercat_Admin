@@ -34,6 +34,7 @@ public class AdminDbContext : DbContext
             entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(128);
             entity.Property(e => e.DisplayName).HasMaxLength(100);
             entity.Property(e => e.Status).HasConversion<int>();
+            entity.Property(e => e.TwoFactorEnabled).HasDefaultValue(false);
             entity.HasOne(e => e.AvatarMedia)
                 .WithMany()
                 .HasForeignKey(e => e.AvatarMediaId)
