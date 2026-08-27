@@ -1210,3 +1210,27 @@
       - **clip：** Radar/Scatter/Heatmap/TreeMap/Sunburst/Canvas `clipKids=[]`。OrgChart **720** 在 477 卡 + 443 wrap 里裁切（右裁运营中心、底裁第三排），是本页折下唯一 clip。Home 4.3 是 Pie 外侧标签 + legend 裁出。
       - **轴挤：** 这批都是 5–7 类目，无 Home 30 日挤轴。
 - **严重度：** Radar 五轴 + Scatter 6 点 + TreeMap 四区 + Sunburst 线上/线下 客户端 demo 上屏、且 **跟** `--tiger-primary` / `--tiger-chart-*`：通过（信息，`/tmp/vue-analytics-charts-below.png` + `/tmp/vue-analytics-org-canvas.png`）。Heatmap 28 格写死 hex 蓝阶、`uniqueVar=[]`、不跟 `--tiger-chart-*`：**中**（leftover hex；色相是蓝阶不是 Home 的 `#3b82f6`，但同类「不走 token」）。ChartCanvas **560×240** + `ChartSeries`/`ChartLegend` 写死 **`#3b82f6` / `rgb(59,130,246)`** 对 `--tiger-primary` `#2563eb`：**中**（与 Home 4.3 leftover hex **同色**；6.2 首屏已改走 token，折下自定义图没改）。OrgChart SVG **720×240** 塞进 477 卡 / wrap clientWidth **443**，scrollLeft=0 裁 **运营中心**（右）+ **前端组/后端组**（底），横滚 277 才能看到运营中心、底排仍裁：**中**（与 Home 4.3 clip 同模式 + 固定高 240 裁第三排）。固定 320/400/560 不撑满卡、右空：与 6.2 **同形中**。`Card title` 无可见 heading：6.2 已记，不另开。渠道明细 Table+Pagination / 暗色 / 375：**缺口**（6.4 走表；暗色/375 本 slice 不走）。
+
+### 6.4 table/pagination（渠道明细）
+
+- **模块：** Analytics 渠道明细 Table + 客户端 Pagination（`pageSize=5` / 共 8 条）
+- **端：** Vue
+- **视口：** 桌面 **1280×800**，浅色。截图来自隔离上下文 **`vue-analytics-rest`**（6.3 同上下文，本条只写表，不重审折下图 / 不重审 6.1–6.3）。live range-reset 若走，隔离上下文必须叫 **`vue-analytics-table-write`**（本条 shot 阶段未新开 Chrome）。未复用 `vue-analytics` / `vue-about*` / `vue-home-*` / `vue-shell-*` / `react-*`。
+- **复现：**
+  1. 壳（shot 像素，不审壳控件）：侧栏 **数据分析看板** 高亮蓝；面包屑「管理中心 / 数据分析 / 数据分析看板」；TagsView 选中「数据分析看板」；Header `admin` + 铃铛 **2**。表卡上方仍是 ChartCanvas legend **月度转化**、X **1月–6月**、Y **0–70**（已是 6.3，本条只当定位，不重开）。默认 **近 30 天** / factor=**1**（与 6.1 默认一致；本条 shot 未切 Segmented）。
+  2. **page 1** 截图 `/tmp/vue-analytics-table.png`（PNG **1280×800** 浅色）。表头五列 **渠道 / 访问量 / 订单数 / 转化率 / 趋势**。五行（`baseChannels` × factor=1，`visits`/`orders` `toLocaleString()`）：
+     - 直接访问 **38,400** / **920** / **2.4%** / 上升
+     - 搜索引擎 **31,200** / **760** / **2.1%** / 上升
+     - 社交媒体 **24,800** / **540** / **1.8%** / 持平
+     - 邮件营销 **12,600** / **410** / **3.2%** / 上升
+     - 付费广告 **18,900** / **620** / **2.9%** / 下降
+     分页右下 **共 8 条**；页码 **1** 蓝底高亮，**2** 在旁；可见上一页 `<`。条纹行。shot **看不见** Card 标题「渠道明细」（`title` attr only — 6.2 / 6.3 已 **中**，本条不另开）。Home 4.3 是图不是这张表。
+  3. **page 2** 截图 `/tmp/vue-analytics-table-p2.png`（同视口）。剩余三行：
+     - 内容推荐 **9,800** / **280** / **2%** / 持平（源码 `conversion: 2.0` → 模板 `` `${c.conversion}%` `` 上屏 **2%**，shot 如此）
+     - 合作渠道 **7,400** / **190** / **1.6%** / 上升
+     - 线下活动 **4,200** / **130** / **2.7%** / 下降
+     分页仍 **共 8 条**；页码 **2** 蓝底高亮。5+3=8 证明 **pageSize=5**。源码 `Table :pagination="false"` + 独立 `Pagination :current :total :page-size @update:current=handlePageChange`，与 shot 表下单独分页条同形。
+  4. **客户端 demo：** 八行即 `baseChannels`；`visits`/`orders` = `Math.round(base * factor).toLocaleString()`；`conversion`/`trend` **不**随 factor 缩放。默认 30 天 factor=1，shot 数字 = 基线。本页 **无** `/api/analytics`（6.1 已证；本条未新抓网络）。
+  5. **range/refresh 重置 page=1：** 源码 `handleRangeChange` / `handleRefresh` 都 `page.value = 1`。源码 factor 7=0.4 → 直接访问 visits **15,360** / orders **368**；factor 90=2.2 → **84,480** / **2,024**。**本条未 live 点 Segmented / 刷新**（两张 shot 都是 30 天 page 1/2）→ live range-reset **缺口**。
+- **严重度：** page 1 五行 + page 2 三行、分页「共 8 条」、pageSize=5、列 渠道/访问量/订单数/转化率/趋势、factor=1 数字与 `baseChannels` 一致：通过（信息，`/tmp/vue-analytics-table.png` + `/tmp/vue-analytics-table-p2.png`）。客户端 demo、转化率/趋势不随 range 缩放：信息（本页设计，同 6.1）。Card `title="渠道明细"` 无可见 heading：6.2 已 **中**，不另开。live 切 7/90 天验证 page 回 1 且 visits/orders 缩放：**缺口**（源码有 `page.value = 1`）。暗色 / 375：**缺口**（本期不走）。
+
