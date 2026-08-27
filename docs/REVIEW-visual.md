@@ -798,3 +798,54 @@
   3. **点 CSV：** `GET /api/export/overview?format=csv&days=7` **200**（Kestrel）。`Content-Type: text/csv; charset=utf-8`，`Content-Disposition: attachment; filename=overview.csv`，`content-length=423`。Tigercat `Message.success` 文案 **「导出成功」**（a11y `role=status` `aria-live=polite`，宿主持 leftover `fixed z-[9999] ... top-6 left-1/2`）。duration 3s 后消失。失败 toast **未走**（未打 5xx）。截图 `/tmp/vue-home-export-success.png`（1280×800；拍时 toast 已过 3s，画面无「导出成功」字；成功以 snapshot + 网络为准）。
   4. **leftover vs Tigercat DataExport：** 触发器是 Tigercat `DataExport`，不是自制导出钮。适配 leftover：三枚实例都伪装成 `xlsx` 再靠 `skipClientDataExport` 转 `GET /api/export/overview` Blob；外层 `flex justify-end` 原生 wrapper。无 `p2-export*` 类。
 - **严重度：** CSV 导出 200 + Message「导出成功」通过（信息）。官方 DataExport 只认 xlsx/markdown、三钮靠 skipClient 走 API：**低**（既有适配，功能不挡）。JSON / Excel 点击与失败 Message：**缺口**（本条只点了 CSV）。
+
+### 4.6 Dark tokens
+
+本期隔离上下文 **`vue-home-dark-mobile`**（未复用 `vue-home-dashboard` / `vue-home-rest` / `vue-shell-overlays` / `vue-tags-chat` / `react-*`）。先开 `chrome://inspect/#remote-debugging`，「Allow remote debugging for this browser instance」已勾选（截图 `/tmp/vue-home-dark-inspect-remote-debugging.png`）。`new_page` isolatedContext 打开 Vue `http://127.0.0.1:5173/login`，`admin` / `admin123`，OnboardingTour 点「关闭引导」关掉（**未审 Tour**）。视口桌面 **1280×800**。ThemeConfigDrawer **只用来切外观到深色**，关抽屉后查 `/dashboard` token，**不把 Theme 当产品再走一遍**。未开 React `5174`，未重启三端。
+
+- **模块：** 仪表盘暗色 token（welcome / Marquee / KPI MetricGrid / Line·Pie·Bar / DataExport / 系统信息）
+- **端：** Vue
+- **视口：** 桌面 **1280×800**，深色；隔离上下文 `vue-home-dark-mobile`
+- **复现：**
+  1. Header `button` `data-testid="shell-theme-config-trigger"` `aria-label="主题配置"`。点开 Drawer「主题配置」，外观 Segmented 默认 **跟随系统**。点 **深色**，再点关闭 ×。抽屉关掉（无 mask）。`html` class = **`dark`**。`localStorage tigercat.admin.theme` = `{"mode":"dark","primaryColor":"#2563eb","compactMode":false}`。URL 仍 `/dashboard`。截图 `/tmp/vue-home-dark.png`（1280×800；欢迎卡 + Marquee + CSV/JSON/Excel + KPI 5/5/4/22 + 折线/饼图同屏）。
+  2. **`--tiger-*` 计算值：** `--tiger-primary=#2563eb`（抽屉主色仍是蓝色，不是 `style.css` `.dark` 兜底 `#6396ff`）、`--tiger-bg-page=#0d1117`、`--tiger-bg-card=#161b22`、`--tiger-bg-hover=#1b212c`、`--tiger-text=#f0f6fc`、`--tiger-text-secondary=#8b949f`、`--tiger-border=#304050`。Tigercat 另有 `--tiger-surface=#111827`、`--tiger-surface-muted=#1f2937`。内容区 `#main-content-scroll` 底 `rgb(31,41,55)`（`#1f2937`）。无「演示模式」Tag。无横向溢出（`documentElement.scrollWidth===clientWidth===1280`，`#main-content-scroll` 1025===1025）。
+  3. **Welcome：** Tigercat Card 底 `rgb(17,24,39)`（`--tiger-surface`），字 `rgb(240,246,252)`。标题 leftover **`p2-text-primary`** 跟 `--tiger-text`（`#f0f6fc`）。leftover **`p2-page-accent`** 渐变 `linear-gradient(90deg, color(srgb 0.145 0.388 0.922 / 0.12), color(srgb 0.106 0.129 0.173 / 0.86))`（`--tiger-primary` 12% → `--tiger-bg-hover` 86%），暗底上仍有一层淡蓝横向洗。副文 `Hello world` 色 `rgb(156,163,175)`。Tag「管理员 / 已认证」仍可读。
+  4. **Marquee：** 宿主 `bg-(--tiger-bg-card,#ffffff)` 实算 **`rgb(22,27,34)`**（`#161b22`），边 `--tiger-border` `#304050`，与欢迎 Card 的 `--tiger-surface` `#111827` **不是同一张暗底**。公告字 `--tiger-text-secondary` `rgb(139,148,159)`，圆点 `--tiger-primary` `rgb(37,99,235)`。轨道仍 2991px，宿主 `overflow:hidden` 裁住，未撑出页面横溢。
+  5. **KPI MetricGrid：** 四张 Tigercat Card 底 `--tiger-surface` `#111827`，数字 5/5/4/22 白字可读。图标 leftover **`p2-icon-chip`** 色 `rgb(37,99,235)`（跟 `--tiger-primary`）。1280 下仍是 4 列。
+  6. **Charts：** Line 面积/描边 stop 仍全是 **`#3b82f6`**；Pie stop **`#3b82f6` / `#ef4444`**；Bar stop **`#3b82f6` / `#22c55e` / `#ef4444` / `#a855f7` / `#f97316`**。页面 `--tiger-primary` 是 **`#2563eb`**。三张 SVG 仍固定 **320×220**，折线/柱右侧空一大块；饼图外侧标签仍被裁成「ctive 100.0%」/「Disable」（与 4.3 浅色同形，暗底上更刺眼）。轴字/网格在暗底可读。
+  7. **Export：** 三枚 DataExport 钮 CSV/JSON/Excel 跟 `--tiger-text` `#f0f6fc`、`--tiger-surface` `#111827`、`--tiger-border` `#304050`，无 `p2-export*`。暗底描边可读。
+  8. **Shortcuts / 系统信息：** 滚 `#main-content-scroll` scrollTop≈489。四枚 leftover **`p2-action-tile`** 底 `--tiger-bg-card` `#161b22`、字 `--tiger-text`、边 `--tiger-border`，图标 `text-(--tiger-primary,#3b82f6)` → `rgb(37,99,235)`；贴在 `--tiger-surface` Card 里，砖块比卡面略亮一档。系统信息行 **可见**：系统版本 **v1.0.0** / 运行环境 **.NET 10 + Vue 3**（「Vue 3」折到第二行）/ 最后更新 **2026-01-28** / API 状态 **在线**。截图 `/tmp/vue-home-dark-charts.png`（1280×800）。
+- **严重度：** 切深色后 `html.dark`、壳与主区暗底、KPI/导出/系统信息可读：通过（信息）。硬编码图表 hex `#3b82f6/#ef4444/#22c55e/#a855f7/#f97316` 不跟 `--tiger-primary`（暗色 leftover，浅色已记在 4.3）：**低**。leftover `p2-page-accent` / `p2-text-primary` / `p2-action-tile` / `p2-icon-chip` 多数已绑 `--tiger-*`，但 Marquee/`p2-action-tile` 用 `--tiger-bg-card`、Card 用 `--tiger-surface`，暗底出现两档灰：**低**。饼图裁切同 4.3（中，不在本条重开）。Theme 紧凑/主色：本条不审。
+
+### 4.7 Mobile ~375px
+
+本期 4.7 先写前一会话已落盘的 `/tmp/vue-home-mobile-375.png`（PNG 像素 **750×1624** = 2× CSS **375×812**，浅色），不重走 4.1–4.6，不审 React，不开 MockApi / `dev:demo` / Aspire，不改产品代码。该图为前一 grok-4.6 会话 live-walk 后保存；本条先按像素写，overflow 数字与折下图表 / 快捷操作 / 系统信息标 **缺口**，后面只 live 补这些。
+
+- **模块：** 仪表盘 `/dashboard` 移动 ~375px（壳汉堡 / 欢迎卡 / Marquee 裁切 vs 页面横溢 / 导出换行 / KPI 单列 / 折下图表·快捷·系统信息）
+- **端：** Vue
+- **视口：** ~**375×812**，浅色（shot）；隔离上下文 **`vue-home-mobile-ph`**（前一会话；本条写 shot 时未再 attach）
+- **复现：**
+  1. **壳（shot）：** Header 左汉堡（三条杠圆角钮）+ 品牌「管理中心」在 375 宽下折成两行「管理 / 中心」（蓝字）+ 主题调色盘钮 + 铃铛红徽 **2** + 头像「A admin ▾」。面包屑 **管理中心 / 仪表盘**（「管理中心 /」一行，「仪表盘」折到下一行）。TagsView 左一枚浅蓝描边 tab **仪表盘**，右 **…**。无「演示模式」Tag。无侧栏（汉堡收起）。主区第一块是欢迎 Card，不是 PageHeader。截图 `/tmp/vue-home-mobile-375.png`。
+  2. **Welcome（shot）：** Tigercat Card：左 AppLogo 蓝底白 T + 标题 **「欢迎回来，admin！」** + 副文 **Hello world**。375 下 **没有**「管理员 / 已认证」Tag（源码 `hidden sm:flex`，与 4.1 桌面可见对照）。欢迎卡淡蓝横向渐变仍在（leftover `p2-page-accent`，4.1 已记，本条不重开）。
+  3. **Marquee clip vs 页面溢出（shot）：** 欢迎卡下一条圆角描边跑马灯。左缘裁成 **「…可能被重置。」**（前一条「演示环境重启后数据可能被重置。」的尾），蓝点后 **「今晚 22:00-23:00 计划维护，…」** 右缘再被盒子裁掉。这是 Marquee 宿主 `overflow:hidden` 的轨道裁切，不是独立浮层。shot 右侧主区有竖滚动条。 **`documentElement.scrollWidth===clientWidth` 与 `#main-content-scroll` scrollWidth===clientWidth 本条写 shot 时未测 → 缺口**（Marquee 裁切 ≠ 已证实无页面横溢）。
+  4. **Export wrap（shot）：** Marquee 与 KPI 之间右对齐三枚描边钮 **CSV / JSON / Excel**，**同一行、未换行**（`flex-wrap` 在 375 仍装得下）。未点导出（4.5 已点过 CSV）。
+  5. **KPI 单列（shot）：** MetricGrid 在 375 为 **单列堆叠**（`grid-cols-1`；桌面 4.2 是 4 列）。可见 **总用户数 5** / **活跃用户 5** / **总角色数 4**；第四张 **总权限数** 只露出卡顶（图标+标题），数字被视口底裁掉。右下 FAB 蓝 **+** 压在「总角色数」卡右下，其下聊天气泡未读红徽 **1**。
+  6. **Charts / shortcuts / 系统信息（shot）：** 本张 **折下不可见**（用户创建趋势 / 饼图 / 柱图 / 快捷操作四格 / 系统信息均不在 375×812 首屏）。未滚、无 `/tmp/vue-home-mobile-375-below.png` → **缺口**。
+- **严重度：** 375 浅色首屏壳 + 欢迎卡无身份 Tag + KPI 单列 + 导出三钮同行：通过（信息，符合 `hidden sm:flex` / `grid-cols-1` / `flex-wrap`）。Marquee 左右裁切是组件轨道，**尚未用 scrollWidth 区分页面横溢**：**缺口**。折下图表 / 快捷操作 / 系统信息：**缺口**。品牌「管理中心」与面包屑在 375 折行：信息（壳，非本页缺陷）。FAB 压 KPI 右下：信息（壳 ChatDock / 快操作，4.7 不审 Chat）。Theme 用浅色（shot）；未在 375 切暗色。
+
+### 4.8 PageHeader leftover
+
+本期只写 4.8，不重开 4.1–4.7，不审 React Home，不 attach Chrome。证据 = `HomePage.vue` / `PageHeader.vue` / `UsersPage.vue` 源码 + 既有 shot `/tmp/vue-home-welcome.png`（1280 浅色）/ `/tmp/vue-home-dark.png`（1280 深色）/ `/tmp/vue-home-mobile-375.png`（375）。未改产品代码。
+
+- **模块：** 仪表盘 PageHeader leftover（`TigerPageHeader` + `p2-icon-chip` 48 + title lg + subtitle + optional tags）
+- **端：** Vue
+- **视口：** 既有 shot 桌面 **1280**（浅色 `/tmp/vue-home-welcome.png` + 深色 `/tmp/vue-home-dark.png`）与移动 **375**（`/tmp/vue-home-mobile-375.png`）。本条未 attach 浏览器、未测 live DOM。
+- **复现：**
+  1. **源码无 PageHeader：** `HomePage.vue` `<script setup>` 本地组件 import 是 `AppLogo` / `MetricCard` / `MetricGrid` / `ChartEmptyState`（另有 `Icon`），**没有** `PageHeader`。模板根 `div.space-y-6`，第一块是 Tigercat `Card` 欢迎区，不是 `<PageHeader>`。
+  2. **对照 `PageHeader.vue` chrome：** `@expcat/tigercat-vue/PageHeader` 的 `TigerPageHeader`（`:show-back="false"`）+ 左 `div.p2-icon-chip` **48×48**（`h-12 w-12`，内 `Icon` 24）+ `Text` title `size="lg"` `weight="bold"` `p2-text-primary` + subtitle `size="sm"` `color="secondary"` + 可选 `#actions` tags（`hidden sm:flex`）。
+  3. **Shot：主区第一块是欢迎 Card，不是 PageHeader。** `/tmp/vue-home-welcome.png`（1280 浅色）：TagsView 下第一块是欢迎 Card——左 AppLogo 蓝底白 T + **「欢迎回来，admin！」** + 副文 Hello world + 右 Tag「管理员 / 已认证」，淡蓝横向洗。**没有** 48px `p2-icon-chip` + 页标题「仪表盘」那种 PageHeader 行。`/tmp/vue-home-dark.png`（1280 深色）同形：暗底欢迎 Card，仍是 AppLogo + 欢迎回来。`/tmp/vue-home-mobile-375.png`（375）：同样欢迎 Card 为首块，375 下身份 Tag 不见（源码 `hidden sm:flex`）。4.1 / 4.7 已写过这点，本条不重审欢迎卡。
+  4. **壳 chrome ≠ leftover PageHeader：** 三张 shot 上都有面包屑 **管理中心 / 仪表盘** 和 TagsView tab **仪表盘**。这是 App Shell（Header breadcrumbs + TagsView），不是 `PageHeader.vue`。375 下面包屑折成「管理中心 /」+「仪表盘」仍是壳。
+  5. **对照 `/users`：** 4.4 点快捷操作「用户管理」落到 **`http://127.0.0.1:5173/users`**，主区 **有** PageHeader「用户管理 / 管理平台用户账号、角色与权限」。`UsersPage.vue` `import PageHeader` 并传入 `title="用户管理"` `subtitle="管理平台用户账号、角色与权限"` `icon="users"` + tags。Home **没有** 这条 chrome。
+  6. **Home 上仍在的 header-ish leftover（4.1–4.6 已记，不重写）：** 欢迎卡 `p2-page-accent` + 标题 `p2-text-primary`（4.1 / 4.6）；快捷操作原生 `p2-action-tile`（4.4 / 4.6）；图表硬编码 `#3b82f6` 等 hex，不跟 `--tiger-primary` `#2563eb`（4.3 / 4.6）。欢迎卡布局（48 左标 + lg 标题 + sm 副文 + `hidden sm:flex` tags）**形似** PageHeader slot，但是 `Card`+`AppLogo`，不是 `TigerPageHeader`+`p2-icon-chip`。
+  7. **Live DOM：** 本条未 attach Chrome，拒绝声称未测的选择器计数（例如 `/dashboard` 上 `TigerPageHeader` / `.p2-icon-chip` 节点数）→ **缺口**。结论靠源码无 import + 三张 shot 画面，不编造 DOM 选择器。
+- **严重度：** `/dashboard` 不 import / 不渲染 `PageHeader`，主区第一块是欢迎 Card（AppLogo +「欢迎回来，admin！」）：通过（信息，源码 + 1280/375 shot）。壳面包屑 / TagsView「仪表盘」不是 leftover PageHeader：通过（信息）。Home 残留 header-ish leftover（`p2-page-accent` / `p2-text-primary` / `p2-action-tile` / 图表 hex）：**低**（已在 4.1/4.3/4.4/4.6，本条不升档）。Live `TigerPageHeader` 选择器计数：**缺口**（本会话未测，不声称）。
