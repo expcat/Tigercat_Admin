@@ -599,3 +599,21 @@
   6. **关闭全部：** 点「关闭全部」。只剩仪表盘，URL `/dashboard`，「欢迎回来，admin！」。storage `{"keys":["home"],"activeKey":"home"}`。再开「标签操作」：关闭当前 / 其他 / 全部 **全 disabled**。仪表盘始终无 ×。
   7. **刷新恢复：** 再打开系统设置 + 用户管理。刷新前 storage `{"keys":["home","settings","users"],"activeKey":"users"}`，URL `/users`。浏览器 reload 后仍 `/users`，三枚标签仍在，用户管理选中，系统设置仍带 ×，仪表盘仍无 ×。storage 同形。截图 `/tmp/vue-tags-after-refresh.png`。Tour 未再挡住壳。
 - **严重度：** 通过（信息）。多标签开/关当前/其他/全部、刷新恢复、仪表盘不可关、`/projects/:id` 高亮「项目列表」均按预期。
+
+### 3.5 ChatDock
+
+本期 live-walk Vue `http://127.0.0.1:5173` 已完成（前一 grok-4.6 会话拍齐 PNG 后在写入本节前耗尽回合）。本条只根据既有截图 + 该次走查事实落笔记；**未再走** 发送 / 加载 / 演示回复。未开 React，未改产品代码。未审 Tour / ⌘K / Bell / 快捷操作。先开 `chrome://inspect/#remote-debugging`（「Allow remote debugging for this browser instance」已勾选），截图 `/tmp/vue-chat-inspect-remote-debugging.png`（本会话复核 `/tmp/vue-chat-inspect-remote-debugging-now.png`，Allow 仍勾选）。视口桌面 **1280×800**，浅色。锁屏盖住 dock 与 ~375px Drawer **本条先记缺口**，写完后再补。
+
+- **模块：** ChatDock 在线客服
+- **端：** Vue
+- **视口：** 桌面 **1280×800**（9 张业务 PNG 像素均为 1280×800；inspect 页 1042×632）
+- **复现：**
+  1. **关：** 隔离上下文登录 `admin` / `admin123` 进 `/dashboard`，OnboardingTour 关掉。右下 `FloatButton`（对话气泡）+ `Badge` `variant=danger` 未读 **1**；其上方另有 ShellQuickActions **+**（项 27，不审）。截图 `/tmp/vue-chat-closed-live.png`。更早一张 `/tmp/vue-chat-closed.png` 在用户管理页，同一右下 FAB + 未读 1。
+  2. **开：** 点客服钮。右侧 `Drawer` 标题 **在线客服**，宽 **380px**，`mask` + 模糊盖住壳。种子消息「你好，我是在线客服小虎，有任何关于后台的问题都可以问我~」，其下时间戳原文 **`2026-06-29T09:00:00.000Z`**（未本地化）。状态 **客服在线**（绿字）。输入框占位「输入消息，回车发送」，按钮「发送」。截图 `/tmp/vue-chat-open.png`。
+  3. **点发送：** `POST /api/chat/messages` **200**。右侧用户气泡 **视觉走查测试消息**（蓝底），时间戳 `2026-08-27T17:52:22.183Z`。演示回复「已收到你的消息：“视觉走查测试消息”。这是演示客服回复，稍后会有同事跟进（ChatWindow 组件示例）。」，时间戳 `2026-08-27T17:52:23.183Z`。截图 `/tmp/vue-chat-sent.png`。
+  4. **回车发送：** 同样发出。用户气泡 **回车发送测试** + 同形演示回复（仍点名 ChatWindow）。对话变长后抽屉底部输入框 / 「发送」被裁切。截图 `/tmp/vue-chat-enter-send.png`。
+  5. **再关：** 未读 Badge 清掉（`show-zero=false`，FAB 上无 0）。右下客服钮仍在，其上方 ShellQuickActions **+** 仍在。截图 `/tmp/vue-chat-closed-after-open.png`。
+  6. **叠层：** 水印开时斜向「admin / 2026-08-27」铺内容区；右下 FAB 叠在水印之上（水印在 dock 下面）。截图 `/tmp/vue-chat-over-watermark.png`。主题配置 Drawer 宿主 `z-index:1000` 盖住 ChatDock 容器 `z-40`（主题抽屉打开时右下看不到客服钮）。截图 `/tmp/vue-chat-under-theme.png`。锁屏 `z-[2000]` **本条 PNG 未拍**（见下缺口）。
+  7. **leftover（画面可见）：** 气泡下是 raw ISO 时间戳，不是本地日期时间；textarea 右下角有浏览器原生 resize 拖柄；演示回复文案点名 `ChatWindow` 组件；dock 容器 `z-40` 低于主题 1000 / 锁屏 2000。FloatButton / Badge / Drawer / ChatWindow 为 Tigercat；定位壳是 leftover `fixed bottom-6 right-6 z-40`。
+  8. **缺口：** 锁屏盖住 dock **未拍**。移动 Drawer **~375px 未走**。
+- **严重度：** 开/关、点发送、回车发送、未读清零、水印在下、主题抽屉盖住 dock：通过（信息）。raw ISO 时间戳 + textarea resize 拖柄 + 演示回复点名 ChatWindow + 对话变长后输入区裁切：**低**。锁屏叠层、375px Drawer：未取证（本条）。
