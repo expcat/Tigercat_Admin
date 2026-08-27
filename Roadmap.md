@@ -1,274 +1,318 @@
-# Tigercat Admin 功能路线图（v2）
+# Tigercat Admin 功能路线图
 
-本文规划 `Tigercat_Admin` 后续要新增的**示例功能**。v1 路线图（阶段 0–5，见「已完成归档」）以补齐 Tigercat 组件覆盖为纲，现已全部落地；v2 以**对照知名 Admin 竞品补齐场景完整性**为纲，竞品分析与差距结论见下节。
+本文是后续可执行计划，从 **R1** 重新编号。每一期必须能在一次后续 grok 对话里做完，且 **Vue 与 React 必须同时交付**。当前工作分支为 `feat/roadmap-r1`，`@expcat/tigercat-core` / `tigercat-vue` / `tigercat-react` 已对齐 **2.1.1**。
 
-- **现状**：双端各 25 个功能页（React 19 / Vue 3 等价实现，含 `/monitor`、`/projects*` 与 `/performance`），组件覆盖已完成——`VirtualList`、`VirtualTable`、`useDrag`、`Kanban` 已在 `/performance` 演示（见文末勾选表）。
-- **目标**：通过阶段 6–10，补上与主流 Admin 模板对照后缺失的标配展示功能（异常页、登录流程、多标签导航、监控页、列表-详情模板等），并覆盖最后 4 个组件。
-- **约束**（沿用 v1，已确认）：
-  1. **双端对齐**：每个新功能在 React 与 Vue 两端等价实现，页面顺序、业务状态、函数命名、权限语义保持一致。
-  2. **数据来源**：以展示组件用法为主，数据走 `Tigercat.Admin.MockApi` 或页面内静态/内存数据，**不新增真实 .NET 后端端点**。
-  3. **导航归属**：按真实后台域归入菜单分组；Shell 级能力（多标签、锁屏、水印、主题抽屉）做成顶部/全局挂件，不进左侧菜单；异常页与登录流程页为独立/游客路由。
-- **纪律**：每个功能落地前先读 [docs/frontend.md](docs/frontend.md)（Shell 蓝图、视觉 token、组件选择矩阵、双端映射、验收清单）；每完成一个阶段，回填 `docs/frontend.md` 的"组件选择矩阵"和本文末尾的「组件覆盖对照」勾选表，推迟项记入 [docs/roadmap-followups.md](docs/roadmap-followups.md)。
+目标有两层：
 
----
+1. 把 Tigercat 2.1 公开组件接到现有页面，做成可对照的双端演示。
+2. 把仍停在页面内存态的协作/内容/运维演示接到 `Tigercat.Admin.Api` 与 `Tigercat.Admin.MockApi`，让组件能力跑完整路径。
 
-## 竞品对照与差距
+约束：
 
-对照五个主流 Admin 模板/规范：Ant Design Pro（ADP）、vue-element-admin（VEA）、Vben Admin 5、SoybeanAdmin、shadcn-admin。
-
-**已具备、不再列入规划**：登录/注册、权限 RBAC（页面 + 指令/守卫 + 菜单过滤）、暗色/系统主题切换、新手引导 Tour、命令面板、富文本/Markdown/代码编辑器、全套图表看板、日历、工单、任务看板（TaskBoard）、文件管理、上传、数据导入向导、打印报表、审计日志、通知中心、帮助中心。
-
-**缺失能力对照**（✓ = 该竞品具备）：
-
-| 缺失能力 | ADP | VEA | Vben | Soybean | shadcn | 当前状态 | 归入阶段 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 独立异常页 403/404/500 | ✓ | ✓ | ✓ | ✓ | ✓ | 无，未知路由 `*` 直接跳 `/login` | 阶段 6 |
-| 独立结果页（成功/失败路由） | ✓ | – | – | – | – | 仅页内 `Result` | 阶段 6 / 7 |
-| 登录增强（忘记密码 / 两步验证 / 注册成功） | ✓ | ✓ | – | – | ✓ | 仅登录 + 注册两屏 | 阶段 7 |
-| 多标签页路由导航（tags-view） | – | ✓ | ✓ | ✓ | – | 已完成 | 阶段 8 |
-| 锁屏 | – | – | ✓ | – | – | 已完成（头像下拉锁定，demo PIN `123456` 解锁） | 阶段 8 |
-| 全局水印开关 | – | – | ✓ | – | – | 已完成（`/settings` `theme.watermark`，用户名 + 日期） | 阶段 8 |
-| 主题/布局可视化配置面板 | – | ✓ | ✓ | ✓ | – | 已完成（Header 调色板抽屉，接 `utils/theme.ts`） | 阶段 8 |
-| 实时监控看板 | ✓ | – | – | – | ✓ | 已完成（`/monitor` 页内定时器 mock） | 阶段 9 |
-| 列表→详情模板页（动态路由详情） | ✓ | – | – | – | ✓ | 已完成（`/projects` 卡片列表 + `/projects/:id` 动态详情） | 阶段 9 |
-| 大数据虚拟滚动 / 自由拖拽看板 | – | ✓ | – | – | – | 已完成（`/performance`：VirtualList / VirtualTable / useDrag / Kanban） | 阶段 10 |
-
-**Non-goals**（对照竞品后刻意不做，勿当缺陷）：
-
-- **i18n 多语言**：本项目刻意单语言中文，`utils/tigercatText.ts` 的 `defineText` 即单语言应用的推荐方式。
-- **地理地图**：Tigercat 无地图组件，且不引入第三方地图/图表库。
-- **真实后端端点**：沿用约束 2，演示数据一律 MockApi / 内存态。
+- **双端对齐**：同一期改动覆盖 Vue 与 React；状态名、函数名、权限语义、路由与空/错/成功路径保持一致。
+- **后端可进 ROADMAP**：旧约束「不新增真实 .NET 端点」已废弃。需要把演示跑通时，Api 与 MockApi 必须同契约落地，并同步 [docs/api.md](docs/api.md) 与对应专题。
+- **接入现有页面，不新开清单页**：不要为 `Col` / `Row` / `Footer` / 官方 `Icon` 单开一期；不要把组件名堆成勾选表。
+- **演示域权限**：当前无入口权限的示例页（工单、聊天坞、日历、项目、内容、作业、导入、监控）新增接口默认「登录即可」，不为此膨胀权限矩阵。已有权限的域（通知、导出、审计）沿用并按需增码。
+- **先读再改**：落地前读 [docs/frontend.md](docs/frontend.md) 与本期允许改的双端同名文件；重组件继续子路径导入。
 
 ---
 
-## 已完成归档（阶段 0–5，v1）
+## 已完成基线
 
-| 阶段 | 主题 | 页面（路由） | 首次覆盖组件数 |
-| --- | --- | --- | --- |
-| 0 | 全局 Shell 增强 | 命令面板 ⌘K、消息铃铛、聊天坞、Tour、悬浮动作组、富交互 Notification（全局挂件，无独立路由） | 10 |
-| 1 | 个人中心 + 数据分析 | `/profile`、`/analytics` | 31 |
-| 2 | 协作沟通 | `/tickets`、`/calendar` | 8 |
-| 3 | 内容与媒体 | `/content`、`/gallery` | 15 |
-| 4 | 运维自动化 | `/jobs`、`/import` | 7 |
-| 5 | 帮助与报表 | `/help`、`/reports` | 8（含 `InfiniteScroll`，v1 误挂原阶段 6，本版修正归位） |
-
-功能细节以两端 `src/pages/` 源码与 `docs/frontend.md` 组件选择矩阵为准；首次覆盖组件明细见文末「组件覆盖对照」；各阶段推迟的收尾项见 [docs/roadmap-followups.md](docs/roadmap-followups.md)。
-
-### v2 进度（持续回填）
-
-| 阶段 | 主题 | 页面（路由） | 状态 |
-| --- | --- | --- | --- |
-| 6 | 异常页与路由健壮性 | `/403`、`/404`、`/500`（公共独立布局） | 已完成（无首次覆盖组件，全部复用；人工核验项见 followups） |
-| 7 | 登录流程增强 | `/forgot-password`、两步验证（登录内步骤）、`/register-success` | 已完成（无首次覆盖组件，全部复用；人工核验项见 followups） |
-| 8 | Shell 进阶 | 多标签页导航、锁屏、全局水印、主题配置抽屉 | 已完成 |
-| 9 | 监控页与列表-详情模板 | `/monitor`、`/projects*` | 已完成 |
-| 10 | 大数据性能 | `/performance` | 已完成 |
+v1 组件覆盖与 v2 场景补全（异常页、登录流程、多标签导航、锁屏、水印、主题抽屉、`/monitor`、`/projects*`、`/performance`）均已落地，不再作为规划项。双端现有页面：About、Analytics、AuditLogs、Calendar、Content、Exception、Files、ForgotPassword、Gallery、Help、Home、Import、Jobs、Login、Monitor、Notifications、Performance、Profile、ProjectDetail、Projects、Register、RegisterSuccess、Reports、Roles、Settings、Tasks、Tickets、Users。已有 Api + MockApi 域：auth（login/register/change-password/logout/permissions）、users、roles、settings、media、notifications（list/read）、tasks、audit、stats、export、home。ChatDock、工单、日历、内容、图库标注、作业、导入、报表、帮助文章、监控指标、项目、个人中心签名与 OTP 目前仍是前端内存态或仅 MockApi 契约。
 
 ---
 
-## 阶段 6 — 异常页与路由健壮性（竞品全员标配，当前完全缺失）
+## 实施约定
 
-### 12. 异常页 `/403` `/404` `/500`
-
-三个独立路由页，采用轻量独立布局（居中内容，不套 `MainLayout` 侧栏）。
-
-- **页面**：`Result` 全页形态（status 403 / 404 / 500）+ 操作组——返回首页、返回上一页；`/404` 用 `Countdown` 做"N 秒后自动回首页"演示。
-- **路由接线**：
-  - 未知路径 `*` 改指 `/404`（现为重定向 `/login`）；
-  - 已登录但无权限直访受保护路由（如无 `user:view` 访问 `/users`）→ 重定向 `/403`，接现有 `PermissionGuard`（React）/ 路由守卫 + `permission-helpers.ts`（Vue）；
-  - `/500` 作为全局错误兜底演示入口（会话异常、Mock 请求失败场景可跳转）。
-- **组件**（全部复用）：`Result`、`Countdown`、`Button`、`Empty`。
+1. 每期只改「范围」列出的双端文件，以及契约要求的 Api / MockApi / 文档 / 测试。
+2. 公共类型放各自 `src/utils/types.ts`；请求走 `apiRequest` 与 `getAuthHeaders()`。
+3. 新复合组件文案补进双端 `src/utils/tigercatText.ts`。
+4. 新端点在 `Tigercat.Admin.Api/Endpoints/` 按现有 `IEndpointDefinition` 注册，`Program.cs` `MapEndpoint`，`AppJsonContext` 补序列化类型；MockApi 在 `Tigercat.Admin.MockApi/src/index.ts` 同步 handler。
+5. 关系库变更走 EF 实体 + Migration + `DbInitializer` 种子；演示数据给 2–5 条即可，不造生产级工作流。
+6. 每期回填 [docs/frontend.md](docs/frontend.md) 组件选择矩阵中受影响的行，以及 [docs/api.md](docs/api.md) / 对应专题；跨域新资源在 [docs/llm.md](docs/llm.md) 登记。
+7. 不在本期顺手改无关页面、不合并 `main`、不升级无关依赖。
 
 ---
 
-## 阶段 7 — 登录流程增强（ADP 账户页组 / VEA 两步登录）
+## R1 — 2.1 表单与 Auth（OTP / 掩码 / 标签）
 
-三条均为游客路由，扩展现有 `GuestRoute`（React）/ `GuestShell`（Vue）。
-
-### 13. 忘记密码 `/forgot-password`
-
-- **结构**：`Steps` 三步——验证身份（邮箱/手机 + 验证码）→ 设置新密码 → 完成（`Result`）。
-- **组件**：`Steps`、`Input`、`InputGroup`、`Result`、`Button`。
-
-### 14. 两步验证（登录后 OTP 步骤）
-
-- **结构**：demo 账号中固定一个开启两步验证；其登录成功后进入 OTP 验证屏，6 位验证码分段输入（`Input` 组合或 `NumberKeyboard`），验证通过才写入会话。与 `/profile` 安全设置已有的 `QRCode` 绑定两步验证形成闭环。
-- **组件**：`NumberKeyboard`、`Input`、`Countdown`（重发倒计时）、`Alert`。
-
-### 15. 注册成功 `/register-success`
-
-- **结构**：路由级 `Result` 成功页（阶段 6 模式），`Countdown` 自动跳转登录。
-
----
-
-## 阶段 8 — Shell 进阶（VEA tags-view / Vben 锁屏水印 / Soybean 配置抽屉）
-
-实现位置在 `MainHeader` / `MainLayout`（及 React 等价物）与 `shell-navigation`，对所有受保护页面通用。
-
-| 能力 | 位置 | 主要组件 | 关键交互 |
-| --- | --- | --- | --- |
-| 多标签页导航 | 内容区顶部标签条 | `Tabs` 或 `Tag` 组合（实施时定） | 打开受保护路由即生成标签；关闭当前/其他/全部；活动标签高亮；刷新后保留（sessionStorage） |
-| 锁屏 | 头像下拉「锁定屏幕」 | 全屏遮罩 + `NumberKeyboard`、`Avatar`、`Statistic`（时钟） | PIN 解锁（demo 固定 PIN），锁定期间内容不可达 |
-| 全局水印开关 | Shell 内容区 | `Watermark` | `/settings` 加开关，水印为当前用户名 + 日期 |
-| 主题配置抽屉 | Header 调色板入口 | `Drawer`、`ColorSwatch`、`RadioGroup`、`Switch`、`Segmented` | 可视化调明暗/系统、主色、紧凑密度，接 `utils/theme.ts` 现有能力 |
-
-- 多标签导航状态归 Shell 层（不进页面组件），标签标题复用 `SHELL_MENU_ROUTES` 的路由→标题映射。
-- **实施时确认 Shell 是否已有面包屑；若无，本阶段一并补。**
-
----
-
-## 阶段 9 — 监控页与列表-详情模板（ADP 监控页 + 列表/详情页规范）
-
-### 16. 实时监控 `/monitor`（入「数据分析」分组）
-
-定时器驱动的 mock 实时刷新（2–5 秒 tick），带暂停/恢复控制；不加后端端点。
-
-- **组件**：`GaugeChart`（资源水位）、`Statistic` + 迷你 `AreaChart`/`LineChart`（QPS/延迟滚动窗口）、`ActivityFeed`（实时事件流）、`Progress`、`Tag`/`Badge`（节点状态）、`Segmented`（刷新频率）。
-
-### 17. 项目列表 `/projects` + 详情 `/projects/:id`（新分组「项目」）
-
-标准「卡片列表 → 动态路由详情」模板，**本项目首个 `/:id` 详情页**。
-
-- **列表**：卡片网格（`Card` + `Statistic` + `Tag` + `Avatar` 成员 + `Progress` 进度）、搜索（`Input`）与状态筛选（`Segmented`）、`Pagination`、`Empty`。
-- **详情**：`Descriptions`（概要）+ `Steps`（里程碑）+ `Tabs`（概览/成员/动态）+ 页内 `Anchor`；`Timeline`（动态）、`CommentThread`（讨论）。
-- **路由**：详情页不进菜单；列表菜单项在详情路由下保持高亮（`SHELL_ROUTE_TO_MENU` 支持前缀映射）。
+- **目标：** 用 `InputOTP`、`MaskInput`、`TagsInput` 替换现有登录两步验证、锁屏 PIN、忘记密码身份输入、个人中心 2FA 与内容标签的临时拼装；把忘记密码与 2FA 从「仅 MockApi」补成 **Api + MockApi 同契约**。演示验证码固定 `123456`，不引入第三方 TOTP 库。
+- **范围（Vue+React 允许改的文件/页面/组件）：**
+  - 页面：`LoginPage`、`ForgotPasswordPage`、`ProfilePage`、`ContentPage`
+  - 组件：`LockScreen`；Vue `utils/lock-screen.ts` 与 React 等价物
+  - 工具：双端 `src/utils/tigercatText.ts`、`src/utils/types.ts`；如需抽出 2FA/忘记密码请求辅助函数，放现有 `src/utils`（不要新建无关目录）
+  - 登录 OTP：用 `InputOTP` 取代 `NumberKeyboard` 作为主输入；忘记密码验证码同样改 `InputOTP`
+  - 忘记密码身份步：手机号用 `MaskInput`（大陆 11 位掩码），邮箱保持普通 `Input`，渠道仍按是否含 `@` 推断
+  - 个人中心安全设置：2FA 开关对接真实 enable/disable；验证码绑定用 `InputOTP`；可补只读/可编辑手机号 `MaskInput`（本期不必持久化手机号）
+  - 内容页：文章标签从 `AutoComplete` 单值改为 `TagsInput` 多标签
+  - 锁屏：PIN 主输入改 `InputOTP`（长度仍为现有 `LOCK_SCREEN_PIN_LENGTH`，demo PIN 不变）；可保留 `NumberKeyboard` 作为辅助，但验收以 OTP 槽位为准
+  - e2e：`e2e/auth-flows.spec.ts`、`e2e/lock-screen.spec.ts` 中按 `[data-key]` 点数字键盘的步骤必须改成 `InputOTP` 可稳定定位的方式
+- **后端（Api + MockApi）：**
+  - **已有 MockApi + `docs/api/auth.md`，本期补真实 Api 并对齐：**
+    - 扩展现有 `POST /api/auth/login`：开启 2FA 的账号校验密码成功后 **不发 token**，返回 `requiresTwoFactor: true`、`username`（可附 `challengeId`）。真实端点路径已存在，缺的是该分支。
+    - `POST /api/auth/two-factor/verify`：`username` + `code`（+ 可选 `challengeId`）通过后发会话
+    - `POST /api/auth/forgot-password/code`：`channel`（`email`/`phone`）+ `target` → `{ sentTo }`
+    - `POST /api/auth/forgot-password`：`channel` + `target` + `code` + `password` → 重置成功
+  - **以下为新契约，本期同时加 MockApi / Api / 文档：**
+    - `GET /api/auth/two-factor`（需登录）：当前用户 `{ enabled }`
+    - `PUT /api/auth/two-factor`（需登录）：`{ enabled }`；开启后该账号下次登录走 OTP
+  - 用户表增加 `TwoFactorEnabled`（默认 `false`）；Migration + `IUserStore`/`EfUserStore`/`InMemoryUserStore` 能读改该字段
+  - 种子一个与 MockApi 一致的 `demo` / `demo` 账号（2FA 默认开启、只读权限集保持现有 403 演示语义）；`admin` 默认关闭 2FA
+  - 验证码与重置码用现有 `ICacheService` 短 TTL（建议 5 分钟）；演示环境固定码 `123456`
+  - 目标用户不存在时忘记密码仍返回成功，避免账号枚举；存在则 `UpdatePasswordAsync`
+  - 更新 `AuthModels`、`AppJsonContext`、`docs/api/auth.md`、`docs/api.md`
+  - 在 `Tigercat.Admin.Api.Tests` 补登录 2FA 与忘记密码的最小用例
+- **验收命令：**
+  - `dotnet test Tigercat.Admin.sln`
+  - `pnpm --filter tigercat-admin-vue typecheck`
+  - `pnpm --filter tigercat-admin-react typecheck`
+  - `pnpm build:frontend`
+  - `pnpm run check:links`
+  - 有 Playwright 环境时：`pnpm e2e:demo -- e2e/auth-flows.spec.ts e2e/lock-screen.spec.ts`（或仓库等价命令）
+- **完成标准：**
+  - `demo/demo` 在 Api 与 MockApi 都会进入两步验证；`123456` 通过后写入会话；错误码提示 401
+  - 忘记密码三步在 Api 与 MockApi 都能走完；手机号掩码可见
+  - Profile 关闭 2FA 后该账号登录不再要 OTP；再开启则要
+  - Content 标签可增删多个 tag，双端字段名一致
+  - 锁屏仍用原 demo PIN 解锁，e2e 不再依赖数字键盘 `data-key`
+  - `docs/frontend.md` 登录流程 / 个人中心 / 内容编辑三行矩阵已写入新组件
 
 ---
 
-## 阶段 10 — 大数据性能（原 v1 阶段 6 重编号）
+## R2 — 2.1 导航与反馈（进度条 / 菜单 / 页头 / 快捷键）
 
-### 18. 大数据演示 `/performance`（入「运维」分组）
-
-- **组件**：`VirtualList`（万级日志流）、`VirtualTable`（万行多列）、`Drag`（自由拖拽/排序）、`Kanban`（低层看板，区别于已有的 `TaskBoard`）；数据页面内生成。
-- `InfiniteScroll` 已于阶段 5 `/help` 覆盖，自本阶段清单移除。
-
----
-
-## 实施约定（每个新功能双端统一遵循）
-
-1. 在 `src/pages/` 新建页面（Vue `.vue` / React `.tsx`），首屏用 `PageHeader`，复用 `MetricGrid` + `MetricCard`、`MutedPanel`、`PageActionPanel`、`ChartEmptyState`、`Icon`。
-2. 在 `router/index.ts`（Vue）/ React 路由注册；**注明路由归属**：受保护（`/monitor`、`/projects*`、`/performance`）、游客（`/forgot-password`、`/register-success`）、公共独立布局（`/403`、`/404`、`/500`）。
-3. 在 [Tigercat.Admin.Vue/src/utils/shell-navigation.ts](Tigercat.Admin.Vue/src/utils/shell-navigation.ts)（及 React 等价物）新增分组/菜单项，同步更新 `ShellPageKey`、`ShellMenuKey`、`pageMenuItems`、`SHELL_MENU_ITEMS`、`SHELL_MENU_ROUTES`、`SHELL_ROUTE_TO_MENU`；按需配权限码（多数示例无入口权限）。
-4. Shell 级能力（阶段 8）改 `MainHeader` / `MainLayout`，状态归 Shell 层或独立 store，不进页面组件、不进导航表。
-5. 详情页动态路由参数：Vue `useRoute().params.id` / React `useParams()`，双端参数命名一致；`SHELL_ROUTE_TO_MENU` 对 `/projects/:id` 做前缀映射保持菜单高亮。
-6. 重组件用子路径导入（`import { X } from '@expcat/tigercat-vue/X'`，React 同理）；新复合组件的文案补进 `utils/tigercatText.ts` 的 locale。
-7. 数据：默认页面内静态/内存数据；需要分页/筛选/列表"类服务端"行为时，在 `Tigercat.Admin.MockApi` 加 mock handler，并在 [docs/api.md](docs/api.md) 标注为 demo/mock 契约；**不新增 .NET 端点**。
-8. 满足 `docs/frontend.md` 验收：双端等价、移动端 375px 不溢出、暗色 token、弹层可关闭并恢复焦点、加载/空/错误/成功/确认状态完整。
-
----
-
-## 验证
-
-- **运行**：按 [docs/operations.md](docs/operations.md)，以 `VITE_TIGERCAT_DEMO=true`（MockApi 模式）启动 Vue 与 React 两端，逐页核对。
-- **类型**：每个新页面跑 `pnpm dlx vue-tsc --noEmit`（Vue）/ `tsc --noEmit`（React）——构建本身不含类型检查，必须单独验证。
-- **交互**：375px 移动端、暗色模式、弹层 Esc/外部点击关闭与焦点恢复、菜单不被锁定列遮挡、空/错误状态；异常页与登录流程页需额外核对未登录/无权限直访路径。
-- **e2e**：在 `e2e/` 下按现有 Playwright 用例风格，为关键新页补冒烟用例（`playwright.demo.config.ts`）；异常路由重定向（`*`→404、无权限→403）适合 e2e 断言。
-- **文档**：每完成一个阶段，更新 `docs/frontend.md` 的"组件选择矩阵"和下文「组件覆盖对照」勾选表。
-- **收尾**：阶段内主动推迟的人工核验（移动端/暗色/弹层焦点）与 workaround 清理统一记入 [docs/roadmap-followups.md](docs/roadmap-followups.md)，全部阶段完成后批量处理。
+- **目标：** 把路由切换、列表主操作、右键菜单、帮助快捷键和页头接到 2.1 组件：`LoadingBar`+`LoadingBarContainer`、`ContextMenu`（含 Item/Menu/Sub）、`SplitButton`、`Kbd`、`NavigationMenu`（含 Content/Item/Link/Trigger），以及用官方 `PageHeader` 替换本地 Card 包装。
+- **范围（Vue+React 允许改的文件/页面/组件）：**
+  - Shell：Vue `App.vue` + `router/index.ts` + `MainLayout.vue`；React `App.tsx` + `MainLayout.tsx`。路由开始/结束驱动 `LoadingBar`，根节点挂 `LoadingBarContainer`；切页失败也要结束进度
+  - `FilesPage`：文件行右键 `ContextMenu`（预览 / 下载或打开 / 删除，删除仍走现有确认与权限 `media:delete`）；主操作「上传」改为 `SplitButton`（主按钮上传，菜单可放「选择文件」或现有次要上传入口，不新造无后端的动作）
+  - `UsersPage`：表格行右键 `ContextMenu`（编辑 / 启停 / 删除，动作复用现有函数与 `user:edit`/`user:delete`）；工具栏主按钮「新增用户」改为 `SplitButton`（主按钮新增，菜单可挂「导出」——导出仍走现有 `exportData`，不重做导出弹层）
+  - `HelpPage`：快捷键表的按键展示改为 `Kbd`，语义与现有 `SHORTCUTS` 一致
+  - `AboutPage`：用 `NavigationMenu` 做页内分区跳转（服务信息 / 特性 / 技术栈），点击滚动到已有锚点，不新开路由
+  - 本地 `components/PageHeader.vue` 与 `components/PageHeader.tsx`：改为官方 `PageHeader` 的薄包装，**保留现有 `title` / `subtitle` / `icon` / `tags` 调用面**，避免 20+ 页面同时改 props。视觉仍遵守 [docs/frontend.md](docs/frontend.md) 页头规则（图标芯片、说明、`sm` 以上才显示 tags）
+  - 本期核对该包装的页面：`About`、`Help`、`Files`、`Users`（不必巡检全部业务页）
+  - `tigercatText.ts` 补新组件文案
+- **后端（Api + MockApi）：** 无
+- **验收命令：**
+  - `pnpm --filter tigercat-admin-vue typecheck`
+  - `pnpm --filter tigercat-admin-react typecheck`
+  - `pnpm build:frontend`
+  - `pnpm run check:links`
+- **完成标准：**
+  - 受保护路由切换时双端都能看到顶部/全局 LoadingBar，落地后消失
+  - Files / Users 右键菜单与工具栏 SplitButton 的动作与改前等价，权限不足时入口仍隐藏或禁用
+  - Help 快捷键用 `Kbd` 渲染；About 的 NavigationMenu 能跳到页内对应区块
+  - 业务页仍写 `import PageHeader from '../components/PageHeader'`（React 具名导入保持现有风格），但实现已基于官方组件；About/Help/Files/Users 页头在桌面与窄屏不溢出
+  - `docs/frontend.md` 的 Shell、用户、文件、帮助、关于矩阵行已更新
 
 ---
 
-## 组件覆盖对照（按阶段勾选，追踪进度）
+## R3 — 2.1 布局与媒体（瀑布流 / 对比 / 滚动 / 跑马灯）
 
-> 勾选规则：组件首次在某新功能中被真实使用即可勾选。少数仅作"点到为止"演示的图表基元单独标注。
+- **目标：** 在现有 Gallery / Help / Home 上演示 `Masonry`、`AspectRatio`、`ImageCompare`、`ScrollArea`、`Highlight`、`Marquee`。图库标注、帮助文章数据仍为前端内存态。
+- **范围（Vue+React 允许改的文件/页面/组件）：**
+  - `GalleryPage`：相册网格改 `Masonry`；卡片图用 `AspectRatio` 固定比例（与现有 16:9 裁剪演示不冲突）；新增一组「版本对比」用 `ImageCompare`（可用现有 SVG placeholder 生成 before/after，不接媒体上传）
+  - `HelpPage`：长文档正文套 `ScrollArea`（容器高度跟随主内容区，不破坏现有 `Anchor`/`ScrollSpy`/`Affix` 的 `#main-content-scroll` 约定；若冲突，ScrollArea 只包文章列表或 FAQ 内长文本，并在完成标准写明选择）；检索关键字用 `Highlight`（可复用现有章节/FAQ 文本，关键词固定如「权限」「令牌」）
+  - `HomePage`：在统计区上方加 `Marquee` 公告条（2–4 条运维公告文案，静态即可）。不要改图表请求逻辑
+  - 双端 `tigercatText.ts` 仅补这些组件需要的文案
+- **后端（Api + MockApi）：** 无
+- **验收命令：**
+  - `pnpm --filter tigercat-admin-vue typecheck`
+  - `pnpm --filter tigercat-admin-react typecheck`
+  - `pnpm build:frontend`
+  - `pnpm run check:links`
+- **完成标准：**
+  - Gallery 在「全部/产品/团队」筛选下瀑布流排列；空相册仍是 Empty；ImageCompare 可拖动对比
+  - Help 的 Highlight 能看见关键字高亮；ScrollArea 在桌面与 375px 不撑破 Shell
+  - Home 公告 Marquee 在暗色模式下用 token 颜色，不遮挡统计卡片
+  - `docs/frontend.md` 媒体图库 / 帮助中心 / 仪表盘三行已更新
 
-### 阶段 0 — 全局 Shell 增强
-- [x] Spotlight
-- [x] Tour
-- [x] FloatButton
-- [x] FloatButtonGroup
-- [x] BackTop
-- [x] Badge
-- [x] Popover
-- [x] Notification
-- [x] ChatWindow（亦见阶段 2）
-- [x] Drawer（已在 Shell 移动端用，全局聊天坞复用）
+---
 
-### 阶段 1 — 个人中心 / 数据分析
-- [x] Tabs / TabPane
-- [x] Descriptions
-- [x] Radio / RadioGroup
-- [x] Textarea
-- [x] DatePicker
-- [x] TimePicker
-- [x] Slider
-- [x] QRCode
-- [x] Signature
-- [x] Rate
-- [x] Statistic
-- [x] ColorSwatch
-- [x] Divider
-- [x] Space
-- [x] AreaChart
-- [x] DonutChart
-- [x] FunnelChart
-- [x] GaugeChart
-- [x] HeatmapChart
-- [x] RadarChart
-- [x] ScatterChart
-- [x] TreeMapChart
-- [x] SunburstChart
-- [x] OrgChart
-- [x] Segmented
-- [x] Skeleton
-- [x] Progress
-- [x] ButtonGroup
-- [x] Pagination（原生）
-- [x] Table（原生）
-- [x] 图表基元：ChartCanvas / ChartAxis / ChartGrid / ChartSeries / ChartLegend / ChartTooltip（自定义图表演示，点到为止）
+## R4 — 数据导出组件对接已有导出 API
 
-### 阶段 2 — 协作沟通
-- [x] Splitter
-- [x] Resizable
-- [x] CommentThread
-- [x] Mentions
-- [x] Steps
-- [x] List（首次用于阶段 1 个人中心登录设备）
-- [x] Calendar
-- [x] Countdown
+- **目标：** 在 Reports / AuditLogs / Home 接入官方 `DataExport`，必要字段筛选用 `CheckboxGroup`；下载走已有或补齐的导出流，而不是 `JSON.stringify` 假下载。Users/Roles 现有导出弹层 **不在本期重写**。
+- **范围（Vue+React 允许改的文件/页面/组件）：**
+  - `ReportsPage`：打印旁增加 `DataExport`（格式 csv/json/xlsx，字段用 `CheckboxGroup` 勾选 KPI/渠道列）
+  - `AuditLogsPage`：用 `DataExport` 替换或包裹现有「导出 CSV」按钮；筛选条件（keyword/category 等）作为导出 query 一并带上；权限仍为 `audit:export`
+  - `HomePage`：在概览区提供 `DataExport`，导出当前统计概览 + 趋势（天数沿用页上 `trendDays`）
+  - 双端 `src/utils/export.ts`、`src/utils/types.ts`：扩展实体类型，保持 Blob 下载工具可复用
+  - `tigercatText.ts` 补 DataExport / CheckboxGroup 文案
+- **后端（Api + MockApi）：**
+  - 审计：沿用 `GET /api/audit-logs/export`；若 `DataExport` 需要 json/xlsx，将该端点扩展为 `format=csv|json|xlsx`（默认 csv，权限与条数上限不变），更新 [docs/api/audit.md](docs/api/audit.md)
+  - 报表：新增 `GET /api/export/reports?type=daily|weekly|monthly&format=csv|json|xlsx&fields=`，需登录；返回文件流。数据与当前页 KPI/渠道演示表一致即可（Api 可用静态表，MockApi 同结构）
+  - 首页：新增 `GET /api/export/overview?format=csv|json|xlsx&days=`，需登录，基于现有 `/api/stats/overview` 与 `/api/stats/trend` 生成文件
+  - 在 `ExportEndpoints`（或审计文件）注册；`AppJsonContext` 仅在错误 JSON 需要时补充；MockApi `/api/export/reports`、`/api/export/overview` 与审计导出 format 对齐
+  - 更新 [docs/api/dashboard-export.md](docs/api/dashboard-export.md)、[docs/api.md](docs/api.md)
+  - Api.Tests 各补一条导出 200 + 非法 format 400
+- **验收命令：**
+  - `dotnet test Tigercat.Admin.sln`
+  - `pnpm --filter tigercat-admin-vue typecheck`
+  - `pnpm --filter tigercat-admin-react typecheck`
+  - `pnpm build:frontend`
+  - `pnpm run check:links`
+- **完成标准：**
+  - 三页都能选出字段并下载文件；未登录/无 `audit:export` 时审计导出失败路径与现网一致
+  - MockApi 与 Api 的 query/format 行为一致
+  - Users/Roles 原导出弹层仍可用
+  - `docs/frontend.md` 仪表盘 / 审计 / 报表矩阵行已写入 `DataExport`、`CheckboxGroup`
 
-### 阶段 3 — 内容与媒体
-- [x] RichTextEditor
-- [x] MarkdownEditor
-- [x] CodeEditor
-- [x] TreeSelect
-- [x] Cascader
-- [x] AutoComplete
-- [x] Watermark
-- [x] Result
-- [x] Image
-- [x] ImageGroup
-- [x] ImagePreview
-- [x] ImageViewer
-- [x] ImageAnnotation
-- [x] ImageCropper
-- [x] Carousel
+---
 
-### 阶段 4 — 运维自动化
-- [x] CronEditor
-- [x] Stepper
-- [x] InputGroup / InputGroupAddon
-- [x] NumberKeyboard
-- [x] Gantt
-- [x] FormWizard
-- [x] Transfer
+## R5 — 协作后端化（工单 / 聊天坞 / 评论）
 
-### 阶段 5 — 帮助与报表
-- [x] Anchor / AnchorLink
-- [x] ScrollSpy
-- [x] Affix
-- [x] Collapse / CollapsePanel
-- [x] Code
-- [x] Link
-- [x] PrintLayout
-- [x] InfiniteScroll（v1 原挂阶段 6，实际已在 `/help` 使用，本版修正归位）
+- **目标：** 把 `TicketsPage`、全局 `ChatDock`、以及工单里的 `CommentThread` 从内存态改为 Api + MockApi。评论做成通用资源，供 R6 项目详情复用。聊天保持请求-响应（发送后服务端回一条演示回复），不做 WebSocket。
+- **范围（Vue+React 允许改的文件/页面/组件）：**
+  - 页面：`TicketsPage`
+  - 组件：`ChatDock`、`MainLayout`（只改聊天坞数据来源，不改开合位置）
+  - 工具：双端 `src/utils/types.ts`；可新增 `src/utils/tickets.ts`、`src/utils/chat.ts`、`src/utils/comments.ts`（两端同名）
+  - 工单列表/详情/生命周期/对话/`CommentThread`/`Mentions` 仍用现有 UI，数据改为请求结果
+  - 空、加载、失败、创建、关闭确认路径必须保留
+- **后端（Api + MockApi）：**
+  - 工单（登录即可）：
+    - `GET /api/tickets` 分页/状态筛选
+    - `GET /api/tickets/{id}`
+    - `POST /api/tickets`
+    - `PUT /api/tickets/{id}`（含 status 流转）
+    - `POST /api/tickets/{id}/messages`（工单内 ChatWindow 消息）
+  - 聊天坞（登录即可，单会话）：
+    - `GET /api/chat/messages`
+    - `POST /api/chat/messages`（body 文本；服务端追加 self，并生成 other 演示回复）
+  - 评论（登录即可，通用）：
+    - `GET /api/comments?targetType=ticket|project&targetId=`
+    - `POST /api/comments`（`targetType`、`targetId`、`body`）
+  - EF 实体 + Migration + 种子 2–3 条工单（含几条消息与评论）；聊天种子 1 条客服欢迎语
+  - `Program.cs` 注册新 Endpoint 类；MockApi 用内存数组模拟
+  - 新增 [docs/api/tickets.md](docs/api/tickets.md)、[docs/api/chat.md](docs/api/chat.md)、[docs/api/comments.md](docs/api/comments.md)，并在 [docs/api.md](docs/api.md)、[docs/llm.md](docs/llm.md) 登记
+  - Api.Tests：列表、创建、发消息、评论各 1 条正向；不存在工单 404
+- **验收命令：**
+  - `dotnet test Tigercat.Admin.sln`
+  - `pnpm --filter tigercat-admin-vue typecheck`
+  - `pnpm --filter tigercat-admin-react typecheck`
+  - `pnpm build:frontend`
+  - `pnpm run check:links`
+- **完成标准：**
+  - 刷新页面后工单、工单对话、内部评论、ChatDock 记录仍在（Api 模式走库，MockApi 走其现有 persistence）
+  - 双端字段与状态机与改前 UI 一致（open/accepted/progress/resolved/closed）
+  - 项目详情本期仍用静态评论；只要求 comments API 已存在且工单已调用
+  - `docs/frontend.md` 工单中心 / Shell 聊天坞行改为「接 API」
 
-### 阶段 6–9 — 场景补全（无首次覆盖组件）
+---
 
-> 阶段 6–9 的目标是场景完整性，涉及组件全部为复用——`Result` 全页路由形态、`Countdown` 自动跳转、`NumberKeyboard` OTP/锁屏、`Watermark` 全局形态、`Drawer` 配置抽屉、`GaugeChart`/`ActivityFeed` 实时刷新、`Descriptions`/`Steps`/`Tabs`/`Anchor` 详情页等。按「首次真实使用才勾选」规则不新增勾选项。
+## R6 — 项目与日历后端化
 
-### 阶段 10 — 大数据性能
-- [x] VirtualList
-- [x] VirtualTable
-- [x] Drag（`useDrag`，v1.5.0 无 `/Drag` 子路径组件）
-- [x] Kanban
+- **目标：** `ProjectsPage` / `ProjectDetailPage` / `CalendarPage` 改为读写真后端。项目详情的 `CommentThread` 改调 R5 的 `targetType=project` 评论接口。
+- **范围（Vue+React 允许改的文件/页面/组件）：**
+  - 页面：`ProjectsPage`、`ProjectDetailPage`、`CalendarPage`
+  - 工具：双端 `src/utils/projects.ts`（静态 `PROJECTS` 改为 API 映射/筛选辅助，保留进度与状态 meta）、可新增 `src/utils/calendar.ts`、`src/utils/types.ts`
+  - 路由 `/projects/:id`、未知 id 空态、菜单高亮行为保持不变
+  - 日历现有月视图、Drawer 新建、Countdown、当日列表交互保持，数据改 API
+- **后端（Api + MockApi）：**
+  - 项目（登录即可）：
+    - `GET /api/projects`（keyword、status、page、pageSize）
+    - `GET /api/projects/{id}`
+    - `PUT /api/projects/{id}` 仅当现有 UI 已有编辑入口；若详情目前只读，则本期只做 GET + 种子，不发明编辑表单
+  - 日历（登录即可）：
+    - `GET /api/calendar/events?from=&to=`
+    - `POST /api/calendar/events`
+    - `DELETE /api/calendar/events/{id}`（若页上已有删除；没有则不做）
+  - 实体含列表页已展示字段：名称、状态、进度、负责人、成员摘要、里程碑；日历含 date/start/end/title/type/location
+  - 种子与当前静态演示条数相当（约 6–8 个项目、若干事件）
+  - 项目详情评论只调 `/api/comments?targetType=project`
+  - 文档：[docs/api/projects.md](docs/api/projects.md)、[docs/api/calendar.md](docs/api/calendar.md)，并登记索引与 llm 路由
+  - Api.Tests：项目列表/详情 200、未知 id 404、创建日历事件 200
+- **验收命令：**
+  - `dotnet test Tigercat.Admin.sln`
+  - `pnpm --filter tigercat-admin-vue typecheck`
+  - `pnpm --filter tigercat-admin-react typecheck`
+  - `pnpm build:frontend`
+  - `pnpm run check:links`
+- **完成标准：**
+  - 项目列表筛选/分页结果来自服务端；详情刷新不丢评论
+  - 日历新建事件刷新后仍在；类型色标与现 UI 一致
+  - `docs/frontend.md` 项目列表/详情、团队日历行改为接 API
+
+---
+
+## R7 — 内容、作业与导入后端化
+
+- **目标：** 把 `ContentPage`、`JobsPage`、`ImportPage` 的演示数据写成 Api + MockApi。继续用现有编辑器/Cron/向导组件，不新做 CMS 权限模型。图库标注与帮助文章仍内存态。
+- **范围（Vue+React 允许改的文件/页面/组件）：**
+  - 页面：`ContentPage`、`JobsPage`、`ImportPage`
+  - 工具：双端 `src/utils/types.ts`；可新增 `content.ts` / `jobs.ts` / `import-jobs.ts`
+  - 内容：保存草稿/发布走 API；编辑器三态、分类树、栏目级联、`TagsInput`（R1 已接）保留
+  - 作业：列表、启停、Cron、并发/超时字段读写 API；Gantt 用返回的任务时间
+  - 导入：向导最后一步 `POST` 创建导入任务并轮询状态，直到完成 Result；中间步仍可本地，但提交后必须落库
+- **后端（Api + MockApi）：**
+  - 内容：
+    - `GET /api/content/articles`
+    - `GET /api/content/articles/{id}`
+    - `PUT /api/content/articles/{id}`（title、editorType、body、tags、category、column、published）
+    - 种子 1 篇草稿即可
+  - 作业：
+    - `GET /api/jobs`
+    - `POST /api/jobs`
+    - `PUT /api/jobs/{id}`（含 enabled/status/cron/concurrency 等现有字段）
+    - 种子与当前页 3 条演示相当
+  - 导入：
+    - `POST /api/import-jobs`（source、target、mappings、mode、conflict）
+    - `GET /api/import-jobs/{id}`（status、progress、result）
+    - 服务端可用短循环/计数把 progress 推到 100%（MockApi 用 setTimeout 模拟亦可，但 GET 必须能观察到进展）
+  - 文档：`docs/api/content.md`、`docs/api/jobs.md`、`docs/api/import.md`，并登记索引与 llm
+  - Api.Tests：文章保存、作业启停、导入创建+查询各 1 条
+- **验收命令：**
+  - `dotnet test Tigercat.Admin.sln`
+  - `pnpm --filter tigercat-admin-vue typecheck`
+  - `pnpm --filter tigercat-admin-react typecheck`
+  - `pnpm build:frontend`
+  - `pnpm run check:links`
+- **完成标准：**
+  - 内容保存后刷新仍在；作业启停刷新不丢；导入向导完成态可从 GET 恢复
+  - 双端请求字段名一致
+  - `docs/frontend.md` 内容编辑 / 定时任务 / 数据导入行改为接 API
+
+---
+
+## R8 — 监控快照与通知广播
+
+- **目标：** `MonitorPage` 不再用纯前端随机数冒充指标，改为轮询快照 API；`NotificationsPage` 支持创建/广播，把 `NotificationCenter` 的写入能力跑通（现有只读 list/read）。
+- **范围（Vue+React 允许改的文件/页面/组件）：**
+  - 页面：`MonitorPage`、`NotificationsPage`
+  - 组件：`NotificationBell` 仅当创建后需要刷新未读数时改请求；不要重做铃铛 UI
+  - 工具：双端 `src/utils/types.ts`、`src/utils/notifications.ts`
+  - 监控：保留 2/3/5 秒间隔与暂停/继续，但每 tick `GET` 快照；序列窗口可在前端按返回点拼接，或由 API 直接给最近 N 点
+  - 通知：页头动作增加「创建通知」表单（title、description、groupKey、toastType、可选 linkUrl）；提交后列表与铃铛未读数更新
+- **后端（Api + MockApi）：**
+  - 监控（登录即可）：
+    - `GET /api/monitor/snapshot` → CPU/内存/磁盘、QPS、延迟、nodes、events、serverTime
+    - 服务端生成合理随机/步进数据即可，不要接真实主机指标
+  - 通知：
+    - `POST /api/notifications`，权限 `notification:create`（种子给 Admin；Editor 可给或不给，Viewer 不给）
+    - body：`groupKey`、`title`、`description`、`toastType`、`linkUrl?`、`meta?`
+    - 当前通知实体是全局列表而非按用户分发：创建即插入一条，前端当「广播」演示
+    - `DbInitializer` 增加权限码并 bump `PermissionSeedVersion`
+  - 文档：[docs/api/notifications.md](docs/api/notifications.md) 补创建；新增 [docs/api/monitor.md](docs/api/monitor.md)；更新 [docs/api.md](docs/api.md)、[docs/llm.md](docs/llm.md)
+  - Api.Tests：snapshot 200；创建通知 200；Viewer 无 `notification:create` 时 403
+- **验收命令：**
+  - `dotnet test Tigercat.Admin.sln`
+  - `pnpm --filter tigercat-admin-vue typecheck`
+  - `pnpm --filter tigercat-admin-react typecheck`
+  - `pnpm build:frontend`
+  - `pnpm run check:links`
+- **完成标准：**
+  - 监控暂停后不再发请求；继续后曲线与事件流会增长
+  - Admin 创建通知后 NotificationCenter 立即可见，标记已读仍走现有接口
+  - MockApi 与 Api 字段一致
+  - `docs/frontend.md` 实时监控 / 通知中心行已更新
+
+---
+
+## 非目标
+
+- 不做 i18n；继续单语言中文与 `defineText`。
+- 不做地图，不引入第三方地图/图表库。
+- 不在执行某期时改该期范围外的业务代码。
+- 不合并 `main`，不在路线图任务里 commit / push。
+- 不把 `Col` / `Row` / `Footer` / 官方 `Icon` 单独做一期。
+- 个人中心电子签名、图库标注、帮助文章正文继续前端内存态，不单开一期。
+- 聊天不做 WebSocket / SignalR；监控不接真实主机指标。
