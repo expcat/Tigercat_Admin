@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { Card, Text, Tag, Button, Input, Message } from '@expcat/tigercat-vue'
 import { Segmented } from '@expcat/tigercat-vue/Segmented'
 import { Switch } from '@expcat/tigercat-vue/Switch'
@@ -24,8 +24,20 @@ import type {
 import PageHeader from '../components/PageHeader.vue'
 import MutedPanel from '../components/MutedPanel.vue'
 import Icon from '../components/Icon.vue'
+import { ApiError } from '../utils/request'
+import {
+  asCategoryKey,
+  asColumnPath,
+  currentEditorBody,
+  fetchArticle,
+  fetchArticles,
+  saveArticle,
+  unwrapArticles,
+  type Article,
+  type ArticleEditorType,
+} from '../utils/content'
 
-type EditorType = 'rich' | 'markdown' | 'code'
+type EditorType = ArticleEditorType
 
 const EDITOR_OPTIONS = [
   { label: '富文本', value: 'rich' },
@@ -78,13 +90,21 @@ const MENTION_OPTIONS: MentionOption[] = [
   { value: 'carol', label: 'Carol（运营）' },
 ]
 
-// ── 编辑器状态 ────────────────────────────────────
-const editorType = ref<EditorType>('rich')
-const richValue = ref('<h2>组件库 v1.6 发布说明</h2><p>本次更新带来内容编辑工作台，支持富文本 / Markdown / 代码三种模式互切。</p>')
-const markdownValue = ref('# 组件库 v1.6 发布说明\n\n- 新增内容编辑工作台\n- 支持富文本 / Markdown / 代码切换\n- 元数据侧栏：分类、栏目、标签、协作者')
-const codeValue = ref('export const version = "1.6.0";\n\nexport function release() {\n  return `Tigercat ${version} ready`;\n}')
+const DEFAULT_RICH =
+  '<h2>组件库 v1.6 发布说明</h2><p>本次更新带来内容编辑工作台，支持富文本 / Markdown / 代码三种模式互切。</p>'
+const DEFAULT_MARKDOWN =
+  '# 组件库 v1.6 发布说明\n\n- 新增内容编辑工作台\n- 支持富文本 / Markdown / 代码切换\n- 元数据侧栏：分类、栏目、标签、协作者'
+const DEFAULT_CODE =
+  'export const version = "1.6.0";\n\nexport function release() {\n  return `Tigercat ${version} ready`;\n}'
 
-// ── 元数据 ────────────────────────────────────────
+const articleId = ref('a1')
+const loading = ref(false)
+const saving = ref(false)
+const editorType = ref<EditorType>('rich')
+const richValue = ref(DEFAULT_RICH)
+const markdownValue = ref(DEFAULT_MARKDOWN)
+const codeValue = ref(DEFAULT_CODE)
+
 const title = ref('组件库 v1.6 发布说明')
 const category = ref<TreeSelectValue>('frontend')
 const column = ref<CascaderValue>(['docs', 'guide'])
@@ -93,20 +113,95 @@ const collaborators = ref('@Alice 请补充前端改动；@Bob 复核设计稿�
 const publishNow = ref(true)
 const published = ref(false)
 
-function saveDraft() {
-  Message.success({ content: '草稿已保存（演示）', duration: 2200 })
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback
+
+function applyArticle(article: Article) {
+  articleId.value = article.id
+  title.value = article.title
+  editorType.value = article.editorType
+  tags.value = article.tags
+  category.value = article.category
+  column.value = article.column
+  published.value = article.published
+  if (article.editorType === 'markdown') {
+    markdownValue.value = article.body
+  } else if (article.editorType === 'code') {
+    codeValue.value = article.body
+  } else {
+    richValue.value = article.body
+  }
 }
-function publish() {
+
+function buildPayload(nextPublished: boolean) {
+  return {
+    title: title.value.trim(),
+    editorType: editorType.value,
+    body: currentEditorBody(editorType.value, richValue.value, markdownValue.value, codeValue.value),
+    tags: tags.value,
+    category: asCategoryKey(category.value),
+    column: asColumnPath(column.value),
+    published: nextPublished,
+  }
+}
+
+async function loadArticle() {
+  loading.value = true
+  try {
+    let article: Article | undefined
+    try {
+      const payload = await fetchArticle('a1')
+      article = payload.data
+    } catch (error: unknown) {
+      if (!(error instanceof ApiError) || error.status !== 404) throw error
+      const list = await fetchArticles()
+      article = unwrapArticles(list.data)[0]
+    }
+    if (article) applyArticle(article)
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '文章加载失败'), duration: 3000 })
+  } finally {
+    loading.value = false
+  }
+}
+
+async function saveDraft() {
+  saving.value = true
+  try {
+    const payload = await saveArticle(articleId.value, buildPayload(false))
+    applyArticle(payload.data)
+    Message.success({ content: '草稿已保存', duration: 2200 })
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '草稿保存失败'), duration: 3000 })
+  } finally {
+    saving.value = false
+  }
+}
+
+async function publish() {
   if (!title.value.trim()) {
     Message.warning({ content: '请先填写内容标题', duration: 2000 })
     return
   }
-  published.value = true
-  Message.success({ content: `《${title.value.trim()}》已发布（演示）`, duration: 2400 })
+  saving.value = true
+  try {
+    const payload = await saveArticle(articleId.value, buildPayload(true))
+    applyArticle(payload.data)
+    Message.success({ content: `《${title.value.trim()}》已发布`, duration: 2400 })
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '发布失败'), duration: 3000 })
+  } finally {
+    saving.value = false
+  }
 }
+
 function continueEditing() {
   published.value = false
 }
+
+onMounted(() => {
+  void loadArticle()
+})
 
 const currentColumnText = computed(() => {
   if (!column.value.length) return '未选择'
@@ -142,11 +237,11 @@ const currentColumnText = computed(() => {
             <Text size="sm" color="secondary">立即发布</Text>
             <Switch v-model:checked="publishNow" />
           </div>
-          <Button variant="outline" @click="saveDraft">
+          <Button variant="outline" :disabled="loading || saving" @click="saveDraft">
             <Icon name="download" :size="16" class="mr-1" />
             保存草稿
           </Button>
-          <Button @click="publish">
+          <Button :disabled="loading || saving" @click="publish">
             <Icon name="upload" :size="16" class="mr-1" />
             发布
           </Button>
@@ -154,7 +249,11 @@ const currentColumnText = computed(() => {
       </div>
     </Card>
 
-    <div v-if="published">
+    <Card v-if="loading && !published">
+      <MutedPanel description="正在加载文章…" />
+    </Card>
+
+    <div v-else-if="published">
       <Card>
         <Result
           status="success"
@@ -163,7 +262,7 @@ const currentColumnText = computed(() => {
         >
           <div class="flex justify-center gap-2">
             <Button variant="outline" @click="continueEditing">继续编辑</Button>
-            <Button @click="saveDraft">查看发布记录</Button>
+            <Button :disabled="saving" @click="saveDraft">查看发布记录</Button>
           </div>
         </Result>
       </Card>
@@ -204,7 +303,7 @@ const currentColumnText = computed(() => {
           </Watermark>
           <MutedPanel
             compact
-            description="水印用于标识草稿状态；发布后正文水印移除（演示）。编辑器内容保存在内存中，刷新后重置。"
+            description="水印用于标识草稿状态；发布后正文水印移除（演示）。标题、正文与分类栏目标签会保存到服务端，刷新后从接口恢复。协作者与附件仍仅本页有效。"
           />
         </div>
       </Card>

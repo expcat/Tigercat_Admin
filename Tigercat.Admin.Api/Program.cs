@@ -191,6 +191,9 @@ app.MapEndpoint<ChatEndpoints>();
 app.MapEndpoint<CommentsEndpoints>();
 app.MapEndpoint<ProjectsEndpoints>();
 app.MapEndpoint<CalendarEndpoints>();
+app.MapEndpoint<ContentEndpoints>();
+app.MapEndpoint<JobsEndpoints>();
+app.MapEndpoint<ImportJobsEndpoints>();
 
 app.MapGet("/api/health", GetHealth)
     .WithName("HealthCheck");

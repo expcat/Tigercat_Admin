@@ -162,6 +162,23 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(CreateCalendarEventRequest))]
 [JsonSerializable(typeof(ApiResponse<CalendarEventResponse>))]
 [JsonSerializable(typeof(ApiResponse<CalendarEventResponse[]>))]
+// Content / jobs / import
+[JsonSerializable(typeof(string[]))]
+[JsonSerializable(typeof(ArticleResponse))]
+[JsonSerializable(typeof(ArticleResponse[]))]
+[JsonSerializable(typeof(UpdateArticleRequest))]
+[JsonSerializable(typeof(ApiResponse<ArticleResponse>))]
+[JsonSerializable(typeof(ApiResponse<ArticleResponse[]>))]
+[JsonSerializable(typeof(JobResponse))]
+[JsonSerializable(typeof(JobResponse[]))]
+[JsonSerializable(typeof(CreateJobRequest))]
+[JsonSerializable(typeof(UpdateJobRequest))]
+[JsonSerializable(typeof(ApiResponse<JobResponse>))]
+[JsonSerializable(typeof(ApiResponse<JobResponse[]>))]
+[JsonSerializable(typeof(ImportJobResultResponse))]
+[JsonSerializable(typeof(ImportJobResponse))]
+[JsonSerializable(typeof(CreateImportJobRequest))]
+[JsonSerializable(typeof(ApiResponse<ImportJobResponse>))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }

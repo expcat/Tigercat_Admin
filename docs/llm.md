@@ -43,6 +43,9 @@
 | 评论 | [docs/api/comments.md](api/comments.md) |
 | 项目 | [docs/api/projects.md](api/projects.md) |
 | 日历 | [docs/api/calendar.md](api/calendar.md) |
+| 内容文章 | [docs/api/content.md](api/content.md) |
+| 定时任务 | [docs/api/jobs.md](api/jobs.md) |
+| 数据导入 | [docs/api/import.md](api/import.md) |
 | 系统设置 | [docs/api/settings.md](api/settings.md) |
 | 媒体资源 | [docs/api/media.md](api/media.md) |
 

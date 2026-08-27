@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { Card, Text, Tag, Button, Input, Message } from '@expcat/tigercat-vue'
 import { Badge } from '@expcat/tigercat-vue/Badge'
 import { Switch } from '@expcat/tigercat-vue/Switch'
@@ -11,37 +11,22 @@ import { Stepper } from '@expcat/tigercat-vue/Stepper'
 import { InputGroup, InputGroupAddon } from '@expcat/tigercat-vue/InputGroup'
 import { NumberKeyboard } from '@expcat/tigercat-vue/NumberKeyboard'
 import { Gantt } from '@expcat/tigercat-vue/Gantt'
-import type { GanttTask, CronPreset, TagVariant } from '@expcat/tigercat-core'
+import type { GanttTask, CronPreset } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import MetricGrid from '../components/MetricGrid.vue'
 import MetricCard from '../components/MetricCard.vue'
 import MutedPanel from '../components/MutedPanel.vue'
 import Icon from '../components/Icon.vue'
-
-type JobStatus = 'running' | 'paused' | 'failed'
-
-interface Job {
-  id: string
-  name: string
-  cron: string
-  concurrency: number
-  timeout: string
-  batchSize: string
-  enabled: boolean
-  status: JobStatus
-  lastRun: string
-  nextRun: string
-  progress: number
-  phase: number
-}
+import {
+  createJob,
+  fetchJobs,
+  toGanttTasks,
+  updateJob,
+  JOB_STATUS_META as STATUS_META,
+  type Job,
+} from '../utils/jobs'
 
 const RUN_PHASES = ['排队', '运行', '回调', '完成']
-
-const STATUS_META: Record<JobStatus, { label: string; variant: TagVariant }> = {
-  running: { label: '运行中', variant: 'success' },
-  paused: { label: '已暂停', variant: 'default' },
-  failed: { label: '失败', variant: 'danger' },
-}
 
 const CRON_PRESETS: CronPreset[] = [
   { label: '每分钟', value: '* * * * *', description: '每分钟执行一次' },
@@ -50,95 +35,56 @@ const CRON_PRESETS: CronPreset[] = [
   { label: '每周一 09:00', value: '0 9 * * 1', description: '每周一上午九点' },
 ]
 
-// ── 任务数据（页面内内存数据）────────────────────────
-const jobs = ref<Job[]>([
-  {
-    id: 'JOB-1001',
-    name: '每日对账批处理',
-    cron: '0 2 * * *',
-    concurrency: 4,
-    timeout: '120',
-    batchSize: '2000',
-    enabled: true,
-    status: 'running',
-    lastRun: '2026-07-01 02:00',
-    nextRun: '2026-07-02 02:00',
-    progress: 64,
-    phase: 1,
-  },
-  {
-    id: 'JOB-1002',
-    name: '订单数据归档',
-    cron: '0 3 * * 0',
-    concurrency: 2,
-    timeout: '300',
-    batchSize: '5000',
-    enabled: true,
-    status: 'running',
-    lastRun: '2026-06-29 03:00',
-    nextRun: '2026-07-06 03:00',
-    progress: 28,
-    phase: 1,
-  },
-  {
-    id: 'JOB-1003',
-    name: '缓存预热',
-    cron: '*/30 * * * *',
-    concurrency: 8,
-    timeout: '60',
-    batchSize: '500',
-    enabled: false,
-    status: 'paused',
-    lastRun: '2026-06-30 23:30',
-    nextRun: '—',
-    progress: 100,
-    phase: 3,
-  },
-  {
-    id: 'JOB-1004',
-    name: '报表快照生成',
-    cron: '0 6 * * *',
-    concurrency: 1,
-    timeout: '180',
-    batchSize: '1000',
-    enabled: true,
-    status: 'failed',
-    lastRun: '2026-07-01 06:00',
-    nextRun: '2026-07-02 06:00',
-    progress: 42,
-    phase: 2,
-  },
-])
+const jobs = ref<Job[]>([])
+const loading = ref(false)
+const togglingId = ref<string | null>(null)
+const submitting = ref(false)
+const selectedId = ref<string | null>(null)
+const selected = computed(() => jobs.value.find((j) => j.id === selectedId.value) ?? null)
 
-// ── Gantt 执行时间轴（近一周运行窗口）────────────────
-const GANTT_RUNS: GanttTask[] = [
-  { id: 'JOB-1001', label: '每日对账批处理', start: '2026-06-30', end: '2026-07-02', progress: 64, color: '#22c55e' },
-  { id: 'JOB-1002', label: '订单数据归档', start: '2026-06-29', end: '2026-07-01', progress: 28, color: '#3b82f6' },
-  { id: 'JOB-1003', label: '缓存预热', start: '2026-06-28', end: '2026-06-30', progress: 100, color: '#94a3b8' },
-  { id: 'JOB-1004', label: '报表快照生成', start: '2026-07-01', end: '2026-07-03', progress: 42, color: '#ef4444' },
-]
+const ganttRuns = computed(() => toGanttTasks(jobs.value))
 
-// ── 概览指标 ──────────────────────────────────────
 const totalCount = computed(() => jobs.value.length)
 const runningCount = computed(() => jobs.value.filter((j) => j.status === 'running').length)
 const pausedCount = computed(() => jobs.value.filter((j) => j.status === 'paused').length)
 const failedCount = computed(() => jobs.value.filter((j) => j.status === 'failed').length)
 
-// ── 选中任务 ──────────────────────────────────────
-const selectedId = ref<string | null>(jobs.value[0]?.id ?? null)
-const selected = computed(() => jobs.value.find((j) => j.id === selectedId.value) ?? null)
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback
+
+async function loadJobs() {
+  loading.value = true
+  try {
+    const payload = await fetchJobs()
+    const items = payload.data ?? []
+    jobs.value = items
+    if (!selectedId.value || !items.some((item) => item.id === selectedId.value)) {
+      selectedId.value = items[0]?.id ?? null
+    }
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '任务列表加载失败'), duration: 3000 })
+  } finally {
+    loading.value = false
+  }
+}
+
 function selectJob(id: string) {
   selectedId.value = id
 }
 
-function toggleJob(job: Job, next: boolean) {
-  job.enabled = next
-  job.status = next ? 'running' : 'paused'
-  job.nextRun = next ? job.nextRun === '—' ? '待调度' : job.nextRun : '—'
-  Message.success({ content: `任务「${job.name}」已${next ? '启用' : '暂停'}（演示）`, duration: 2000 })
+async function toggleJob(job: Job, next: boolean) {
+  togglingId.value = job.id
+  try {
+    await updateJob(job.id, { enabled: next })
+    Message.success({ content: `任务「${job.name}」已${next ? '启用' : '暂停'}`, duration: 2000 })
+    await loadJobs()
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '任务启停失败'), duration: 3000 })
+  } finally {
+    togglingId.value = null
+  }
 }
 
-// ── 新建 / 编辑任务 ────────────────────────────────
 const drawerOpen = ref(false)
 const editingId = ref<string | null>(null)
 const form = ref({
@@ -170,48 +116,48 @@ function openEdit(job: Job) {
   drawerOpen.value = true
 }
 
-function submitJob() {
+async function submitJob() {
   const name = form.value.name.trim()
   if (!name) {
     Message.warning({ content: '请填写任务名称', duration: 2000 })
     return
   }
-  if (editingId.value) {
-    const job = jobs.value.find((j) => j.id === editingId.value)
-    if (job) {
-      job.name = name
-      job.cron = form.value.cron
-      job.concurrency = form.value.concurrency
-      job.timeout = form.value.timeout
-      job.batchSize = form.value.batchSize
-      job.enabled = form.value.enabled
-      job.status = form.value.enabled ? 'running' : 'paused'
-    }
-    Message.success({ content: `任务「${name}」已更新（演示）`, duration: 2200 })
-  } else {
-    const id = `JOB-${1004 + jobs.value.length + 1}`
-    jobs.value = [
-      {
-        id,
+  submitting.value = true
+  try {
+    if (editingId.value) {
+      await updateJob(editingId.value, {
         name,
         cron: form.value.cron,
         concurrency: form.value.concurrency,
         timeout: form.value.timeout,
         batchSize: form.value.batchSize,
         enabled: form.value.enabled,
-        status: form.value.enabled ? 'running' : 'paused',
-        lastRun: '—',
-        nextRun: form.value.enabled ? '待调度' : '—',
-        progress: 0,
-        phase: 0,
-      },
-      ...jobs.value,
-    ]
-    selectedId.value = id
-    Message.success({ content: `任务「${name}」已创建（演示）`, duration: 2400 })
+      })
+      Message.success({ content: `任务「${name}」已更新`, duration: 2200 })
+    } else {
+      const created = await createJob({
+        name,
+        cron: form.value.cron,
+        concurrency: form.value.concurrency,
+        timeout: form.value.timeout,
+        batchSize: form.value.batchSize,
+        enabled: form.value.enabled,
+      })
+      selectedId.value = created.data.id
+      Message.success({ content: `任务「${name}」已创建`, duration: 2400 })
+    }
+    drawerOpen.value = false
+    await loadJobs()
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, editingId.value ? '任务更新失败' : '任务创建失败'), duration: 3000 })
+  } finally {
+    submitting.value = false
   }
-  drawerOpen.value = false
 }
+
+onMounted(() => {
+  void loadJobs()
+})
 </script>
 
 <template>
@@ -254,7 +200,8 @@ function submitJob() {
     </div>
 
     <Card class="overflow-hidden">
-      <div class="overflow-x-auto">
+      <MutedPanel v-if="loading && jobs.length === 0" compact description="正在加载任务…" />
+      <div v-else class="overflow-x-auto">
         <table class="w-full min-w-[720px] border-collapse text-sm">
           <thead>
             <tr class="border-b border-(--tiger-border,#e5e7eb) text-left text-(--tiger-text-secondary,#64748b)">
@@ -287,7 +234,11 @@ function submitJob() {
               </td>
               <td class="px-3 py-3" @click.stop>
                 <div class="flex items-center gap-2">
-                  <Switch :checked="job.enabled" @update:checked="(v: boolean) => toggleJob(job, v)" />
+                  <Switch
+                    :checked="job.enabled"
+                    :disabled="togglingId === job.id"
+                    @update:checked="(v: boolean) => toggleJob(job, v)"
+                  />
                   <Tag :variant="STATUS_META[job.status].variant" size="sm">
                     {{ STATUS_META[job.status].label }}
                   </Tag>
@@ -323,7 +274,7 @@ function submitJob() {
         <template #header><Text weight="bold">执行时间轴</Text></template>
         <div class="overflow-x-auto">
           <Gantt
-            :data="GANTT_RUNS"
+            :data="ganttRuns"
             :width="720"
             :height="240"
             scale="day"
@@ -335,7 +286,7 @@ function submitJob() {
         </div>
         <MutedPanel
           compact
-          description="展示近一周各任务的运行窗口；今日高亮为参考线。点击色条可联动选中对应任务。"
+          description="展示近一周各任务的运行窗口（时间来自接口的 start / end）；今日高亮为参考线。点击色条可联动选中对应任务。"
         />
       </Card>
 
@@ -358,7 +309,6 @@ function submitJob() {
       </Card>
     </div>
 
-    <!-- 新建 / 编辑任务 -->
     <Drawer
       placement="right"
       :open="drawerOpen"
@@ -399,7 +349,7 @@ function submitJob() {
         </div>
         <div class="flex justify-end gap-2 pt-2">
           <Button variant="outline" @click="drawerOpen = false">取消</Button>
-          <Button @click="submitJob">{{ editingId ? '保存修改' : '创建任务' }}</Button>
+          <Button :disabled="submitting" @click="submitJob">{{ editingId ? '保存修改' : '创建任务' }}</Button>
         </div>
       </div>
     </Drawer>

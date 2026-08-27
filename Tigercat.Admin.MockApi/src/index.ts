@@ -211,6 +211,60 @@ type CalendarEventItem = {
   location: string;
 };
 
+type ArticleEditorType = 'rich' | 'markdown' | 'code';
+type JobStatus = 'running' | 'paused' | 'failed';
+type ImportJobStatus = 'pending' | 'running' | 'completed' | 'failed';
+type ImportMode = 'append' | 'overwrite' | 'upsert';
+type ImportConflict = 'skip' | 'overwrite' | 'error';
+
+type ArticleItem = {
+  id: string;
+  title: string;
+  editorType: ArticleEditorType;
+  body: string;
+  tags: string[];
+  category: string;
+  column: string[];
+  published: boolean;
+};
+
+type JobItem = {
+  id: string;
+  name: string;
+  cron: string;
+  concurrency: number;
+  timeout: string;
+  batchSize: string;
+  enabled: boolean;
+  status: JobStatus;
+  lastRun: string;
+  nextRun: string;
+  progress: number;
+  phase: number;
+  start: string;
+  end: string;
+  color: string;
+};
+
+type ImportJobResultItem = {
+  imported: number;
+  skipped: number;
+  message: string;
+};
+
+type ImportJobItem = {
+  id: string;
+  source: string;
+  target: string[];
+  mappings: string[];
+  mode: ImportMode;
+  conflict: ImportConflict;
+  batchSize: number;
+  status: ImportJobStatus;
+  progress: number;
+  result: ImportJobResultItem | null;
+};
+
 type DemoState = {
   users: DemoUser[];
   roles: DemoRole[];
@@ -223,6 +277,9 @@ type DemoState = {
   comments: CommentItem[];
   projects: ProjectItem[];
   calendarEvents: CalendarEventItem[];
+  articles: ArticleItem[];
+  jobs: JobItem[];
+  importJobs: ImportJobItem[];
   auditLogs: AuditLogItem[];
   retentionDays: number;
   nextUserId: number;
@@ -230,6 +287,8 @@ type DemoState = {
   nextMediaId: number;
   nextTaskId: number;
   nextTicketNumber: number;
+  nextJobNumber: number;
+  nextImportJobNumber: number;
   nextMessageSeq: number;
   passwords: Record<string, string>;
   twoFactorByUser: Record<string, boolean>;
@@ -463,6 +522,9 @@ function initialState(): DemoState {
     ],
     projects: seedProjects(),
     calendarEvents: seedCalendarEvents(),
+    articles: seedArticles(),
+    jobs: seedJobs(),
+    importJobs: [],
     auditLogs: [
       audit('auth-login', 'auth', 'auth.user.login', '用户登录', 'admin 登录了系统。', 'admin'),
       audit('user-update', 'user', 'admin.user.updated', '更新用户', 'admin 更新了用户 editor 的资料或角色配置。', 'admin'),
@@ -475,6 +537,8 @@ function initialState(): DemoState {
     nextMediaId: 4,
     nextTaskId: 7,
     nextTicketNumber: 2051,
+    nextJobNumber: 1005,
+    nextImportJobNumber: 1001,
     nextMessageSeq: 1,
     passwords: {
       admin: 'admin123',
@@ -786,6 +850,155 @@ function seedCalendarEvents(): CalendarEventItem[] {
   ];
 }
 
+function seedArticles(): ArticleItem[] {
+  return [
+    {
+      id: 'a1',
+      title: '组件库 v1.6 发布说明',
+      editorType: 'rich',
+      body: '<h2>组件库 v1.6 发布说明</h2><p>本次更新带来内容编辑工作台，支持富文本 / Markdown / 代码三种模式互切。</p>',
+      tags: ['发布', '组件库'],
+      category: 'frontend',
+      column: ['docs', 'guide'],
+      published: false,
+    },
+  ];
+}
+
+function seedJobs(): JobItem[] {
+  return [
+    {
+      id: 'JOB-1001',
+      name: '每日对账批处理',
+      cron: '0 2 * * *',
+      concurrency: 4,
+      timeout: '120',
+      batchSize: '2000',
+      enabled: true,
+      status: 'running',
+      lastRun: '2026-07-01 02:00',
+      nextRun: '2026-07-02 02:00',
+      progress: 64,
+      phase: 1,
+      start: '2026-06-30',
+      end: '2026-07-02',
+      color: '#22c55e',
+    },
+    {
+      id: 'JOB-1002',
+      name: '订单数据归档',
+      cron: '0 3 * * 0',
+      concurrency: 2,
+      timeout: '300',
+      batchSize: '5000',
+      enabled: true,
+      status: 'running',
+      lastRun: '2026-06-29 03:00',
+      nextRun: '2026-07-06 03:00',
+      progress: 28,
+      phase: 1,
+      start: '2026-06-29',
+      end: '2026-07-01',
+      color: '#3b82f6',
+    },
+    {
+      id: 'JOB-1003',
+      name: '缓存预热',
+      cron: '*/30 * * * *',
+      concurrency: 8,
+      timeout: '60',
+      batchSize: '500',
+      enabled: false,
+      status: 'paused',
+      lastRun: '2026-06-30 23:30',
+      nextRun: '—',
+      progress: 100,
+      phase: 3,
+      start: '2026-06-28',
+      end: '2026-06-30',
+      color: '#94a3b8',
+    },
+    {
+      id: 'JOB-1004',
+      name: '报表快照生成',
+      cron: '0 6 * * *',
+      concurrency: 1,
+      timeout: '180',
+      batchSize: '1000',
+      enabled: true,
+      status: 'failed',
+      lastRun: '2026-07-01 06:00',
+      nextRun: '2026-07-02 06:00',
+      progress: 42,
+      phase: 2,
+      start: '2026-07-01',
+      end: '2026-07-03',
+      color: '#ef4444',
+    },
+  ];
+}
+
+const ARTICLE_EDITOR_TYPES: ArticleEditorType[] = ['rich', 'markdown', 'code'];
+const JOB_STATUSES: JobStatus[] = ['running', 'paused', 'failed'];
+const IMPORT_MODES: ImportMode[] = ['append', 'overwrite', 'upsert'];
+const IMPORT_CONFLICTS: ImportConflict[] = ['skip', 'overwrite', 'error'];
+const IMPORT_MODE_LABELS: Record<ImportMode, string> = {
+  append: '追加',
+  overwrite: '覆盖',
+  upsert: '更新插入',
+};
+const IMPORT_TARGET_LABELS: Record<string, string> = {
+  hr: '人力资源',
+  employees: '员工表',
+  departments: '部门表',
+  crm: '客户管理',
+  customers: '客户表',
+  contacts: '联系人表',
+};
+
+function normalizeStringList(value: unknown, itemMaxLength: number, maxCount: number): string[] | null {
+  if (!Array.isArray(value)) return [];
+  const items = value
+    .map((item) => String(item ?? '').trim())
+    .filter((item) => item.length > 0);
+  if (items.length > maxCount || items.some((item) => item.length > itemMaxLength)) return null;
+  return items;
+}
+
+function applyJobStatusMachine(job: JobItem, wasEnabled: boolean) {
+  if (!job.enabled) {
+    job.status = 'paused';
+    job.nextRun = '—';
+    return;
+  }
+  if (!wasEnabled) {
+    job.status = 'running';
+    if (!job.nextRun || job.nextRun === '—') job.nextRun = '待调度';
+    return;
+  }
+  if (job.status === 'failed') return;
+  job.status = 'running';
+  if (!job.nextRun || job.nextRun === '—') job.nextRun = '待调度';
+}
+
+function advanceImportJob(job: ImportJobItem) {
+  if (job.status === 'completed' || job.status === 'failed') return;
+  job.status = 'running';
+  job.progress = Math.min(100, job.progress + 25);
+  if (job.progress < 100) return;
+  job.progress = 100;
+  job.status = 'completed';
+  const modeLabel = IMPORT_MODE_LABELS[job.mode];
+  const targetText = job.target.length
+    ? job.target.map((segment) => IMPORT_TARGET_LABELS[segment] ?? segment).join(' / ')
+    : '未选择';
+  job.result = {
+    imported: job.mappings.length,
+    skipped: job.conflict === 'skip' ? 1 : 0,
+    message: `已按「${modeLabel}」模式导入至 ${targetText}，映射 ${job.mappings.length} 个字段。`,
+  };
+}
+
 function nowTicketLabel() {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -996,7 +1209,12 @@ function readState(storageKey: string): DemoState {
         comments: parsed.comments ?? seeded.comments,
         projects: parsed.projects ?? seeded.projects,
         calendarEvents: parsed.calendarEvents ?? seeded.calendarEvents,
+        articles: parsed.articles ?? seeded.articles,
+        jobs: parsed.jobs ?? seeded.jobs,
+        importJobs: parsed.importJobs ?? seeded.importJobs,
         nextTicketNumber: parsed.nextTicketNumber ?? seeded.nextTicketNumber,
+        nextJobNumber: parsed.nextJobNumber ?? seeded.nextJobNumber,
+        nextImportJobNumber: parsed.nextImportJobNumber ?? seeded.nextImportJobNumber,
         nextMessageSeq: parsed.nextMessageSeq ?? seeded.nextMessageSeq,
         passwords: { ...seeded.passwords, ...(parsed.passwords ?? {}) },
         twoFactorByUser: { ...seeded.twoFactorByUser, ...(parsed.twoFactorByUser ?? {}) },
@@ -1963,6 +2181,151 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
       location,
     };
     state.calendarEvents.push(item);
+    writeState(storageKey, state);
+    return makeJson(item);
+  }
+
+  if (path === '/api/content/articles' && method === 'GET') {
+    const items = [...state.articles].sort((a, b) => a.id.localeCompare(b.id));
+    return makeJson(items);
+  }
+
+  const articleMatch = path.match(/^\/api\/content\/articles\/([^/]+)$/);
+  if (articleMatch && method === 'GET') {
+    const item = state.articles.find((article) => article.id === decodeURIComponent(articleMatch[1]));
+    return item ? makeJson(item) : makeError('文章不存在', 404);
+  }
+
+  if (articleMatch && method === 'PUT') {
+    const item = state.articles.find((article) => article.id === decodeURIComponent(articleMatch[1]));
+    if (!item) return makeError('文章不存在', 404);
+    const published = typeof body.published === 'boolean' ? body.published : item.published;
+    const title = body.title == null ? item.title : String(body.title).trim();
+    if (published && !title) return makeError('内容标题不能为空', 400);
+    const editorType = body.editorType == null
+      ? item.editorType
+      : String(body.editorType).trim().toLowerCase();
+    if (!ARTICLE_EDITOR_TYPES.includes(editorType as ArticleEditorType)) {
+      return makeError('无效的编辑器类型', 400);
+    }
+    const tags = body.tags == null ? item.tags : normalizeStringList(body.tags, 40, 12);
+    if (!tags) return makeError('标签最多 12 个，且单项长度不能超过 40', 400);
+    const column = body.column == null ? item.column : normalizeStringList(body.column, 40, 8);
+    if (!column) return makeError('栏目路径无效', 400);
+    item.title = title;
+    item.editorType = editorType as ArticleEditorType;
+    if (body.body != null) item.body = String(body.body);
+    item.tags = tags;
+    if (body.category != null) item.category = String(body.category).trim();
+    item.column = column;
+    item.published = published;
+    writeState(storageKey, state);
+    return makeJson(item);
+  }
+
+  if (path === '/api/jobs' && method === 'GET') {
+    const items = [...state.jobs].sort((a, b) => a.id.localeCompare(b.id));
+    return makeJson(items);
+  }
+
+  if (path === '/api/jobs' && method === 'POST') {
+    const name = String(body.name ?? '').trim();
+    if (!name) return makeError('任务名称不能为空', 400);
+    const enabled = body.enabled !== false;
+    const item: JobItem = {
+      id: `JOB-${state.nextJobNumber++}`,
+      name,
+      cron: String(body.cron ?? '0 2 * * *').trim() || '0 2 * * *',
+      concurrency: Math.min(20, Math.max(1, Number(body.concurrency ?? 2) || 2)),
+      timeout: String(body.timeout ?? '60').trim() || '60',
+      batchSize: String(body.batchSize ?? '500').trim() || '500',
+      enabled,
+      status: enabled ? 'running' : 'paused',
+      lastRun: '—',
+      nextRun: enabled ? '待调度' : '—',
+      progress: 0,
+      phase: 0,
+      start: '2026-07-01',
+      end: '2026-07-02',
+      color: '#3b82f6',
+    };
+    state.jobs.push(item);
+    writeState(storageKey, state);
+    return makeJson(item);
+  }
+
+  const jobMatch = path.match(/^\/api\/jobs\/([^/]+)$/);
+  if (jobMatch && method === 'PUT') {
+    const item = state.jobs.find((job) => job.id === decodeURIComponent(jobMatch[1]));
+    if (!item) return makeError('任务不存在', 404);
+    if (body.name != null) {
+      const name = String(body.name).trim();
+      if (!name) return makeError('任务名称不能为空', 400);
+      item.name = name;
+    }
+    if (body.cron != null) item.cron = String(body.cron).trim() || item.cron;
+    if (body.concurrency != null) {
+      item.concurrency = Math.min(20, Math.max(1, Number(body.concurrency) || item.concurrency));
+    }
+    if (body.timeout != null) item.timeout = String(body.timeout).trim() || item.timeout;
+    if (body.batchSize != null) item.batchSize = String(body.batchSize).trim() || item.batchSize;
+    const wasEnabled = item.enabled;
+    if (typeof body.enabled === 'boolean') item.enabled = body.enabled;
+    if (body.status != null) {
+      const status = String(body.status).trim().toLowerCase();
+      if (JOB_STATUSES.includes(status as JobStatus) && item.enabled && wasEnabled && item.status !== 'failed') {
+        item.status = status as JobStatus;
+      }
+    }
+    applyJobStatusMachine(item, wasEnabled);
+    writeState(storageKey, state);
+    return makeJson(item);
+  }
+
+  if (path === '/api/import-jobs' && method === 'POST') {
+    const source = String(body.source ?? '').trim() || '示例数据（未选择文件）';
+    const target = normalizeStringList(body.target, 40, 8);
+    if (!target || target.length === 0) return makeError('请选择目标数据表', 400);
+    const mappings = normalizeStringList(body.mappings, 40, 50);
+    if (!mappings || mappings.length === 0) return makeError('请至少映射一个字段', 400);
+    const mode = String(body.mode ?? 'append').trim().toLowerCase();
+    if (!IMPORT_MODES.includes(mode as ImportMode)) return makeError('无效的导入模式', 400);
+    const conflict = String(body.conflict ?? 'skip').trim().toLowerCase();
+    if (!IMPORT_CONFLICTS.includes(conflict as ImportConflict)) return makeError('无效的冲突策略', 400);
+    const batchSize = Number(body.batchSize ?? 1000);
+    if (!Number.isFinite(batchSize) || batchSize < 100 || batchSize > 5000) {
+      return makeError('批量大小需在 100-5000 之间', 400);
+    }
+    const item: ImportJobItem = {
+      id: `IMP-${state.nextImportJobNumber++}`,
+      source,
+      target,
+      mappings,
+      mode: mode as ImportMode,
+      conflict: conflict as ImportConflict,
+      batchSize,
+      status: 'running',
+      progress: 0,
+      result: null,
+    };
+    state.importJobs.push(item);
+    writeState(storageKey, state);
+    window.setTimeout(() => {
+      const current = readState(storageKey);
+      const found = current.importJobs.find((job) => job.id === item.id);
+      if (found) {
+        advanceImportJob(found);
+        writeState(storageKey, current);
+      }
+    }, 220);
+    return makeJson(item);
+  }
+
+  const importMatch = path.match(/^\/api\/import-jobs\/([^/]+)$/);
+  if (importMatch && method === 'GET') {
+    const item = state.importJobs.find((job) => job.id === decodeURIComponent(importMatch[1]));
+    if (!item) return makeError('导入任务不存在', 404);
+    advanceImportJob(item);
     writeState(storageKey, state);
     return makeJson(item);
   }

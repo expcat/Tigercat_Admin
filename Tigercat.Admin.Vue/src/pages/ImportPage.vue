@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Card, Text, Button, Message } from '@expcat/tigercat-vue'
 import { FormWizard } from '@expcat/tigercat-vue/FormWizard'
 import { Transfer } from '@expcat/tigercat-vue/Transfer'
@@ -22,6 +22,17 @@ import type {
 import PageHeader from '../components/PageHeader.vue'
 import MutedPanel from '../components/MutedPanel.vue'
 import Icon from '../components/Icon.vue'
+import { ApiError } from '../utils/request'
+import {
+  clearLastImportJobId,
+  createImportJob,
+  fetchImportJob,
+  readLastImportJobId,
+  writeLastImportJobId,
+  type ImportConflict,
+  type ImportJob,
+  type ImportMode,
+} from '../utils/import-jobs'
 
 const STEPS: WizardStep[] = [
   { title: '选择数据源', description: '上传文件与模式' },
@@ -70,18 +81,23 @@ const CONFLICT_LABELS: Record<string, string> = {
   error: '报错中止',
 }
 
-// ── 向导状态（页面内内存数据）────────────────────────
 const current = ref(0)
 const files = ref<UploadFile[]>([])
-const mode = ref('append')
+const mode = ref<ImportMode>('append')
 const mappedKeys = ref<(string | number)[]>(['name', 'email', 'dept'])
 const target = ref<CascaderValue>(['hr', 'employees'])
 const batchSize = ref(1000)
-const conflict = ref('skip')
+const conflict = ref<ImportConflict>('skip')
 
 const importing = ref(false)
 const importProgress = ref(0)
 const done = ref(false)
+const resultMessage = ref('')
+const restoring = ref(false)
+let pollCancelled = false
+
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback
 
 const targetText = computed(() => {
   if (!target.value.length) return '未选择'
@@ -105,7 +121,59 @@ const summary = computed<DescriptionsItem[]>(() => [
   { label: '冲突策略', content: CONFLICT_LABELS[conflict.value] },
 ])
 
-function handleFinish() {
+function applyCompleted(job: ImportJob) {
+  importProgress.value = job.progress
+  resultMessage.value = job.result?.message ?? '导入完成'
+  importing.value = false
+  restoring.value = false
+  done.value = true
+}
+
+async function pollImportJob(id: string) {
+  while (!pollCancelled) {
+    const payload = await fetchImportJob(id)
+    const job = payload.data
+    importProgress.value = job.progress
+    if (job.status === 'completed') {
+      applyCompleted(job)
+      return
+    }
+    if (job.status === 'failed') {
+      importing.value = false
+      restoring.value = false
+      Message.error({ content: job.result?.message || '导入失败', duration: 3000 })
+      return
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 250))
+  }
+}
+
+async function restoreLastImportJob() {
+  const lastId = readLastImportJobId()
+  if (!lastId) return
+  restoring.value = true
+  importing.value = true
+  importProgress.value = 0
+  try {
+    const payload = await fetchImportJob(lastId)
+    const job = payload.data
+    if (job.status === 'completed') {
+      applyCompleted(job)
+      return
+    }
+    await pollImportJob(lastId)
+  } catch (error: unknown) {
+    importing.value = false
+    restoring.value = false
+    if (error instanceof ApiError && error.status === 404) {
+      clearLastImportJobId()
+      return
+    }
+    Message.error({ content: readErrorMessage(error, '导入任务恢复失败'), duration: 3000 })
+  }
+}
+
+async function handleFinish() {
   if (!mappedKeys.value.length) {
     Message.warning({ content: '请至少映射一个字段', duration: 2200 })
     current.value = 1
@@ -113,22 +181,44 @@ function handleFinish() {
   }
   importing.value = true
   importProgress.value = 0
-  const timer = window.setInterval(() => {
-    importProgress.value = Math.min(100, importProgress.value + 20)
-    if (importProgress.value >= 100) {
-      window.clearInterval(timer)
-      importing.value = false
-      done.value = true
-    }
-  }, 220)
+  done.value = false
+  resultMessage.value = ''
+  try {
+    const created = await createImportJob({
+      source: files.value.length ? files.value.map((f) => f.name).join('、') : '示例数据（未选择文件）',
+      target: target.value.map((item) => String(item)),
+      mappings: mappedKeys.value.map((item) => String(item)),
+      mode: mode.value,
+      conflict: conflict.value,
+      batchSize: batchSize.value,
+    })
+    writeLastImportJobId(created.data.id)
+    importProgress.value = created.data.progress
+    await pollImportJob(created.data.id)
+  } catch (error: unknown) {
+    importing.value = false
+    Message.error({ content: readErrorMessage(error, '创建导入任务失败'), duration: 3000 })
+  }
 }
 
 function restart() {
   done.value = false
   importing.value = false
+  restoring.value = false
   importProgress.value = 0
+  resultMessage.value = ''
   current.value = 0
+  clearLastImportJobId()
 }
+
+onMounted(() => {
+  pollCancelled = false
+  void restoreLastImportJob()
+})
+
+onBeforeUnmount(() => {
+  pollCancelled = true
+})
 </script>
 
 <template>
@@ -147,7 +237,7 @@ function restart() {
       <Result
         status="success"
         title="导入完成"
-        :sub-title="`已按「${MODE_LABELS[mode]}」模式导入至 ${targetText}，映射 ${mappedKeys.length} 个字段（演示）。`"
+        :sub-title="resultMessage"
       >
         <div class="flex justify-center gap-2">
           <Button variant="outline" @click="restart">再次导入</Button>
@@ -163,7 +253,10 @@ function restart() {
           <Text weight="bold">正在导入…</Text>
         </div>
         <Progress :percentage="importProgress" status="normal" />
-        <MutedPanel compact description="演示导入过程按批推进；完成后展示结果页。" />
+        <MutedPanel
+          compact
+          :description="restoring ? '正在从上次导入任务恢复进度…' : '导入任务已提交，正在轮询进度直到完成。'"
+        />
       </div>
     </Card>
 
@@ -178,7 +271,6 @@ function restart() {
       >
         <template #default="{ index }">
           <div class="pt-4">
-            <!-- 步骤 1：选择数据源 -->
             <div v-if="index === 0" class="space-y-4">
               <div>
                 <Text weight="medium" class="mb-1 block">上传文件（CSV / Excel）</Text>
@@ -207,7 +299,6 @@ function restart() {
               </div>
             </div>
 
-            <!-- 步骤 2：字段映射 -->
             <div v-else-if="index === 1" class="space-y-3">
               <Text weight="medium" class="block">选择需要导入的源字段（右侧为目标字段）</Text>
               <Transfer
@@ -220,7 +311,6 @@ function restart() {
               <MutedPanel compact description="将左侧源字段移动到右侧即建立映射；未映射字段将被忽略。" />
             </div>
 
-            <!-- 步骤 3：参数配置 -->
             <div v-else-if="index === 2" class="space-y-5">
               <div>
                 <Text weight="medium" class="mb-2 block">批量大小：{{ batchSize }} 条 / 批</Text>
@@ -236,11 +326,10 @@ function restart() {
               </div>
             </div>
 
-            <!-- 步骤 4：确认并导入 -->
             <div v-else class="space-y-3">
               <Text weight="medium" class="block">请核对导入配置</Text>
               <Descriptions :items="summary" :column="1" bordered colon />
-              <MutedPanel compact description="点击「开始导入」按批执行，完成后展示结果页。" />
+              <MutedPanel compact description="点击「开始导入」会创建导入任务并轮询状态，完成后展示结果页。" />
             </div>
           </div>
         </template>

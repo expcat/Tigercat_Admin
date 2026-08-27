@@ -28,6 +28,9 @@ public class AdminDbContext : DbContext
     public DbSet<ProjectMemberEntity> ProjectMembers => Set<ProjectMemberEntity>();
     public DbSet<ProjectActivityEntity> ProjectActivities => Set<ProjectActivityEntity>();
     public DbSet<CalendarEventEntity> CalendarEvents => Set<CalendarEventEntity>();
+    public DbSet<ContentArticleEntity> ContentArticles => Set<ContentArticleEntity>();
+    public DbSet<JobEntity> Jobs => Set<JobEntity>();
+    public DbSet<ImportJobEntity> ImportJobs => Set<ImportJobEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -291,6 +294,55 @@ public class AdminDbContext : DbContext
             entity.Property(e => e.Title).IsRequired().HasMaxLength(120);
             entity.Property(e => e.Type).IsRequired().HasMaxLength(20);
             entity.Property(e => e.Location).IsRequired().HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<ContentArticleEntity>(entity =>
+        {
+            entity.ToTable("ContentArticles");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(120);
+            entity.Property(e => e.EditorType).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Body).IsRequired().HasMaxLength(20000);
+            entity.Property(e => e.TagsJson).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.Category).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.ColumnJson).IsRequired().HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<JobEntity>(entity =>
+        {
+            entity.ToTable("Jobs");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => e.Status);
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(120);
+            entity.Property(e => e.Cron).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Timeout).IsRequired().HasMaxLength(16);
+            entity.Property(e => e.BatchSize).IsRequired().HasMaxLength(16);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.LastRun).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.NextRun).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.Start).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.End).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.Color).IsRequired().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<ImportJobEntity>(entity =>
+        {
+            entity.ToTable("ImportJobs");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => e.Status);
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Source).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.TargetJson).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.MappingsJson).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.Mode).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Conflict).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.ResultMessage).HasMaxLength(500);
         });
     }
 }

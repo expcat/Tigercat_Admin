@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Text, Button, Message } from '@expcat/tigercat-react';
 import { FormWizard } from '@expcat/tigercat-react/FormWizard';
 import { Transfer } from '@expcat/tigercat-react/Transfer';
@@ -21,6 +21,17 @@ import type {
 import { PageHeader } from '../components/PageHeader';
 import { MutedPanel } from '../components/PageFragments';
 import { UploadIcon } from '../components/Icons';
+import { ApiError } from '../utils/request';
+import {
+  clearLastImportJobId,
+  createImportJob,
+  fetchImportJob,
+  readLastImportJobId,
+  writeLastImportJobId,
+  type ImportConflict,
+  type ImportJob,
+  type ImportMode,
+} from '../utils/import-jobs';
 
 const STEPS: WizardStep[] = [
   { title: '选择数据源', description: '上传文件与模式' },
@@ -82,19 +93,24 @@ function resolveTargetText(value: CascaderValue): string {
   return labels.join(' / ');
 }
 
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+
 function ImportPage() {
   const [current, setCurrent] = useState(0);
   const [files, setFiles] = useState<UploadFile[]>([]);
-  const [mode, setMode] = useState('append');
+  const [mode, setMode] = useState<ImportMode>('append');
   const [mappedKeys, setMappedKeys] = useState<(string | number)[]>(['name', 'email', 'dept']);
   const [target, setTarget] = useState<CascaderValue>(['hr', 'employees']);
   const [batchSize, setBatchSize] = useState(1000);
-  const [conflict, setConflict] = useState('skip');
+  const [conflict, setConflict] = useState<ImportConflict>('skip');
 
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [done, setDone] = useState(false);
-  const timerRef = useRef<number | null>(null);
+  const [resultMessage, setResultMessage] = useState('');
+  const [restoring, setRestoring] = useState(false);
+  const cancelledRef = useRef(false);
 
   const targetText = useMemo(() => resolveTargetText(target), [target]);
 
@@ -107,7 +123,66 @@ function ImportPage() {
     { label: '冲突策略', content: CONFLICT_LABELS[conflict] },
   ];
 
-  const handleFinish = () => {
+  const applyCompleted = (job: ImportJob) => {
+    setImportProgress(job.progress);
+    setResultMessage(job.result?.message ?? '导入完成');
+    setImporting(false);
+    setRestoring(false);
+    setDone(true);
+  };
+
+  const pollImportJob = async (id: string) => {
+    while (!cancelledRef.current) {
+      const payload = await fetchImportJob(id);
+      const job = payload.data;
+      setImportProgress(job.progress);
+      if (job.status === 'completed') {
+        applyCompleted(job);
+        return;
+      }
+      if (job.status === 'failed') {
+        setImporting(false);
+        setRestoring(false);
+        Message.error({ content: job.result?.message || '导入失败', duration: 3000 });
+        return;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+    }
+  };
+
+  useEffect(() => {
+    cancelledRef.current = false;
+    const restoreLastImportJob = async () => {
+      const lastId = readLastImportJobId();
+      if (!lastId) return;
+      setRestoring(true);
+      setImporting(true);
+      setImportProgress(0);
+      try {
+        const payload = await fetchImportJob(lastId);
+        const job = payload.data;
+        if (job.status === 'completed') {
+          applyCompleted(job);
+          return;
+        }
+        await pollImportJob(lastId);
+      } catch (error: unknown) {
+        setImporting(false);
+        setRestoring(false);
+        if (error instanceof ApiError && error.status === 404) {
+          clearLastImportJobId();
+          return;
+        }
+        Message.error({ content: readErrorMessage(error, '导入任务恢复失败'), duration: 3000 });
+      }
+    };
+    void restoreLastImportJob();
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, []);
+
+  const handleFinish = async () => {
     if (!mappedKeys.length) {
       Message.warning({ content: '请至少映射一个字段', duration: 2200 });
       setCurrent(1);
@@ -115,25 +190,34 @@ function ImportPage() {
     }
     setImporting(true);
     setImportProgress(0);
-    timerRef.current = window.setInterval(() => {
-      setImportProgress((prev) => {
-        const next = Math.min(100, prev + 20);
-        if (next >= 100 && timerRef.current !== null) {
-          window.clearInterval(timerRef.current);
-          timerRef.current = null;
-          setImporting(false);
-          setDone(true);
-        }
-        return next;
+    setDone(false);
+    setResultMessage('');
+    try {
+      const created = await createImportJob({
+        source: files.length ? files.map((f) => f.name).join('、') : '示例数据（未选择文件）',
+        target: target.map((item) => String(item)),
+        mappings: mappedKeys.map((item) => String(item)),
+        mode,
+        conflict,
+        batchSize,
       });
-    }, 220);
+      writeLastImportJobId(created.data.id);
+      setImportProgress(created.data.progress);
+      await pollImportJob(created.data.id);
+    } catch (error: unknown) {
+      setImporting(false);
+      Message.error({ content: readErrorMessage(error, '创建导入任务失败'), duration: 3000 });
+    }
   };
 
   const restart = () => {
     setDone(false);
     setImporting(false);
+    setRestoring(false);
     setImportProgress(0);
+    setResultMessage('');
     setCurrent(0);
+    clearLastImportJobId();
   };
 
   const renderStep = (_step: WizardStep, index: number) => {
@@ -154,7 +238,7 @@ function ImportPage() {
             <Text weight="medium" className="mb-1 block">
               导入模式
             </Text>
-            <RadioGroup value={mode} onChange={(value) => setMode(String(value))}>
+            <RadioGroup value={mode} onChange={(value) => setMode(String(value) as ImportMode)}>
               <Radio value="append">追加</Radio>
               <Radio value="overwrite">覆盖</Radio>
               <Radio value="upsert">更新插入</Radio>
@@ -200,7 +284,7 @@ function ImportPage() {
             <Text weight="medium" className="mb-1 block">
               冲突策略
             </Text>
-            <RadioGroup value={conflict} onChange={(value) => setConflict(String(value))}>
+            <RadioGroup value={conflict} onChange={(value) => setConflict(String(value) as ImportConflict)}>
               <Radio value="skip">跳过</Radio>
               <Radio value="overwrite">覆盖</Radio>
               <Radio value="error">报错中止</Radio>
@@ -215,7 +299,7 @@ function ImportPage() {
           请核对导入配置
         </Text>
         <Descriptions items={summary} column={1} bordered colon />
-        <MutedPanel compact description="点击「开始导入」按批执行，完成后展示结果页。" />
+        <MutedPanel compact description="点击「开始导入」会创建导入任务并轮询状态，完成后展示结果页。" />
       </div>
     );
   };
@@ -234,10 +318,7 @@ function ImportPage() {
 
       {done ? (
         <Card>
-          <Result
-            status="success"
-            title="导入完成"
-            subTitle={`已按「${MODE_LABELS[mode]}」模式导入至 ${targetText}，映射 ${mappedKeys.length} 个字段（演示）。`}>
+          <Result status="success" title="导入完成" subTitle={resultMessage}>
             <div className="flex justify-center gap-2">
               <Button variant="outline" onClick={restart}>
                 再次导入
@@ -254,7 +335,10 @@ function ImportPage() {
               <Text weight="bold">正在导入…</Text>
             </div>
             <Progress percentage={importProgress} status="normal" />
-            <MutedPanel compact description="演示导入过程按批推进；完成后展示结果页。" />
+            <MutedPanel
+              compact
+              description={restoring ? '正在从上次导入任务恢复进度…' : '导入任务已提交，正在轮询进度直到完成。'}
+            />
           </div>
         </Card>
       ) : (
@@ -266,7 +350,7 @@ function ImportPage() {
             nextText="下一步"
             prevText="上一步"
             finishText="开始导入"
-            onFinish={handleFinish}
+            onFinish={() => void handleFinish()}
             renderStep={renderStep}
           />
         </Card>

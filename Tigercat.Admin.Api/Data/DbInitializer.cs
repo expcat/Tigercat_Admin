@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Tigercat.Admin.Api.Auth;
@@ -279,6 +280,7 @@ public static class DbInitializer
 
         await SeedCollaborationAsync(context, ct);
         await SeedProjectsAndCalendarAsync(context, ct);
+        await SeedContentJobsAndImportAsync(context, ct);
 
         // --- Seed default admin user (idempotent: skip if username exists) ---
         var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "admin", ct);
@@ -812,6 +814,105 @@ public static class DbInitializer
         ("e3", "2026-06-30", "16:00", "17:00", "v1.6 发布窗口", "release", "生产环境"),
         ("e4", "2026-07-01", "09:30", "10:00", "季度 OKR 对齐", "meeting", "会议室 B"),
         ("e5", "2026-07-02", "15:00", "15:30", "安全合规提醒", "reminder", "—"),
+    ];
+
+    private static async Task SeedContentJobsAndImportAsync(AdminDbContext context, CancellationToken ct)
+    {
+        var existingArticleIds = await context.ContentArticles.Select(item => item.PublicId).ToHashSetAsync(ct);
+        var newArticles = SeedArticles
+            .Where(item => !existingArticleIds.Contains(item.PublicId))
+            .Select(item => new ContentArticleEntity
+            {
+                PublicId = item.PublicId,
+                Title = item.Title,
+                EditorType = item.EditorType,
+                Body = item.Body,
+                TagsJson = JsonSerializer.Serialize(item.Tags),
+                Category = item.Category,
+                ColumnJson = JsonSerializer.Serialize(item.Column),
+                Published = item.Published
+            })
+            .ToList();
+
+        if (newArticles.Count > 0)
+        {
+            context.ContentArticles.AddRange(newArticles);
+            await context.SaveChangesAsync(ct);
+        }
+
+        var existingJobIds = await context.Jobs.Select(item => item.PublicId).ToHashSetAsync(ct);
+        var newJobs = SeedJobs
+            .Where(item => !existingJobIds.Contains(item.PublicId))
+            .Select(item => new JobEntity
+            {
+                PublicId = item.PublicId,
+                Name = item.Name,
+                Cron = item.Cron,
+                Concurrency = item.Concurrency,
+                Timeout = item.Timeout,
+                BatchSize = item.BatchSize,
+                Enabled = item.Enabled,
+                Status = item.Status,
+                LastRun = item.LastRun,
+                NextRun = item.NextRun,
+                Progress = item.Progress,
+                Phase = item.Phase,
+                Start = item.Start,
+                End = item.End,
+                Color = item.Color
+            })
+            .ToList();
+
+        if (newJobs.Count > 0)
+        {
+            context.Jobs.AddRange(newJobs);
+            await context.SaveChangesAsync(ct);
+        }
+    }
+
+    private static readonly (
+        string PublicId,
+        string Title,
+        string EditorType,
+        string Body,
+        string[] Tags,
+        string Category,
+        string[] Column,
+        bool Published)[] SeedArticles =
+    [
+        (
+            "a1",
+            "组件库 v1.6 发布说明",
+            "rich",
+            "<h2>组件库 v1.6 发布说明</h2><p>本次更新带来内容编辑工作台，支持富文本 / Markdown / 代码三种模式互切。</p>",
+            ["发布", "组件库"],
+            "frontend",
+            ["docs", "guide"],
+            false
+        )
+    ];
+
+    private static readonly (
+        string PublicId,
+        string Name,
+        string Cron,
+        int Concurrency,
+        string Timeout,
+        string BatchSize,
+        bool Enabled,
+        string Status,
+        string LastRun,
+        string NextRun,
+        int Progress,
+        int Phase,
+        string Start,
+        string End,
+        string Color)[] SeedJobs =
+    [
+        ("JOB-1001", "每日对账批处理", "0 2 * * *", 4, "120", "2000", true, "running", "2026-07-01 02:00", "2026-07-02 02:00", 64, 1, "2026-06-30", "2026-07-02", "#22c55e"),
+        ("JOB-1002", "订单数据归档", "0 3 * * 0", 2, "300", "5000", true, "running", "2026-06-29 03:00", "2026-07-06 03:00", 28, 1, "2026-06-29", "2026-07-01", "#3b82f6"),
+        ("JOB-1003", "缓存预热", "*/30 * * * *", 8, "60", "500", false, "paused", "2026-06-30 23:30", "—", 100, 3, "2026-06-28", "2026-06-30", "#94a3b8"),
+        ("JOB-1004", "报表快照生成", "0 6 * * *", 1, "180", "1000", true, "failed", "2026-07-01 06:00", "2026-07-02 06:00", 42, 2, "2026-07-01", "2026-07-03", "#ef4444")
     ];
 
     private static void UpsertMetadataValue(

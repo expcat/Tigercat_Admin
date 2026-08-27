@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, Text, Tag, Button, Input, Message } from '@expcat/tigercat-react';
 import { Segmented } from '@expcat/tigercat-react/Segmented';
 import { Switch } from '@expcat/tigercat-react/Switch';
@@ -23,8 +23,20 @@ import type {
 import { PageHeader } from '../components/PageHeader';
 import { MutedPanel } from '../components/PageFragments';
 import { EditIcon, UploadIcon, DownloadIcon } from '../components/Icons';
+import { ApiError } from '../utils/request';
+import {
+  asCategoryKey,
+  asColumnPath,
+  currentEditorBody,
+  fetchArticle,
+  fetchArticles,
+  saveArticle,
+  unwrapArticles,
+  type Article,
+  type ArticleEditorType,
+} from '../utils/content';
 
-type EditorType = 'rich' | 'markdown' | 'code';
+type EditorType = ArticleEditorType;
 
 const EDITOR_OPTIONS = [
   { label: '富文本', value: 'rich' },
@@ -77,6 +89,13 @@ const MENTION_OPTIONS: MentionOption[] = [
   { value: 'carol', label: 'Carol（运营）' },
 ];
 
+const DEFAULT_RICH =
+  '<h2>组件库 v1.6 发布说明</h2><p>本次更新带来内容编辑工作台，支持富文本 / Markdown / 代码三种模式互切。</p>';
+const DEFAULT_MARKDOWN =
+  '# 组件库 v1.6 发布说明\n\n- 新增内容编辑工作台\n- 支持富文本 / Markdown / 代码切换\n- 元数据侧栏：分类、栏目、标签、协作者';
+const DEFAULT_CODE =
+  'export const version = "1.6.0";\n\nexport function release() {\n  return `Tigercat ${version} ready`;\n}';
+
 function columnText(value: CascaderValue): string {
   if (!value.length) return '未选择';
   const labels: string[] = [];
@@ -90,17 +109,17 @@ function columnText(value: CascaderValue): string {
   return labels.join(' / ');
 }
 
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+
 function ContentPage() {
+  const [articleId, setArticleId] = useState('a1');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editorType, setEditorType] = useState<EditorType>('rich');
-  const [richValue, setRichValue] = useState(
-    '<h2>组件库 v1.6 发布说明</h2><p>本次更新带来内容编辑工作台，支持富文本 / Markdown / 代码三种模式互切。</p>',
-  );
-  const [markdownValue, setMarkdownValue] = useState(
-    '# 组件库 v1.6 发布说明\n\n- 新增内容编辑工作台\n- 支持富文本 / Markdown / 代码切换\n- 元数据侧栏：分类、栏目、标签、协作者',
-  );
-  const [codeValue, setCodeValue] = useState(
-    'export const version = "1.6.0";\n\nexport function release() {\n  return `Tigercat ${version} ready`;\n}',
-  );
+  const [richValue, setRichValue] = useState(DEFAULT_RICH);
+  const [markdownValue, setMarkdownValue] = useState(DEFAULT_MARKDOWN);
+  const [codeValue, setCodeValue] = useState(DEFAULT_CODE);
 
   const [title, setTitle] = useState('组件库 v1.6 发布说明');
   const [category, setCategory] = useState<TreeSelectValue>('frontend');
@@ -112,14 +131,90 @@ function ContentPage() {
 
   const currentColumnText = useMemo(() => columnText(column), [column]);
 
-  const saveDraft = () => Message.success({ content: '草稿已保存（演示）', duration: 2200 });
-  const publish = () => {
+  const applyArticle = (article: Article) => {
+    setArticleId(article.id);
+    setTitle(article.title);
+    setEditorType(article.editorType);
+    setTags(article.tags);
+    setCategory(article.category);
+    setColumn(article.column);
+    setPublished(article.published);
+    if (article.editorType === 'markdown') {
+      setMarkdownValue(article.body);
+    } else if (article.editorType === 'code') {
+      setCodeValue(article.body);
+    } else {
+      setRichValue(article.body);
+    }
+  };
+
+  const buildPayload = (nextPublished: boolean) => ({
+    title: title.trim(),
+    editorType,
+    body: currentEditorBody(editorType, richValue, markdownValue, codeValue),
+    tags,
+    category: asCategoryKey(category),
+    column: asColumnPath(column),
+    published: nextPublished,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadArticle = async () => {
+      setLoading(true);
+      try {
+        let article: Article | undefined;
+        try {
+          const payload = await fetchArticle('a1');
+          article = payload.data;
+        } catch (error: unknown) {
+          if (!(error instanceof ApiError) || error.status !== 404) throw error;
+          const list = await fetchArticles();
+          article = unwrapArticles(list.data)[0];
+        }
+        if (!cancelled && article) applyArticle(article);
+      } catch (error: unknown) {
+        if (!cancelled) {
+          Message.error({ content: readErrorMessage(error, '文章加载失败'), duration: 3000 });
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void loadArticle();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const saveDraft = async () => {
+    setSaving(true);
+    try {
+      const payload = await saveArticle(articleId, buildPayload(false));
+      applyArticle(payload.data);
+      Message.success({ content: '草稿已保存', duration: 2200 });
+    } catch (error: unknown) {
+      Message.error({ content: readErrorMessage(error, '草稿保存失败'), duration: 3000 });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const publish = async () => {
     if (!title.trim()) {
       Message.warning({ content: '请先填写内容标题', duration: 2000 });
       return;
     }
-    setPublished(true);
-    Message.success({ content: `《${title.trim()}》已发布（演示）`, duration: 2400 });
+    setSaving(true);
+    try {
+      const payload = await saveArticle(articleId, buildPayload(true));
+      applyArticle(payload.data);
+      Message.success({ content: `《${title.trim()}》已发布`, duration: 2400 });
+    } catch (error: unknown) {
+      Message.error({ content: readErrorMessage(error, '发布失败'), duration: 3000 });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -148,13 +243,13 @@ function ContentPage() {
               </Text>
               <Switch checked={publishNow} onChange={setPublishNow} />
             </div>
-            <Button variant="outline" onClick={saveDraft}>
+            <Button variant="outline" disabled={loading || saving} onClick={() => void saveDraft()}>
               <span className="mr-1 inline-flex align-middle">
                 <DownloadIcon size={16} />
               </span>
               保存草稿
             </Button>
-            <Button onClick={publish}>
+            <Button disabled={loading || saving} onClick={() => void publish()}>
               <span className="mr-1 inline-flex align-middle">
                 <UploadIcon size={16} />
               </span>
@@ -164,7 +259,11 @@ function ContentPage() {
         </div>
       </Card>
 
-      {published ? (
+      {loading && !published ? (
+        <Card>
+          <MutedPanel description="正在加载文章…" />
+        </Card>
+      ) : published ? (
         <Card>
           <Result
             status="success"
@@ -175,7 +274,9 @@ function ContentPage() {
                 <Button variant="outline" onClick={() => setPublished(false)}>
                   继续编辑
                 </Button>
-                <Button onClick={saveDraft}>查看发布记录</Button>
+                <Button disabled={saving} onClick={() => void saveDraft()}>
+                  查看发布记录
+                </Button>
               </div>
             }
           />
@@ -209,7 +310,7 @@ function ContentPage() {
               </Watermark>
               <MutedPanel
                 compact
-                description="水印用于标识草稿状态；发布后正文水印移除（演示）。编辑器内容保存在内存中，刷新后重置。"
+                description="水印用于标识草稿状态；发布后正文水印移除（演示）。标题、正文与分类栏目标签会保存到服务端，刷新后从接口恢复。协作者与附件仍仅本页有效。"
               />
             </div>
           </Card>

@@ -79,6 +79,9 @@ JSON API 默认返回 `ApiResponse<T>`：
 | 评论 | [api/comments.md](api/comments.md) | `/api/comments`（`targetType=ticket\|project`） |
 | 项目 | [api/projects.md](api/projects.md) | `/api/projects`、`/api/projects/{id}` |
 | 日历 | [api/calendar.md](api/calendar.md) | `/api/calendar/events` |
+| 内容文章 | [api/content.md](api/content.md) | `/api/content/articles`、保存草稿 / 发布 |
+| 定时任务 | [api/jobs.md](api/jobs.md) | `/api/jobs`、启停与编辑 |
+| 数据导入 | [api/import.md](api/import.md) | `/api/import-jobs`、进度轮询 |
 | 系统设置 | [api/settings.md](api/settings.md) | `/api/settings` |
 | 媒体资源 | [api/media.md](api/media.md) | `/api/media`、内容读取、删除、孤儿清理 |
 
