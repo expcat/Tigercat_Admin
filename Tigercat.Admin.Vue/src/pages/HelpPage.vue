@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Card, Text, Message } from '@expcat/tigercat-vue'
+import { Kbd } from '@expcat/tigercat-vue/Kbd'
 import { Anchor, AnchorLink } from '@expcat/tigercat-vue/Anchor'
 import { ScrollSpy } from '@expcat/tigercat-vue/ScrollSpy'
 import { Affix } from '@expcat/tigercat-vue/Affix'
@@ -37,10 +38,26 @@ curl -X GET https://api.tigercat.demo/v1/profile \\
   -H "Accept: application/json"`
 
 const SHORTCUTS = [
-  { keys: '⌘ / Ctrl + K', desc: '打开命令面板，快速跳转页面或执行动作' },
-  { keys: 'G 然后 D', desc: '返回仪表盘' },
-  { keys: 'Esc', desc: '关闭当前弹层并恢复焦点' },
-  { keys: '?', desc: '打开本帮助中心' },
+  {
+    key: 'command-palette',
+    combos: [['⌘', 'K'], ['Ctrl', 'K']],
+    desc: '打开命令面板，快速跳转页面或执行动作',
+  },
+  {
+    key: 'goto-dashboard',
+    sequence: ['G', 'D'],
+    desc: '返回仪表盘',
+  },
+  {
+    key: 'escape',
+    combos: [['Esc']],
+    desc: '关闭当前弹层并恢复焦点',
+  },
+  {
+    key: 'help',
+    combos: [['?']],
+    desc: '打开本帮助中心',
+  },
 ]
 
 const FAQ = [
@@ -184,11 +201,36 @@ function submitFeedback() {
                 <tbody>
                   <tr
                     v-for="item in SHORTCUTS"
-                    :key="item.keys"
+                    :key="item.key"
                     class="border-b border-(--tiger-border,#e5e7eb)"
                   >
                     <td class="px-3 py-2">
-                      <Code :code="item.keys" :copyable="false" />
+                      <span
+                        v-if="item.sequence"
+                        class="inline-flex flex-wrap items-center gap-1"
+                      >
+                        <Kbd :keys="item.sequence[0]" size="sm" />
+                        <Text size="sm" color="secondary">然后</Text>
+                        <Kbd :keys="item.sequence[1]" size="sm" />
+                      </span>
+                      <span
+                        v-else
+                        class="inline-flex flex-wrap items-center gap-1"
+                      >
+                        <template
+                          v-for="(combo, index) in item.combos"
+                          :key="combo.join('+')"
+                        >
+                          <Kbd :keys="combo" size="sm" />
+                          <Text
+                            v-if="index < (item.combos?.length ?? 0) - 1"
+                            size="sm"
+                            color="secondary"
+                          >
+                            /
+                          </Text>
+                        </template>
+                      </span>
                     </td>
                     <td class="px-3 py-2">
                       <Text size="sm">{{ item.desc }}</Text>

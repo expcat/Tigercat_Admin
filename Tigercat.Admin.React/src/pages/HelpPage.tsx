@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Card, Text, Message } from '@expcat/tigercat-react';
+import { Kbd } from '@expcat/tigercat-react/Kbd';
 import { Anchor, AnchorLink } from '@expcat/tigercat-react/Anchor';
 import { ScrollSpy } from '@expcat/tigercat-react/ScrollSpy';
 import { Affix } from '@expcat/tigercat-react/Affix';
@@ -40,10 +41,29 @@ curl -X GET https://api.tigercat.demo/v1/profile \\
   -H "Accept: application/json"`;
 
 const SHORTCUTS = [
-  { keys: '⌘ / Ctrl + K', desc: '打开命令面板，快速跳转页面或执行动作' },
-  { keys: 'G 然后 D', desc: '返回仪表盘' },
-  { keys: 'Esc', desc: '关闭当前弹层并恢复焦点' },
-  { keys: '?', desc: '打开本帮助中心' },
+  {
+    key: 'command-palette',
+    combos: [
+      ['⌘', 'K'],
+      ['Ctrl', 'K'],
+    ],
+    desc: '打开命令面板，快速跳转页面或执行动作',
+  },
+  {
+    key: 'goto-dashboard',
+    sequence: ['G', 'D'] as const,
+    desc: '返回仪表盘',
+  },
+  {
+    key: 'escape',
+    combos: [['Esc']],
+    desc: '关闭当前弹层并恢复焦点',
+  },
+  {
+    key: 'help',
+    combos: [['?']],
+    desc: '打开本帮助中心',
+  },
 ];
 
 const FAQ = [
@@ -178,9 +198,32 @@ function HelpPage() {
                   </thead>
                   <tbody>
                     {SHORTCUTS.map((item) => (
-                      <tr key={item.keys} className="border-b border-(--tiger-border,#e5e7eb)">
+                      <tr key={item.key} className="border-b border-(--tiger-border,#e5e7eb)">
                         <td className="px-3 py-2">
-                          <Code code={item.keys} copyable={false} />
+                          {'sequence' in item && item.sequence ? (
+                            <span className="inline-flex flex-wrap items-center gap-1">
+                              <Kbd keys={item.sequence[0]} size="sm" />
+                              <Text size="sm" color="secondary">
+                                然后
+                              </Text>
+                              <Kbd keys={item.sequence[1]} size="sm" />
+                            </span>
+                          ) : (
+                            <span className="inline-flex flex-wrap items-center gap-1">
+                              {item.combos?.map((combo, index) => (
+                                <span
+                                  key={combo.join('+')}
+                                  className="inline-flex items-center gap-1">
+                                  <Kbd keys={combo} size="sm" />
+                                  {index < (item.combos?.length ?? 0) - 1 && (
+                                    <Text size="sm" color="secondary">
+                                      /
+                                    </Text>
+                                  )}
+                                </span>
+                              ))}
+                            </span>
+                          )}
                         </td>
                         <td className="px-3 py-2">
                           <Text size="sm">{item.desc}</Text>

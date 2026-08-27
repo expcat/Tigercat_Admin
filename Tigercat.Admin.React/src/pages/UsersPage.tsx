@@ -1,4 +1,11 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import {
   Avatar,
   DataTableWithToolbar,
@@ -17,6 +24,13 @@ import {
   Message,
   Checkbox,
 } from '@expcat/tigercat-react';
+import {
+  ContextMenu,
+  ContextMenuItem,
+  ContextMenuMenu,
+  ContextMenuSub,
+} from '@expcat/tigercat-react/ContextMenu';
+import { SplitButton } from '@expcat/tigercat-react/SplitButton';
 import { CropUpload } from '@expcat/tigercat-react/CropUpload';
 import type {
   TableColumn,
@@ -188,6 +202,12 @@ function UsersPage() {
   // ---- Permission checks ----
   const canEdit = hasPerm('user:edit');
   const canDelete = hasPerm('user:delete');
+  const canCreate = hasPerm('user:create');
+  const [contextUser, setContextUser] = useState<UserItem | null>(null);
+  const [contextDeleteOpen, setContextDeleteOpen] = useState(false);
+
+  const userRowClassName = (record: UserItem | Record<string, unknown>) =>
+    `js-user-row-${(record as UserItem).id}`;
 
   const persistQuery = useCallback((next: Partial<typeof queryRef.current>) => {
     queryRef.current = { ...queryRef.current, ...next };
@@ -469,6 +489,66 @@ function UsersPage() {
   };
 
   // ---- Modal helpers ----
+  const resolveUserFromEvent = (event: ReactMouseEvent): UserItem | null => {
+    const marked = (event.target as HTMLElement | null)?.closest(
+      '[class*="js-user-row-"]',
+    );
+    if (marked) {
+      const match = Array.from(marked.classList).find((cls) =>
+        cls.startsWith('js-user-row-'),
+      );
+      const id = Number(match?.slice('js-user-row-'.length));
+      if (Number.isFinite(id)) {
+        return users.find((user) => user.id === id) ?? null;
+      }
+    }
+    const row = (event.target as HTMLElement | null)?.closest(
+      '[data-tiger-table-row-index]',
+    );
+    if (row instanceof HTMLElement) {
+      const index = Number(row.dataset.tigerTableRowIndex);
+      if (Number.isFinite(index) && users[index]) {
+        return users[index];
+      }
+    }
+    return null;
+  };
+
+  const onUsersContextMenu = (event: ReactMouseEvent) => {
+    const user = resolveUserFromEvent(event);
+    setContextUser(user);
+    if (!user) {
+      event.stopPropagation();
+    }
+  };
+
+  const editContextUser = () => {
+    if (!contextUser || !canEdit) return;
+    openEditModal(contextUser);
+  };
+
+  const enableContextUser = () => {
+    if (!contextUser || !canEdit) return;
+    handleBatchStatus(0, [contextUser.id]);
+  };
+
+  const disableContextUser = () => {
+    if (!contextUser || !canEdit) return;
+    handleBatchStatus(1, [contextUser.id]);
+  };
+
+  const deleteContextUser = () => {
+    if (!contextUser || !canDelete) return;
+    setContextDeleteOpen(true);
+  };
+
+  const confirmContextDelete = () => {
+    const user = contextUser;
+    setContextDeleteOpen(false);
+    if (!user || !canDelete) return;
+    void handleDelete(user);
+  };
+
   const openCreateModal = () => {
     setEditingId(null);
     setEditingAvatarId(null);
@@ -834,21 +914,28 @@ function UsersPage() {
       />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-        <PermissionGuard code="user:view">
-          <Button variant="outline" onClick={openExportModal}>
-            <span className="flex items-center gap-1">
-              <DownloadIcon size={16} />
-              导出
-            </span>
-          </Button>
-        </PermissionGuard>
+        {!canCreate && (
+          <PermissionGuard code="user:view">
+            <Button variant="outline" onClick={openExportModal}>
+              <span className="flex items-center gap-1">
+                <DownloadIcon size={16} />
+                导出
+              </span>
+            </Button>
+          </PermissionGuard>
+        )}
         <PermissionGuard code="user:create">
-          <Button variant="primary" onClick={openCreateModal}>
+          <SplitButton
+            triggerAriaLabel="更多操作"
+            onClick={openCreateModal}>
             <span className="flex items-center gap-1">
               <UserPlusIcon size={16} />
               新增用户
             </span>
-          </Button>
+            <DropdownMenu>
+              <DropdownItem onClick={openExportModal}>导出</DropdownItem>
+            </DropdownMenu>
+          </SplitButton>
         </PermissionGuard>
       </div>
 
@@ -856,37 +943,70 @@ function UsersPage() {
         {serverPaginationHint}
       </div>
 
-      <DataTableWithToolbar
-        columns={columns as unknown as TableColumn<Record<string, unknown>>[]}
-        dataSource={users as unknown as Record<string, unknown>[]}
-        loading={loading}
-        pagination={paginationConfig}
-        hiddenColumnKeys={hiddenColumnKeys}
-        rowSelection={{
-          selectedRowKeys,
-        }}
-        sort={sortState}
-        columnLockable
-        rowKey="id"
-        hoverable
-        striped
-        responsiveMode="card"
-        cardBreakpoint="md"
-        cardLayout={USER_CARD_LAYOUT}
-        emptyText="暂无用户数据"
-        toolbar={tableToolbar}
-        onSearchChange={handleSearch}
-        onSearch={handleSearch}
-        onFiltersChange={handleToolbarFiltersChange}
-        onPageChange={(current, nextPageSize) =>
-          handlePageChange({ current, pageSize: nextPageSize })
-        }
-        onPageSizeChange={handlePageSizeChange}
-        onSelectionChange={handleSelectionChange}
-        onSortChange={handleSortChange}
-        onBulkAction={handleBulkAction}
-        onHiddenColumnKeysChange={handleHiddenColumnsChange}
-      />
+      <ContextMenu>
+        <div onContextMenuCapture={onUsersContextMenu}>
+          <DataTableWithToolbar
+            columns={columns as unknown as TableColumn<Record<string, unknown>>[]}
+            dataSource={users as unknown as Record<string, unknown>[]}
+            loading={loading}
+            pagination={paginationConfig}
+            hiddenColumnKeys={hiddenColumnKeys}
+            rowSelection={{
+              selectedRowKeys,
+            }}
+            sort={sortState}
+            columnLockable
+            rowKey="id"
+            rowClassName={userRowClassName}
+            cardClassName={userRowClassName}
+            hoverable
+            striped
+            responsiveMode="card"
+            cardBreakpoint="md"
+            cardLayout={USER_CARD_LAYOUT}
+            emptyText="暂无用户数据"
+            toolbar={tableToolbar}
+            onSearchChange={handleSearch}
+            onSearch={handleSearch}
+            onFiltersChange={handleToolbarFiltersChange}
+            onPageChange={(current, nextPageSize) =>
+              handlePageChange({ current, pageSize: nextPageSize })
+            }
+            onPageSizeChange={handlePageSizeChange}
+            onSelectionChange={handleSelectionChange}
+            onSortChange={handleSortChange}
+            onBulkAction={handleBulkAction}
+            onHiddenColumnKeysChange={handleHiddenColumnsChange}
+          />
+        </div>
+        <ContextMenuMenu>
+          <ContextMenuItem
+            disabled={!contextUser || !canEdit}
+            onClick={editContextUser}>
+            编辑
+          </ContextMenuItem>
+          <ContextMenuSub title="启停">
+            <ContextMenuItem
+              disabled={!contextUser || !canEdit || contextUser.status === 0}
+              onClick={enableContextUser}>
+              启用
+            </ContextMenuItem>
+            <ContextMenuItem
+              disabled={!contextUser || !canEdit || contextUser.status === 1}
+              onClick={disableContextUser}>
+              禁用
+            </ContextMenuItem>
+          </ContextMenuSub>
+          {canDelete && (
+            <ContextMenuItem
+              disabled={!contextUser}
+              divided
+              onClick={deleteContextUser}>
+              删除
+            </ContextMenuItem>
+          )}
+        </ContextMenuMenu>
+      </ContextMenu>
 
       {/* Create / Edit Modal */}
       <Modal
@@ -1016,6 +1136,19 @@ function UsersPage() {
           </FormItem>
         </Form>
         </div>
+      </Modal>
+
+      <Modal
+        open={contextDeleteOpen}
+        title="确认删除用户"
+        showDefaultFooter
+        okText="删除"
+        cancelText="取消"
+        onOk={confirmContextDelete}
+        onCancel={() => setContextDeleteOpen(false)}>
+        <p className="p2-text-secondary">
+          将删除用户 {contextUser?.username}，此操作不可撤销。
+        </p>
       </Modal>
 
       {/* Batch Delete Confirm */}

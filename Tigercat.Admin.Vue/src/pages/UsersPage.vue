@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, inject, onMounted, h } from 'vue'
 import { Avatar, DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tooltip, Message, Checkbox } from '@expcat/tigercat-vue'
+import { ContextMenu, ContextMenuItem, ContextMenuMenu, ContextMenuSub } from '@expcat/tigercat-vue/ContextMenu'
+import { SplitButton } from '@expcat/tigercat-vue/SplitButton'
 import { CropUpload } from '@expcat/tigercat-vue/CropUpload'
 import type { TableColumn, TableCardLayoutItem, SortState, TableToolbarFilterValue, TableToolbarAction } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
@@ -15,6 +17,70 @@ import { uploadMediaBlob } from '../utils/media'
 const { has: hasPerm } = usePermission()
 const canEdit = computed(() => hasPerm('user:edit'))
 const canDelete = computed(() => hasPerm('user:delete'))
+const canCreate = computed(() => hasPerm('user:create'))
+const contextUser = ref<UserItem | null>(null)
+const contextDeleteOpen = ref(false)
+
+function userRowClassName(record: UserItem | Record<string, unknown>) {
+  return `js-user-row-${(record as UserItem).id}`
+}
+
+function resolveUserFromEvent(event: MouseEvent): UserItem | null {
+  const marked = (event.target as HTMLElement | null)?.closest('[class*="js-user-row-"]')
+  if (marked) {
+    const match = Array.from(marked.classList).find((cls) => cls.startsWith('js-user-row-'))
+    const id = Number(match?.slice('js-user-row-'.length))
+    if (Number.isFinite(id)) {
+      return users.value.find((user) => user.id === id) ?? null
+    }
+  }
+  const row = (event.target as HTMLElement | null)?.closest('[data-tiger-table-row-index]')
+  if (row instanceof HTMLElement) {
+    const index = Number(row.dataset.tigerTableRowIndex)
+    if (Number.isFinite(index) && users.value[index]) {
+      return users.value[index]
+    }
+  }
+  return null
+}
+
+function onUsersContextMenu(event: MouseEvent) {
+  contextUser.value = resolveUserFromEvent(event)
+  if (!contextUser.value) {
+    event.stopPropagation()
+  }
+}
+
+function editContextUser() {
+  const user = contextUser.value
+  if (!user || !canEdit.value) return
+  openEditModal(user)
+}
+
+function enableContextUser() {
+  const user = contextUser.value
+  if (!user || !canEdit.value) return
+  handleBatchStatus(0, [user.id])
+}
+
+function disableContextUser() {
+  const user = contextUser.value
+  if (!user || !canEdit.value) return
+  handleBatchStatus(1, [user.id])
+}
+
+function deleteContextUser() {
+  const user = contextUser.value
+  if (!user || !canDelete.value) return
+  contextDeleteOpen.value = true
+}
+
+function confirmContextDelete() {
+  const user = contextUser.value
+  contextDeleteOpen.value = false
+  if (!user || !canDelete.value) return
+  void handleDelete(user)
+}
 
 // ---- Session ----
 const session = inject<import('vue').Ref<Session | null>>('session')!
@@ -696,6 +762,7 @@ onMounted(() => {
 
     <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
       <Button
+        v-if="!canCreate"
         v-permission="'user:view'"
         variant="outline"
         @click="openExportModal"
@@ -705,52 +772,88 @@ onMounted(() => {
           导出
         </span>
       </Button>
-      <Button
-        v-permission="'user:create'"
-        variant="primary"
+      <SplitButton
+        v-if="canCreate"
+        trigger-aria-label="更多操作"
         @click="openCreateModal"
       >
         <span class="flex items-center gap-1">
           <Icon name="userPlus" :size="16" />
           新增用户
         </span>
-      </Button>
+        <template #menu>
+          <DropdownItem @click="openExportModal">导出</DropdownItem>
+        </template>
+      </SplitButton>
     </div>
 
     <div class="p2-muted-panel px-4 py-3 text-sm">
       {{ serverPaginationHint }}
     </div>
 
-    <DataTableWithToolbar
-      :columns="columns"
-      :data-source="users as any"
-      :loading="loading"
-      :pagination="paginationConfig"
-      :hidden-column-keys="hiddenColumnKeys"
-      :row-selection="{
-        selectedRowKeys: selectedRowKeys,
-        type: 'checkbox',
-      }"
-      :sort="sortState"
-      column-lockable
-      row-key="id"
-      :hoverable="true"
-      :striped="true"
-      responsive-mode="card"
-      card-breakpoint="md"
-      :card-layout="USER_CARD_LAYOUT"
-      empty-text="暂无用户数据"
-      :toolbar="tableToolbar"
-      @search-change="handleSearch"
-      @search="handleSearch"
-      @filters-change="handleToolbarFiltersChange"
-      @page-change="handlePageChange"
-      @page-size-change="handlePageSizeChange"
-      @selection-change="handleSelectionChange"
-      @sort-change="handleSortChange"
-      @bulk-action="handleBulkAction"
-      @hidden-column-keys-change="handleHiddenColumnsChange"
-    />
+    <ContextMenu>
+      <div @contextmenu.capture="onUsersContextMenu">
+        <DataTableWithToolbar
+          :columns="columns"
+          :data-source="users as any"
+          :loading="loading"
+          :pagination="paginationConfig"
+          :hidden-column-keys="hiddenColumnKeys"
+          :row-selection="{
+            selectedRowKeys: selectedRowKeys,
+            type: 'checkbox',
+          }"
+          :sort="sortState"
+          column-lockable
+          row-key="id"
+          :row-class-name="userRowClassName"
+          :card-class-name="userRowClassName"
+          :hoverable="true"
+          :striped="true"
+          responsive-mode="card"
+          card-breakpoint="md"
+          :card-layout="USER_CARD_LAYOUT"
+          empty-text="暂无用户数据"
+          :toolbar="tableToolbar"
+          @search-change="handleSearch"
+          @search="handleSearch"
+          @filters-change="handleToolbarFiltersChange"
+          @page-change="handlePageChange"
+          @page-size-change="handlePageSizeChange"
+          @selection-change="handleSelectionChange"
+          @sort-change="handleSortChange"
+          @bulk-action="handleBulkAction"
+          @hidden-column-keys-change="handleHiddenColumnsChange"
+        />
+      </div>
+      <ContextMenuMenu>
+        <ContextMenuItem :disabled="!contextUser || !canEdit" @click="editContextUser">
+          编辑
+        </ContextMenuItem>
+        <ContextMenuSub title="启停">
+          <ContextMenuItem
+            :disabled="!contextUser || !canEdit || contextUser.status === 0"
+            @click="enableContextUser"
+          >
+            启用
+          </ContextMenuItem>
+          <ContextMenuItem
+            :disabled="!contextUser || !canEdit || contextUser.status === 1"
+            @click="disableContextUser"
+          >
+            禁用
+          </ContextMenuItem>
+        </ContextMenuSub>
+        <ContextMenuItem
+          v-if="canDelete"
+          :disabled="!contextUser"
+          divided
+          @click="deleteContextUser"
+        >
+          删除
+        </ContextMenuItem>
+      </ContextMenuMenu>
+    </ContextMenu>
 
     <!-- Create / Edit Modal -->
     <Modal
@@ -830,6 +933,20 @@ onMounted(() => {
         </FormItem>
       </Form>
       </div>
+    </Modal>
+
+    <Modal
+      v-model:open="contextDeleteOpen"
+      title="确认删除用户"
+      show-default-footer
+      ok-text="删除"
+      cancel-text="取消"
+      @ok="confirmContextDelete"
+      @cancel="contextDeleteOpen = false"
+    >
+      <p class="p2-text-secondary">
+        将删除用户 {{ contextUser?.username }}，此操作不可撤销。
+      </p>
     </Modal>
 
     <!-- Batch Delete Confirm -->

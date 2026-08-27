@@ -1,10 +1,20 @@
-import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router';
+import {
+  createRouter,
+  createWebHashHistory,
+  createWebHistory,
+  type RouteLocationNormalized,
+} from 'vue-router';
+import { LoadingBar } from '@expcat/tigercat-vue/LoadingBar';
 import {
   SESSION_KEY,
   safeParse,
   createPermissionContext,
   type Session,
 } from '../utils';
+
+function isProtectedRoute(route: RouteLocationNormalized) {
+  return route.matched.some((record) => record.meta.requiresAuth);
+}
 
 const routerMode = import.meta.env.VITE_TIGERCAT_ROUTER_MODE;
 const basePath = import.meta.env.VITE_TIGERCAT_BASE_PATH || '/';
@@ -227,6 +237,12 @@ router.beforeEach(async (to, _from, next) => {
   const requiresPermission = to.matched
     .map((record) => record.meta.requiresPermission)
     .find((code): code is string => typeof code === 'string');
+  const showLoadingBar =
+    isProtectedRoute(to) && to.fullPath !== _from.fullPath;
+
+  if (showLoadingBar) {
+    LoadingBar.start();
+  }
 
   if (requiresAuth && !isAuthed) {
     next({ name: 'login', query: { redirect: to.fullPath } });
@@ -248,6 +264,7 @@ router.beforeEach(async (to, _from, next) => {
       if (_from.matched.length === 0) {
         next({ name: 'dashboard' });
       } else {
+        LoadingBar.finish();
         next(false);
       }
       return;
@@ -259,6 +276,14 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   next();
+});
+
+router.afterEach(() => {
+  LoadingBar.finish();
+});
+
+router.onError(() => {
+  LoadingBar.finish();
 });
 
 export default router;

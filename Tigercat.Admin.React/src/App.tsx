@@ -1,11 +1,15 @@
 import {
+  Component,
   lazy,
   Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
+  type ErrorInfo,
+  type ReactNode,
 } from 'react';
 import {
   Routes,
@@ -23,6 +27,7 @@ import {
   Input,
   Message,
 } from '@expcat/tigercat-react';
+import { LoadingBar, LoadingBarContainer } from '@expcat/tigercat-react/LoadingBar';
 import { MainLayout } from './components/MainLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { GuestRoute } from './components/GuestRoute';
@@ -78,6 +83,8 @@ const AuditLogsPage = lazy(() => import('./pages/AuditLogsPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ExceptionPage = lazy(() => import('./pages/ExceptionPage'));
 
+void LoadingBarContainer;
+
 type MenuKey = ShellPageKey;
 
 const DEFAULT_MENU: MenuKey = 'home';
@@ -89,12 +96,54 @@ type LocationState = {
   returnTo?: string;
 };
 
+const GUEST_PATHS = new Set([
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/register-success',
+]);
+const EXCEPTION_PATHS = new Set(['/403', '/404', '/500']);
+
+function isProtectedAppPath(pathname: string) {
+  return !GUEST_PATHS.has(pathname) && !EXCEPTION_PATHS.has(pathname) && pathname !== '/';
+}
+
 function PageLoader() {
   return (
     <div className="flex items-center justify-center h-full min-h-50">
       <div className="p2-text-secondary">加载中...</div>
     </div>
   );
+}
+
+function RouteLandingFinish({ onReady }: { onReady: () => void }) {
+  const location = useLocation();
+  useEffect(() => {
+    onReady();
+  }, [location.pathname, location.search, onReady]);
+  return null;
+}
+
+class RouteErrorBoundary extends Component<
+  { onError: () => void; children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(_error: Error, _info: ErrorInfo) {
+    this.props.onError();
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <PageLoader />;
+    }
+    return this.props.children;
+  }
 }
 
 function getSafeReturnTo(value: unknown): string {
@@ -150,6 +199,7 @@ interface ProtectedLayoutProps {
   onChangePasswordSubmit: () => void;
   onCloseChangeModal: () => void;
   homeContext: HomeContext;
+  onRouteLanded: () => void;
 }
 
 function ProtectedLayout({
@@ -168,7 +218,10 @@ function ProtectedLayout({
   onChangePasswordSubmit,
   onCloseChangeModal,
   homeContext,
+  onRouteLanded,
 }: ProtectedLayoutProps) {
+  const location = useLocation();
+
   return (
     <MainLayout
       user={user}
@@ -180,9 +233,12 @@ function ProtectedLayout({
       onProfile={onProfile}
       activeMenu={activeMenu}
       onNavigate={onNavigate}>
-      <Suspense fallback={<PageLoader />}>
-        <Outlet context={homeContext} />
-      </Suspense>
+      <RouteErrorBoundary key={location.pathname} onError={onRouteLanded}>
+        <Suspense fallback={<PageLoader />}>
+          <RouteLandingFinish onReady={onRouteLanded} />
+          <Outlet context={homeContext} />
+        </Suspense>
+      </RouteErrorBoundary>
       <Modal
         open={changeOpen}
         title="修改密码"
@@ -220,6 +276,26 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const permission = usePermission();
+  const routeBarStartedRef = useRef(false);
+
+  const finishRouteBar = useCallback(() => {
+    if (routeBarStartedRef.current) {
+      LoadingBar.finish();
+      routeBarStartedRef.current = false;
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    if (isProtectedAppPath(location.pathname)) {
+      LoadingBar.start();
+      routeBarStartedRef.current = true;
+    } else {
+      finishRouteBar();
+    }
+    return () => {
+      finishRouteBar();
+    };
+  }, [location.pathname, location.search, finishRouteBar]);
 
   const [changeForm, setChangeForm] = useState<ChangePasswordForm>({
     oldPassword: '',
@@ -429,7 +505,9 @@ function App() {
   );
 
   return (
-    <Routes>
+    <>
+      <div id="tiger-loading-bar-container-root" />
+      <Routes>
       <Route element={<GuestRoute />}>
         <Route
           path="/login"
@@ -484,6 +562,7 @@ function App() {
               onChangePasswordSubmit={handleChangePassword}
               onCloseChangeModal={handleCloseChangeModal}
               homeContext={homeContext}
+              onRouteLanded={finishRouteBar}
             />
           }>
           <Route path="/dashboard" element={<HomePage />} />
@@ -543,6 +622,7 @@ function App() {
       />
       <Route path="*" element={<Navigate to="/404" replace />} />
     </Routes>
+    </>
   );
 }
 

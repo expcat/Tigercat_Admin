@@ -1,8 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import {
   Button,
   Card,
   Checkbox,
+  DropdownItem,
+  DropdownMenu,
   Message,
   Modal,
   Select,
@@ -10,7 +20,13 @@ import {
   Text,
 } from '@expcat/tigercat-react';
 import { FileManager } from '@expcat/tigercat-react/FileManager';
-import { Upload } from '@expcat/tigercat-react/Upload';
+import {
+  ContextMenu,
+  ContextMenuItem,
+  ContextMenuMenu,
+  ContextMenuSub,
+} from '@expcat/tigercat-react/ContextMenu';
+import { SplitButton } from '@expcat/tigercat-react/SplitButton';
 import type { FileItem, UploadRequestOptions } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { ClipboardIcon, FileTextIcon, LinkIcon, UploadIcon } from '../components/Icons';
@@ -24,6 +40,9 @@ import { appText } from '../utils/tigercatText';
 // FileManager 的搜索框占位符走 common.searchPlaceholder，而 appText 未覆盖该字段（回退英文 "Search"）。
 // 用 v1.5.0 新增的逐组件 locale 覆盖补齐为中文（在 ConfigProvider locale 之上合并）。
 const FILE_MANAGER_LOCALE = { common: { ...appText.common, searchPlaceholder: '搜索' } };
+
+const FILE_UPLOAD_ACCEPT = 'image/*,.pdf,.txt,.csv,.json,.xlsx,.xls';
+const FILE_UPLOAD_MAX_SIZE = 10 * 1024 * 1024;
 
 const TYPE_OPTIONS = [
   { label: '全部类型', value: '' },
@@ -100,6 +119,8 @@ function FilesPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<MediaDetail | null>(null);
+  const [contextFile, setContextFile] = useState<MediaItem | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -155,17 +176,22 @@ function FilesPage() {
     }
   };
 
-  const openDeleteModal = async () => {
+  const openDeleteModal = async (ids?: number[]) => {
+    const targetIds = ids && ids.length > 0 ? ids : selectedIds;
     setForceDelete(false);
     setDeleteReferences([]);
     setDeleteOpen(true);
 
     try {
-      const details = await Promise.all(selectedIds.map((id) => getMediaDetail(id)));
+      const details = await Promise.all(targetIds.map((id) => getMediaDetail(id)));
       setDeleteReferences(details.flatMap((res) => res.data.references));
     } catch {
       setDeleteReferences([]);
     }
+  };
+
+  const openUrl = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const copyUrl = async (url: string) => {
@@ -220,6 +246,75 @@ function FilesPage() {
     saveWorkbenchState('files', { selectedRowKeys: keys });
   };
 
+  const resolveFileFromEvent = (event: ReactMouseEvent): MediaItem | null => {
+    const option = (event.target as HTMLElement | null)?.closest('[role="option"]');
+    if (!(option instanceof HTMLElement)) return null;
+    const name = option.querySelector('.truncate')?.textContent?.trim();
+    if (name) {
+      const matches = items.filter((item) => item.originalFileName === name);
+      if (matches.length === 1) return matches[0];
+    }
+    const index = Number(option.dataset.optionIndex);
+    const file = Number.isFinite(index) ? files[index] : undefined;
+    if (!file) {
+      return name
+        ? items.find((item) => item.originalFileName === name) ?? null
+        : null;
+    }
+    return items.find((item) => item.id === Number(file.key)) ?? null;
+  };
+
+  const onFilesContextMenu = (event: ReactMouseEvent) => {
+    const file = resolveFileFromEvent(event);
+    setContextFile(file);
+    if (!file) {
+      event.stopPropagation();
+    }
+  };
+
+  const previewContextFile = () => {
+    if (!contextFile) return;
+    void openDetail(contextFile.id);
+  };
+
+  const openContextFile = () => {
+    if (!contextFile) return;
+    openUrl(contextFile.url);
+  };
+
+  const copyContextFileUrl = () => {
+    if (!contextFile) return;
+    void copyUrl(contextFile.url);
+  };
+
+  const deleteContextFile = async () => {
+    if (!contextFile || !canDelete) return;
+    const ids = [contextFile.id];
+    setSelectedKeys(ids);
+    saveWorkbenchState('files', { selectedRowKeys: ids });
+    await openDeleteModal(ids);
+  };
+
+  const triggerFilePick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileInputChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (file.size > FILE_UPLOAD_MAX_SIZE) {
+      Message.error({ content: '文件超过 10 MB 上限', duration: 3000 });
+      return;
+    }
+    await handleUpload({
+      file,
+      onProgress() {},
+      onSuccess() {},
+      onError() {},
+    });
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -258,44 +353,83 @@ function FilesPage() {
                 variant="outline"
                 danger
                 disabled={selectedIds.length === 0}
-                onClick={openDeleteModal}>
+                onClick={() => {
+                  void openDeleteModal();
+                }}>
                 删除选中
               </Button>
             )}
             {canUpload && (
-              <Upload
-                accept="image/*,.pdf,.txt,.csv,.json,.xlsx,.xls"
-                showFileList={false}
-                maxSize={10 * 1024 * 1024}
-                customRequest={handleUpload}>
-                <span className="flex items-center gap-1">
-                  <UploadIcon size={16} />
-                  上传文件
-                </span>
-              </Upload>
+              <>
+                <SplitButton
+                  triggerAriaLabel="更多操作"
+                  onClick={triggerFilePick}>
+                  <span className="flex items-center gap-1">
+                    <UploadIcon size={16} />
+                    上传文件
+                  </span>
+                  <DropdownMenu>
+                    <DropdownItem onClick={triggerFilePick}>选择文件</DropdownItem>
+                  </DropdownMenu>
+                </SplitButton>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept={FILE_UPLOAD_ACCEPT}
+                  onChange={handleFileInputChange}
+                />
+              </>
             )}
           </div>
         </div>
 
-        <FileManager
-          files={files}
-          viewMode="list"
-          multiple
-          searchable
-          loading={loading}
-          selectedKeys={selectedKeys}
-          searchText={searchText}
-          locale={FILE_MANAGER_LOCALE}
-          emptyText="暂无媒体资源"
-          onSelectedKeysChange={handleSelectedKeysChange}
-          onSearchTextChange={handleSearchTextChange}
-          onOpen={(item) => {
-            const id = Number(item.key);
-            if (Number.isFinite(id)) {
-              openDetail(id);
-            }
-          }}
-        />
+        <ContextMenu>
+          <div onContextMenuCapture={onFilesContextMenu}>
+            <FileManager
+              files={files}
+              viewMode="list"
+              multiple
+              searchable
+              loading={loading}
+              selectedKeys={selectedKeys}
+              searchText={searchText}
+              locale={FILE_MANAGER_LOCALE}
+              emptyText="暂无媒体资源"
+              onSelectedKeysChange={handleSelectedKeysChange}
+              onSearchTextChange={handleSearchTextChange}
+              onOpen={(item) => {
+                const id = Number(item.key);
+                if (Number.isFinite(id)) {
+                  openDetail(id);
+                }
+              }}
+            />
+          </div>
+          <ContextMenuMenu>
+            <ContextMenuItem disabled={!contextFile} onClick={previewContextFile}>
+              预览
+            </ContextMenuItem>
+            <ContextMenuSub title="打开">
+              <ContextMenuItem disabled={!contextFile} onClick={openContextFile}>
+                在新窗口打开
+              </ContextMenuItem>
+              <ContextMenuItem disabled={!contextFile} onClick={copyContextFileUrl}>
+                复制 URL
+              </ContextMenuItem>
+            </ContextMenuSub>
+            {canDelete && (
+              <ContextMenuItem
+                disabled={!contextFile}
+                divided
+                onClick={() => {
+                  void deleteContextFile();
+                }}>
+                删除
+              </ContextMenuItem>
+            )}
+          </ContextMenuMenu>
+        </ContextMenu>
 
         <div className="p2-text-secondary mt-3 text-sm">
           <Text size="sm" color="secondary">
@@ -374,7 +508,7 @@ function FilesPage() {
               <Button variant="outline" onClick={() => copyUrl(detail.url)}>
                 <span className="flex items-center gap-1"><ClipboardIcon size={16} />复制 URL</span>
               </Button>
-              <Button variant="outline" onClick={() => window.open(detail.url, '_blank', 'noopener,noreferrer')}>
+              <Button variant="outline" onClick={() => openUrl(detail.url)}>
                 <span className="flex items-center gap-1"><LinkIcon size={16} />打开资源</span>
               </Button>
             </div>

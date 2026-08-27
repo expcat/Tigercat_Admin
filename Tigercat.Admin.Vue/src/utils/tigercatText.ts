@@ -76,4 +76,9 @@ export const appText = defineText({
     removeTagLabel: '移除 {tag}',
     clearAllLabel: '清空全部标签',
   },
+  upload: {
+    selectFileText: '选择文件',
+    clickToUploadText: '上传文件',
+    buttonAriaLabel: '上传文件',
+  },
 })
