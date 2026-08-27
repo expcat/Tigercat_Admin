@@ -8,19 +8,22 @@ import {
   Input,
   Message,
 } from '@expcat/tigercat-react';
-import { InputGroup, InputGroupAddon } from '@expcat/tigercat-react/InputGroup';
 import { Result } from '@expcat/tigercat-react/Result';
 import { Steps, StepsItem } from '@expcat/tigercat-react/Steps';
 import { Countdown } from '@expcat/tigercat-react/Countdown';
-import { apiRequest } from '../utils';
+import { InputOTP } from '@expcat/tigercat-react/InputOTP';
+import { MaskInput } from '@expcat/tigercat-react/MaskInput';
+import {
+  apiRequest,
+  detectForgotChannel,
+  isPhoneIdentity,
+  OTP_LENGTH,
+  OTP_RESEND_MS,
+  PHONE_MASK,
+} from '../utils';
 import { LogoIcon } from '../components/Icons';
 
-type ForgotChannel = 'email' | 'phone';
 type ForgotStep = 0 | 1 | 2;
-
-function detectChannel(target: string): ForgotChannel {
-  return target.includes('@') ? 'email' : 'phone';
-}
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -31,32 +34,36 @@ function ForgotPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [confirmError, setConfirmError] = useState('');
+  const [targetError, setTargetError] = useState('');
+  const [codeError, setCodeError] = useState('');
   const [loading, setLoading] = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
   const [codeDeadline, setCodeDeadline] = useState<number | null>(null);
   const [canResend, setCanResend] = useState(true);
   const [sentTo, setSentTo] = useState('');
+  const usePhoneMask = isPhoneIdentity(target);
 
   const goToLogin = () => navigate('/login');
 
-  const requestCode = async () => {
+  const sendCode = async () => {
     const nextTarget = target.trim();
     if (!nextTarget) {
-      Message.warning({ content: '请输入邮箱或手机号', duration: 2000 });
+      setTargetError('请输入邮箱或手机号');
       return;
     }
+    setTargetError('');
     setCodeLoading(true);
     try {
       const payload = await apiRequest<{ sentTo?: string }>('/api/auth/forgot-password/code', {
         method: 'POST',
         body: JSON.stringify({
-          channel: detectChannel(nextTarget),
+          channel: detectForgotChannel(nextTarget),
           target: nextTarget,
         }),
       });
       setSentTo(payload?.data?.sentTo || nextTarget);
       setCanResend(false);
-      setCodeDeadline(Date.now() + 60_000);
+      setCodeDeadline(Date.now() + OTP_RESEND_MS);
       Message.success({ content: '验证码已发送', duration: 2000 });
     } catch (error: any) {
       Message.error({ content: error.message, duration: 3000 });
@@ -65,15 +72,17 @@ function ForgotPasswordPage() {
     }
   };
 
-  const handleVerifyIdentity = () => {
+  const submitIdentity = () => {
     if (!target.trim()) {
-      Message.warning({ content: '请输入邮箱或手机号', duration: 2000 });
+      setTargetError('请输入邮箱或手机号');
       return;
     }
+    setTargetError('');
     if (!code.trim()) {
-      Message.warning({ content: '请输入验证码', duration: 2000 });
+      setCodeError('请输入验证码');
       return;
     }
+    setCodeError('');
     if (!sentTo) {
       Message.warning({ content: '请先获取验证码', duration: 2000 });
       return;
@@ -98,14 +107,14 @@ function ForgotPasswordPage() {
     return valid;
   };
 
-  const handleResetPassword = async () => {
+  const submitPassword = async () => {
     if (!validatePasswords()) return;
     setLoading(true);
     try {
       await apiRequest('/api/auth/forgot-password', {
         method: 'POST',
         body: JSON.stringify({
-          channel: detectChannel(target.trim()),
+          channel: detectForgotChannel(target.trim()),
           target: target.trim(),
           code: code.trim(),
           password,
@@ -186,45 +195,77 @@ function ForgotPasswordPage() {
           {current === 0 && (
             <Form model={{ target, code }} labelWidth={88}>
               <FormItem name="target" label="账号">
-                <Input
-                  value={target}
-                  placeholder="请输入邮箱或手机号"
-                  onChange={(value) => setTarget(typeof value === 'string' ? value : value.target.value)}
-                />
+                {usePhoneMask ? (
+                  <div data-testid="forgot-phone-mask">
+                    <MaskInput
+                      value={target}
+                      mask={PHONE_MASK}
+                      placeholder="请输入邮箱或手机号"
+                      status={targetError ? 'error' : undefined}
+                      errorMessage={targetError}
+                      onChange={(value) => {
+                        setTarget(value);
+                        if (targetError) setTargetError('');
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <Input
+                    value={target}
+                    placeholder="请输入邮箱或手机号"
+                    status={targetError ? 'error' : undefined}
+                    errorMessage={targetError}
+                    onChange={(value) => {
+                      const next = typeof value === 'string' ? value : value.target.value;
+                      setTarget(next);
+                      if (targetError) setTargetError('');
+                    }}
+                  />
+                )}
               </FormItem>
               <FormItem name="code" label="验证码">
-                <InputGroup>
-                  <Input
-                    value={code}
-                    placeholder="请输入验证码"
-                    onChange={(value) => setCode(typeof value === 'string' ? value : value.target.value)}
-                  />
-                  <InputGroupAddon>
+                <div className="flex flex-col gap-3">
+                  <div data-testid="auth-otp-input" className="flex justify-center sm:justify-start">
+                    <InputOTP
+                      value={code}
+                      length={OTP_LENGTH}
+                      type="numeric"
+                      ariaLabel="验证码"
+                      status={codeError ? 'error' : undefined}
+                      errorMessage={codeError}
+                      onChange={(value) => {
+                        setCode(value);
+                        if (codeError) setCodeError('');
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 min-h-8">
                     {codeDeadline && !canResend ? (
                       <Countdown
                         value={codeDeadline}
                         format="s"
-                        suffix="s"
+                        suffix="秒"
                         onFinish={() => setCanResend(true)}
                       />
                     ) : (
-                      <button
-                        type="button"
-                        className="whitespace-nowrap text-sm font-medium text-[var(--tiger-primary,#0d9488)] disabled:opacity-50"
-                        disabled={codeLoading}
-                        onClick={requestCode}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        loading={codeLoading}
+                        htmlType="button"
+                        onClick={sendCode}
                       >
-                        {codeLoading ? '发送中' : '获取验证码'}
-                      </button>
+                        获取验证码
+                      </Button>
                     )}
-                  </InputGroupAddon>
-                </InputGroup>
+                  </div>
+                </div>
               </FormItem>
               {sentTo ? (
                 <p className="p2-text-secondary mb-3 text-xs">验证码已发送至 {sentTo}</p>
               ) : null}
               <div className="mt-6 flex flex-col gap-3">
-                <Button variant="primary" block htmlType="button" onClick={handleVerifyIdentity}>
+                <Button variant="primary" block htmlType="button" onClick={submitIdentity}>
                   下一步
                 </Button>
                 <div className="text-center">
@@ -267,7 +308,7 @@ function ForgotPasswordPage() {
                 />
               </FormItem>
               <div className="mt-6 flex flex-col gap-3">
-                <Button variant="primary" block loading={loading} htmlType="button" onClick={handleResetPassword}>
+                <Button variant="primary" block loading={loading} htmlType="button" onClick={submitPassword}>
                   重置密码
                 </Button>
                 <Button variant="outline" block htmlType="button" onClick={() => setCurrent(0)}>

@@ -1,5 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { Alert, Card, Text, Tag } from '@expcat/tigercat-react';
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuTrigger,
+} from '@expcat/tigercat-react/NavigationMenu';
 import type { TagVariant } from '@expcat/tigercat-core';
 import { apiRequest } from '../utils';
 import {
@@ -81,6 +88,33 @@ const getFriendlyErrorMessage = (error: unknown) => {
   }
   return '服务信息加载失败，请稍后重试。';
 };
+
+const ABOUT_SECTIONS = [
+  {
+    key: 'info',
+    href: '#about-info',
+    label: '服务信息',
+    description: '查看服务名称、版本与连接状态',
+  },
+  {
+    key: 'features',
+    href: '#about-features',
+    label: '特性',
+    description: '浏览产品亮点与体验说明',
+  },
+  {
+    key: 'stack',
+    href: '#about-stack',
+    label: '技术栈',
+    description: '了解前端、构建与 UI 组件',
+  },
+] as const;
+
+function scrollToAboutSection(event: ReactMouseEvent, href: string) {
+  event.preventDefault();
+  const id = href.replace('#', '');
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 function AboutPage() {
   const [info, setInfo] = useState<InfoResponse | null>(null);
@@ -175,6 +209,21 @@ function AboutPage() {
         ]}
       />
 
+      <NavigationMenu className="min-w-0 overflow-x-auto">
+        {ABOUT_SECTIONS.map((section) => (
+          <NavigationMenuItem key={section.key} value={section.key}>
+            <NavigationMenuTrigger>{section.label}</NavigationMenuTrigger>
+            <NavigationMenuContent>
+              <NavigationMenuLink
+                href={section.href}
+                onClick={(event) => scrollToAboutSection(event, section.href)}>
+                {section.description}
+              </NavigationMenuLink>
+            </NavigationMenuContent>
+          </NavigationMenuItem>
+        ))}
+      </NavigationMenu>
+
       {errorMessage && (
         <Alert
           type="error"
@@ -185,6 +234,7 @@ function AboutPage() {
         />
       )}
 
+      <div id="about-info">
       <Card title="服务概览">
         {loading ? (
           <div className="flex items-center justify-center py-10">
@@ -215,7 +265,9 @@ function AboutPage() {
           </div>
         )}
       </Card>
+      </div>
 
+      <div id="about-features">
       <Card title="产品亮点">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {highlights.map((item) => (
@@ -237,7 +289,9 @@ function AboutPage() {
           ))}
         </div>
       </Card>
+      </div>
 
+      <div id="about-stack">
       <Card title="技术栈">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {techStack.map((item) => (
@@ -260,6 +314,7 @@ function AboutPage() {
           ))}
         </div>
       </Card>
+      </div>
 
       <Card title="系统信息">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -3,17 +3,24 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, Card, Form, FormItem, Input, Message } from '@expcat/tigercat-vue'
 import { Steps, StepsItem } from '@expcat/tigercat-vue/Steps'
-import { InputGroup, InputGroupAddon } from '@expcat/tigercat-vue/InputGroup'
 import { Result } from '@expcat/tigercat-vue/Result'
 import { Countdown } from '@expcat/tigercat-vue/Countdown'
-import { apiRequest } from '../utils'
+import { InputOTP } from '@expcat/tigercat-vue/InputOTP'
+import { MaskInput } from '@expcat/tigercat-vue/MaskInput'
+import {
+  apiRequest,
+  detectForgotChannel,
+  isPhoneIdentity,
+  OTP_LENGTH,
+  OTP_RESEND_MS,
+  PHONE_MASK,
+} from '../utils'
 import AppLogo from '../components/AppLogo.vue'
-
-type ForgotChannel = 'email' | 'phone'
 
 const router = useRouter()
 const current = ref(0)
 const loading = ref(false)
+const codeLoading = ref(false)
 const target = ref('')
 const code = ref('')
 const password = ref('')
@@ -23,19 +30,15 @@ const targetError = ref('')
 const codeError = ref('')
 const passwordError = ref('')
 const confirmError = ref('')
-const resendUntil = ref(0)
+const canResend = ref(true)
+const codeDeadline = ref<number | null>(null)
 
-const channel = computed<ForgotChannel>(() => {
-  const value = target.value.trim()
-  return value.includes('@') ? 'email' : 'phone'
-})
+const usePhoneMask = computed(() => isPhoneIdentity(target.value))
+const channel = computed(() => detectForgotChannel(target.value.trim()))
 
 function startResendCountdown() {
-  resendUntil.value = Date.now() + 60_000
-}
-
-function handleResendFinish() {
-  resendUntil.value = 0
+  canResend.value = false
+  codeDeadline.value = Date.now() + OTP_RESEND_MS
 }
 
 function validateIdentity(): boolean {
@@ -77,7 +80,7 @@ function validatePasswords(): boolean {
 
 async function sendCode() {
   if (!validateIdentity()) return
-  loading.value = true
+  codeLoading.value = true
   try {
     const payload = await apiRequest<{ sentTo: string }>('/api/auth/forgot-password/code', {
       method: 'POST',
@@ -98,7 +101,7 @@ async function sendCode() {
       duration: 3000,
     })
   } finally {
-    loading.value = false
+    codeLoading.value = false
   }
 }
 
@@ -203,7 +206,18 @@ function goToLogin() {
 
         <Form v-if="current === 0" :label-width="88">
           <FormItem label="账号">
+            <div v-if="usePhoneMask" data-testid="forgot-phone-mask">
+              <MaskInput
+                :model-value="target"
+                :mask="PHONE_MASK"
+                placeholder="请输入邮箱或手机号"
+                :status="targetError ? 'error' : undefined"
+                :error-message="targetError"
+                @update:model-value="(val: string) => { target = val; targetError = '' }"
+              />
+            </div>
             <Input
+              v-else
               :model-value="target"
               placeholder="请输入邮箱或手机号"
               :status="targetError ? 'error' : undefined"
@@ -212,20 +226,24 @@ function goToLogin() {
             />
           </FormItem>
           <FormItem label="验证码">
-            <InputGroup class="w-full min-w-0">
-              <Input
-                :model-value="code"
-                placeholder="请输入验证码"
-                :status="codeError ? 'error' : undefined"
-                :error-message="codeError"
-                @update:model-value="(val: string) => { code = val; codeError = '' }"
-              />
-              <InputGroupAddon>
+            <div class="flex flex-col gap-3">
+              <div data-testid="auth-otp-input" class="flex justify-center sm:justify-start">
+                <InputOTP
+                  :model-value="code"
+                  :length="OTP_LENGTH"
+                  type="numeric"
+                  aria-label="验证码"
+                  :status="codeError ? 'error' : undefined"
+                  :error-message="codeError"
+                  @update:model-value="(val: string) => { code = val; codeError = '' }"
+                />
+              </div>
+              <div class="flex items-center gap-3 min-h-8">
                 <Button
-                  v-if="resendUntil <= 0"
+                  v-if="canResend || !codeDeadline"
                   variant="outline"
                   size="sm"
-                  :loading="loading"
+                  :loading="codeLoading"
                   html-type="button"
                   @click="sendCode"
                 >
@@ -233,14 +251,14 @@ function goToLogin() {
                 </Button>
                 <Countdown
                   v-else
-                  :value="resendUntil"
+                  :value="codeDeadline"
                   format="s"
                   suffix="秒"
                   size="sm"
-                  @finish="handleResendFinish"
+                  @finish="canResend = true"
                 />
-              </InputGroupAddon>
-            </InputGroup>
+              </div>
+            </div>
           </FormItem>
           <div class="mt-8 flex flex-col gap-3">
             <Button variant="primary" block html-type="button" @click="submitIdentity">下一步</Button>

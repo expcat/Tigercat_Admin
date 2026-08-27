@@ -8,13 +8,28 @@ import { Watermark } from '@expcat/tigercat-vue/Watermark'
 import { QRCode } from '@expcat/tigercat-vue/QRCode'
 import { Result } from '@expcat/tigercat-vue/Result'
 import { Divider } from '@expcat/tigercat-vue/Divider'
+import { DataExport } from '@expcat/tigercat-vue/DataExport'
+import { CheckboxGroup } from '@expcat/tigercat-vue/CheckboxGroup'
+import { Checkbox } from '@expcat/tigercat-vue/Checkbox'
 import type { SegmentedOption, DescriptionsItem } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import PageActionPanel from '../components/PageActionPanel.vue'
 import MutedPanel from '../components/MutedPanel.vue'
 import Icon from '../components/Icon.vue'
-
-type ReportType = 'daily' | 'weekly' | 'monthly'
+import { getAuthHeaders } from '../utils'
+import {
+  DATA_EXPORT_PLACEHOLDER_ROWS,
+  DATA_EXPORT_TRIGGER_FORMATS,
+  EXPORT_FORMAT_LABELS,
+  EXPORT_FORMATS,
+  REPORT_EXPORT_FIELDS,
+  exportReports,
+  handleDataExportError,
+  skipClientDataExport,
+  toExportColumns,
+  type ExportFormat,
+} from '../utils/export'
+import type { ReportType } from '../utils/types'
 
 interface ReportMeta {
   title: string
@@ -96,6 +111,35 @@ function setReportType(value: string | number) {
   reportType.value = value as ReportType
 }
 
+const exportFields = ref<string[]>(REPORT_EXPORT_FIELDS.map((field) => field.key))
+const exporting = ref(false)
+const exportColumns = computed(() => toExportColumns(REPORT_EXPORT_FIELDS))
+
+function setExportFields(value: unknown) {
+  exportFields.value = Array.isArray(value) ? value.map(String) : []
+}
+
+async function onExport(format: ExportFormat) {
+  if (exportFields.value.length === 0) {
+    Message.error({ content: '请至少选择一个导出字段', duration: 3000 })
+    return
+  }
+  exporting.value = true
+  try {
+    await exportReports({
+      type: reportType.value,
+      format,
+      fields: exportFields.value,
+      headers: getAuthHeaders(),
+    })
+    Message.success({ content: '导出成功', duration: 3000 })
+  } catch (error: unknown) {
+    Message.error({ content: error instanceof Error ? error.message : '导出失败', duration: 3000 })
+  } finally {
+    exporting.value = false
+  }
+}
+
 function handlePrint() {
   Message.info({ content: '正在调起浏览器打印（可另存为 PDF）', duration: 1800 })
   window.setTimeout(() => window.print(), 300)
@@ -128,6 +172,31 @@ function handlePrint() {
           <Icon name="download" :size="16" class="mr-1" />
           打印
         </Button>
+        <DataExport
+          v-for="format in EXPORT_FORMATS"
+          :key="format"
+          :columns="exportColumns"
+          :data-source="DATA_EXPORT_PLACEHOLDER_ROWS"
+          :formats="DATA_EXPORT_TRIGGER_FORMATS"
+          file-name="reports"
+          :labels="{
+            xlsxText: EXPORT_FORMAT_LABELS[format],
+            exportingText: '导出中...',
+            triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
+          }"
+          :disabled="exporting"
+          :cell-formatter="skipClientDataExport"
+          @error="(error: unknown) => handleDataExportError(error, format, onExport, (message) => Message.error({ content: message, duration: 3000 }))"
+        />
+        <CheckboxGroup
+          :model-value="exportFields"
+          class-name="flex w-full flex-wrap gap-x-4 gap-y-2 sm:w-auto"
+          @update:model-value="setExportFields"
+        >
+          <Checkbox v-for="field in REPORT_EXPORT_FIELDS" :key="field.key" :value="field.key">
+            {{ field.label }}
+          </Checkbox>
+        </CheckboxGroup>
       </template>
     </PageActionPanel>
 

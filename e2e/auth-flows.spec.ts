@@ -10,9 +10,12 @@ async function suppressTour(page: import('@playwright/test').Page) {
   });
 }
 
-async function inputOtpCode(page: import('@playwright/test').Page, code: string) {
-  for (const digit of code.split('')) {
-    await page.locator(`[data-key="${digit}"]`).click();
+async function fillOtp(page: import('@playwright/test').Page, code: string, testId = 'auth-otp-input') {
+  const root = page.getByTestId(testId);
+  await expect(root).toBeVisible();
+  const slots = root.locator('input:not([type="hidden"])');
+  for (let index = 0; index < code.length; index += 1) {
+    await slots.nth(index).fill(code[index]);
   }
 }
 
@@ -29,10 +32,10 @@ test.describe('登录流程增强（忘记密码 / 两步验证 / 注册成功�
     await expect(page.getByText('演示验证码：123456')).toBeVisible();
 
     // 长度不足时「验证」禁用，双端一致阻断提交。
-    await inputOtpCode(page, '12345');
+    await fillOtp(page, '12345');
     await expect(page.getByRole('button', { name: '验证', exact: true })).toBeDisabled();
 
-    await inputOtpCode(page, '6');
+    await fillOtp(page, '123456');
     await expect(page.getByRole('button', { name: '验证', exact: true })).toBeEnabled();
     await page.getByRole('button', { name: '验证', exact: true }).click();
 
@@ -51,9 +54,13 @@ test.describe('登录流程增强（忘记密码 / 两步验证 / 注册成功�
     await page.getByRole('button', { name: '忘记密码？' }).click();
     await expect(page.getByPlaceholder('请输入邮箱或手机号')).toBeVisible();
 
+    await page.getByPlaceholder('请输入邮箱或手机号').fill('13800138000');
+    await expect(page.getByTestId('forgot-phone-mask')).toBeVisible();
+    await page.getByPlaceholder('请输入邮箱或手机号').fill('');
+
     await page.getByPlaceholder('请输入邮箱或手机号').fill('demo@tigercat.local');
     await page.getByRole('button', { name: '获取验证码' }).click();
-    await page.getByPlaceholder('请输入验证码').fill('123456');
+    await fillOtp(page, '123456');
     await page.getByRole('button', { name: '下一步' }).click();
 
     await page.getByPlaceholder('请输入新密码').fill('demo-new-123');

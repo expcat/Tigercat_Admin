@@ -20,6 +20,17 @@ public class AdminDbContext : DbContext
     public DbSet<MediaReferenceEntity> MediaReferences => Set<MediaReferenceEntity>();
     public DbSet<AdminNotificationEntity> AdminNotifications => Set<AdminNotificationEntity>();
     public DbSet<AdminTaskEntity> AdminTasks => Set<AdminTaskEntity>();
+    public DbSet<TicketEntity> Tickets => Set<TicketEntity>();
+    public DbSet<TicketMessageEntity> TicketMessages => Set<TicketMessageEntity>();
+    public DbSet<ChatMessageEntity> ChatMessages => Set<ChatMessageEntity>();
+    public DbSet<CommentEntity> Comments => Set<CommentEntity>();
+    public DbSet<ProjectEntity> Projects => Set<ProjectEntity>();
+    public DbSet<ProjectMemberEntity> ProjectMembers => Set<ProjectMemberEntity>();
+    public DbSet<ProjectActivityEntity> ProjectActivities => Set<ProjectActivityEntity>();
+    public DbSet<CalendarEventEntity> CalendarEvents => Set<CalendarEventEntity>();
+    public DbSet<ContentArticleEntity> ContentArticles => Set<ContentArticleEntity>();
+    public DbSet<JobEntity> Jobs => Set<JobEntity>();
+    public DbSet<ImportJobEntity> ImportJobs => Set<ImportJobEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +45,7 @@ public class AdminDbContext : DbContext
             entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(128);
             entity.Property(e => e.DisplayName).HasMaxLength(100);
             entity.Property(e => e.Status).HasConversion<int>();
+            entity.Property(e => e.TwoFactorEnabled).HasDefaultValue(false);
             entity.HasOne(e => e.AvatarMedia)
                 .WithMany()
                 .HasForeignKey(e => e.AvatarMediaId)
@@ -167,6 +179,170 @@ public class AdminDbContext : DbContext
             entity.Property(e => e.BlockedReason).HasMaxLength(500);
             entity.Property(e => e.CompletionNote).HasMaxLength(500);
             entity.Property(e => e.CreatedBy).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<TicketEntity>(entity =>
+        {
+            entity.ToTable("Tickets");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => new { e.Status, e.UpdatedAt });
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(120);
+            entity.Property(e => e.Requester).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.Category).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.Priority).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Description).IsRequired().HasMaxLength(2000);
+            entity.HasMany(e => e.Messages)
+                .WithOne(m => m.Ticket)
+                .HasForeignKey(m => m.TicketId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TicketMessageEntity>(entity =>
+        {
+            entity.ToTable("TicketMessages");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => new { e.TicketId, e.CreatedAt });
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Content).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.Direction).IsRequired().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<ChatMessageEntity>(entity =>
+        {
+            entity.ToTable("ChatMessages");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => e.CreatedAt);
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Content).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.Direction).IsRequired().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<CommentEntity>(entity =>
+        {
+            entity.ToTable("Comments");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => new { e.TargetType, e.TargetId, e.CreatedAt });
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.TargetType).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.TargetId).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Body).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.UserName).IsRequired().HasMaxLength(80);
+        });
+
+        modelBuilder.Entity<ProjectEntity>(entity =>
+        {
+            entity.ToTable("Projects");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => e.Status);
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(120);
+            entity.Property(e => e.Summary).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Owner).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.Department).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.StartAt).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.EndAt).IsRequired().HasMaxLength(10);
+            entity.HasMany(e => e.Members)
+                .WithOne(m => m.Project)
+                .HasForeignKey(m => m.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(e => e.Activities)
+                .WithOne(a => a.Project)
+                .HasForeignKey(a => a.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ProjectMemberEntity>(entity =>
+        {
+            entity.ToTable("ProjectMembers");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ProjectId, e.PublicId }).IsUnique();
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.Role).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.Color).IsRequired().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<ProjectActivityEntity>(entity =>
+        {
+            entity.ToTable("ProjectActivities");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ProjectId, e.PublicId }).IsUnique();
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Label).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.Content).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Color).IsRequired().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<CalendarEventEntity>(entity =>
+        {
+            entity.ToTable("CalendarEvents");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => new { e.Date, e.Start });
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Date).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.Start).IsRequired().HasMaxLength(5);
+            entity.Property(e => e.End).IsRequired().HasMaxLength(5);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(120);
+            entity.Property(e => e.Type).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Location).IsRequired().HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<ContentArticleEntity>(entity =>
+        {
+            entity.ToTable("ContentArticles");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(120);
+            entity.Property(e => e.EditorType).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Body).IsRequired().HasMaxLength(20000);
+            entity.Property(e => e.TagsJson).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.Category).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.ColumnJson).IsRequired().HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<JobEntity>(entity =>
+        {
+            entity.ToTable("Jobs");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => e.Status);
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(120);
+            entity.Property(e => e.Cron).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Timeout).IsRequired().HasMaxLength(16);
+            entity.Property(e => e.BatchSize).IsRequired().HasMaxLength(16);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.LastRun).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.NextRun).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.Start).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.End).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.Color).IsRequired().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<ImportJobEntity>(entity =>
+        {
+            entity.ToTable("ImportJobs");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => e.Status);
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Source).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.TargetJson).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.MappingsJson).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.Mode).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Conflict).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.ResultMessage).HasMaxLength(500);
         });
     }
 }

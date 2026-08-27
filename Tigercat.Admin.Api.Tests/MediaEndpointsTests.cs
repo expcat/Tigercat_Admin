@@ -289,7 +289,8 @@ public class MediaEndpointsTests : IClassFixture<InMemoryApiFactory>
         response.EnsureSuccessStatusCode();
         var body = await response.ReadApiResponseAsync<LoginResponse>();
         Assert.NotNull(body?.Data);
-        return body.Data.Token;
+        Assert.False(string.IsNullOrWhiteSpace(body.Data.Token));
+        return body.Data.Token!;
     }
 
     private async Task<MediaItemResponse> UploadAsync(

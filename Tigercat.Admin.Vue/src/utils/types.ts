@@ -4,6 +4,20 @@ export interface Session {
   expiresAt: string;
 }
 
+export interface LoginData {
+  requiresTwoFactor?: boolean;
+  token?: string;
+  username?: string;
+  expiresAt?: string;
+  challengeId?: string;
+}
+
+export interface TwoFactorStatus {
+  enabled: boolean;
+}
+
+export type ForgotChannel = 'email' | 'phone';
+
 export interface Notice {
   type: 'success' | 'error' | '';
   message: string;
@@ -128,6 +142,33 @@ export interface DuplicateMediaResult {
   existing: MediaItem;
 }
 
+export type ReportType = 'daily' | 'weekly' | 'monthly';
+
+export type ReportExportField =
+  | 'visits'
+  | 'orders'
+  | 'conversionRate'
+  | 'revenue'
+  | 'channel'
+  | 'channelVisits'
+  | 'channelOrders'
+  | 'channelRate'
+  | 'channelAmount';
+
+export type AuditExportField =
+  | 'id'
+  | 'title'
+  | 'eventType'
+  | 'category'
+  | 'occurredAtUtc'
+  | 'actor'
+  | 'description';
+
+export interface ExportFieldOption<T extends string = string> {
+  key: T;
+  label: string;
+}
+
 export interface AuditLogItem {
   id: string;
   stream: string;
@@ -202,6 +243,75 @@ export interface AuditRetentionCleanupResult {
   cutoffUtc: string;
   matchedCount: number;
   deletedCount: number;
+}
+
+export type TicketStatus = 'open' | 'accepted' | 'progress' | 'resolved' | 'closed';
+
+export type TicketPriority = 'high' | 'medium' | 'low';
+
+export type ChatDirection = 'self' | 'other';
+
+export type CommentTargetType = 'ticket' | 'project';
+
+export interface TicketMessage {
+  id: string;
+  content: string;
+  direction: ChatDirection;
+  time: string;
+}
+
+export interface Ticket {
+  id: string;
+  title: string;
+  requester: string;
+  category: string;
+  priority: TicketPriority;
+  status: TicketStatus;
+  createdAt: string;
+  updatedAt: string;
+  satisfaction: number;
+  description: string;
+  messages: TicketMessage[];
+}
+
+export interface ChatMessageItem {
+  id: string;
+  content: string;
+  direction: ChatDirection;
+  time: string;
+}
+
+export interface CommentUser {
+  name: string;
+}
+
+export interface CommentItem {
+  id: string;
+  content: string;
+  user: CommentUser;
+  time: string;
+}
+
+export interface CreateTicketPayload {
+  title: string;
+  category?: string;
+  priority?: TicketPriority;
+  description?: string;
+}
+
+export interface UpdateTicketPayload {
+  title?: string;
+  category?: string;
+  priority?: TicketPriority;
+  status?: TicketStatus;
+  description?: string;
+  satisfaction?: number;
+}
+
+export interface CreateCommentPayload {
+  targetType: CommentTargetType;
+  targetId: string;
+  body: string;
 }
 
 // ---- Theme types ----

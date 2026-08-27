@@ -13,7 +13,7 @@ public class InMemoryUserStore : IUserStore
 
     public Task<bool> TryCreateUserAsync(string username, string passwordHash, CancellationToken ct = default)
     {
-        var record = new UserRecord(username, passwordHash);
+        var record = new UserRecord(username, passwordHash, TwoFactorEnabled: false);
         return Task.FromResult(_users.TryAdd(username, record));
     }
 
@@ -39,11 +39,28 @@ public class InMemoryUserStore : IUserStore
         return Task.FromResult(_users.ContainsKey(username));
     }
 
-    private void SeedDefaultUsers()
+    public Task<bool> GetTwoFactorEnabledAsync(string username, CancellationToken ct = default)
     {
-        var hash = PasswordHasher.Hash("admin123");
-        _users.TryAdd("admin", new UserRecord("admin", hash));
+        var enabled = _users.TryGetValue(username, out var record) && record.TwoFactorEnabled;
+        return Task.FromResult(enabled);
     }
 
-    private record UserRecord(string Username, string PasswordHash);
+    public Task<bool> SetTwoFactorEnabledAsync(string username, bool enabled, CancellationToken ct = default)
+    {
+        if (!_users.TryGetValue(username, out var record))
+        {
+            return Task.FromResult(false);
+        }
+
+        var updated = record with { TwoFactorEnabled = enabled };
+        return Task.FromResult(_users.TryUpdate(username, updated, record));
+    }
+
+    private void SeedDefaultUsers()
+    {
+        _users.TryAdd("admin", new UserRecord("admin", PasswordHasher.Hash("admin123"), TwoFactorEnabled: false));
+        _users.TryAdd("demo", new UserRecord("demo", PasswordHasher.Hash("demo"), TwoFactorEnabled: true));
+    }
+
+    private record UserRecord(string Username, string PasswordHash, bool TwoFactorEnabled);
 }

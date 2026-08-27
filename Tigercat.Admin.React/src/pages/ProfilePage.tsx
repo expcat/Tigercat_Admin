@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Card, Text, Tag, Button, Avatar, Switch, Message } from '@expcat/tigercat-react';
 import { Tabs } from '@expcat/tigercat-react/Tabs';
@@ -20,16 +20,23 @@ import { Textarea } from '@expcat/tigercat-react/Textarea';
 import { Slider } from '@expcat/tigercat-react/Slider';
 import { DatePicker } from '@expcat/tigercat-react/DatePicker';
 import { TimePicker } from '@expcat/tigercat-react/TimePicker';
+import { InputOTP } from '@expcat/tigercat-react/InputOTP';
+import { MaskInput } from '@expcat/tigercat-react/MaskInput';
 import type {
   DescriptionsItem,
   TimelineItem,
   ListItem,
-  DatePickerSingleModelValue,
-  TimePickerRangeValue,
 } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { MutedPanel } from '../components/PageFragments';
 import { UserIcon } from '../components/Icons';
+import {
+  DEMO_OTP_CODE,
+  OTP_LENGTH,
+  PHONE_MASK,
+  fetchTwoFactorStatus,
+  updateTwoFactorEnabled,
+} from '../utils';
 
 const swatchColors = ['#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#f97316', '#14b8a6'];
 const fontMarks: Record<number, string> = { 12: '小', 16: '中', 20: '大' };
@@ -73,17 +80,73 @@ function ProfilePage() {
 
   // 安全设置
   const [security, setSecurity] = useState({
-    twoFactor: true,
+    twoFactor: false,
     loginAlert: true,
     remoteProtect: false,
   });
+  const [phone, setPhone] = useState('13800138000');
+  const [bindCode, setBindCode] = useState('');
+  const [twoFactorPending, setTwoFactorPending] = useState(false);
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+
+  const loadTwoFactor = async () => {
+    try {
+      const payload = await fetchTwoFactorStatus();
+      setSecurity((s) => ({ ...s, twoFactor: Boolean(payload.data?.enabled) }));
+    } catch {
+      setSecurity((s) => ({ ...s, twoFactor: false }));
+    }
+  };
+
+  useEffect(() => {
+    void loadTwoFactor();
+  }, []);
+
+  const handleTwoFactorChange = async (enabled: boolean) => {
+    if (enabled) {
+      setTwoFactorPending(true);
+      setBindCode('');
+      return;
+    }
+    setTwoFactorPending(false);
+    setBindCode('');
+    setTwoFactorLoading(true);
+    try {
+      const payload = await updateTwoFactorEnabled(false);
+      setSecurity((s) => ({ ...s, twoFactor: Boolean(payload.data?.enabled) }));
+      Message.success({ content: '两步验证已关闭', duration: 2000 });
+    } catch (error: any) {
+      Message.error({ content: error.message, duration: 3000 });
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
+  const confirmTwoFactorBind = async () => {
+    if (bindCode !== DEMO_OTP_CODE) {
+      Message.error({ content: '验证码错误', duration: 2000 });
+      return;
+    }
+    setTwoFactorLoading(true);
+    try {
+      const payload = await updateTwoFactorEnabled(true);
+      setSecurity((s) => ({ ...s, twoFactor: Boolean(payload.data?.enabled) }));
+      setTwoFactorPending(false);
+      setBindCode('');
+      Message.success({ content: '两步验证已开启', duration: 2000 });
+    } catch (error: any) {
+      Message.error({ content: error.message, duration: 3000 });
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
 
   // 偏好
   const [density, setDensity] = useState<string | number>('comfortable');
   const [themeColor, setThemeColor] = useState('#3b82f6');
   const [fontSize, setFontSize] = useState(14);
-  const [birthday, setBirthday] = useState<DatePickerSingleModelValue>(null);
-  const [quietHours, setQuietHours] = useState<TimePickerRangeValue>(['22:00', '07:00']);
+  const [birthday, setBirthday] = useState<Date | null>(null);
+  const [quietHours, setQuietHours] = useState<[string | null, string | null]>(['22:00', '07:00']);
   const [bio, setBio] = useState('负责 Tigercat 后台平台的整体架构与组件治理。');
   const [emailDigest, setEmailDigest] = useState(true);
 
@@ -171,8 +234,9 @@ function ProfilePage() {
                     </Text>
                   </div>
                   <Switch
-                    checked={security.twoFactor}
-                    onChange={(v) => setSecurity((s) => ({ ...s, twoFactor: v }))}
+                    checked={security.twoFactor || twoFactorPending}
+                    disabled={twoFactorLoading}
+                    onChange={handleTwoFactorChange}
                   />
                 </div>
                 <Divider spacing="sm" />
@@ -208,8 +272,30 @@ function ProfilePage() {
               <Card title="两步验证绑定">
                 <div className="flex flex-col items-center gap-3">
                   <QRCode value={totpUri} size={160} />
-                  <MutedPanel description="使用身份验证器 App 扫描二维码完成绑定（演示数据，不会真正生效）。" />
+                  <MutedPanel description="演示环境验证码固定 123456，确认后写入账号 2FA 状态。" />
+                  <div data-testid="profile-2fa-otp">
+                    <InputOTP
+                      value={bindCode}
+                      length={OTP_LENGTH}
+                      type="numeric"
+                      ariaLabel="两步验证绑定码"
+                      onChange={setBindCode}
+                    />
+                  </div>
+                  <Button
+                    loading={twoFactorLoading}
+                    disabled={bindCode.length !== OTP_LENGTH}
+                    onClick={confirmTwoFactorBind}
+                  >
+                    确认绑定
+                  </Button>
                 </div>
+              </Card>
+              <Card title="手机号">
+                <MaskInput value={phone} mask={PHONE_MASK} placeholder="请输入手机号" onChange={setPhone} />
+                <Text size="sm" color="secondary" className="mt-2 block">
+                  仅用于演示掩码输入，本期不持久化。
+                </Text>
               </Card>
 
               <Card title="电子签名">

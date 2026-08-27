@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Button, Card, Checkbox, Message, Modal, Select, Tag, Text } from '@expcat/tigercat-vue'
+import { Button, Card, Checkbox, DropdownItem, Message, Modal, Select, Tag, Text } from '@expcat/tigercat-vue'
 import { FileManager } from '@expcat/tigercat-vue/FileManager'
-import { Upload } from '@expcat/tigercat-vue/Upload'
+import { ContextMenu, ContextMenuItem, ContextMenuMenu, ContextMenuSub } from '@expcat/tigercat-vue/ContextMenu'
+import { SplitButton } from '@expcat/tigercat-vue/SplitButton'
 import type { FileItem, UploadRequestOptions } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
@@ -16,6 +17,9 @@ import { appText } from '../utils/tigercatText'
 // FileManager 的搜索框占位符走 common.searchPlaceholder，而 appText 未覆盖该字段（回退英文 "Search"）。
 // 用 v1.5.0 新增的逐组件 locale 覆盖补齐为中文（在 ConfigProvider locale 之上合并）。
 const fileManagerLocale = { common: { ...appText.common, searchPlaceholder: '搜索' } }
+
+const FILE_UPLOAD_ACCEPT = 'image/*,.pdf,.txt,.csv,.json,.xlsx,.xls'
+const FILE_UPLOAD_MAX_SIZE = 10 * 1024 * 1024
 
 const typeOptions = [
   { label: '全部类型', value: '' },
@@ -46,6 +50,8 @@ const deleteReferences = ref<MediaReference[]>([])
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detail = ref<MediaDetail | null>(null)
+const contextFile = ref<MediaItem | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
 
 const files = computed<FileItem[]>(() =>
   items.value.map((item) => ({
@@ -216,6 +222,79 @@ function handleOpen(item: any) {
   }
 }
 
+function resolveFileFromEvent(event: MouseEvent): MediaItem | null {
+  const option = (event.target as HTMLElement | null)?.closest('[role="option"]')
+  if (!(option instanceof HTMLElement)) return null
+  const name = option.querySelector('.truncate')?.textContent?.trim()
+  if (name) {
+    const matches = items.value.filter((item) => item.originalFileName === name)
+    if (matches.length === 1) return matches[0]
+  }
+  const index = Number(option.dataset.optionIndex)
+  const file = Number.isFinite(index) ? files.value[index] : undefined
+  if (!file) return matchesFromName(name)
+  return items.value.find((item) => item.id === Number(file.key)) ?? matchesFromName(name)
+}
+
+function matchesFromName(name: string | undefined): MediaItem | null {
+  if (!name) return null
+  return items.value.find((item) => item.originalFileName === name) ?? null
+}
+
+function onFilesContextMenu(event: MouseEvent) {
+  contextFile.value = resolveFileFromEvent(event)
+  if (!contextFile.value) {
+    event.stopPropagation()
+  }
+}
+
+function previewContextFile() {
+  const file = contextFile.value
+  if (!file) return
+  void openDetail(file.id)
+}
+
+function openContextFile() {
+  const file = contextFile.value
+  if (!file) return
+  openUrl(file.url)
+}
+
+function copyContextFileUrl() {
+  const file = contextFile.value
+  if (!file) return
+  void copyUrl(file.url)
+}
+
+async function deleteContextFile() {
+  const file = contextFile.value
+  if (!file || !canDelete.value) return
+  selectedKeys.value = [file.id]
+  saveWorkbenchState('files', { selectedRowKeys: [file.id] })
+  await openDeleteModal()
+}
+
+function triggerFilePick() {
+  fileInputRef.value?.click()
+}
+
+async function handleFileInputChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  if (file.size > FILE_UPLOAD_MAX_SIZE) {
+    Message.error({ content: '文件超过 10 MB 上限', duration: 3000 })
+    return
+  }
+  await handleUpload({
+    file,
+    onProgress() {},
+    onSuccess() {},
+    onError() {},
+  })
+}
+
 onMounted(loadMedia)
 </script>
 
@@ -260,35 +339,69 @@ onMounted(loadMedia)
           >
             删除选中
           </Button>
-          <Upload
+          <SplitButton
             v-if="canUpload"
-            accept="image/*,.pdf,.txt,.csv,.json,.xlsx,.xls"
-            :show-file-list="false"
-            :max-size="10 * 1024 * 1024"
-            :custom-request="handleUpload"
+            trigger-aria-label="更多操作"
+            @click="triggerFilePick"
           >
             <span class="flex items-center gap-1">
               <Icon name="upload" :size="16" />
               上传文件
             </span>
-          </Upload>
+            <template #menu>
+              <DropdownItem @click="triggerFilePick">选择文件</DropdownItem>
+            </template>
+          </SplitButton>
+          <input
+            v-if="canUpload"
+            ref="fileInputRef"
+            type="file"
+            class="hidden"
+            :accept="FILE_UPLOAD_ACCEPT"
+            @change="handleFileInputChange"
+          >
         </div>
       </div>
 
-      <FileManager
-        :files="files"
-        view-mode="list"
-        multiple
-        searchable
-        :loading="loading"
-        :selected-keys="selectedKeys"
-        :search-text="searchText"
-        :locale="fileManagerLocale"
-        empty-text="暂无媒体资源"
-        @update:selected-keys="handleSelectedKeysChange"
-        @update:search-text="handleSearchTextChange"
-        @open="handleOpen"
-      />
+      <ContextMenu>
+        <div @contextmenu.capture="onFilesContextMenu">
+          <FileManager
+            :files="files"
+            view-mode="list"
+            multiple
+            searchable
+            :loading="loading"
+            :selected-keys="selectedKeys"
+            :search-text="searchText"
+            :locale="fileManagerLocale"
+            empty-text="暂无媒体资源"
+            @update:selected-keys="handleSelectedKeysChange"
+            @update:search-text="handleSearchTextChange"
+            @open="handleOpen"
+          />
+        </div>
+        <ContextMenuMenu>
+          <ContextMenuItem :disabled="!contextFile" @click="previewContextFile">
+            预览
+          </ContextMenuItem>
+          <ContextMenuSub title="打开">
+            <ContextMenuItem :disabled="!contextFile" @click="openContextFile">
+              在新窗口打开
+            </ContextMenuItem>
+            <ContextMenuItem :disabled="!contextFile" @click="copyContextFileUrl">
+              复制 URL
+            </ContextMenuItem>
+          </ContextMenuSub>
+          <ContextMenuItem
+            v-if="canDelete"
+            :disabled="!contextFile"
+            divided
+            @click="deleteContextFile"
+          >
+            删除
+          </ContextMenuItem>
+        </ContextMenuMenu>
+      </ContextMenu>
 
       <div class="p2-text-secondary mt-3 text-sm">
         <Text size="sm" color="secondary">

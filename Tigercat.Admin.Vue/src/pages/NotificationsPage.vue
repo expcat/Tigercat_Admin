@@ -3,10 +3,17 @@ import type { NotificationItem } from '@expcat/tigercat-core'
 import {
   Button,
   Card,
+  Form,
+  FormItem,
+  Input,
+  Message,
+  Modal,
+  Select,
   Text,
   notification
 } from '@expcat/tigercat-vue'
 import { NotificationCenter } from '@expcat/tigercat-vue/NotificationCenter'
+import { Textarea } from '@expcat/tigercat-vue/Textarea'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
@@ -18,8 +25,11 @@ import PageActionPanel from '../components/PageActionPanel.vue'
 import {
   buildNotificationGroups,
   countUnreadNotifications,
+  createNotification,
+  fetchNotifications,
   findNotificationById,
   getNotificationGroupLabel,
+  notifyNotificationsChanged,
   setNotificationReadState
 } from '../utils/notifications'
 import { apiRequest, getAuthHeaders } from '../utils'
@@ -27,15 +37,47 @@ import { usePermission } from '../utils/permission'
 import type {
   AdminNotificationGroupKey,
   AdminNotificationItem,
-  AdminNotificationToastType,
-  PagedResult
+  AdminNotificationToastType
 } from '../utils/types'
+
+type CreateFormState = {
+  title: string
+  description: string
+  groupKey: AdminNotificationGroupKey
+  toastType: AdminNotificationToastType
+  linkUrl: string
+}
+
+const EMPTY_CREATE_FORM: CreateFormState = {
+  title: '',
+  description: '',
+  groupKey: 'ops',
+  toastType: 'info',
+  linkUrl: ''
+}
+
+const GROUP_OPTIONS = [
+  { label: '系统运维', value: 'ops' },
+  { label: '安全提醒', value: 'security' },
+  { label: '版本动态', value: 'release' }
+]
+
+const TOAST_OPTIONS = [
+  { label: '信息', value: 'info' },
+  { label: '成功', value: 'success' },
+  { label: '警告', value: 'warning' },
+  { label: '错误', value: 'error' }
+]
 
 const notifications = ref<AdminNotificationItem[]>([])
 const loading = ref(true)
 const errorMessage = ref('')
+const createOpen = ref(false)
+const submitting = ref(false)
+const createForm = ref<CreateFormState>({ ...EMPTY_CREATE_FORM })
 const router = useRouter()
 const permission = usePermission()
+const canCreate = computed(() => permission.has('notification:create'))
 
 const LINK_PERMISSION_MAP: Array<[RegExp, string]> = [
   [/^\/users(?:[/?#]|$)/, 'user:view'],
@@ -93,9 +135,7 @@ const loadNotifications = async () => {
   errorMessage.value = ''
 
   try {
-    const payload = await apiRequest<PagedResult<AdminNotificationItem>>('/api/notifications?page=1&pageSize=100', {
-      headers: getAuthHeaders()
-    })
+    const payload = await fetchNotifications()
     notifications.value = payload.data.items
   } catch (error: unknown) {
     const message = error instanceof Error && error.message
@@ -138,6 +178,7 @@ const handleItemClick = async (item: NotificationItem) => {
       notifications.value = setNotificationReadState(notifications.value, item.id, true)
       try {
         await persistReadState(String(item.id), true)
+        notifyNotificationsChanged()
       } catch {
         notifications.value = setNotificationReadState(notifications.value, item.id, false)
       }
@@ -160,6 +201,7 @@ const handleItemReadChange = async (item: NotificationItem, read: boolean) => {
 
   try {
     await persistReadState(String(item.id), read)
+    notifyNotificationsChanged()
   } catch (error: unknown) {
     notifications.value = setNotificationReadState(notifications.value, item.id, !read)
     showNotification(
@@ -188,6 +230,7 @@ const handleMarkAllRead = async (groupKey: string | number | undefined, items: N
         groupKey: groupKey ? String(groupKey) : null
       })
     })
+    notifyNotificationsChanged()
     await loadNotifications()
   } catch (error: unknown) {
     showNotification(
@@ -206,6 +249,45 @@ const handleMarkAllRead = async (groupKey: string | number | undefined, items: N
     `${groupTitle}已全部标记为已读`,
     `本次共处理 ${items.length} 条通知。`
   )
+}
+
+function openCreateModal() {
+  createForm.value = { ...EMPTY_CREATE_FORM }
+  createOpen.value = true
+}
+
+async function submitCreate() {
+  const title = createForm.value.title.trim()
+  if (!title) {
+    Message.warning({ content: '请填写通知标题', duration: 2000 })
+    return
+  }
+  const linkUrl = createForm.value.linkUrl?.trim() ?? ''
+  if (linkUrl && !isSafeInternalLink(linkUrl)) {
+    Message.error({ content: '通知链接必须是站内路径', duration: 3000 })
+    return
+  }
+  submitting.value = true
+  try {
+    await createNotification({
+      groupKey: createForm.value.groupKey,
+      title,
+      description: createForm.value.description.trim(),
+      toastType: createForm.value.toastType,
+      linkUrl: linkUrl || null
+    })
+    createOpen.value = false
+    notifyNotificationsChanged()
+    showNotification('success', '通知已创建', title)
+    await loadNotifications()
+  } catch (error: unknown) {
+    Message.error({
+      content: error instanceof Error ? error.message : '创建通知失败',
+      duration: 3000
+    })
+  } finally {
+    submitting.value = false
+  }
 }
 
 onMounted(loadNotifications)
@@ -229,6 +311,13 @@ onMounted(loadNotifications)
       description="通知来自后端数据源，未读状态、分组和批量已读会持久化保存。"
     >
       <template #actions>
+        <Button
+          v-if="canCreate"
+          v-permission="'notification:create'"
+          @click="openCreateModal"
+        >
+          创建通知
+        </Button>
         <Button variant="outline" @click="loadNotifications">
           刷新通知
         </Button>
@@ -290,5 +379,35 @@ onMounted(loadNotifications)
         />
       </div>
     </Card>
+
+    <Modal
+      v-model:open="createOpen"
+      title="创建通知"
+      show-default-footer
+      :ok-text="submitting ? '创建中...' : '创建'"
+      cancel-text="取消"
+      @ok="submitCreate"
+      @cancel="createOpen = false"
+    >
+      <div class="p2-modal-scroll">
+        <Form :model="createForm" :label-width="88">
+          <FormItem label="标题" name="title">
+            <Input v-model="createForm.title" placeholder="请输入通知标题" />
+          </FormItem>
+          <FormItem label="描述" name="description">
+            <Textarea v-model="createForm.description" :rows="4" placeholder="请输入通知描述（选填）" />
+          </FormItem>
+          <FormItem label="分组" name="groupKey">
+            <Select v-model="createForm.groupKey" :options="GROUP_OPTIONS" placeholder="请选择分组" />
+          </FormItem>
+          <FormItem label="类型" name="toastType">
+            <Select v-model="createForm.toastType" :options="TOAST_OPTIONS" placeholder="请选择类型" />
+          </FormItem>
+          <FormItem label="链接" name="linkUrl">
+            <Input v-model="createForm.linkUrl" placeholder="站内路径，例如 /monitor（选填）" />
+          </FormItem>
+        </Form>
+      </div>
+    </Modal>
   </div>
 </template>

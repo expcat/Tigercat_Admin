@@ -67,13 +67,22 @@ JSON API 默认返回 `ApiResponse<T>`：
 
 | 资源域 | 文档 | 端点概览 |
 | ------ | ---- | -------- |
-| 健康、应用信息、认证、权限 | [api/auth.md](api/auth.md) | `/api/health`、`/api/info`、`/api/auth/*`、`/api/home` |
+| 健康、应用信息、认证、权限 | [api/auth.md](api/auth.md) | `/api/health`、`/api/info`、`/api/auth/*`（login / 2FA / forgot-password / permissions）、`/api/home` |
 | 用户管理 | [api/users.md](api/users.md) | `/api/users`、批量删除、批量状态 |
 | 角色与权限 | [api/roles.md](api/roles.md) | `/api/roles`、角色权限、角色用户、权限列表 |
-| 仪表盘统计、导出 | [api/dashboard-export.md](api/dashboard-export.md) | `/api/stats/*`、`/api/export/*` |
+| 仪表盘统计、导出 | [api/dashboard-export.md](api/dashboard-export.md) | `/api/stats/*`、`/api/export/*`（users / roles / reports / overview） |
 | 审计日志 | [api/audit.md](api/audit.md) | `/api/audit-logs`、导出、保留策略、清理 |
-| 通知中心 | [api/notifications.md](api/notifications.md) | `/api/notifications`、已读、批量已读 |
+| 通知中心 | [api/notifications.md](api/notifications.md) | `/api/notifications`、创建广播、已读、批量已读 |
+| 实时监控 | [api/monitor.md](api/monitor.md) | `/api/monitor/snapshot` |
 | 任务面板 | [api/tasks.md](api/tasks.md) | `/api/tasks`、流转、完成 |
+| 工单 | [api/tickets.md](api/tickets.md) | `/api/tickets`、状态流转、工单消息 |
+| 聊天坞 | [api/chat.md](api/chat.md) | `/api/chat/messages` |
+| 评论 | [api/comments.md](api/comments.md) | `/api/comments`（`targetType=ticket\|project`） |
+| 项目 | [api/projects.md](api/projects.md) | `/api/projects`、`/api/projects/{id}` |
+| 日历 | [api/calendar.md](api/calendar.md) | `/api/calendar/events` |
+| 内容文章 | [api/content.md](api/content.md) | `/api/content/articles`、保存草稿 / 发布 |
+| 定时任务 | [api/jobs.md](api/jobs.md) | `/api/jobs`、启停与编辑 |
+| 数据导入 | [api/import.md](api/import.md) | `/api/import-jobs`、进度轮询 |
 | 系统设置 | [api/settings.md](api/settings.md) | `/api/settings` |
 | 媒体资源 | [api/media.md](api/media.md) | `/api/media`、内容读取、删除、孤儿清理 |
 

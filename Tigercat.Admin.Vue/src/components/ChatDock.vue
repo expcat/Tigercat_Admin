@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import type { ChatMessage } from '@expcat/tigercat-core'
-import { Badge, Drawer } from '@expcat/tigercat-vue'
+import { Badge, Drawer, Message } from '@expcat/tigercat-vue'
 import { FloatButton } from '@expcat/tigercat-vue/FloatButton'
 import { ChatWindow } from '@expcat/tigercat-vue/ChatWindow'
+import { fetchChatMessages, sendChatMessage } from '../utils/chat'
 import Icon from './Icon.vue'
 
 const props = withDefaults(
@@ -19,19 +20,25 @@ const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
 }>()
 
-let messageSeq = 0
-const nextId = () => `chat-${Date.now()}-${messageSeq++}`
-
-const messages = ref<ChatMessage[]>([
-  {
-    id: nextId(),
-    content: '你好，我是在线客服小虎，有任何关于后台的问题都可以问我～',
-    direction: 'other',
-    time: new Date().toISOString(),
-  },
-])
+const messages = ref<ChatMessage[]>([])
 const draft = ref('')
 const unread = ref(1)
+const loading = ref(false)
+
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback
+
+const loadMessages = async () => {
+  loading.value = true
+  try {
+    const payload = await fetchChatMessages()
+    messages.value = (payload.data ?? []) as ChatMessage[]
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '客服消息加载失败'), duration: 3000 })
+  } finally {
+    loading.value = false
+  }
+}
 
 const setOpen = (value: boolean) => {
   emit('update:open', value)
@@ -41,40 +48,22 @@ const toggle = () => {
   setOpen(!props.open)
 }
 
-const buildReply = (input: string) =>
-  `已收到你的消息：“${input}”。这是演示客服坞，稍后会有同事跟进（ChatWindow 组件示例）。`
-
-const handleSend = (value: string) => {
+const handleSend = async (value: string) => {
   const text = value.trim()
   if (!text) {
     return
   }
 
-  messages.value = [
-    ...messages.value,
-    {
-      id: nextId(),
-      content: text,
-      direction: 'self',
-      time: new Date().toISOString(),
-    },
-  ]
-  draft.value = ''
-
-  window.setTimeout(() => {
-    messages.value = [
-      ...messages.value,
-      {
-        id: nextId(),
-        content: buildReply(text),
-        direction: 'other',
-        time: new Date().toISOString(),
-      },
-    ]
+  try {
+    const payload = await sendChatMessage(text)
+    draft.value = ''
+    messages.value = (payload.data ?? []) as ChatMessage[]
     if (!props.open) {
       unread.value += 1
     }
-  }, 700)
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '发送客服消息失败'), duration: 3000 })
+  }
 }
 
 watch(
@@ -85,6 +74,10 @@ watch(
     }
   },
 )
+
+onMounted(() => {
+  void loadMessages()
+})
 </script>
 
 <template>
@@ -124,7 +117,7 @@ watch(
       :messages="messages"
       placeholder="输入消息，回车发送"
       send-text="发送"
-      empty-text="暂无消息，开始对话吧"
+      :empty-text="loading ? '正在加载消息…' : '暂无消息，开始对话吧'"
       status-text="客服在线"
       status-variant="success"
       :show-time="true"

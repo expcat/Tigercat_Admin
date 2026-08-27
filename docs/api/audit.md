@@ -27,10 +27,12 @@
 | ---------- | ---- | ------------- | ------------- | ----------- |
 | `GET /api/audit-logs` | `audit:view` | Query：`page` 默认 `1`；`pageSize` 默认 `30`、范围 `1-100`；`category`、`eventType`、`actor`、`keyword`、`from`、`to` | 分页审计日志 | `503` Redis 不可用；最大搜索窗口 1000 |
 | `GET /api/audit-logs/{id}` | `audit:view` | Path：`id` | 单条审计日志 | `404` 不存在；`503` Redis 不可用 |
-| `GET /api/audit-logs/export` | `audit:export` | Query：同审计列表筛选 | CSV 文件，`text/csv; charset=utf-8`，带 UTF-8 BOM | `503` Redis 不可用；最多导出 1000 条 |
+| `GET /api/audit-logs/export` | `audit:export` | Query：同审计列表筛选（`keyword`、`category`、`eventType`、`actor`、`from`、`to`）；`format=csv|json|xlsx` 默认 `csv`；`fields` 可选 | 文件流 `audit-logs.csv/json/xlsx`；CSV 带 UTF-8 BOM | `400` 不支持格式；`503` Redis 不可用；最多导出 1000 条 |
 | `GET /api/audit-logs/retention-policy` | `audit:view` | 无 | `retentionDays`、`updatedAtUtc` | 默认 90 天 |
 | `PUT /api/audit-logs/retention-policy` | `setting:edit` | Body：`retentionDays`，范围 `1-3650` | `retentionDays`、`updatedAtUtc` | `400` 范围非法；事件 `admin.setting.updated` |
 | `POST /api/audit-logs/retention/cleanup` | `setting:edit` | Body：`dryRun` | `dryRun`、`retentionDays`、`cutoffUtc`、`matchedCount`、`deletedCount` | `503` Redis 不可用；非 dry-run 发事件 `admin.audit.retention.cleaned` |
+
+审计导出字段：`id`、`stream`、`category`、`eventType`、`occurredAtUtc`、`traceId`、`title`、`description`、`actor`。未传 `fields` 时导出全部字段。
 
 ## 已知事件类型
 

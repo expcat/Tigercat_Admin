@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using System.Text.Json;
 using FreeRedis;
 using Microsoft.EntityFrameworkCore;
@@ -108,6 +107,8 @@ public class AuditEndpoints : IEndpointDefinition
     }
 
     private static Task<IResult> ExportAuditLogs(
+        string? format,
+        string? fields,
         string? category,
         string? eventType,
         string? actor,
@@ -117,24 +118,34 @@ public class AuditEndpoints : IEndpointDefinition
         IServiceProvider services,
         CancellationToken ct)
     {
+        var fmt = ExportEndpoints.NormalizeFormat(format);
+        if (fmt is null)
+        {
+            return Task.FromResult(ExportEndpoints.InvalidFormatResult());
+        }
+
         var result = TryLoadAuditLogs(services, MaxSearchWindow, ct);
         if (result.Error is not null)
         {
             return Task.FromResult(result.Error);
         }
 
+        var selectedFields = ExportEndpoints.ParseFields(fields, ExportEndpoints.ValidAuditFields);
         var items = ApplyFilters(result.Items, category, eventType, actor, keyword, from, to)
             .Take(MaxSearchWindow)
-            .ToArray();
-        var csv = BuildCsv(items);
-        var bytes = Encoding.UTF8.GetPreamble()
-            .Concat(Encoding.UTF8.GetBytes(csv))
-            .ToArray();
+            .Select(item => new ExportAuditLogRow(
+                item.Id,
+                item.Stream,
+                item.Category,
+                item.EventType,
+                item.OccurredAtUtc.ToString("O"),
+                item.TraceId,
+                item.Title,
+                item.Description,
+                item.Actor))
+            .ToList();
 
-        return Task.FromResult<IResult>(Results.File(
-            bytes,
-            "text/csv; charset=utf-8",
-            $"audit-logs-{DateTime.UtcNow:yyyyMMddHHmmss}.csv"));
+        return Task.FromResult(ExportEndpoints.BuildExportResult(items, selectedFields, fmt, "audit-logs"));
     }
 
     private static async Task<IResult> GetRetentionPolicy(AdminDbContext db, CancellationToken ct)
@@ -528,27 +539,6 @@ public class AuditEndpoints : IEndpointDefinition
         return "system";
     }
 
-    private static string BuildCsv(IEnumerable<AuditLogItemResponse> items)
-    {
-        var builder = new StringBuilder();
-        builder.AppendLine("Id,Stream,Category,EventType,OccurredAtUtc,TraceId,Title,Description,Actor");
-
-        foreach (var item in items)
-        {
-            builder.AppendCsv(item.Id);
-            builder.AppendCsv(item.Stream);
-            builder.AppendCsv(item.Category);
-            builder.AppendCsv(item.EventType);
-            builder.AppendCsv(item.OccurredAtUtc.ToString("O"));
-            builder.AppendCsv(item.TraceId);
-            builder.AppendCsv(item.Title);
-            builder.AppendCsv(item.Description);
-            builder.AppendCsv(item.Actor, endOfLine: true);
-        }
-
-        return builder.ToString();
-    }
-
     private static async Task<int> GetRetentionDaysAsync(AdminDbContext db, CancellationToken ct)
     {
         var value = await db.SystemSettings
@@ -611,13 +601,4 @@ public class AuditEndpoints : IEndpointDefinition
     }
 }
 
-internal static class AuditCsvExtensions
-{
-    public static void AppendCsv(this StringBuilder builder, string? value, bool endOfLine = false)
-    {
-        builder.Append('"');
-        builder.Append((value ?? string.Empty).Replace("\"", "\"\"", StringComparison.Ordinal));
-        builder.Append('"');
-        builder.Append(endOfLine ? Environment.NewLine : ',');
-    }
-}
+

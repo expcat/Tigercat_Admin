@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Alert, Avatar, Text } from '@expcat/tigercat-vue'
 import { NumberKeyboard } from '@expcat/tigercat-vue/NumberKeyboard'
+import { InputOTP } from '@expcat/tigercat-vue/InputOTP'
 import { Statistic } from '@expcat/tigercat-vue/Statistic'
 import {
   formatLockScreenClock,
@@ -136,18 +137,16 @@ onBeforeUnmount(() => {
         </Text>
       </div>
       <Statistic :title="clock.title" :value="clock.value" size="lg" :animated="false" />
-      <div
-        class="flex justify-center gap-1.5 sm:gap-2"
-        aria-label="PIN"
-        data-testid="shell-lock-pin-dots"
-      >
-        <span
-          v-for="index in LOCK_SCREEN_PIN_LENGTH"
-          :key="index"
-          class="flex h-11 w-9 sm:h-12 sm:w-10 items-center justify-center rounded-lg border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-page,#f8fafc) dark:border-slate-700 dark:bg-slate-800 p2-text-primary text-lg font-semibold"
-        >
-          {{ index <= pin.length ? '●' : '·' }}
-        </span>
+      <div data-testid="shell-lock-pin-otp" class="flex justify-center">
+        <InputOTP
+          :model-value="pin"
+          :length="LOCK_SCREEN_PIN_LENGTH"
+          type="numeric"
+          masked
+          auto-focus
+          aria-label="PIN"
+          @update:model-value="handlePinChange"
+        />
       </div>
       <Alert type="info" :title="`演示 PIN：${LOCK_SCREEN_PIN}`" show-icon />
       <div v-if="error" data-testid="shell-lock-error">

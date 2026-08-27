@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, inject, computed } from 'vue'
+import { reactive, ref, inject, computed, onMounted } from 'vue'
 import { Card, Text, Tag, Button, Avatar, Switch, Message } from '@expcat/tigercat-vue'
 import { Tabs } from '@expcat/tigercat-vue/Tabs'
 import { TabPane } from '@expcat/tigercat-vue/TabPane'
@@ -20,15 +20,23 @@ import { Textarea } from '@expcat/tigercat-vue/Textarea'
 import { Slider } from '@expcat/tigercat-vue/Slider'
 import { DatePicker } from '@expcat/tigercat-vue/DatePicker'
 import { TimePicker } from '@expcat/tigercat-vue/TimePicker'
+import { InputOTP } from '@expcat/tigercat-vue/InputOTP'
+import { MaskInput } from '@expcat/tigercat-vue/MaskInput'
 import type {
   DescriptionsItem,
   TimelineItem,
   ListItem,
-  DatePickerSingleModelValue,
-  TimePickerRangeValue,
+  DatePickerModelValue,
   TimePickerModelValue,
 } from '@expcat/tigercat-core'
-import type { Session } from '../utils'
+import {
+  DEMO_OTP_CODE,
+  OTP_LENGTH,
+  PHONE_MASK,
+  fetchTwoFactorStatus,
+  updateTwoFactorEnabled,
+  type Session,
+} from '../utils'
 import PageHeader from '../components/PageHeader.vue'
 import MutedPanel from '../components/MutedPanel.vue'
 
@@ -60,20 +68,76 @@ const accountLevel = ref(4)
 
 // 安全设置
 const security = reactive({
-  twoFactor: true,
+  twoFactor: false,
   loginAlert: true,
   remoteProtect: false,
 })
 const signature = ref('')
+const phone = ref('13800138000')
+const bindCode = ref('')
+const twoFactorPending = ref(false)
+const twoFactorLoading = ref(false)
 const totpUri =
   'otpauth://totp/TigercatAdmin:admin?secret=JBSWY3DPEHPK3PXP&issuer=Tigercat'
+
+async function loadTwoFactor() {
+  try {
+    const payload = await fetchTwoFactorStatus()
+    security.twoFactor = Boolean(payload.data?.enabled)
+  } catch {
+    security.twoFactor = false
+  }
+}
+
+async function handleTwoFactorChange(enabled: boolean) {
+  if (enabled) {
+    twoFactorPending.value = true
+    bindCode.value = ''
+    return
+  }
+  twoFactorPending.value = false
+  bindCode.value = ''
+  twoFactorLoading.value = true
+  try {
+    const payload = await updateTwoFactorEnabled(false)
+    security.twoFactor = Boolean(payload.data?.enabled)
+    Message.success({ content: '两步验证已关闭', duration: 2000 })
+  } catch (error: any) {
+    Message.error({ content: error.message, duration: 3000 })
+  } finally {
+    twoFactorLoading.value = false
+  }
+}
+
+async function confirmTwoFactorBind() {
+  if (bindCode.value !== DEMO_OTP_CODE) {
+    Message.error({ content: '验证码错误', duration: 2000 })
+    return
+  }
+  twoFactorLoading.value = true
+  try {
+    const payload = await updateTwoFactorEnabled(true)
+    security.twoFactor = Boolean(payload.data?.enabled)
+    twoFactorPending.value = false
+    bindCode.value = ''
+    Message.success({ content: '两步验证已开启', duration: 2000 })
+  } catch (error: any) {
+    Message.error({ content: error.message, duration: 3000 })
+  } finally {
+    twoFactorLoading.value = false
+  }
+}
+
+onMounted(() => {
+  void loadTwoFactor()
+})
 
 // 偏好
 const density = ref<string>('comfortable')
 const themeColor = ref<string>('#3b82f6')
 const fontSize = ref<number>(14)
-const birthday = ref<DatePickerSingleModelValue>(null)
-const quietHours = ref<TimePickerRangeValue>(['22:00', '07:00'])
+const birthday = ref<DatePickerModelValue>(null)
+const quietHours = ref<TimePickerModelValue>(['22:00', '07:00'])
 const bio = ref('负责 Tigercat 后台平台的整体架构与组件治理。')
 const emailDigest = ref(true)
 const swatchColors = ['#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#f97316', '#14b8a6']
@@ -102,7 +166,7 @@ function handleFontSizeChange(value: number | [number, number]) {
   fontSize.value = typeof value === 'number' ? value : value[0]
 }
 function handleBirthdayChange(value: unknown) {
-  birthday.value = value as DatePickerSingleModelValue
+  birthday.value = value as DatePickerModelValue
 }
 function handleQuietHoursChange(value: TimePickerModelValue) {
   if (Array.isArray(value)) {
@@ -178,7 +242,11 @@ function handleSave(scope: string) {
                   <Text weight="medium">两步验证</Text>
                   <Text size="sm" color="secondary" class="block">登录时额外校验身份验证器动态码</Text>
                 </div>
-                <Switch v-model:checked="security.twoFactor" />
+                <Switch
+                  :checked="security.twoFactor || twoFactorPending"
+                  :disabled="twoFactorLoading"
+                  @update:checked="handleTwoFactorChange"
+                />
               </div>
               <Divider spacing="sm" />
               <div class="flex items-center justify-between gap-4 py-2">
@@ -203,8 +271,27 @@ function handleSave(scope: string) {
             <Card title="两步验证绑定">
               <div class="flex flex-col items-center gap-3">
                 <QRCode :value="totpUri" :size="160" />
-                <MutedPanel description="使用身份验证器 App 扫描二维码完成绑定（演示数据，不会真正生效）。" />
+                <MutedPanel description="演示环境验证码固定 123456，确认后写入账号 2FA 状态。" />
+                <div data-testid="profile-2fa-otp">
+                  <InputOTP
+                    v-model="bindCode"
+                    :length="OTP_LENGTH"
+                    type="numeric"
+                    aria-label="两步验证绑定码"
+                  />
+                </div>
+                <Button
+                  :loading="twoFactorLoading"
+                  :disabled="bindCode.length !== OTP_LENGTH"
+                  @click="confirmTwoFactorBind"
+                >
+                  确认绑定
+                </Button>
               </div>
+            </Card>
+            <Card title="手机号">
+              <MaskInput v-model="phone" :mask="PHONE_MASK" placeholder="请输入手机号" />
+              <Text size="sm" color="secondary" class="mt-2 block">仅用于演示掩码输入，本期不持久化。</Text>
             </Card>
 
             <Card title="电子签名">

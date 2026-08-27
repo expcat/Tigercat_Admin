@@ -10,24 +10,22 @@ import {
 } from '@expcat/tigercat-react';
 import { Alert } from '@expcat/tigercat-react/Alert';
 import { Countdown } from '@expcat/tigercat-react/Countdown';
-import { NumberKeyboard } from '@expcat/tigercat-react/NumberKeyboard';
-import { debounce, useAuthForm, apiRequest, type Session } from '../utils';
+import { InputOTP } from '@expcat/tigercat-react/InputOTP';
+import {
+  debounce,
+  useAuthForm,
+  apiRequest,
+  DEMO_OTP_CODE,
+  OTP_LENGTH,
+  OTP_RESEND_MS,
+  type LoginData,
+  type Session,
+} from '../utils';
 import { LogoIcon } from '../components/Icons';
 
 interface LoginPageProps {
   onSuccess: (session: Session) => void;
 }
-
-interface LoginData {
-  requiresTwoFactor?: boolean;
-  token?: string;
-  username?: string;
-  expiresAt?: string;
-}
-
-const OTP_LENGTH = 6;
-const OTP_RESEND_MS = 60_000;
-const DEMO_OTP_CODE = '123456';
 
 function LoginPage({ onSuccess }: LoginPageProps) {
   const navigate = useNavigate();
@@ -39,12 +37,14 @@ function LoginPage({ onSuccess }: LoginPageProps) {
   const [step, setStep] = useState<'login' | 'otp'>('login');
   const [otpUsername, setOtpUsername] = useState('');
   const [otpCode, setOtpCode] = useState('');
+  const [otpChallengeId, setOtpChallengeId] = useState('');
   const [otpDeadline, setOtpDeadline] = useState<number | null>(null);
   const [otpCanResend, setOtpCanResend] = useState(false);
 
-  const startOtp = (username: string) => {
+  const startOtp = (username: string, challengeId?: string) => {
     setOtpUsername(username);
     setOtpCode('');
+    setOtpChallengeId(challengeId || '');
     setOtpCanResend(false);
     setOtpDeadline(Date.now() + OTP_RESEND_MS);
     setStep('otp');
@@ -60,7 +60,7 @@ function LoginPage({ onSuccess }: LoginPageProps) {
           });
           const data = payload?.data;
           if (data?.requiresTwoFactor) {
-            startOtp(data.username || form.username || '');
+            startOtp(data.username || form.username || '', data.challengeId);
             return;
           }
           if (!data?.token || !data.username || !data.expiresAt) {
@@ -89,7 +89,11 @@ function LoginPage({ onSuccess }: LoginPageProps) {
         try {
           const payload = await apiRequest<Session>('/api/auth/two-factor/verify', {
             method: 'POST',
-            body: JSON.stringify({ username: otpUsername, code: otpCode }),
+            body: JSON.stringify({
+              username: otpUsername,
+              code: otpCode,
+              challengeId: otpChallengeId || undefined,
+            }),
           });
           const data = payload?.data;
           if (!data?.token || !data.username || !data.expiresAt) {
@@ -109,7 +113,7 @@ function LoginPage({ onSuccess }: LoginPageProps) {
           setLoading(false);
         }
       }, 300),
-    [otpCode, otpUsername, onSuccess],
+    [otpCode, otpUsername, otpChallengeId, onSuccess],
   );
 
   const handleLogin = () => {
@@ -139,6 +143,7 @@ function LoginPage({ onSuccess }: LoginPageProps) {
     setStep('login');
     setOtpCode('');
     setOtpUsername('');
+    setOtpChallengeId('');
     setOtpDeadline(null);
     setOtpCanResend(false);
     setLoading(false);
@@ -151,8 +156,6 @@ function LoginPage({ onSuccess }: LoginPageProps) {
   const goToForgotPassword = () => {
     navigate('/forgot-password');
   };
-
-  const otpDigits = Array.from({ length: OTP_LENGTH }, (_, i) => otpCode[i] ?? '');
 
   return (
     <div
@@ -282,22 +285,16 @@ function LoginPage({ onSuccess }: LoginPageProps) {
             <Card variant="transparent" className="p-0">
               <div className="space-y-4 min-w-0">
                 <Alert type="info" title="演示验证码：123456" showIcon />
-                <div className="flex justify-center gap-1.5 sm:gap-2" aria-label="验证码">
-                  {otpDigits.map((digit, index) => (
-                    <span
-                      key={index}
-                      className="flex h-11 w-9 sm:h-12 sm:w-10 items-center justify-center rounded-lg border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-page,#f8fafc) dark:border-slate-700 dark:bg-slate-800 p2-text-primary text-lg font-semibold"
-                    >
-                      {digit || '·'}
-                    </span>
-                  ))}
+                <div data-testid="auth-otp-input" className="flex justify-center">
+                  <InputOTP
+                    value={otpCode}
+                    length={OTP_LENGTH}
+                    type="numeric"
+                    autoFocus
+                    ariaLabel="验证码"
+                    onChange={setOtpCode}
+                  />
                 </div>
-                <NumberKeyboard
-                  value={otpCode}
-                  mode="number"
-                  maxLength={OTP_LENGTH}
-                  onChange={(value) => setOtpCode(value)}
-                />
                 <div className="flex items-center justify-center min-h-8">
                   {otpDeadline && !otpCanResend ? (
                     <Countdown

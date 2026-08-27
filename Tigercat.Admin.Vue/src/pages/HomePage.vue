@@ -1,12 +1,26 @@
 <script setup lang="ts">
 import { inject, ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Alert, Card, Text, Tag, Select, Loading } from '@expcat/tigercat-vue'
+import { Alert, Card, Text, Tag, Select, Loading, Message } from '@expcat/tigercat-vue'
 import { LineChart } from '@expcat/tigercat-vue/LineChart'
 import { BarChart } from '@expcat/tigercat-vue/BarChart'
 import { PieChart } from '@expcat/tigercat-vue/PieChart'
+import { Marquee } from '@expcat/tigercat-vue/Marquee'
+import { DataExport } from '@expcat/tigercat-vue/DataExport'
 import type { Session, StatsOverview, StatsTrend } from '../utils'
-import { apiRequest } from '../utils'
+import { apiRequest, getAuthHeaders } from '../utils'
+import {
+  DATA_EXPORT_PLACEHOLDER_ROWS,
+  DATA_EXPORT_TRIGGER_FORMATS,
+  EXPORT_FORMAT_LABELS,
+  EXPORT_FORMATS,
+  OVERVIEW_EXPORT_FIELDS,
+  exportOverview,
+  handleDataExportError,
+  skipClientDataExport,
+  toExportColumns,
+  type ExportFormat,
+} from '../utils/export'
 import Icon from '../components/Icon.vue'
 import AppLogo from '../components/AppLogo.vue'
 import MetricCard from '../components/MetricCard.vue'
@@ -34,6 +48,8 @@ let trendRequestId = 0
 
 // 时间范围（天数）
 const trendDays = ref<number>(7)
+const exporting = ref(false)
+const exportColumns = computed(() => toExportColumns(OVERVIEW_EXPORT_FIELDS))
 const trendDaysOptions = [
   { value: 7, label: '近 7 天' },
   { value: 14, label: '近 14 天' },
@@ -109,6 +125,22 @@ watch(trendDays, async () => {
   }
 })
 
+async function onExport(format: ExportFormat) {
+  exporting.value = true
+  try {
+    await exportOverview({
+      format,
+      days: trendDays.value,
+      headers: getAuthHeaders(),
+    })
+    Message.success({ content: '导出成功', duration: 3000 })
+  } catch (error: unknown) {
+    Message.error({ content: error instanceof Error ? error.message : '导出失败', duration: 3000 })
+  } finally {
+    exporting.value = false
+  }
+}
+
 onMounted(loadStats)
 
 const router = useRouter()
@@ -126,6 +158,13 @@ const quickActions = [
   { label: '角色配置', icon: 'shield', key: 'roles' },
   { label: '系统设置', icon: 'settings', key: 'settings' },
   { label: '查看日志', icon: 'fileText', key: 'logs' },
+]
+
+const ANNOUNCEMENTS = [
+  '今晚 22:00–23:00 计划维护，仪表盘指标可能延迟刷新。',
+  '每日 02:00 自动备份已完成，可在审计日志核对结果。',
+  '媒体存储用量接近 80%，请及时清理过期文件。',
+  '演示环境将于本周日重启缓存节点，会话可能被重置。',
 ]
 </script>
 
@@ -165,6 +204,44 @@ const quickActions = [
       :description="homeError || statsError"
       closable
     />
+
+    <Marquee
+      direction="left"
+      :duration="28000"
+      :pause-on-hover="true"
+      :gap="24"
+      :repeat="2"
+      aria-label="运维公告"
+      class-name="rounded-lg border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-card,#ffffff) px-3 py-2"
+    >
+      <span
+        v-for="item in ANNOUNCEMENTS"
+        :key="item"
+        class="inline-flex items-center gap-2 whitespace-nowrap text-sm text-(--tiger-text,#0f172a)"
+      >
+        <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-(--tiger-primary,#3b82f6)"></span>
+        <span class="text-(--tiger-text-secondary,#64748b)">{{ item }}</span>
+      </span>
+    </Marquee>
+
+    <div class="flex flex-wrap items-center justify-end gap-2">
+      <DataExport
+        v-for="format in EXPORT_FORMATS"
+        :key="format"
+        :columns="exportColumns"
+        :data-source="DATA_EXPORT_PLACEHOLDER_ROWS"
+        :formats="DATA_EXPORT_TRIGGER_FORMATS"
+        file-name="overview"
+        :labels="{
+          xlsxText: EXPORT_FORMAT_LABELS[format],
+          exportingText: '导出中...',
+          triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
+        }"
+        :disabled="exporting"
+        :cell-formatter="skipClientDataExport"
+        @error="(error: unknown) => handleDataExportError(error, format, onExport, (message) => Message.error({ content: message, duration: 3000 }))"
+      />
+    </div>
 
     <!-- 统计卡片 -->
     <MetricGrid :columns="4">

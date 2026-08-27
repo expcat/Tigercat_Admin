@@ -4,6 +4,9 @@ import { useRoute } from 'vue-router'
 import { Alert, Button, Card, Empty, Input, Loading, Modal, Select, Tag, Text } from '@expcat/tigercat-vue'
 import { ActivityFeed } from '@expcat/tigercat-vue/ActivityFeed'
 import { Timeline } from '@expcat/tigercat-vue/Timeline'
+import { DataExport } from '@expcat/tigercat-vue/DataExport'
+import { CheckboxGroup } from '@expcat/tigercat-vue/CheckboxGroup'
+import { Checkbox } from '@expcat/tigercat-vue/Checkbox'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
 import ChartEmptyState from '../components/ChartEmptyState.vue'
@@ -11,6 +14,17 @@ import MetricCard from '../components/MetricCard.vue'
 import MetricGrid from '../components/MetricGrid.vue'
 import PageActionPanel from '../components/PageActionPanel.vue'
 import { apiRequest, exportAuditLogs, getAuthHeaders, loadWorkbenchState, saveWorkbenchState } from '../utils'
+import {
+  AUDIT_EXPORT_FIELDS,
+  DATA_EXPORT_PLACEHOLDER_ROWS,
+  DATA_EXPORT_TRIGGER_FORMATS,
+  EXPORT_FORMAT_LABELS,
+  EXPORT_FORMATS,
+  handleDataExportError,
+  skipClientDataExport,
+  toExportColumns,
+  type ExportFormat,
+} from '../utils/export'
 import { usePermission } from '../utils/permission'
 import type { AuditLogItem, AuditRetentionCleanupResult, AuditRetentionPolicy, PagedResult } from '../utils/types'
 
@@ -37,7 +51,8 @@ const category = ref(savedQuery.category ?? '')
 const retentionDays = ref('90')
 const loading = ref(true)
 const errorMessage = ref('')
-const exportConfirmOpen = ref(false)
+const exportFields = ref<string[]>(AUDIT_EXPORT_FIELDS.map((field) => field.key))
+const exportColumns = computed(() => toExportColumns(AUDIT_EXPORT_FIELDS))
 const exporting = ref(false)
 const cleanupConfirmOpen = ref(false)
 const cleanupResult = ref<AuditRetentionCleanupResult | null>(null)
@@ -133,22 +148,30 @@ const loadRetentionPolicy = async () => {
   }
 }
 
-const handleConfirmExport = async () => {
+function setExportFields(value: unknown) {
+  exportFields.value = Array.isArray(value) ? value.map(String) : []
+}
+
+const onExport = async (format: ExportFormat) => {
   if (logs.value.length === 0) {
     errorMessage.value = '当前筛选没有可导出的结果'
-    exportConfirmOpen.value = false
+    return
+  }
+  if (exportFields.value.length === 0) {
+    errorMessage.value = '请至少选择一个导出字段'
     return
   }
   exporting.value = true
   try {
     await exportAuditLogs({
+      format,
+      fields: exportFields.value,
       query: {
         keyword: keyword.value,
         category: category.value,
       },
       headers: getAuthHeaders()
     })
-    exportConfirmOpen.value = false
   } catch (error: unknown) {
     errorMessage.value = error instanceof Error ? error.message : '导出失败'
   } finally {
@@ -278,9 +301,33 @@ onMounted(async () => {
           <Button variant="outline" @click="loadAuditLogs">
             刷新日志
           </Button>
-          <Button v-if="canExport" variant="outline" @click="exportConfirmOpen = true">
-            导出 CSV
-          </Button>
+          <template v-if="canExport">
+            <DataExport
+              v-for="format in EXPORT_FORMATS"
+              :key="format"
+              :columns="exportColumns"
+              :data-source="DATA_EXPORT_PLACEHOLDER_ROWS"
+              :formats="DATA_EXPORT_TRIGGER_FORMATS"
+              file-name="audit-logs"
+              :labels="{
+                xlsxText: EXPORT_FORMAT_LABELS[format],
+                exportingText: '导出中...',
+                triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
+              }"
+              :disabled="exporting"
+              :cell-formatter="skipClientDataExport"
+              @error="(error: unknown) => handleDataExportError(error, format, onExport, (message) => errorMessage = message)"
+            />
+            <CheckboxGroup
+              :model-value="exportFields"
+              class-name="flex w-full flex-wrap gap-x-4 gap-y-2 sm:w-auto"
+              @update:model-value="setExportFields"
+            >
+              <Checkbox v-for="field in AUDIT_EXPORT_FIELDS" :key="field.key" :value="field.key">
+                {{ field.label }}
+              </Checkbox>
+            </CheckboxGroup>
+          </template>
       </template>
     </PageActionPanel>
 
@@ -360,21 +407,6 @@ onMounted(async () => {
         <template #icon><Icon name="checkCircle" :size="20" /></template>
       </MetricCard>
     </MetricGrid>
-
-    <Modal
-      v-model:open="exportConfirmOpen"
-      title="确认导出审计日志"
-      show-default-footer
-      :ok-text="exporting ? '导出中…' : '导出 CSV'"
-      cancel-text="取消"
-      :confirm-loading="exporting"
-      @ok="handleConfirmExport"
-      @cancel="exportConfirmOpen = false"
-    >
-      <Text color="secondary">
-        将按当前关键词和分类筛选导出最近审计窗口中的 {{ logs.length }} 条记录。
-      </Text>
-    </Modal>
 
     <Modal
       v-model:open="cleanupConfirmOpen"

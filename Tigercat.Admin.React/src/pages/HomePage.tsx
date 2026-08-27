@@ -6,10 +6,13 @@ import {
   Tag,
   Select,
   Loading,
+  Message,
 } from '@expcat/tigercat-react';
 import { LineChart } from '@expcat/tigercat-react/LineChart';
 import { BarChart } from '@expcat/tigercat-react/BarChart';
 import { PieChart } from '@expcat/tigercat-react/PieChart';
+import { Marquee } from '@expcat/tigercat-react/Marquee';
+import { DataExport } from '@expcat/tigercat-react/DataExport';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
   UsersIcon,
@@ -31,6 +34,18 @@ import {
 } from '../components/PageFragments';
 import type { StatsOverview, StatsTrend } from '../utils';
 import { apiRequest, getAuthHeaders } from '../utils';
+import {
+  DATA_EXPORT_PLACEHOLDER_ROWS,
+  DATA_EXPORT_TRIGGER_FORMATS,
+  EXPORT_FORMAT_LABELS,
+  EXPORT_FORMATS,
+  OVERVIEW_EXPORT_FIELDS,
+  exportOverview,
+  handleDataExportError,
+  skipClientDataExport,
+  toExportColumns,
+  type ExportFormat,
+} from '../utils/export';
 
 interface Notice {
   type: 'success' | 'error' | '';
@@ -76,6 +91,13 @@ const statsCardsMeta = [
 ] as const;
 
 // 快捷操作
+const ANNOUNCEMENTS = [
+  '今晚 22:00–23:00 计划维护，仪表盘指标可能延迟刷新。',
+  '每日 02:00 自动备份已完成，可在审计日志核对结果。',
+  '媒体存储用量接近 80%，请及时清理过期文件。',
+  '演示环境将于本周日重启缓存节点，会话可能被重置。',
+];
+
 const quickActions = [
   {
     label: '用户管理',
@@ -119,6 +141,8 @@ function HomePage() {
   const [trendLoading, setTrendLoading] = useState(false);
   const [statsError, setStatsError] = useState('');
   const [trendDays, setTrendDays] = useState<number>(7);
+  const [exporting, setExporting] = useState(false);
+  const exportColumns = useMemo(() => toExportColumns(OVERVIEW_EXPORT_FIELDS), []);
   const trendRequestId = useRef(0);
 
   // --- 快捷操作跳转 ---
@@ -221,6 +245,22 @@ function HomePage() {
     [fetchTrend],
   );
 
+  const onExport = useCallback(async (format: ExportFormat) => {
+    setExporting(true);
+    try {
+      await exportOverview({
+        format,
+        days: trendDays,
+        headers: getAuthHeaders(),
+      });
+      Message.success({ content: '导出成功', duration: 3000 });
+    } catch (error: unknown) {
+      Message.error({ content: error instanceof Error ? error.message : '导出失败', duration: 3000 });
+    } finally {
+      setExporting(false);
+    }
+  }, [trendDays]);
+
   const errorMessage = homeError || statsError;
 
   return (
@@ -276,6 +316,48 @@ function HomePage() {
           closable
         />
       )}
+
+      <Marquee
+        direction="left"
+        duration={28000}
+        pauseOnHover
+        gap={24}
+        repeat={2}
+        aria-label="运维公告"
+        className="rounded-lg border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-card,#ffffff) px-3 py-2">
+        {ANNOUNCEMENTS.map((item) => (
+          <span
+            key={item}
+            className="inline-flex items-center gap-2 whitespace-nowrap text-sm text-(--tiger-text,#0f172a)">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-(--tiger-primary,#3b82f6)" />
+            <span className="text-(--tiger-text-secondary,#64748b)">{item}</span>
+          </span>
+        ))}
+      </Marquee>
+
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {EXPORT_FORMATS.map((format) => (
+          <DataExport
+            key={format}
+            columns={exportColumns}
+            dataSource={DATA_EXPORT_PLACEHOLDER_ROWS}
+            formats={DATA_EXPORT_TRIGGER_FORMATS}
+            fileName="overview"
+            labels={{
+              xlsxText: EXPORT_FORMAT_LABELS[format],
+              exportingText: '导出中...',
+              triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
+            }}
+            disabled={exporting}
+            cellFormatter={skipClientDataExport}
+            onError={(error) =>
+              handleDataExportError(error, format, onExport, (message) =>
+                Message.error({ content: message, duration: 3000 }),
+              )
+            }
+          />
+        ))}
+      </div>
 
       <MetricGrid columns={4}>
         {statsCards.map((stat) => {

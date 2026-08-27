@@ -68,7 +68,7 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         Assert.NotNull(body.Data);
         Assert.False(string.IsNullOrWhiteSpace(body.Data.Token));
 
-        return body.Data.Token;
+        return body.Data.Token!;
     }
 
     private async Task<string> RegisterAndLoginAsync(string username, string password)
@@ -85,7 +85,7 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         Assert.NotNull(body?.Data);
         Assert.False(string.IsNullOrWhiteSpace(body.Data.Token));
 
-        return body.Data.Token;
+        return body.Data.Token!;
     }
 
     /// <summary>Build a request message with the session token attached.</summary>
@@ -238,8 +238,9 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
             var body = await response.ReadApiResponseAsync<LoginResponse>();
 
             Assert.NotNull(body?.Data);
+            Assert.NotNull(body.Data.ExpiresAt);
             Assert.InRange(
-                body.Data.ExpiresAt,
+                body.Data.ExpiresAt.Value,
                 beforeLogin.AddMinutes(25),
                 beforeLogin.AddMinutes(35));
         }

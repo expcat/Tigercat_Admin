@@ -21,7 +21,35 @@ public class ExportEndpoints : IEndpointDefinition
     private static readonly HashSet<string> ValidRoleFields =
         ["id", "name", "description", "createdAt", "permissions", "userCount"];
 
-    private static readonly string[] SupportedFormats = ["csv", "json", "xlsx"];
+    private static readonly HashSet<string> ValidReportFields =
+    [
+        "section",
+        "visits",
+        "orders",
+        "conversionRate",
+        "revenue",
+        "channel",
+        "channelVisits",
+        "channelOrders",
+        "channelRate",
+        "channelAmount"
+    ];
+
+    private static readonly HashSet<string> ValidOverviewFields =
+        ["section", "key", "label", "value"];
+
+    private static readonly HashSet<string> ReportKpiFields =
+        ["visits", "orders", "conversionRate", "revenue"];
+
+    private static readonly HashSet<string> ReportChannelFields =
+        ["channel", "channelVisits", "channelOrders", "channelRate", "channelAmount"];
+
+    private static readonly string[] ValidReportTypes = ["daily", "weekly", "monthly"];
+
+    internal static readonly string[] SupportedFormats = ["csv", "json", "xlsx"];
+
+    private const int DefaultTrendDays = 7;
+    private const int MaxTrendDays = 90;
 
     /// <summary>Maximum number of rows allowed per export to prevent OOM on large tables.</summary>
     private const int MaxExportRows = 10_000;
@@ -38,6 +66,14 @@ public class ExportEndpoints : IEndpointDefinition
         group.MapGet("/roles", ExportRoles)
             .RequirePermission("role:view")
             .WithName("ExportRoles");
+
+        group.MapGet("/reports", ExportReports)
+            .RequireLogin()
+            .WithName("ExportReports");
+
+        group.MapGet("/overview", ExportOverview)
+            .RequireLogin()
+            .WithName("ExportOverview");
     }
 
     // GET /api/export/users?format=csv|json|xlsx&fields=id,username,...
@@ -54,10 +90,7 @@ public class ExportEndpoints : IEndpointDefinition
         var fmt = NormalizeFormat(format);
         if (fmt is null)
         {
-            return Results.Json(
-                ApiResult.Fail<object>($"不支持的格式，可选值：{string.Join(", ", SupportedFormats)}", 400),
-                AppJsonContext.Default.ApiResponseObject,
-                statusCode: 400);
+            return InvalidFormatResult();
         }
 
         var selectedFields = ParseFields(fields, ValidUserFields);
@@ -135,10 +168,7 @@ public class ExportEndpoints : IEndpointDefinition
         var fmt = NormalizeFormat(format);
         if (fmt is null)
         {
-            return Results.Json(
-                ApiResult.Fail<object>($"不支持的格式，可选值：{string.Join(", ", SupportedFormats)}", 400),
-                AppJsonContext.Default.ApiResponseObject,
-                statusCode: 400);
+            return InvalidFormatResult();
         }
 
         var selectedFields = ParseFields(fields, ValidRoleFields);
@@ -184,15 +214,97 @@ public class ExportEndpoints : IEndpointDefinition
         return BuildExportResult(rows, selectedFields, fmt, "roles");
     }
 
+    // GET /api/export/reports?type=daily|weekly|monthly&format=csv|json|xlsx&fields=
+    private static Task<IResult> ExportReports(
+        string? type,
+        string? format,
+        string? fields)
+    {
+        var reportType = (type ?? "").Trim().ToLowerInvariant();
+        if (!ValidReportTypes.Contains(reportType))
+        {
+            return Task.FromResult<IResult>(Results.Json(
+                ApiResult.Fail<object>($"不支持的报表类型，可选值：{string.Join(", ", ValidReportTypes)}", 400),
+                AppJsonContext.Default.ApiResponseObject,
+                statusCode: 400));
+        }
+
+        var fmt = NormalizeFormat(format);
+        if (fmt is null)
+        {
+            return Task.FromResult(InvalidFormatResult());
+        }
+
+        var selectedFields = ParseFields(fields, ValidReportFields);
+        var rows = BuildReportRows(reportType, selectedFields);
+        return Task.FromResult(BuildExportResult(rows, selectedFields, fmt, "reports"));
+    }
+
+    // GET /api/export/overview?format=csv|json|xlsx&days=
+    private static async Task<IResult> ExportOverview(
+        string? format,
+        int? days,
+        AdminDbContext db,
+        CancellationToken ct)
+    {
+        var fmt = NormalizeFormat(format);
+        if (fmt is null)
+        {
+            return InvalidFormatResult();
+        }
+
+        var selectedFields = ParseFields(null, ValidOverviewFields);
+        var d = Math.Clamp(days ?? DefaultTrendDays, 1, MaxTrendDays);
+
+        var totalUsers = await db.Users.CountAsync(ct);
+        var activeUsers = await db.Users.CountAsync(u => u.Status == UserStatus.Active, ct);
+        var disabledUsers = totalUsers - activeUsers;
+        var totalRoles = await db.Roles.CountAsync(ct);
+        var totalPermissions = await db.Permissions.CountAsync(ct);
+
+        var startDate = DateTime.UtcNow.Date.AddDays(-d + 1);
+        var endDateExclusive = startDate.AddDays(d);
+        var grouped = await db.Users
+            .Where(u => u.CreatedAt >= startDate && u.CreatedAt < endDateExclusive)
+            .GroupBy(u => u.CreatedAt.Date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Date, x => x.Count, ct);
+
+        var rows = new List<ExportOverviewRow>
+        {
+            new("overview", "totalUsers", "总用户数", totalUsers.ToString()),
+            new("overview", "activeUsers", "活跃用户", activeUsers.ToString()),
+            new("overview", "disabledUsers", "禁用用户", disabledUsers.ToString()),
+            new("overview", "totalRoles", "总角色数", totalRoles.ToString()),
+            new("overview", "totalPermissions", "总权限数", totalPermissions.ToString()),
+        };
+
+        for (var i = 0; i < d; i++)
+        {
+            var date = startDate.AddDays(i);
+            grouped.TryGetValue(date, out var count);
+            var dateKey = date.ToString("yyyy-MM-dd");
+            rows.Add(new ExportOverviewRow("trend", dateKey, dateKey, count.ToString()));
+        }
+
+        return BuildExportResult(rows, selectedFields, fmt, "overview");
+    }
+
     // --- Helpers ---
 
-    private static string? NormalizeFormat(string? format)
+    internal static IResult InvalidFormatResult() =>
+        Results.Json(
+            ApiResult.Fail<object>($"不支持的格式，可选值：{string.Join(", ", SupportedFormats)}", 400),
+            AppJsonContext.Default.ApiResponseObject,
+            statusCode: 400);
+
+    internal static string? NormalizeFormat(string? format)
     {
         var f = (format ?? "csv").Trim().ToLowerInvariant();
         return SupportedFormats.Contains(f) ? f : null;
     }
 
-    private static HashSet<string> ParseFields(string? fields, HashSet<string> allFields)
+    internal static HashSet<string> ParseFields(string? fields, HashSet<string> allFields)
     {
         if (string.IsNullOrWhiteSpace(fields))
             return allFields;
@@ -205,7 +317,71 @@ public class ExportEndpoints : IEndpointDefinition
         return requested.Count > 0 ? requested : allFields;
     }
 
-    private static IResult BuildExportResult<T>(
+    internal static readonly HashSet<string> ValidAuditFields =
+        ["id", "stream", "category", "eventType", "occurredAtUtc", "traceId", "title", "description", "actor"];
+
+    private static List<ExportReportRow> BuildReportRows(string reportType, HashSet<string> selectedFields)
+    {
+        var includeKpi = ContainsAny(selectedFields, ReportKpiFields);
+        var includeChannel = ContainsAny(selectedFields, ReportChannelFields);
+        if (!includeKpi && !includeChannel)
+        {
+            includeKpi = true;
+            includeChannel = true;
+        }
+
+        var rows = new List<ExportReportRow>();
+        if (includeKpi)
+        {
+            var kpi = ReportDemoData.Kpis[reportType];
+            rows.Add(new ExportReportRow(
+                "kpi",
+                kpi.Visits,
+                kpi.Orders,
+                kpi.ConversionRate,
+                kpi.Revenue,
+                "",
+                "",
+                "",
+                "",
+                ""));
+        }
+
+        if (includeChannel)
+        {
+            foreach (var channel in ReportDemoData.Channels)
+            {
+                rows.Add(new ExportReportRow(
+                    "channel",
+                    "",
+                    "",
+                    "",
+                    "",
+                    channel.Channel,
+                    channel.Visits,
+                    channel.Orders,
+                    channel.Rate,
+                    channel.Amount));
+            }
+        }
+
+        return rows;
+    }
+
+    private static bool ContainsAny(HashSet<string> selected, HashSet<string> candidates)
+    {
+        foreach (var field in candidates)
+        {
+            if (selected.Contains(field))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    internal static IResult BuildExportResult<T>(
         List<T> rows,
         HashSet<string> selectedFields,
         string format,
@@ -311,6 +487,28 @@ public class ExportEndpoints : IEndpointDefinition
             bytes,
             contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             fileDownloadName: $"{entityName}.xlsx");
+    }
+
+    private static class ReportDemoData
+    {
+        internal sealed record KpiValues(string Visits, string Orders, string ConversionRate, string Revenue);
+
+        internal sealed record ChannelValues(string Channel, string Visits, string Orders, string Rate, string Amount);
+
+        internal static readonly Dictionary<string, KpiValues> Kpis = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["daily"] = new("18420", "642", "3.5%", "128600 元"),
+            ["weekly"] = new("126800", "4380", "3.4%", "892400 元"),
+            ["monthly"] = new("542000", "18960", "3.6%", "3846200 元"),
+        };
+
+        internal static readonly ChannelValues[] Channels =
+        [
+            new("自然搜索", "6820", "248", "3.6%", "¥ 48,200"),
+            new("付费广告", "5140", "196", "3.8%", "¥ 39,600"),
+            new("社交媒体", "3260", "108", "3.3%", "¥ 21,400"),
+            new("直接访问", "3200", "90", "2.8%", "¥ 19,400"),
+        ];
     }
 
     // --- Cached compiled property accessors to avoid per-row reflection ---

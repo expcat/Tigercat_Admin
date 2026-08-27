@@ -19,7 +19,7 @@ pnpm create vite my-admin --template react-ts   # React
 pnpm create vite my-admin --template vue-ts     # Vue
 ```
 
-依赖清单（版本以蓝本 [Tigercat.Admin.React/package.json](../../Tigercat.Admin.React/package.json) / [Tigercat.Admin.Vue/package.json](../../Tigercat.Admin.Vue/package.json) 为准，当前蓝本为 Tigercat `^1.2.44`）：
+依赖清单（版本以蓝本 [Tigercat.Admin.React/package.json](../../Tigercat.Admin.React/package.json) / [Tigercat.Admin.Vue/package.json](../../Tigercat.Admin.Vue/package.json) 为准，当前蓝本为 Tigercat `^2.1.1`）：
 
 | 类别 | React 端 | Vue 端 | 说明 |
 | ---- | -------- | ------ | ---- |
@@ -93,7 +93,7 @@ pnpm add -D @tailwindcss/postcss
 | `src/utils/`：`theme.ts`、`request.ts`、`auth.ts`、`permission.tsx`（Vue：`permission.ts`）、`permission-helpers.ts`、`types.ts`、`constants.ts`、`common.ts`、`hooks.ts`（Vue：`composables.ts`）、`shell-navigation.tsx`（Vue：`shell-navigation.ts`）、`tags-view.ts`、`lock-screen.ts`、`watermark.ts`、`tigercatText.ts`、`validation.ts` | 主题 / 请求 / 会话 / 权限 / 导航 / 多标签 / 锁屏 / 水印 / 文案 | `types.ts` 裁剪为自己的业务类型；`shell-navigation` 替换菜单表；`constants.ts` 检查 API 前缀 |
 | `src/main.tsx` + `App.tsx`（Vue：`src/main.ts` + `App.vue`） | 应用入口（ConfigProvider locale、Router 模式） | **删除 `@tigercat-admin/mock-api` 的 import、`isTigercatDemoEnabled` 与 `installTigercatMockApi(...)` 调用**（除非选 backend.md 方案 C）；不需要 hash 路由时可删 `VITE_TIGERCAT_ROUTER_MODE` 分支 |
 
-蓝本中 `src/utils/` 其余文件（`notifications.ts`、`task-board.ts`、`settings.ts`、`media.ts`、`export.ts`、`workbench.ts`）是具体业务页面的 API 包装，按你实际要做的页面选择性复制。
+蓝本中 `src/utils/` 其余文件（`notifications.ts`、`monitor.ts`、`task-board.ts`、`settings.ts`、`media.ts`、`export.ts`、`workbench.ts`）是具体业务页面的 API 包装，按你实际要做的页面选择性复制。
 
 路由、菜单与权限：
 

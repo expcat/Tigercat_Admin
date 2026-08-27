@@ -37,7 +37,16 @@
 | 仪表盘统计、导出 | [docs/api/dashboard-export.md](api/dashboard-export.md) |
 | 审计日志 | [docs/api/audit.md](api/audit.md) |
 | 通知中心 | [docs/api/notifications.md](api/notifications.md) |
+| 实时监控 | [docs/api/monitor.md](api/monitor.md) |
 | 任务面板 | [docs/api/tasks.md](api/tasks.md) |
+| 工单 | [docs/api/tickets.md](api/tickets.md) |
+| 聊天坞 | [docs/api/chat.md](api/chat.md) |
+| 评论 | [docs/api/comments.md](api/comments.md) |
+| 项目 | [docs/api/projects.md](api/projects.md) |
+| 日历 | [docs/api/calendar.md](api/calendar.md) |
+| 内容文章 | [docs/api/content.md](api/content.md) |
+| 定时任务 | [docs/api/jobs.md](api/jobs.md) |
+| 数据导入 | [docs/api/import.md](api/import.md) |
 | 系统设置 | [docs/api/settings.md](api/settings.md) |
 | 媒体资源 | [docs/api/media.md](api/media.md) |
 

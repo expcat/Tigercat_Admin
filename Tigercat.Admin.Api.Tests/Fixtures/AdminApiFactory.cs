@@ -144,3 +144,37 @@ public class ProductionSecurityApiFactory : InMemoryApiFactory
 {
     protected override string EnvironmentName => Environments.Production;
 }
+
+/// <summary>
+/// In-memory factory that replaces the throwing Redis client with an empty-stream stub
+/// so audit export can return 200 in tests.
+/// </summary>
+public class InMemoryRedisStubApiFactory : InMemoryApiFactory
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<IRedisClient>();
+            services.AddSingleton(StubRedisClient.Create());
+        });
+    }
+}
+
+/// <summary>
+/// SQLite factory with the same empty-stream Redis stub as
+/// <see cref="InMemoryRedisStubApiFactory"/>.
+/// </summary>
+public class SqliteRedisStubApiFactory : SqliteApiFactory
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<IRedisClient>();
+            services.AddSingleton(StubRedisClient.Create());
+        });
+    }
+}

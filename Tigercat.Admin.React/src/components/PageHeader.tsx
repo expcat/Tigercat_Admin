@@ -1,4 +1,5 @@
-import { Card, Tag, Text } from '@expcat/tigercat-react';
+import { Tag, Text } from '@expcat/tigercat-react';
+import { PageHeader as TigerPageHeader } from '@expcat/tigercat-react/PageHeader';
 import type { TagVariant } from '@expcat/tigercat-core';
 import type { ReactNode } from 'react';
 
@@ -16,36 +17,35 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, icon, tags }: PageHeaderProps) {
   return (
-    <Card className="overflow-hidden">
-      <div className="relative">
-        <div className="p2-page-accent absolute inset-0 -m-4" />
-        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p2-icon-chip flex h-12 w-12 shrink-0 items-center justify-center">
-                {icon}
-              </div>
-              <div className="min-w-0">
-                <Text size="lg" weight="bold" className="p2-text-primary">
-                  {title}
-                </Text>
-                <Text size="sm" color="secondary">
-                  {subtitle}
-                </Text>
-              </div>
-            </div>
+    <TigerPageHeader
+      showBack={false}
+      className="min-w-0 overflow-hidden"
+      title={
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="p2-icon-chip flex h-12 w-12 shrink-0 items-center justify-center">
+            {icon}
           </div>
-          {tags && tags.length > 0 && (
-            <div className="hidden sm:flex items-center gap-2">
-              {tags.map((tag) => (
-                <Tag key={tag.label} variant={tag.variant} size="sm">
-                  {tag.label}
-                </Tag>
-              ))}
-            </div>
-          )}
+          <div className="min-w-0">
+            <Text size="lg" weight="bold" className="p2-text-primary block truncate">
+              {title}
+            </Text>
+            <Text size="sm" color="secondary" className="block">
+              {subtitle}
+            </Text>
+          </div>
         </div>
-      </div>
-    </Card>
+      }
+      actions={
+        tags && tags.length > 0 ? (
+          <div className="hidden sm:flex items-center gap-2">
+            {tags.map((tag) => (
+              <Tag key={tag.label} variant={tag.variant} size="sm">
+                {tag.label}
+              </Tag>
+            ))}
+          </div>
+        ) : undefined
+      }
+    />
   );
 }

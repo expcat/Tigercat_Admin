@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { Alert, Card, Text, Tag } from '@expcat/tigercat-vue'
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuTrigger,
+} from '@expcat/tigercat-vue/NavigationMenu'
 import type { TagVariant } from '@expcat/tigercat-core'
 import { apiRequest } from '../utils'
 import Icon from '../components/Icon.vue'
@@ -155,6 +162,33 @@ const handleAlertClose = () => {
   errorMessage.value = ''
 }
 
+const ABOUT_SECTIONS = [
+  {
+    key: 'info',
+    href: '#about-info',
+    label: '服务信息',
+    description: '查看服务名称、版本与连接状态',
+  },
+  {
+    key: 'features',
+    href: '#about-features',
+    label: '特性',
+    description: '浏览产品亮点与体验说明',
+  },
+  {
+    key: 'stack',
+    href: '#about-stack',
+    label: '技术栈',
+    description: '了解前端、构建与 UI 组件',
+  },
+] as const
+
+function scrollToAboutSection(event: MouseEvent, href: string) {
+  event.preventDefault()
+  const id = href.replace('#', '')
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 onMounted(() => {
   loadInfo()
 })
@@ -172,6 +206,24 @@ onMounted(() => {
       ]"
     />
 
+    <NavigationMenu class-name="min-w-0 overflow-x-auto">
+      <NavigationMenuItem
+        v-for="section in ABOUT_SECTIONS"
+        :key="section.key"
+        :value="section.key"
+      >
+        <NavigationMenuTrigger>{{ section.label }}</NavigationMenuTrigger>
+        <NavigationMenuContent>
+          <NavigationMenuLink
+            :href="section.href"
+            @click="scrollToAboutSection($event, section.href)"
+          >
+            {{ section.description }}
+          </NavigationMenuLink>
+        </NavigationMenuContent>
+      </NavigationMenuItem>
+    </NavigationMenu>
+
     <Alert
       v-if="errorMessage"
       type="error"
@@ -181,6 +233,7 @@ onMounted(() => {
       @close="handleAlertClose"
     />
 
+    <div id="about-info">
     <Card title="服务概览">
       <div v-if="loading" class="flex items-center justify-center py-10">
         <Text size="sm" color="secondary">正在加载服务信息...</Text>
@@ -201,7 +254,9 @@ onMounted(() => {
         </div>
       </div>
     </Card>
+    </div>
 
+    <div id="about-features">
     <Card title="产品亮点">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div
@@ -220,7 +275,9 @@ onMounted(() => {
         </div>
       </div>
     </Card>
+    </div>
 
+    <div id="about-stack">
     <Card title="技术栈">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div
@@ -238,6 +295,7 @@ onMounted(() => {
         </div>
       </div>
     </Card>
+    </div>
 
     <Card title="系统信息">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">

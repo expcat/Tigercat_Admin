@@ -12,6 +12,8 @@ public class NotificationsEndpoints : IEndpointDefinition
 {
     private const int DefaultPageSize = 50;
     private const int MaxPageSize = 100;
+    internal static readonly string[] AllowedGroupKeys = ["ops", "security", "release"];
+    internal static readonly string[] AllowedToastTypes = ["info", "success", "warning", "error"];
 
     public void DefineEndpoints(IEndpointRouteBuilder app)
     {
@@ -21,6 +23,10 @@ public class NotificationsEndpoints : IEndpointDefinition
         group.MapGet("", GetNotifications)
             .RequirePermission("notification:view")
             .WithName("GetNotifications");
+
+        group.MapPost("", CreateNotification)
+            .RequirePermission("notification:create")
+            .WithName("CreateNotification");
 
         group.MapPut("/{id}/read", UpdateReadState)
             .RequirePermission("notification:edit")
@@ -67,6 +73,58 @@ public class NotificationsEndpoints : IEndpointDefinition
         return Results.Json(
             ApiResult.Ok(new PagedResponse<NotificationItemResponse>(items, total, p, ps)),
             AppJsonContext.Default.ApiResponsePagedResponseNotificationItemResponse);
+    }
+
+    private static async Task<IResult> CreateNotification(
+        CreateNotificationRequest request,
+        AdminDbContext db,
+        CancellationToken ct)
+    {
+        var title = TicketsEndpoints.NormalizeOptional(request.Title);
+        if (title is null)
+        {
+            return CreateError("标题不能为空");
+        }
+
+        var groupKey = TicketsEndpoints.NormalizeOptional(request.GroupKey)?.ToLowerInvariant();
+        if (groupKey is null || !AllowedGroupKeys.Contains(groupKey))
+        {
+            return CreateError("无效的通知分组");
+        }
+
+        var toastType = TicketsEndpoints.NormalizeOptional(request.ToastType)?.ToLowerInvariant();
+        if (toastType is null || !AllowedToastTypes.Contains(toastType))
+        {
+            return CreateError("无效的通知类型");
+        }
+
+        var linkUrl = TicketsEndpoints.NormalizeOptional(request.LinkUrl);
+        if (linkUrl is not null && !IsSafeInternalPath(linkUrl))
+        {
+            return CreateError("通知链接必须是站内路径");
+        }
+
+        var description = TicketsEndpoints.NormalizeOptional(request.Description) ?? string.Empty;
+        var now = DateTime.UtcNow;
+        var entity = new AdminNotificationEntity
+        {
+            PublicId = $"notif-{Guid.NewGuid():N}",
+            GroupKey = groupKey,
+            Title = title,
+            Description = description,
+            ToastType = toastType,
+            Read = false,
+            LinkUrl = linkUrl,
+            MetadataJson = SerializeMetadata(request.Meta),
+            CreatedAt = now
+        };
+
+        db.AdminNotifications.Add(entity);
+        await db.SaveChangesAsync(ct);
+
+        return Results.Json(
+            ApiResult.Ok(ToResponse(entity)),
+            AppJsonContext.Default.ApiResponseNotificationItemResponse);
     }
 
     private static async Task<IResult> UpdateReadState(
@@ -160,4 +218,34 @@ public class NotificationsEndpoints : IEndpointDefinition
             return [];
         }
     }
+
+    private static string SerializeMetadata(Dictionary<string, string>? meta)
+    {
+        if (meta is null || meta.Count == 0)
+        {
+            return "{}";
+        }
+
+        var sanitized = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (key, value) in meta)
+        {
+            if (string.IsNullOrWhiteSpace(key) || value is null)
+            {
+                continue;
+            }
+
+            sanitized[key.Trim()] = value;
+        }
+
+        return sanitized.Count == 0 ? "{}" : JsonSerializer.Serialize(sanitized);
+    }
+
+    internal static bool IsSafeInternalPath(string linkUrl) =>
+        linkUrl.StartsWith('/') && !linkUrl.StartsWith("//");
+
+    private static IResult CreateError(string message) =>
+        Results.Json(
+            ApiResult.Fail<NotificationItemResponse>(message, 400),
+            AppJsonContext.Default.ApiResponseNotificationItemResponse,
+            statusCode: 400);
 }

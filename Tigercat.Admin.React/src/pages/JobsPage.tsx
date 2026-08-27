@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, Text, Tag, Button, Input, Message } from '@expcat/tigercat-react';
 import { Badge } from '@expcat/tigercat-react/Badge';
 import { Switch } from '@expcat/tigercat-react/Switch';
@@ -10,7 +10,7 @@ import { Stepper } from '@expcat/tigercat-react/Stepper';
 import { InputGroup, InputGroupAddon } from '@expcat/tigercat-react/InputGroup';
 import { NumberKeyboard } from '@expcat/tigercat-react/NumberKeyboard';
 import { Gantt } from '@expcat/tigercat-react/Gantt';
-import type { GanttTask, CronPreset, TagVariant } from '@expcat/tigercat-core';
+import type { CronPreset } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { MetricCard, MetricGrid, MutedPanel } from '../components/PageFragments';
 import {
@@ -21,103 +21,22 @@ import {
   PlusIcon,
   ZapIcon,
 } from '../components/Icons';
-
-type JobStatus = 'running' | 'paused' | 'failed';
-
-interface Job {
-  id: string;
-  name: string;
-  cron: string;
-  concurrency: number;
-  timeout: string;
-  batchSize: string;
-  enabled: boolean;
-  status: JobStatus;
-  lastRun: string;
-  nextRun: string;
-  progress: number;
-  phase: number;
-}
+import {
+  createJob,
+  fetchJobs,
+  toGanttTasks,
+  updateJob,
+  JOB_STATUS_META as STATUS_META,
+  type Job,
+} from '../utils/jobs';
 
 const RUN_PHASES = ['排队', '运行', '回调', '完成'];
-
-const STATUS_META: Record<JobStatus, { label: string; variant: TagVariant }> = {
-  running: { label: '运行中', variant: 'success' },
-  paused: { label: '已暂停', variant: 'default' },
-  failed: { label: '失败', variant: 'danger' },
-};
 
 const CRON_PRESETS: CronPreset[] = [
   { label: '每分钟', value: '* * * * *', description: '每分钟执行一次' },
   { label: '每小时', value: '0 * * * *', description: '每小时整点执行' },
   { label: '每天 02:00', value: '0 2 * * *', description: '每天凌晨两点' },
   { label: '每周一 09:00', value: '0 9 * * 1', description: '每周一上午九点' },
-];
-
-const SEED_JOBS: Job[] = [
-  {
-    id: 'JOB-1001',
-    name: '每日对账批处理',
-    cron: '0 2 * * *',
-    concurrency: 4,
-    timeout: '120',
-    batchSize: '2000',
-    enabled: true,
-    status: 'running',
-    lastRun: '2026-07-01 02:00',
-    nextRun: '2026-07-02 02:00',
-    progress: 64,
-    phase: 1,
-  },
-  {
-    id: 'JOB-1002',
-    name: '订单数据归档',
-    cron: '0 3 * * 0',
-    concurrency: 2,
-    timeout: '300',
-    batchSize: '5000',
-    enabled: true,
-    status: 'running',
-    lastRun: '2026-06-29 03:00',
-    nextRun: '2026-07-06 03:00',
-    progress: 28,
-    phase: 1,
-  },
-  {
-    id: 'JOB-1003',
-    name: '缓存预热',
-    cron: '*/30 * * * *',
-    concurrency: 8,
-    timeout: '60',
-    batchSize: '500',
-    enabled: false,
-    status: 'paused',
-    lastRun: '2026-06-30 23:30',
-    nextRun: '—',
-    progress: 100,
-    phase: 3,
-  },
-  {
-    id: 'JOB-1004',
-    name: '报表快照生成',
-    cron: '0 6 * * *',
-    concurrency: 1,
-    timeout: '180',
-    batchSize: '1000',
-    enabled: true,
-    status: 'failed',
-    lastRun: '2026-07-01 06:00',
-    nextRun: '2026-07-02 06:00',
-    progress: 42,
-    phase: 2,
-  },
-];
-
-const GANTT_RUNS: GanttTask[] = [
-  { id: 'JOB-1001', label: '每日对账批处理', start: '2026-06-30', end: '2026-07-02', progress: 64, color: '#22c55e' },
-  { id: 'JOB-1002', label: '订单数据归档', start: '2026-06-29', end: '2026-07-01', progress: 28, color: '#3b82f6' },
-  { id: 'JOB-1003', label: '缓存预热', start: '2026-06-28', end: '2026-06-30', progress: 100, color: '#94a3b8' },
-  { id: 'JOB-1004', label: '报表快照生成', start: '2026-07-01', end: '2026-07-03', progress: 42, color: '#ef4444' },
 ];
 
 const EMPTY_FORM = {
@@ -129,9 +48,15 @@ const EMPTY_FORM = {
   enabled: true,
 };
 
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+
 function JobsPage() {
-  const [jobs, setJobs] = useState<Job[]>(SEED_JOBS);
-  const [selectedId, setSelectedId] = useState<string | null>(SEED_JOBS[0]?.id ?? null);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -140,26 +65,46 @@ function JobsPage() {
     () => jobs.find((j) => j.id === selectedId) ?? null,
     [jobs, selectedId],
   );
+  const ganttRuns = useMemo(() => toGanttTasks(jobs), [jobs]);
 
   const totalCount = jobs.length;
   const runningCount = jobs.filter((j) => j.status === 'running').length;
   const pausedCount = jobs.filter((j) => j.status === 'paused').length;
   const failedCount = jobs.filter((j) => j.status === 'failed').length;
 
-  const toggleJob = (job: Job, next: boolean) => {
-    setJobs((prev) =>
-      prev.map((j) =>
-        j.id === job.id
-          ? {
-              ...j,
-              enabled: next,
-              status: next ? 'running' : 'paused',
-              nextRun: next ? (j.nextRun === '—' ? '待调度' : j.nextRun) : '—',
-            }
-          : j,
-      ),
-    );
-    Message.success({ content: `任务「${job.name}」已${next ? '启用' : '暂停'}（演示）`, duration: 2000 });
+  const loadJobs = async (preferId?: string | null) => {
+    setLoading(true);
+    try {
+      const payload = await fetchJobs();
+      const items = payload.data ?? [];
+      setJobs(items);
+      setSelectedId((current) => {
+        const next = preferId ?? current;
+        if (next && items.some((item) => item.id === next)) return next;
+        return items[0]?.id ?? null;
+      });
+    } catch (error: unknown) {
+      Message.error({ content: readErrorMessage(error, '任务列表加载失败'), duration: 3000 });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadJobs();
+  }, []);
+
+  const toggleJob = async (job: Job, next: boolean) => {
+    setTogglingId(job.id);
+    try {
+      await updateJob(job.id, { enabled: next });
+      Message.success({ content: `任务「${job.name}」已${next ? '启用' : '暂停'}`, duration: 2000 });
+      await loadJobs(job.id);
+    } catch (error: unknown) {
+      Message.error({ content: readErrorMessage(error, '任务启停失败'), duration: 3000 });
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   const openCreate = () => {
@@ -181,51 +126,47 @@ function JobsPage() {
     setDrawerOpen(true);
   };
 
-  const submitJob = () => {
+  const submitJob = async () => {
     const name = form.name.trim();
     if (!name) {
       Message.warning({ content: '请填写任务名称', duration: 2000 });
       return;
     }
-    if (editingId) {
-      setJobs((prev) =>
-        prev.map((j) =>
-          j.id === editingId
-            ? {
-                ...j,
-                name,
-                cron: form.cron,
-                concurrency: form.concurrency,
-                timeout: form.timeout,
-                batchSize: form.batchSize,
-                enabled: form.enabled,
-                status: form.enabled ? 'running' : 'paused',
-              }
-            : j,
-        ),
-      );
-      Message.success({ content: `任务「${name}」已更新（演示）`, duration: 2200 });
-    } else {
-      const id = `JOB-${1004 + jobs.length + 1}`;
-      const job: Job = {
-        id,
-        name,
-        cron: form.cron,
-        concurrency: form.concurrency,
-        timeout: form.timeout,
-        batchSize: form.batchSize,
-        enabled: form.enabled,
-        status: form.enabled ? 'running' : 'paused',
-        lastRun: '—',
-        nextRun: form.enabled ? '待调度' : '—',
-        progress: 0,
-        phase: 0,
-      };
-      setJobs((prev) => [job, ...prev]);
-      setSelectedId(id);
-      Message.success({ content: `任务「${name}」已创建（演示）`, duration: 2400 });
+    setSubmitting(true);
+    try {
+      if (editingId) {
+        await updateJob(editingId, {
+          name,
+          cron: form.cron,
+          concurrency: form.concurrency,
+          timeout: form.timeout,
+          batchSize: form.batchSize,
+          enabled: form.enabled,
+        });
+        Message.success({ content: `任务「${name}」已更新`, duration: 2200 });
+        setDrawerOpen(false);
+        await loadJobs(editingId);
+      } else {
+        const created = await createJob({
+          name,
+          cron: form.cron,
+          concurrency: form.concurrency,
+          timeout: form.timeout,
+          batchSize: form.batchSize,
+          enabled: form.enabled,
+        });
+        Message.success({ content: `任务「${name}」已创建`, duration: 2400 });
+        setDrawerOpen(false);
+        await loadJobs(created.data.id);
+      }
+    } catch (error: unknown) {
+      Message.error({
+        content: readErrorMessage(error, editingId ? '任务更新失败' : '任务创建失败'),
+        duration: 3000,
+      });
+    } finally {
+      setSubmitting(false);
     }
-    setDrawerOpen(false);
   };
 
   return (
@@ -264,78 +205,86 @@ function JobsPage() {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-(--tiger-border,#e5e7eb) text-left text-(--tiger-text-secondary,#64748b)">
-                <th className="px-3 py-2 font-medium">任务名称</th>
-                <th className="px-3 py-2 font-medium">调度表达式</th>
-                <th className="px-3 py-2 font-medium">状态</th>
-                <th className="px-3 py-2 font-medium">上次 / 下次执行</th>
-                <th className="px-3 py-2 font-medium">执行进度</th>
-                <th className="px-3 py-2 font-medium text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {jobs.map((job) => (
-                <tr
-                  key={job.id}
-                  className={`cursor-pointer border-b border-(--tiger-border,#e5e7eb) transition-colors ${
-                    job.id === selectedId
-                      ? 'bg-(--tiger-primary,#3b82f6)/5'
-                      : 'hover:bg-(--tiger-bg-hover,#f1f5f9)'
-                  }`}
-                  onClick={() => setSelectedId(job.id)}>
-                  <td className="px-3 py-3">
-                    <Text weight="medium">{job.name}</Text>
-                    <div className="text-xs text-(--tiger-text-secondary,#64748b)">{job.id}</div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <Tag variant="info" size="sm">
-                      {job.cron}
-                    </Tag>
-                  </td>
-                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-2">
-                      <Switch checked={job.enabled} onChange={(checked) => toggleJob(job, checked)} />
-                      <Tag variant={STATUS_META[job.status].variant} size="sm">
-                        {STATUS_META[job.status].label}
-                      </Tag>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="text-xs text-(--tiger-text-secondary,#64748b)">上次 {job.lastRun}</div>
-                    <div className="text-xs text-(--tiger-text-secondary,#64748b)">下次 {job.nextRun}</div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="w-32">
-                      <Progress
-                        percentage={job.progress}
-                        status={job.status === 'failed' ? 'exception' : undefined}
-                        size="sm"
-                      />
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="outline" size="sm" onClick={() => openEdit(job)}>
-                      <span className="mr-1 inline-flex align-middle">
-                        <EditIcon size={14} />
-                      </span>
-                      编辑
-                    </Button>
-                  </td>
+        {loading && jobs.length === 0 ? (
+          <MutedPanel compact description="正在加载任务…" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-(--tiger-border,#e5e7eb) text-left text-(--tiger-text-secondary,#64748b)">
+                  <th className="px-3 py-2 font-medium">任务名称</th>
+                  <th className="px-3 py-2 font-medium">调度表达式</th>
+                  <th className="px-3 py-2 font-medium">状态</th>
+                  <th className="px-3 py-2 font-medium">上次 / 下次执行</th>
+                  <th className="px-3 py-2 font-medium">执行进度</th>
+                  <th className="px-3 py-2 font-medium text-right">操作</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {jobs.map((job) => (
+                  <tr
+                    key={job.id}
+                    className={`cursor-pointer border-b border-(--tiger-border,#e5e7eb) transition-colors ${
+                      job.id === selectedId
+                        ? 'bg-(--tiger-primary,#3b82f6)/5'
+                        : 'hover:bg-(--tiger-bg-hover,#f1f5f9)'
+                    }`}
+                    onClick={() => setSelectedId(job.id)}>
+                    <td className="px-3 py-3">
+                      <Text weight="medium">{job.name}</Text>
+                      <div className="text-xs text-(--tiger-text-secondary,#64748b)">{job.id}</div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <Tag variant="info" size="sm">
+                        {job.cron}
+                      </Tag>
+                    </td>
+                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={job.enabled}
+                          disabled={togglingId === job.id}
+                          onChange={(checked) => void toggleJob(job, checked)}
+                        />
+                        <Tag variant={STATUS_META[job.status].variant} size="sm">
+                          {STATUS_META[job.status].label}
+                        </Tag>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="text-xs text-(--tiger-text-secondary,#64748b)">上次 {job.lastRun}</div>
+                      <div className="text-xs text-(--tiger-text-secondary,#64748b)">下次 {job.nextRun}</div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="w-32">
+                        <Progress
+                          percentage={job.progress}
+                          status={job.status === 'failed' ? 'exception' : undefined}
+                          size="sm"
+                        />
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <Button variant="outline" size="sm" onClick={() => openEdit(job)}>
+                        <span className="mr-1 inline-flex align-middle">
+                          <EditIcon size={14} />
+                        </span>
+                        编辑
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2" header={<Text weight="bold">执行时间轴</Text>}>
           <div className="overflow-x-auto">
             <Gantt
-              data={GANTT_RUNS}
+              data={ganttRuns}
               width={720}
               height={240}
               scale="day"
@@ -347,7 +296,7 @@ function JobsPage() {
           </div>
           <MutedPanel
             compact
-            description="展示近一周各任务的运行窗口；今日高亮为参考线。点击色条可联动选中对应任务。"
+            description="展示近一周各任务的运行窗口（时间来自接口的 start / end）；今日高亮为参考线。点击色条可联动选中对应任务。"
           />
         </Card>
 
@@ -378,7 +327,6 @@ function JobsPage() {
         </Card>
       </div>
 
-      {/* 新建 / 编辑任务 */}
       <Drawer
         placement="right"
         open={drawerOpen}
@@ -435,7 +383,9 @@ function JobsPage() {
             <Button variant="outline" onClick={() => setDrawerOpen(false)}>
               取消
             </Button>
-            <Button onClick={submitJob}>{editingId ? '保存修改' : '创建任务'}</Button>
+            <Button disabled={submitting} onClick={() => void submitJob()}>
+              {editingId ? '保存修改' : '创建任务'}
+            </Button>
           </div>
         </div>
       </Drawer>

@@ -1,6 +1,11 @@
 export const SESSION_KEY = 'tigercat.admin.session';
 export const THEME_STORAGE_KEY = 'tigercat.admin.theme';
 
+export const DEMO_OTP_CODE = '123456';
+export const OTP_LENGTH = 6;
+export const OTP_RESEND_MS = 60_000;
+export const PHONE_MASK = '### #### ####';
+
 export const COLOR_PRESETS = [
   { label: '蓝色', value: '#2563eb' },
   { label: '紫色', value: '#7c3aed' },

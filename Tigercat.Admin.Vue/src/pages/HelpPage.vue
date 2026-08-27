@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Card, Text, Message } from '@expcat/tigercat-vue'
+import { Kbd } from '@expcat/tigercat-vue/Kbd'
 import { Anchor, AnchorLink } from '@expcat/tigercat-vue/Anchor'
 import { ScrollSpy } from '@expcat/tigercat-vue/ScrollSpy'
 import { Affix } from '@expcat/tigercat-vue/Affix'
@@ -10,6 +11,8 @@ import { Code } from '@expcat/tigercat-vue/Code'
 import { Link } from '@expcat/tigercat-vue/Link'
 import { List } from '@expcat/tigercat-vue/List'
 import { InfiniteScroll } from '@expcat/tigercat-vue/InfiniteScroll'
+import { ScrollArea } from '@expcat/tigercat-vue/ScrollArea'
+import { Highlight } from '@expcat/tigercat-vue/Highlight'
 import type { ScrollSpyItem, ListItem } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import MetricGrid from '../components/MetricGrid.vue'
@@ -31,16 +34,37 @@ const SPY_ITEMS: ScrollSpyItem[] = SECTIONS.map((s) => ({
   label: s.label,
 }))
 
+const START_COPY =
+  '欢迎使用 Tigercat 管理后台演示。登录后可通过左侧菜单浏览各业务域，或使用命令面板（⌘/Ctrl + K）快速跳转。下面是一个调用受保护接口的示例：'
+
 const SAMPLE_CODE = `# 使用演示令牌登录后调用受保护接口
 curl -X GET https://api.tigercat.demo/v1/profile \\
   -H "Authorization: Bearer <your-token>" \\
   -H "Accept: application/json"`
 
+const HIGHLIGHT_KEYWORDS = ['权限', '令牌']
+
 const SHORTCUTS = [
-  { keys: '⌘ / Ctrl + K', desc: '打开命令面板，快速跳转页面或执行动作' },
-  { keys: 'G 然后 D', desc: '返回仪表盘' },
-  { keys: 'Esc', desc: '关闭当前弹层并恢复焦点' },
-  { keys: '?', desc: '打开本帮助中心' },
+  {
+    key: 'command-palette',
+    combos: [['⌘', 'K'], ['Ctrl', 'K']],
+    desc: '打开命令面板，快速跳转页面或执行动作',
+  },
+  {
+    key: 'goto-dashboard',
+    sequence: ['G', 'D'],
+    desc: '返回仪表盘',
+  },
+  {
+    key: 'escape',
+    combos: [['Esc']],
+    desc: '关闭当前弹层并恢复焦点',
+  },
+  {
+    key: 'help',
+    combos: [['?']],
+    desc: '打开本帮助中心',
+  },
 ]
 
 const FAQ = [
@@ -154,8 +178,20 @@ function submitFeedback() {
             <template #header><Text weight="bold">快速开始</Text></template>
             <div class="space-y-4">
               <Text size="sm" color="secondary">
-                欢迎使用 Tigercat 管理后台演示。登录后可通过左侧菜单浏览各业务域，或使用命令面板（⌘/Ctrl + K）快速跳转。下面是一个调用受保护接口的示例：
+                <Highlight
+                  :keywords="HIGHLIGHT_KEYWORDS"
+                  :text="START_COPY"
+                  :case-sensitive="false"
+                  :global="true"
+                />
               </Text>
+              <Highlight
+                :keywords="HIGHLIGHT_KEYWORDS"
+                :text="SAMPLE_CODE"
+                :case-sensitive="false"
+                :global="true"
+                class-name="block whitespace-pre-wrap font-mono text-sm"
+              />
               <Code :code="SAMPLE_CODE" copyable copy-label="复制" copied-label="已复制" />
               <div class="flex flex-wrap items-center gap-4">
                 <Link href="#help-faq" variant="primary" @click="onFaqLinkClick">
@@ -184,11 +220,36 @@ function submitFeedback() {
                 <tbody>
                   <tr
                     v-for="item in SHORTCUTS"
-                    :key="item.keys"
+                    :key="item.key"
                     class="border-b border-(--tiger-border,#e5e7eb)"
                   >
                     <td class="px-3 py-2">
-                      <Code :code="item.keys" :copyable="false" />
+                      <span
+                        v-if="item.sequence"
+                        class="inline-flex flex-wrap items-center gap-1"
+                      >
+                        <Kbd :keys="item.sequence[0]" size="sm" />
+                        <Text size="sm" color="secondary">然后</Text>
+                        <Kbd :keys="item.sequence[1]" size="sm" />
+                      </span>
+                      <span
+                        v-else
+                        class="inline-flex flex-wrap items-center gap-1"
+                      >
+                        <template
+                          v-for="(combo, index) in item.combos"
+                          :key="combo.join('+')"
+                        >
+                          <Kbd :keys="combo" size="sm" />
+                          <Text
+                            v-if="index < (item.combos?.length ?? 0) - 1"
+                            size="sm"
+                            color="secondary"
+                          >
+                            /
+                          </Text>
+                        </template>
+                      </span>
                     </td>
                     <td class="px-3 py-2">
                       <Text size="sm">{{ item.desc }}</Text>
@@ -210,7 +271,16 @@ function submitFeedback() {
                 :panel-key="item.key"
                 :header="item.q"
               >
-                <Text size="sm" color="secondary">{{ item.a }}</Text>
+                <ScrollArea :max-height="240">
+                  <Text size="sm" color="secondary">
+                    <Highlight
+                      :keywords="HIGHLIGHT_KEYWORDS"
+                      :text="item.a"
+                      :case-sensitive="false"
+                      :global="true"
+                    />
+                  </Text>
+                </ScrollArea>
               </CollapsePanel>
             </Collapse>
           </Card>
@@ -219,15 +289,17 @@ function submitFeedback() {
         <div id="help-articles">
           <Card>
             <template #header><Text weight="bold">更多帮助文章</Text></template>
-            <InfiniteScroll
-              :has-more="hasMore"
-              :loading="loadingMore"
-              loading-text="加载中…"
-              end-text="没有更多帮助文章了"
-              @load-more="loadMore"
-            >
-              <List :data-source="visibleArticles" hoverable />
-            </InfiniteScroll>
+            <ScrollArea :max-height="320" shadow aria-label="更多帮助文章">
+              <InfiniteScroll
+                :has-more="hasMore"
+                :loading="loadingMore"
+                loading-text="加载中…"
+                end-text="没有更多帮助文章了"
+                @load-more="loadMore"
+              >
+                <List :data-source="visibleArticles" hoverable />
+              </InfiniteScroll>
+            </ScrollArea>
           </Card>
         </div>
       </div>

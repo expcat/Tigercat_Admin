@@ -2,6 +2,7 @@
 import { computed, ref, watch, provide, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ConfigProvider, Message, MessageContainer } from '@expcat/tigercat-vue'
+import { LoadingBarContainer } from '@expcat/tigercat-vue/LoadingBar'
 import { appText } from './utils/tigercatText'
 import {
   SESSION_KEY,
@@ -17,6 +18,8 @@ import {
   type ThemeMode,
   type ThemePreferences,
 } from './utils'
+
+void LoadingBarContainer
 
 const permission = createPermissionContext()
 
@@ -204,6 +207,7 @@ provide('updateTheme', updateTheme)
 
 <template>
   <ConfigProvider :locale="appText">
+    <div id="tiger-loading-bar-container-root"></div>
     <RouterView v-slot="{ Component }">
       <component :is="Component" @success="onLoginSuccess" />
     </RouterView>

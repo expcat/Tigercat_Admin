@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Avatar, AvatarGroup, Button, Card, Input, Tag, Text } from '@expcat/tigercat-react';
+import { Avatar, AvatarGroup, Button, Card, Input, Message, Tag, Text } from '@expcat/tigercat-react';
 import { Statistic } from '@expcat/tigercat-react/Statistic';
 import { Progress } from '@expcat/tigercat-react/Progress';
 import { Segmented } from '@expcat/tigercat-react/Segmented';
@@ -10,37 +10,96 @@ import { PageHeader } from '../components/PageHeader';
 import { MetricCard, MetricGrid, PageActionPanel } from '../components/PageFragments';
 import { CheckCircleIcon, ClockIcon, PackageIcon, TrendingUpIcon } from '../components/Icons';
 import {
-  filterProjects,
+  fetchProjects,
   getProjectProgressStatus,
-  paginateProjects,
   PROJECT_PAGE_SIZE,
   PROJECT_STATUS_FILTERS,
   PROJECT_STATUS_META,
-  PROJECTS,
   type ProjectRecord,
   type ProjectStatusFilter,
 } from '../utils/projects';
+
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
 
 function ProjectsPage() {
   const navigate = useNavigate();
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>('all');
   const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const [total, setTotal] = useState(0);
+  const [statsProjects, setStatsProjects] = useState<ProjectRecord[]>([]);
 
-  const filtered = useMemo(
-    () => filterProjects(keyword, statusFilter),
-    [keyword, statusFilter],
+  const activeCount = useMemo(
+    () => statsProjects.filter((item) => item.status === 'active').length,
+    [statsProjects],
   );
-  const paged = useMemo(
-    () => paginateProjects(filtered, page),
-    [filtered, page],
+  const doneCount = useMemo(
+    () => statsProjects.filter((item) => item.status === 'done').length,
+    [statsProjects],
   );
+  const avgProgress = useMemo(() => {
+    if (statsProjects.length === 0) {
+      return 0;
+    }
+    return Math.round(
+      statsProjects.reduce((sum, item) => sum + item.progress, 0) / statsProjects.length,
+    );
+  }, [statsProjects]);
 
-  const activeCount = PROJECTS.filter((item) => item.status === 'active').length;
-  const doneCount = PROJECTS.filter((item) => item.status === 'done').length;
-  const avgProgress = Math.round(
-    PROJECTS.reduce((sum, item) => sum + item.progress, 0) / PROJECTS.length,
-  );
+  useEffect(() => {
+    let cancelled = false;
+    const loadProjects = async () => {
+      setLoading(true);
+      try {
+        const payload = await fetchProjects({
+          page,
+          pageSize: PROJECT_PAGE_SIZE,
+          status: statusFilter,
+          keyword,
+        });
+        if (cancelled) {
+          return;
+        }
+        setProjects(payload.data.items ?? []);
+        setTotal(payload.data.total ?? 0);
+      } catch (error: unknown) {
+        if (!cancelled) {
+          Message.error({ content: readErrorMessage(error, '项目列表加载失败'), duration: 3000 });
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+    void loadProjects();
+    return () => {
+      cancelled = true;
+    };
+  }, [keyword, statusFilter, page]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadStats = async () => {
+      try {
+        const payload = await fetchProjects({ page: 1, pageSize: 200 });
+        if (!cancelled) {
+          setStatsProjects(payload.data.items ?? []);
+        }
+      } catch {
+        if (!cancelled) {
+          setStatsProjects([]);
+        }
+      }
+    };
+    void loadStats();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleKeywordChange = (value: string) => {
     setKeyword(value);
@@ -80,8 +139,8 @@ function ProjectsPage() {
       <MetricGrid columns={4}>
         <MetricCard
           title="项目总数"
-          value={PROJECTS.length}
-          description="内存演示数据"
+          value={statsProjects.length}
+          description="全部项目"
           icon={<PackageIcon size={20} />}
         />
         <MetricCard
@@ -125,12 +184,12 @@ function ProjectsPage() {
         }
       />
 
-      {paged.length > 0 ? (
+      {projects.length > 0 ? (
         <div
           data-testid="projects-grid"
           className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
         >
-          {paged.map((project) => (
+          {projects.map((project) => (
             <ProjectCard
               key={project.id}
               project={project}
@@ -140,15 +199,17 @@ function ProjectsPage() {
         </div>
       ) : (
         <Card>
-          <Empty description="没有符合条件的项目，试试调整搜索或状态筛选。" />
+          <Empty
+            description={loading ? '正在加载项目…' : '没有符合条件的项目，试试调整搜索或状态筛选。'}
+          />
         </Card>
       )}
 
-      {filtered.length > 0 ? (
+      {total > 0 ? (
         <div className="flex justify-end">
           <Pagination
             current={page}
-            total={filtered.length}
+            total={total}
             pageSize={PROJECT_PAGE_SIZE}
             onChange={setPage}
           />

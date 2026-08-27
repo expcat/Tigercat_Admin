@@ -13,6 +13,7 @@ public class UserEntity
     public required string PasswordHash { get; set; }
     public string? DisplayName { get; set; }
     public UserStatus Status { get; set; } = UserStatus.Active;
+    public bool TwoFactorEnabled { get; set; }
     public int? AvatarMediaId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
