@@ -706,3 +706,22 @@
   8. **仪表盘不可关：** 全程 `shell-tag-home` 无 ×（`closable=false`）。仅仪表盘时「关闭当前 / 关闭其他 / 关闭全部」三项全 disabled（步 1、步 6）。多标签时关当前/其他也不会掉仪表盘。
 - **双端：** 与 Vue **3.4** 同形：仅仪表盘无 ×、三项关闭全 disabled；开 系统设置 / 用户管理 / 项目列表 后四枚标签；`/projects/1001` 不另开详情标签，仍高亮「项目列表」、`activeKey=projects`；关闭当前跳相邻用户管理；关闭其他留仪表盘+当前；关闭全部回 `/dashboard` 且三项再 disabled；`sessionStorage tigercat-admin:tags-view` 键值同形，刷新后 keys/activeKey 恢复。未见错位。leftover 宿主 `p2-tags-view` / `p2-tags-view-list` 与 Vue 同类（token 边框/底）。
 - **严重度：** 通过（信息）。多标签开/关当前/其他/全部、刷新恢复、仪表盘不可关、`/projects/:id` 高亮「项目列表」均按 Vue 3.4 预期。未走 ChatDock / 暗色 / 移动 / 项 27。
+
+### 3b.5 ChatDock
+
+本期 live-walk React `http://127.0.0.1:5174` 已完成（前一 grok-4.6 会话在隔离上下文 `react-chatdock` 拍齐 PNG 后，写入本节前耗尽回合）。本条只根据既有截图 + 该次走查事实落笔记；**未再走** 发送 / 加载 / 演示回复。未开 Vue 页面（只对照 Vue **3.5**），未改产品代码。未审 Tour / ⌘K / Bell / 快捷操作。先开 `chrome://inspect/#remote-debugging`（「Allow remote debugging for this browser instance」已勾选），截图 `/tmp/react-chat-inspect-remote-debugging.png`（1042×632；本会话复核 `/tmp/react-chat-inspect-remote-debugging-now.png`，Allow 仍勾选）。视口桌面 **1280×800**，浅色。锁屏盖住 dock：写完本节后在隔离上下文 `react-chatdock-lock` **lock 一次**确认（不重走 3b.1 PIN / Esc / ⌘K）。移动 Drawer **~375px 未走**。
+
+- **模块：** ChatDock 在线客服
+- **端：** React
+- **视口：** 桌面 **1280×800**（8 张业务 PNG 像素均为 1280×800；inspect 页 1042×632）
+- **复现：**
+  1. **关：** 隔离上下文 `react-chatdock` 登录 `admin` / `admin123` 进 `/dashboard`，OnboardingTour 关掉。右下 wrap `fixed bottom-6 right-6 z-40`，wrapRect **56×56** at **1200,720**。`FloatButton` `data-tour=chat-dock` `aria-label="联系在线客服"`，56px 圆 `rgb(37,99,235)`。`Badge` `danger` 未读 **1**（span 20×20 at 1240,716）。其上方另有 ShellQuickActions **+**（项 27，不审）。截图 `/tmp/react-chat-closed.png`（1280×800）。
+  2. **开：** 点客服钮。右侧 `Drawer` 标题 **在线客服**，宽 **380px**（dialogRect x900 y0 w380 h800），`mask` + `backdrop-blur(2px)` `rgba(0,0,0,0.5)` 铺满 1280×800。`GET /api/chat/messages` **200**（共享 in-memory Api 已有 Vue 3.5 走查气泡）。种子「你好，我是在线客服小虎，有任何关于后台的问题都可以问我~」，其下时间戳原文 **`2026-06-29T09:00:00.000Z`**（未本地化），再加上 Vue 走查气泡（「视觉走查测试消息」`2026-08-27T17:52:22.183Z` 等）。状态 **客服在线**（绿字）。输入框占位「输入消息，回车发送」，按钮「发送」。因线程已含 Vue 气泡，开态图里输入框/发送已贴底、部分被裁。截图 `/tmp/react-chat-open.png`。
+  3. **点发送：** `POST /api/chat/messages` **200**。用户气泡 **React视觉走查测试消息**（蓝底），时间戳 `2026-08-27T18:49:53.089Z`。演示回复「已收到你的消息：“React视觉走查测试消息”。这是演示客服坞，稍后会有同事跟进（ChatWindow 组件示例）。」，时间戳 `2026-08-27T18:49:54.089Z`。`textarea` `resize=vertical`。长线程后输入/发送 bottoms **1034 > viewport 800**（裁切）。截图 `/tmp/react-chat-sent.png`。
+  4. **回车发送：** 同样 `POST` **200**。用户气泡 **React回车发送测试** `2026-08-27T18:50:21.419Z` + 同形演示回复（仍点名 ChatWindow，文案「演示客服坞」）`2026-08-27T18:50:22.419Z`。textarea/发送仍不在视口内。截图 `/tmp/react-chat-enter-send.png`。
+  5. **再关：** 未读 Badge 清掉（`badgeSpans=[]`，`unreadStatusNearFab=false`，`showZero=false`，FAB 上无 0）。FAB 仍 `aria-label` **联系在线客服**。右下客服钮仍在，其上方 ShellQuickActions **+** 仍在。截图 `/tmp/react-chat-closed-after-open.png`。
+  6. **叠层：** 水印 overlay `pointer-events-none` `z-[9]` 1040×703 at 240,97；`localStorage tigercat-admin:watermark` = `{"enabled":true}`。dock `z-40` 在水印之上（右下 FAB 压在斜字上，未读已清）。截图 `/tmp/react-chat-over-watermark.png`。主题配置 Drawer 宿主 `z-index:1000` 盖住 ChatDock `z-40`（主题抽屉打开时右下看不到客服钮）。截图 `/tmp/react-chat-under-theme.png`。锁屏 `z-[2000]` 盖住 ChatDock `z-40`：`data-testid="shell-lock-screen"` `position:fixed; inset:0; z-index:2000`，`pointer-events:auto`，`backdrop-filter:blur(8px)` 铺满 1280×800。dock wrap 仍 `fixed bottom-6 right-6 z-40`（56×56 at 1200,720），FAB 在 DOM 中仍 `aria-label` 联系在线客服、透过模糊可见，但 `elementFromPoint(1228,748)` 命中锁屏而非 FAB。`sessionStorage tigercat-admin:lock-screen` = `{"locked":true}`。截图 `/tmp/react-chat-under-lock.png`（1280×800）。不重走 PIN / Esc / ⌘K。
+  7. **leftover（画面可见 / 走查已量）：** 气泡下是 raw ISO 时间戳，不是本地日期时间；textarea 右下角 `resize=vertical` 原生拖柄；演示回复文案点名 `ChatWindow` 组件且写「演示客服坞」（Vue 3.5 记「演示客服回复」）；dock 容器 leftover `fixed bottom-6 right-6 z-40`，低于主题 1000 / 锁屏 2000。FloatButton / Badge / Drawer / ChatWindow 为 Tigercat。长线程后输入区裁切。
+  8. **缺口：** 移动 Drawer **~375px 未走**。
+- **双端：** 与 Vue **3.5** 同形：关态右下 FAB + 未读 1；开态右侧 Drawer 标题「在线客服」宽 380px + mask 模糊；种子小虎文案 + raw ISO `2026-06-29T09:00:00.000Z`；「客服在线」绿字；占位「输入消息，回车发送」+「发送」；点发送 / 回车均 `POST /api/chat/messages` 200；关后未读清零且 FAB 仍在；水印在 dock 下、主题抽屉盖住 dock；raw ISO + textarea resize + 点名 ChatWindow + 长线程输入裁切。共享 in-memory Api 使 React 开态已带 Vue 3.5 气泡（GET messages 200）。锁屏叠层：React 本条已证 `z-2000` 盖住 dock `z-40`；Vue 3.5 当时未拍。**错位：** 演示回复 React 写「这是**演示客服坞**」，Vue 3.5 记「这是**演示客服回复**」（两端都点名 ChatWindow）。
+- **严重度：** 开/关、点发送、回车发送、未读清零、水印在下、主题抽屉盖住 dock、锁屏盖住 dock：通过（信息）。raw ISO 时间戳 + textarea resize 拖柄 + 演示回复点名 ChatWindow + 对话变长后输入区裁切：**低**。演示回复「客服坞」vs「客服回复」：**低**（文案错位）。375px Drawer：未取证（本条）。
