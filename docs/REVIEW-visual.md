@@ -498,11 +498,12 @@
 
 - **模块：** ForgotPassword 完成
 - **端：** React
-- **视口：** 桌面 **1280×800**，浅色。取证来自同一次 React 走查会话的 PNG（`/tmp/react-r2-forgot-success.png`、`/tmp/react-forgot-success.png`）。r3 会话在步骤 2 空校验后因 max-turns 中断，未再拍 r3 成功页。
+- **视口：** 桌面 **1280×800**，隔离上下文（React `http://127.0.0.1:5174` isolated），浅色。LIVE 走查（会话 01a04443）已走到 Result；CLI 在写入 `/tmp/react-r4-forgot-success.png` 前中断。本条以 live DOM 为准；r4 截图缺失时用既有 `/tmp/react-r2-forgot-success.png` 作支持画面。
 - **复现：**
-  1. 步骤 1、2 为勾，当前 **3 完成**。
-  2. 绿色圆勾 Result：**密码已重置** / **请使用新密码登录系统**。实心按钮 **返回登录**。无倒计时数字。
-  3. 左栏仍是青绿渐变 + 「重置您的登录密码」。未改 admin 密码。
+  1. 一次性邮箱 `rv4r.throwaway@example.test`（非 admin/demo）。OTP `123456`。步骤 2 新密码 + 确认均为 `Walk4rct!`，点「重置密码」。
+  2. `POST /api/auth/forgot-password/code` **200**；`POST /api/auth/forgot-password` **200**（Kestrel）。
+  3. Result 步骤 1、2 为勾，当前 **3 完成**。绿色圆勾：**密码已重置** / **请使用新密码登录系统**。实心按钮 **返回登录**。无倒计时。
+  4. 左栏青绿（teal）渐变 + 「重置您的登录密码」。未改 admin 密码。
 - **双端：** 与 Vue 2.17 同文案、同三步完成态。Roadmap 只要完成 Result，两端都无倒计时。
 - **严重度：** 通过（信息）
 
