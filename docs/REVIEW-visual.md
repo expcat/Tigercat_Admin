@@ -725,3 +725,76 @@
   8. **缺口：** 移动 Drawer **~375px 未走**。
 - **双端：** 与 Vue **3.5** 同形：关态右下 FAB + 未读 1；开态右侧 Drawer 标题「在线客服」宽 380px + mask 模糊；种子小虎文案 + raw ISO `2026-06-29T09:00:00.000Z`；「客服在线」绿字；占位「输入消息，回车发送」+「发送」；点发送 / 回车均 `POST /api/chat/messages` 200；关后未读清零且 FAB 仍在；水印在 dock 下、主题抽屉盖住 dock；raw ISO + textarea resize + 点名 ChatWindow + 长线程输入裁切。共享 in-memory Api 使 React 开态已带 Vue 3.5 气泡（GET messages 200）。锁屏叠层：React 本条已证 `z-2000` 盖住 dock `z-40`；Vue 3.5 当时未拍。**错位：** 演示回复 React 写「这是**演示客服坞**」，Vue 3.5 记「这是**演示客服回复**」（两端都点名 ChatWindow）。
 - **严重度：** 开/关、点发送、回车发送、未读清零、水印在下、主题抽屉盖住 dock、锁屏盖住 dock：通过（信息）。raw ISO 时间戳 + textarea resize 拖柄 + 演示回复点名 ChatWindow + 对话变长后输入区裁切：**低**。演示回复「客服坞」vs「客服回复」：**低**（文案错位）。375px Drawer：未取证（本条）。
+
+---
+
+## 4. Home / Dashboard (Vue)
+
+本期只走 Vue `http://127.0.0.1:5173/dashboard`（`HomePage.vue`）。未开 React `5174` 走查、未重启三端（Api 5137 / Vue 5173 / React 5174 仍为项 1 进程）。不是 MockApi / `dev:demo` / Aspire。未改产品代码。chrome-devtools：先开 `chrome://inspect/#remote-debugging`（「Allow remote debugging for this browser instance」已勾选，截图 `/tmp/vue-home-inspect-remote-debugging.png`），再在隔离上下文 `vue-home-dashboard` 打开 `/login`，未复用 `vue-shell-overlays` / `vue-tags-chat` / `react-*`。账号 `admin` / `admin123`（无 2FA）。首登 OnboardingTour 1/6 出现后点「关闭引导」关掉，**未审 Tour**。未审 Cmd-K / Bell / ShellQuickActions / ChatDock / Lock / Theme（除 4.6 只为查 dashboard token 而拨暗色）/ Watermark / TagsView。视口桌面 **1280×800**，浅色。走查前已读 `HomePage.vue`、`MetricCard.vue`、`MetricGrid.vue`、`ChartEmptyState.vue`、`PageHeader.vue`：HomePage **不 import** `PageHeader`。
+
+### 4.1 Welcome
+
+- **模块：** 仪表盘欢迎卡（welcome-back / AppLogo / 用户名 / 身份 Tag / leftover `p2-page-accent`）
+- **端：** Vue
+- **视口：** 桌面 **1280×800**，隔离上下文 `vue-home-dashboard`，浅色
+- **复现：**
+  1. 登录后 URL **`http://127.0.0.1:5173/dashboard`**。Tour 关掉后主区第一块是 Tigercat `Card`（`overflow-hidden`，圆角 `--tiger-radius-lg`，白底 `rgb(255,255,255)`，描边 `--tiger-border`）。截图 `/tmp/vue-home-welcome.png`（1280×800）。
+  2. **AppLogo：** 卡内左侧 `svg.drop-shadow-sm` **48×48**（`AppLogo :size="48"`），`filter: drop-shadow(rgba(0,0,0,0.15) 0px 1px 2px)`。画面是蓝底白 T，与侧栏品牌同形。
+  3. **用户名：** 文案 **「欢迎回来，admin！」**（`session.username`）。`Text` `size=lg` `weight=bold`（18px / 700），颜色 `rgb(17,24,39)`，class 同时带 Tigercat `text-[var(--tiger-text,#111827)]` 与 leftover **`p2-text-primary`**。
+  4. **副文：** 画面是 **Hello world**（inject `homeMessage`，不是模板兜底「今天是个好日子，让我们开始工作吧！」）。
+  5. **Tag：** 右侧 Tigercat `Tag` **管理员** `variant=primary`（底 `rgb(219,234,254)` / 字 `rgb(37,99,235)`）+ **已认证** `variant=success`（底 `rgb(220,252,231)` / 字 `rgb(22,163,74)`），`size=sm`，`hidden sm:flex` 在 1280 可见。
+  6. **leftover `p2-page-accent`：** DOM 1 个 `div.p2-page-accent.absolute.inset-0.-m-4`，`position:absolute; inset:0; z-index:auto`，背景 `linear-gradient(90deg, color(srgb 0.145 0.388 0.922 / 0.12), color(srgb 0.953 0.957 0.965 / 0.86))`（即 `--tiger-primary` 12% → `--tiger-bg-hover` 86%）。卡 `overflow:hidden` 裁住 `-m-4` 外溢。画面是淡蓝到浅灰横向渐变铺满欢迎卡，不是独立 PageHeader 块。
+- **严重度：** 欢迎卡 / Logo / 用户名 / 双 Tag 通过（信息）。leftover `p2-page-accent` + `p2-text-primary`：**低**（Roadmap leftover，功能不挡）。副文走 inject `Hello world` 而非兜底文案：信息（壳注入，非本页缺陷）。
+
+### 4.2 Marquee vs KPI
+
+- **模块：** 运维公告 Marquee vs MetricGrid KPI（总用户 / 活跃 / 角色 / 权限）
+- **端：** Vue
+- **视口：** 桌面 **1280×800**，浅色
+- **复现：**
+  1. Marquee 在欢迎卡与导出按钮之间。`aria-label="运维公告"`，Tigercat `tiger-marquee overflow-hidden max-w-full tiger-marquee-horizontal tiger-marquee-pause-hover`，class 另有 `rounded-lg border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-card,#ffffff) px-3 py-2`。矩形 **977×38** at **(264,280)**；`position:static`；**`z-index:auto`**；`overflow/overflowX/overflowY=hidden`；底 `rgb(255,255,255)`，边 `rgb(229,231,235)`。
+  2. 轨道 `tiger-marquee-track flex w-max` 实测宽 **2991px**、高 20，`transform: matrix(1,0,0,1,-127.88,0)`（向左滚）。内容 repeat=2，四条公告（计划维护 / 自动备份 / 媒体 80% / 演示环境重启）各带 `--tiger-primary` 圆点。轨道 `overflow:visible`，但被 Marquee 宿主 `overflow:hidden` 裁在 977 宽内；未把页面撑出横向滚动（`documentElement.scrollWidth===clientWidth===1280`，`#main-content-scroll` scrollWidth===clientWidth **1025**）。
+  3. 导出行在 Marquee 与 KPI 之间：y **342–376**。`MetricGrid :columns="4"` 实为 `grid-cols-1 md:grid-cols-3 xl:grid-cols-4`，1280 下 `grid-template-columns: 232.25px × 4`。四张 `MetricCard`：总用户数 **5** / 活跃用户 **5** / 总角色数 **4** / 总权限数 **22**，整行 **977×90** at **(264,400)**。`z-index:auto`。
+  4. **重叠：** Marquee bottom **318**，KPI top **400**，垂直空隙 **82px**（中间是导出按钮）。四张 KPI 与 Marquee 的 overlap area 均为 **0**；Marquee 全部子孙与 KPI 相交 **0**。不是 `position:absolute/fixed` 浮层，不盖 KPI。
+  5. 截图 `/tmp/vue-home-marquee-kpi.png`（1280×800）：跑马灯、CSV/JSON/Excel、四张 KPI 同屏，KPI 数字完整可读。
+- **严重度：** 通过（信息）。Marquee 不覆盖 MetricGrid KPI。leftover 无（Marquee / MetricCard / MetricGrid 为现用组件；公告文案含「演示环境」是产品文案不是 Header 演示 Tag）。
+
+### 4.3 Charts empty / error / data
+
+- **模块：** 用户创建趋势 LineChart + 范围 Select；用户状态 PieChart；用户概览 BarChart；ChartEmptyState / statsError Alert / Loading
+- **端：** Vue
+- **视口：** 桌面 **1280×800**，浅色
+- **复现：**
+  1. **Live API（数据态）：** 登录后 `GET /api/stats/overview` **200**，body `totalUsers=5, activeUsers=5, disabledUsers=0, totalRoles=4, totalPermissions=22`（Kestrel）。`GET /api/stats/trend?days=7` **200**，7 点：08-21…08-26 为 0，**08-27=5**。无 `role=alert`、无 Loading、无 `暂无趋势/分布/概览`、无 `.tiger-empty`。截图 `/tmp/vue-home-charts-data.png`（切到近 30 天后拍；折线+饼图同屏）。
+  2. **范围 Select：** 默认「近 7 天」。点开 listbox 四项：**近 7 天 / 近 14 天 / 近 30 天 / 近 90 天**（`clearable=false`）。选 **近 30 天** → `GET /api/stats/trend?days=30` **200**，30 点 07-29…08-27，仅末日 count=5。按钮文案变成「近 30 天」。30 日 X 轴 `MM-DD` 全部画出，在 **320px** 图宽里挤成一条不可读字带（「日期」轴标仍在）。
+  3. **LineChart：** 标题「用户创建趋势」，面积/点/零点/动画开启。SVG **`width=320 height=220`**，`display:inline-block`，卡宽 **643px**，右侧空 **306px**。折线色 gradient stop 全是 **`#3b82f6`**，页面 `--tiger-primary` 是 **`#2563eb`**（源码 `line-color="#3b82f6"`，不跟 token）。
+  4. **PieChart：** 标题「用户状态分布」。数据 Active=5 / Disabled=0 → 整圆蓝、Disabled path `d=""`。外标签 **「Active 100.0%」** / **「Disabled 0.0%」**（英文，与中文页不一致）。SVG 同样 **320×220**，卡内宽仅 **309.7px**、`overflow:hidden`：Disabled 标签 **clippedRight**，超出卡右 **32.5px**；图例 `aria-label="Chart legend"` 超出卡右 **27px**。画面「Active」左侧 A 被裁成「ctive 100.0%」，「Disabled」右侧被裁。颜色源码 `['#3b82f6','#ef4444']`，stroke `#3b82f6` / `#ef4444`。
+  5. **BarChart：** 滚到 `#main-content-scroll` scrollTop≈489。标题「用户概览」。五柱：总用户/活跃 同高（5）、禁用 **高度 0**（无 rect）、角色（4）、权限最高（22，橙）。Y 轴 0–22「数量」。SVG 仍 **320×220**，卡宽 **643px**，右侧空 **306px**。柱色 stop **`#3b82f6 / #22c55e / #ef4444 / #a855f7 / #f97316`**（源码写死 hex）。截图 `/tmp/vue-home-charts-bar.png`。
+  6. **Empty / error / Loading：** 未改产品代码，不能把 overview/trend 打成空数组或 5xx。源码有 `ChartEmptyState`（「暂无趋势数据 / 暂无分布数据 / 暂无概览数据」）、`statsError` `Alert`（「数据加载失败」）、三处 `Loading`（h-52）。**本会话未出现这些分支 → 记缺口**，无 empty/error 截图。
+- **严重度：** live 数据态 + 7/14/30/90 选项 + days=30 重拉：通过（信息）。Empty/error/Loading：**缺口**（未取证）。折线/柱图固定 320 宽不撑满 Card、30 日 X 轴不可读、饼图 320 宽溢出卡片并裁切外侧标签：**中**。硬编码 `#3b82f6` 等 hex 不跟 `--tiger-primary`、饼图英文 Active/Disabled：**低**（leftover / i18n）。
+
+### 4.4 Shortcuts
+
+- **模块：** 快捷操作四格（用户管理 / 角色配置 / 系统设置 / 查看日志）
+- **端：** Vue
+- **视口：** 桌面 **1280×800**，浅色
+- **复现：**
+  1. 滚到「快捷操作」卡（与用户概览并排，`lg:col-span-1`，内 `grid-cols-2 gap-3`）。四枚原生 **`<button class="p2-action-tile ...">`**，不是 Tigercat Button：用户管理 / 角色配置 / 系统设置 / 查看日志。每枚 **132×96**、`min-h-24`（96px），白底 `rgb(255,255,255)`，边 `rgb(229,231,235)`，圆角 8px。图标 `text-(--tiger-primary,#3b82f6)`。截图 `/tmp/vue-home-shortcuts.png`。
+  2. 点 **用户管理**。URL 变为 **`http://127.0.0.1:5173/users`**。主区 PageHeader「用户管理 / 管理平台用户账号、角色与权限」，表格 5 行（admin / demo / rv2vue0827 / rv2react0827 / rv2r0827c），与 KPI 总用户 **5** 一致。侧栏「系统管理」展开，当前项「用户管理」。未审 Users 页。
+  3. 点侧栏 **仪表盘** 返回 **`http://127.0.0.1:5173/dashboard`**，「欢迎回来，admin！」仍在。路由映射与源码一致：`users→/users`、`roles→/roles`、`settings→/settings`、`logs→/audit-logs`（后三项本条只点了一枚）。
+  4. **leftover：** `p2-action-tile` + `hover:shadow-md` + `group-hover:scale-110`，定义在 `Tigercat.Admin.Vue/src/style.css`（边框 `--tiger-border`，hover 边 `--tiger-primary`）。不是 Data 页那种 Tigercat 卡片按钮。
+- **严重度：** 点击跳转 `/users` 再回 `/dashboard` 通过（信息）。leftover `p2-action-tile` 原生 button：**低**。
+
+### 4.5 DataExport
+
+本期隔离上下文 `vue-home-dashboard` 已不在（本会话 `list_pages` 仅 about:blank + inspect）。先开 `chrome://inspect/#remote-debugging`，「Allow remote debugging for this browser instance」仍勾选（截图 `/tmp/vue-home-inspect-remote-debugging-now.png`）。新隔离上下文 **`vue-home-rest`** 打开 Vue `http://127.0.0.1:5173/login`，`admin` / `admin123`，OnboardingTour 点「关闭引导」关掉（**未审 Tour**）。视口 **1280×800**。未开 React `5174`，未重启三端。4.5 工具栏先读既有图 `/tmp/vue-home-export.png`（前一会话 1280×800，切到快捷操作后拍，故 TagsView 仍带「用户管理」）；Message 该图不可见，本会话 live 点 CSV 补。
+
+- **模块：** 仪表盘 DataExport（CSV / JSON / Excel）
+- **端：** Vue
+- **视口：** 桌面 **1280×800**，浅色；隔离上下文 `vue-home-rest`（图 `/tmp/vue-home-export.png` 为前一会话 `vue-home-dashboard`）
+- **复现：**
+  1. **工具栏（既有图）：** `/tmp/vue-home-export.png`（1280×800）。Marquee 与 KPI 之间右对齐三枚描边按钮，画面字 **CSV / JSON / Excel**（无第四格式）。白底、浅灰边、圆角。无 Message toast。主区仍是欢迎卡 + 跑马灯 + KPI 5/5/4/22 + 折线/饼图。
+  2. **Live 按钮 DOM：** 三枚 Tigercat `DataExport` 触发钮，可见文案 **CSV / JSON / Excel**，`aria-label` **导出 CSV / 导出 JSON / 导出 Excel**。class 走 `--tiger-radius-md` / `--tiger-border` / `--tiger-text` / `--tiger-surface` / `--tiger-surface-muted`，无 `p2-*`。外层 leftover 只是 `div.flex.flex-wrap.items-center.justify-end.gap-2`。矩形约 CSV **54×34** at **(1047,342)**、JSON **61×34** at **(1109,342)**、Excel **63×34** at **(1178,342)**。源码 `v-for="format in EXPORT_FORMATS"`（`csv|json|xlsx`），每枚 `:formats="['xlsx']"`（官方 DataExport 2.1.1 只认 `xlsx`/`markdown`），`labels.xlsxText` 改成 CSV/JSON/Excel，`cell-formatter="skipClientDataExport"` 跳过客户端序列化。
+  3. **点 CSV：** `GET /api/export/overview?format=csv&days=7` **200**（Kestrel）。`Content-Type: text/csv; charset=utf-8`，`Content-Disposition: attachment; filename=overview.csv`，`content-length=423`。Tigercat `Message.success` 文案 **「导出成功」**（a11y `role=status` `aria-live=polite`，宿主持 leftover `fixed z-[9999] ... top-6 left-1/2`）。duration 3s 后消失。失败 toast **未走**（未打 5xx）。截图 `/tmp/vue-home-export-success.png`（1280×800；拍时 toast 已过 3s，画面无「导出成功」字；成功以 snapshot + 网络为准）。
+  4. **leftover vs Tigercat DataExport：** 触发器是 Tigercat `DataExport`，不是自制导出钮。适配 leftover：三枚实例都伪装成 `xlsx` 再靠 `skipClientDataExport` 转 `GET /api/export/overview` Blob；外层 `flex justify-end` 原生 wrapper。无 `p2-export*` 类。
+- **严重度：** CSV 导出 200 + Message「导出成功」通过（信息）。官方 DataExport 只认 xlsx/markdown、三钮靠 skipClient 走 API：**低**（既有适配，功能不挡）。JSON / Excel 点击与失败 Message：**缺口**（本条只点了 CSV）。
