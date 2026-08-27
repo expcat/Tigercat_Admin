@@ -245,6 +245,75 @@ export interface AuditRetentionCleanupResult {
   deletedCount: number;
 }
 
+export type TicketStatus = 'open' | 'accepted' | 'progress' | 'resolved' | 'closed';
+
+export type TicketPriority = 'high' | 'medium' | 'low';
+
+export type ChatDirection = 'self' | 'other';
+
+export type CommentTargetType = 'ticket' | 'project';
+
+export interface TicketMessage {
+  id: string;
+  content: string;
+  direction: ChatDirection;
+  time: string;
+}
+
+export interface Ticket {
+  id: string;
+  title: string;
+  requester: string;
+  category: string;
+  priority: TicketPriority;
+  status: TicketStatus;
+  createdAt: string;
+  updatedAt: string;
+  satisfaction: number;
+  description: string;
+  messages: TicketMessage[];
+}
+
+export interface ChatMessageItem {
+  id: string;
+  content: string;
+  direction: ChatDirection;
+  time: string;
+}
+
+export interface CommentUser {
+  name: string;
+}
+
+export interface CommentItem {
+  id: string;
+  content: string;
+  user: CommentUser;
+  time: string;
+}
+
+export interface CreateTicketPayload {
+  title: string;
+  category?: string;
+  priority?: TicketPriority;
+  description?: string;
+}
+
+export interface UpdateTicketPayload {
+  title?: string;
+  category?: string;
+  priority?: TicketPriority;
+  status?: TicketStatus;
+  description?: string;
+  satisfaction?: number;
+}
+
+export interface CreateCommentPayload {
+  targetType: CommentTargetType;
+  targetId: string;
+  body: string;
+}
+
 // ---- Theme types ----
 
 export type ThemeMode = 'light' | 'dark' | 'system';

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Text, Tag, Button, Input, Message } from '@expcat/tigercat-react';
 import { Splitter } from '@expcat/tigercat-react/Splitter';
 import { Resizable } from '@expcat/tigercat-react/Resizable';
@@ -28,24 +28,30 @@ import type {
 import { PageHeader } from '../components/PageHeader';
 import { MutedPanel } from '../components/PageFragments';
 import { HelpIcon, PlusIcon, TicketIcon } from '../components/Icons';
+import {
+  createTicket,
+  fetchTicket,
+  fetchTickets,
+  sendTicketMessage,
+  updateTicket,
+} from '../utils/tickets';
+import { createComment, fetchComments } from '../utils/comments';
+import type { CommentItem, Ticket, TicketPriority, TicketStatus } from '../utils/types';
 
-type TicketStatus = 'open' | 'accepted' | 'progress' | 'resolved' | 'closed';
-type TicketPriority = 'high' | 'medium' | 'low';
-
-interface Ticket {
-  id: string;
-  title: string;
-  requester: string;
-  category: string;
-  priority: TicketPriority;
-  status: TicketStatus;
-  createdAt: string;
-  updatedAt: string;
-  satisfaction: number;
-  description: string;
-  messages: ChatMessage[];
+interface TicketView extends Ticket {
   notes: CommentNode[];
 }
+
+const toCommentNodes = (items: CommentItem[]): CommentNode[] => items as CommentNode[];
+
+const toTicketView = (ticket: Ticket, notes: CommentNode[] = []): TicketView => ({
+  ...ticket,
+  messages: ticket.messages ?? [],
+  notes,
+});
+
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
 
 const LIFECYCLE = ['已创建', '已受理', '处理中', '已解决', '已关闭'];
 const STATUS_META: Record<TicketStatus, { label: string; variant: TagVariant; step: number }> = {
@@ -76,105 +82,13 @@ const statusFilters: { value: 'all' | TicketStatus; label: string }[] = [
   { value: 'closed', label: '已关闭' },
 ];
 
-const nowLabel = () => {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-
-const SEED_TICKETS: Ticket[] = [
-  {
-    id: 'TK-2048',
-    title: '导出报表时偶发 500 错误',
-    requester: '赵敏',
-    category: '缺陷',
-    priority: 'high',
-    status: 'progress',
-    createdAt: '2026-06-28 10:24',
-    updatedAt: '2026-06-29 09:02',
-    satisfaction: 0,
-    description: '在数据分析页导出近 90 天报表时，约 1/5 概率返回 500，刷新后可恢复。',
-    messages: [
-      { id: 'm1', content: '你好，导出报表偶尔会失败，麻烦看下。', direction: 'other', time: '2026-06-28 10:24' },
-      { id: 'm2', content: '已收到，正在排查导出服务的超时配置。', direction: 'self', time: '2026-06-28 11:10' },
-    ],
-    notes: [
-      {
-        id: 'n1',
-        content: '初步定位为导出队列在高峰期超时，已 @张运维 调整 worker 并发。',
-        user: { name: '李工' },
-        time: '2026-06-28 14:30',
-      },
-    ],
-  },
-  {
-    id: 'TK-2050',
-    title: '希望支持按部门筛选用户',
-    requester: '孙莉',
-    category: '需求',
-    priority: 'medium',
-    status: 'accepted',
-    createdAt: '2026-06-27 16:40',
-    updatedAt: '2026-06-28 09:15',
-    satisfaction: 0,
-    description: '用户管理列表希望增加“部门”筛选项，便于按团队管理成员。',
-    messages: [
-      { id: 'm1', content: '能否在用户列表加一个部门筛选？', direction: 'other', time: '2026-06-27 16:40' },
-    ],
-    notes: [],
-  },
-  {
-    id: 'TK-2041',
-    title: '登录后偶尔跳回登录页',
-    requester: '周杰',
-    category: '缺陷',
-    priority: 'high',
-    status: 'resolved',
-    createdAt: '2026-06-25 08:12',
-    updatedAt: '2026-06-26 17:50',
-    satisfaction: 4,
-    description: '部分用户登录成功后数秒内被登出，疑似 token 续期问题。',
-    messages: [
-      { id: 'm1', content: '登录后过一会就被踢出来了。', direction: 'other', time: '2026-06-25 08:12' },
-      { id: 'm2', content: '已修复 token 续期逻辑，请再试试。', direction: 'self', time: '2026-06-26 17:50' },
-      { id: 'm3', content: '可以了，谢谢！', direction: 'other', time: '2026-06-26 18:05' },
-    ],
-    notes: [
-      {
-        id: 'n1',
-        content: '根因：刷新接口未带上最新 token，已修复并补充回归用例。',
-        user: { name: '王小虎' },
-        time: '2026-06-26 17:40',
-      },
-    ],
-  },
-  {
-    id: 'TK-2033',
-    title: '通知中心希望支持批量已读',
-    requester: '吴芳',
-    category: '需求',
-    priority: 'low',
-    status: 'closed',
-    createdAt: '2026-06-20 13:00',
-    updatedAt: '2026-06-22 10:20',
-    satisfaction: 5,
-    description: '通知较多时希望一键全部标记为已读。',
-    messages: [
-      { id: 'm1', content: '通知太多了，能不能一键已读？', direction: 'other', time: '2026-06-20 13:00' },
-      { id: 'm2', content: '已上线“全部已读”按钮，欢迎体验。', direction: 'self', time: '2026-06-22 10:20' },
-    ],
-    notes: [],
-  },
-];
-
 function TicketsPage() {
-  const seqRef = useRef(0);
-  const nextId = (prefix: string) => `${prefix}-${Date.now()}-${seqRef.current++}`;
-
-  const [tickets, setTickets] = useState<Ticket[]>(SEED_TICKETS);
+  const [tickets, setTickets] = useState<TicketView[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | TicketStatus>('all');
-  const [selectedId, setSelectedId] = useState<string | null>(SEED_TICKETS[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [noteDraft, setNoteDraft] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -202,19 +116,73 @@ function TicketsPage() {
     [tickets, selectedId],
   );
 
-  const filteredTickets = useMemo(() => {
-    const kw = keyword.trim().toLowerCase();
-    return tickets.filter((t) => {
-      const matchStatus = statusFilter === 'all' || t.status === statusFilter;
-      const matchKw = !kw || `${t.title} ${t.requester} ${t.id}`.toLowerCase().includes(kw);
-      return matchStatus && matchKw;
-    });
-  }, [tickets, keyword, statusFilter]);
+  const filteredTickets = tickets;
 
   const openCount = useMemo(
     () => tickets.filter((t) => t.status !== 'closed' && t.status !== 'resolved').length,
     [tickets],
   );
+
+  const loadTicketDetail = useCallback(async (id: string) => {
+    setDetailLoading(true);
+    try {
+      const [ticketPayload, commentsPayload] = await Promise.all([
+        fetchTicket(id),
+        fetchComments('ticket', id),
+      ]);
+      const notes = toCommentNodes(commentsPayload.data ?? []);
+      setTickets((prev) =>
+        prev.map((item) => (item.id === id ? toTicketView(ticketPayload.data, notes) : item)),
+      );
+    } catch (error: unknown) {
+      Message.error({ content: readErrorMessage(error, '工单详情加载失败'), duration: 3000 });
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  const loadTickets = useCallback(async (selectId?: string | null) => {
+    setLoading(true);
+    try {
+      const payload = await fetchTickets({
+        page: 1,
+        pageSize: 50,
+        status: statusFilter,
+        keyword,
+      });
+      const items = payload.data.items ?? [];
+      setTickets((prev) => {
+        const prevNotes = new Map(prev.map((item) => [item.id, item.notes]));
+        return items.map((item) => toTicketView(item, prevNotes.get(item.id) ?? []));
+      });
+      const nextSelected =
+        (selectId && items.some((item) => item.id === selectId) && selectId) ||
+        (selectedId && items.some((item) => item.id === selectedId) ? selectedId : items[0]?.id ?? null);
+      setSelectedId(nextSelected);
+      if (nextSelected) {
+        await loadTicketDetail(nextSelected);
+      }
+    } catch (error: unknown) {
+      Message.error({ content: readErrorMessage(error, '工单列表加载失败'), duration: 3000 });
+    } finally {
+      setLoading(false);
+    }
+  }, [keyword, loadTicketDetail, selectedId, statusFilter]);
+
+  useEffect(() => {
+    void loadTickets();
+    // Intentionally reload when filters change; loadTickets already closes over them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keyword, statusFilter]);
+
+  const selectTicket = (id: string) => {
+    setSelectedId(id);
+    void loadTicketDetail(id);
+  };
+
+  const requestClose = () => {
+    setConfirmingClose(true);
+  };
 
   const descriptions: DescriptionsItem[] = selected
     ? [
@@ -227,52 +195,55 @@ function TicketsPage() {
       ]
     : [];
 
-  const appendMessage = (id: string, message: ChatMessage) =>
-    setTickets((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, messages: [...t.messages, message] } : t)),
-    );
-
-  const handleSend = (value: string) => {
+  const handleSend = async (value: string) => {
     const text = value.trim();
     if (!selected || !text) return;
     const id = selected.id;
-    appendMessage(id, { id: nextId('m'), content: text, direction: 'self', time: nowLabel() });
-    setDraft('');
-    window.setTimeout(() => {
-      appendMessage(id, {
-        id: nextId('m'),
-        content: '收到，我们会尽快跟进本工单（演示自动回复）。',
-        direction: 'other',
-        time: nowLabel(),
-      });
-    }, 700);
+    try {
+      const payload = await sendTicketMessage(id, text);
+      setDraft('');
+      setTickets((prev) =>
+        prev.map((item) => (item.id === id ? toTicketView(payload.data, item.notes) : item)),
+      );
+    } catch (error: unknown) {
+      Message.error({ content: readErrorMessage(error, '发送工单消息失败'), duration: 3000 });
+    }
   };
 
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     const text = noteDraft.trim();
     if (!selected || !text) return;
-    const note: CommentNode = {
-      id: nextId('n'),
-      content: text,
-      user: { name: '我' },
-      time: nowLabel(),
-    };
-    setTickets((prev) =>
-      prev.map((t) => (t.id === selected.id ? { ...t, notes: [...t.notes, note] } : t)),
-    );
-    setNoteDraft('');
-    Message.success({ content: '已添加内部备注（演示）', duration: 2000 });
+    const id = selected.id;
+    try {
+      const payload = await createComment({ targetType: 'ticket', targetId: id, body: text });
+      setTickets((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, notes: [...item.notes, payload.data as CommentNode] } : item,
+        ),
+      );
+      setNoteDraft('');
+      Message.success({ content: '已添加内部备注', duration: 2000 });
+    } catch (error: unknown) {
+      Message.error({ content: readErrorMessage(error, '添加内部备注失败'), duration: 3000 });
+    }
   };
 
-  const confirmClose = () => {
-    if (selected) {
-      const id = selected.id;
-      setTickets((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, status: 'closed', updatedAt: nowLabel() } : t)),
-      );
+  const confirmClose = async () => {
+    if (!selected) {
+      setConfirmingClose(false);
+      return;
     }
-    setConfirmingClose(false);
-    Message.success({ content: '工单已关闭（演示）', duration: 2000 });
+    const id = selected.id;
+    try {
+      const payload = await updateTicket(id, { status: 'closed' });
+      setTickets((prev) =>
+        prev.map((item) => (item.id === id ? toTicketView(payload.data, item.notes) : item)),
+      );
+      setConfirmingClose(false);
+      Message.success({ content: '工单已关闭', duration: 2000 });
+    } catch (error: unknown) {
+      Message.error({ content: readErrorMessage(error, '关闭工单失败'), duration: 3000 });
+    }
   };
 
   const openDrawer = () => {
@@ -281,32 +252,28 @@ function TicketsPage() {
     setDrawerOpen(true);
   };
 
-  const submitTicket = () => {
+  const submitTicket = async () => {
     const title = form.title.trim();
     if (!title) {
       Message.warning({ content: '请填写工单标题', duration: 2000 });
       return;
     }
-    const id = `TK-${2050 + tickets.length + 1}`;
-    const ticket: Ticket = {
-      id,
-      title,
-      requester: '我',
-      category: form.category,
-      priority: form.priority,
-      status: 'open',
-      createdAt: nowLabel(),
-      updatedAt: nowLabel(),
-      satisfaction: 0,
-      description: form.description.trim() || '（无描述）',
-      messages: [],
-      notes: [],
-    };
-    setTickets((prev) => [ticket, ...prev]);
-    setSelectedId(id);
-    setStatusFilter('all');
-    setDrawerOpen(false);
-    Message.success({ content: `工单 ${id} 已创建（演示）`, duration: 2400 });
+    try {
+      const payload = await createTicket({
+        title,
+        category: form.category,
+        priority: form.priority,
+        description: form.description.trim() || '（无描述）',
+      });
+      setStatusFilter('all');
+      setKeyword('');
+      setDrawerOpen(false);
+      setSelectedId(payload.data.id);
+      await loadTickets(payload.data.id);
+      Message.success({ content: `工单 ${payload.data.id} 已创建`, duration: 2400 });
+    } catch (error: unknown) {
+      Message.error({ content: readErrorMessage(error, '创建工单失败'), duration: 3000 });
+    }
   };
 
   const splitDirection: 'horizontal' | 'vertical' = isWide ? 'horizontal' : 'vertical';
@@ -371,7 +338,7 @@ function TicketsPage() {
                       ? 'border-(--tiger-primary,#3b82f6) bg-(--tiger-primary,#3b82f6)/5'
                       : 'border-(--tiger-border,#e5e7eb) hover:bg-(--tiger-bg-hover,#f1f5f9)'
                   }`}
-                  onClick={() => setSelectedId(t.id)}>
+                  onClick={() => selectTicket(t.id)}>
                   <div className="flex items-center justify-between gap-2">
                     <Text weight="medium" className="truncate">
                       {t.title}
@@ -391,8 +358,12 @@ function TicketsPage() {
                 </button>
               ))}
 
-              {filteredTickets.length === 0 && (
-                <MutedPanel compact description="没有符合条件的工单，试试调整筛选或搜索关键词。" />
+              {loading && filteredTickets.length === 0 ? (
+                <MutedPanel compact description="正在加载工单…" />
+              ) : (
+                filteredTickets.length === 0 && (
+                  <MutedPanel compact description="没有符合条件的工单，试试调整筛选或搜索关键词。" />
+                )
               )}
             </div>
           </div>
@@ -414,7 +385,7 @@ function TicketsPage() {
                     variant="outline"
                     size="sm"
                     disabled={selected.status === 'closed'}
-                    onClick={() => setConfirmingClose(true)}>
+                    onClick={requestClose}>
                     关闭工单
                   </Button>
                 </div>
@@ -457,12 +428,12 @@ function TicketsPage() {
                 <Card header={<Text weight="bold">对话</Text>} className="mt-4">
                   <Resizable axis="vertical" handles={['bottom']} defaultHeight={300} minHeight={200} maxHeight={460} style={{ width: '100%' }}>
                     <ChatWindow
-                      messages={selected.messages}
+                      messages={selected.messages as ChatMessage[]}
                       value={draft}
                       className="h-full"
                       placeholder="回复提交人，回车发送"
                       sendText="发送"
-                      emptyText="暂无对话，开始回复吧"
+                      emptyText={detailLoading ? '正在加载对话…' : '暂无对话，开始回复吧'}
                       statusText="工单进行中"
                       statusVariant={'primary' as BadgeVariant}
                       showAvatar={false}
@@ -496,7 +467,9 @@ function TicketsPage() {
               </>
             ) : (
               <div className="flex h-full items-center justify-center">
-                <MutedPanel description="请选择左侧工单查看详情、对话与内部协作。" />
+                <MutedPanel
+                  description={loading ? '正在加载工单…' : '请选择左侧工单查看详情、对话与内部协作。'}
+                />
               </div>
             )}
           </div>

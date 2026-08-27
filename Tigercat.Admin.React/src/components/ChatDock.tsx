@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ChatMessage } from '@expcat/tigercat-core';
-import { Badge, Drawer } from '@expcat/tigercat-react';
+import { Badge, Drawer, Message } from '@expcat/tigercat-react';
 import { FloatButton } from '@expcat/tigercat-react/FloatButton';
 import { ChatWindow } from '@expcat/tigercat-react/ChatWindow';
+import { fetchChatMessages, sendChatMessage } from '../utils/chat';
 import { MessageIcon, XIcon } from './Icons';
 
 interface ChatDockProps {
@@ -10,23 +11,14 @@ interface ChatDockProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const buildReply = (input: string) =>
-  `已收到你的消息：“${input}”。这是演示客服坞，稍后会有同事跟进（ChatWindow 组件示例）。`;
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
 
 export function ChatDock({ open, onOpenChange }: ChatDockProps) {
-  const seqRef = useRef(0);
-  const nextId = () => `chat-${Date.now()}-${seqRef.current++}`;
-
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    {
-      id: `chat-welcome`,
-      content: '你好，我是在线客服小虎，有任何关于后台的问题都可以问我～',
-      direction: 'other',
-      time: new Date().toISOString(),
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [unread, setUnread] = useState(1);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -34,35 +26,35 @@ export function ChatDock({ open, onOpenChange }: ChatDockProps) {
     }
   }, [open]);
 
-  const handleSend = (value: string) => {
+  useEffect(() => {
+    const loadMessages = async () => {
+      setLoading(true);
+      try {
+        const payload = await fetchChatMessages();
+        setMessages((payload.data ?? []) as ChatMessage[]);
+      } catch (error: unknown) {
+        Message.error({ content: readErrorMessage(error, '客服消息加载失败'), duration: 3000 });
+      } finally {
+        setLoading(false);
+      }
+    };
+    void loadMessages();
+  }, []);
+
+  const handleSend = async (value: string) => {
     const text = value.trim();
     if (!text) {
       return;
     }
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: nextId(),
-        content: text,
-        direction: 'self',
-        time: new Date().toISOString(),
-      },
-    ]);
-    setDraft('');
-
-    window.setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: nextId(),
-          content: buildReply(text),
-          direction: 'other',
-          time: new Date().toISOString(),
-        },
-      ]);
+    try {
+      const payload = await sendChatMessage(text);
+      setDraft('');
+      setMessages((payload.data ?? []) as ChatMessage[]);
       setUnread((prev) => (open ? prev : prev + 1));
-    }, 700);
+    } catch (error: unknown) {
+      Message.error({ content: readErrorMessage(error, '发送客服消息失败'), duration: 3000 });
+    }
   };
 
   return (
@@ -102,7 +94,7 @@ export function ChatDock({ open, onOpenChange }: ChatDockProps) {
           value={draft}
           placeholder="输入消息，回车发送"
           sendText="发送"
-          emptyText="暂无消息，开始对话吧"
+          emptyText={loading ? '正在加载消息…' : '暂无消息，开始对话吧'}
           statusText="客服在线"
           statusVariant="success"
           showTime

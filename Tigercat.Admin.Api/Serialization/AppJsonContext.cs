@@ -125,6 +125,28 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(CompleteAdminTaskRequest))]
 [JsonSerializable(typeof(ApiResponse<AdminTaskResponse>))]
 [JsonSerializable(typeof(ApiResponse<PagedResponse<AdminTaskResponse>>))]
+// Tickets / chat / comments
+[JsonSerializable(typeof(TicketMessageResponse))]
+[JsonSerializable(typeof(TicketMessageResponse[]))]
+[JsonSerializable(typeof(TicketResponse))]
+[JsonSerializable(typeof(TicketResponse[]))]
+[JsonSerializable(typeof(PagedResponse<TicketResponse>))]
+[JsonSerializable(typeof(CreateTicketRequest))]
+[JsonSerializable(typeof(UpdateTicketRequest))]
+[JsonSerializable(typeof(CreateTicketMessageRequest))]
+[JsonSerializable(typeof(ApiResponse<TicketResponse>))]
+[JsonSerializable(typeof(ApiResponse<PagedResponse<TicketResponse>>))]
+[JsonSerializable(typeof(ChatMessageResponse))]
+[JsonSerializable(typeof(ChatMessageResponse[]))]
+[JsonSerializable(typeof(CreateChatMessageRequest))]
+[JsonSerializable(typeof(ApiResponse<ChatMessageResponse>))]
+[JsonSerializable(typeof(ApiResponse<ChatMessageResponse[]>))]
+[JsonSerializable(typeof(CommentUserResponse))]
+[JsonSerializable(typeof(CommentResponse))]
+[JsonSerializable(typeof(CommentResponse[]))]
+[JsonSerializable(typeof(CreateCommentRequest))]
+[JsonSerializable(typeof(ApiResponse<CommentResponse>))]
+[JsonSerializable(typeof(ApiResponse<CommentResponse[]>))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }

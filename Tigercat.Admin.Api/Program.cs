@@ -186,6 +186,9 @@ app.MapEndpoint<SettingsEndpoints>();
 app.MapEndpoint<MediaEndpoints>();
 app.MapEndpoint<NotificationsEndpoints>();
 app.MapEndpoint<TasksEndpoints>();
+app.MapEndpoint<TicketsEndpoints>();
+app.MapEndpoint<ChatEndpoints>();
+app.MapEndpoint<CommentsEndpoints>();
 
 app.MapGet("/api/health", GetHealth)
     .WithName("HealthCheck");

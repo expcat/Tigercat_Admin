@@ -126,6 +126,48 @@ type AuditLogItem = {
   data: Record<string, string | null>;
 };
 
+type TicketStatus = 'open' | 'accepted' | 'progress' | 'resolved' | 'closed';
+type TicketPriority = 'high' | 'medium' | 'low';
+type ChatDirection = 'self' | 'other';
+type CommentTargetType = 'ticket' | 'project';
+
+type TicketMessageItem = {
+  id: string;
+  content: string;
+  direction: ChatDirection;
+  time: string;
+};
+
+type TicketItem = {
+  id: string;
+  title: string;
+  requester: string;
+  category: string;
+  priority: TicketPriority;
+  status: TicketStatus;
+  createdAt: string;
+  updatedAt: string;
+  satisfaction: number;
+  description: string;
+  messages: TicketMessageItem[];
+};
+
+type ChatMessageItem = {
+  id: string;
+  content: string;
+  direction: ChatDirection;
+  time: string;
+};
+
+type CommentItem = {
+  id: string;
+  content: string;
+  user: { name: string };
+  time: string;
+  targetType: CommentTargetType;
+  targetId: string;
+};
+
 type DemoState = {
   users: DemoUser[];
   roles: DemoRole[];
@@ -133,12 +175,17 @@ type DemoState = {
   media: MediaItem[];
   notifications: NotificationItem[];
   tasks: TaskItem[];
+  tickets: TicketItem[];
+  chatMessages: ChatMessageItem[];
+  comments: CommentItem[];
   auditLogs: AuditLogItem[];
   retentionDays: number;
   nextUserId: number;
   nextRoleId: number;
   nextMediaId: number;
   nextTaskId: number;
+  nextTicketNumber: number;
+  nextMessageSeq: number;
   passwords: Record<string, string>;
   twoFactorByUser: Record<string, boolean>;
   pendingTwoFactor: Record<string, string>;
@@ -326,6 +373,33 @@ function initialState(): DemoState {
       task('task-notification-review', '通知中心交互复核', '确认分组筛选、已读切换与浮层反馈在双端一致。', '产品验收', 'medium', 'review', '2026-05-29T07:00:00.000Z', 2, false),
       task('task-audit-page', '审计日志页联调完成', '后端聚合 Redis Streams，双端页面已完成 ActivityFeed 与 Timeline 验证。', '管理后台', 'medium', 'done', '2026-05-28T06:00:00.000Z', 3, false),
     ],
+    tickets: seedTickets(),
+    chatMessages: [
+      {
+        id: 'chat-welcome',
+        content: '你好，我是在线客服小虎，有任何关于后台的问题都可以问我～',
+        direction: 'other',
+        time: '2026-06-29T09:00:00.000Z',
+      },
+    ],
+    comments: [
+      {
+        id: 'n-2048-1',
+        targetType: 'ticket',
+        targetId: 'TK-2048',
+        content: '初步定位为导出队列在高峰期超时，已 @张运维 调整 worker 并发。',
+        user: { name: '李工' },
+        time: '2026-06-28 14:30',
+      },
+      {
+        id: 'n-2041-1',
+        targetType: 'ticket',
+        targetId: 'TK-2041',
+        content: '根因：刷新接口未带上最新 token，已修复并补充回归用例。',
+        user: { name: '王小虎' },
+        time: '2026-06-26 17:40',
+      },
+    ],
     auditLogs: [
       audit('auth-login', 'auth', 'auth.user.login', '用户登录', 'admin 登录了系统。', 'admin'),
       audit('user-update', 'user', 'admin.user.updated', '更新用户', 'admin 更新了用户 editor 的资料或角色配置。', 'admin'),
@@ -337,6 +411,8 @@ function initialState(): DemoState {
     nextRoleId: 4,
     nextMediaId: 4,
     nextTaskId: 7,
+    nextTicketNumber: 2051,
+    nextMessageSeq: 1,
     passwords: {
       admin: 'admin123',
       demo: 'demo',
@@ -427,6 +503,92 @@ function task(
     updatedAt: null,
     completedAt: status === 'done' ? CREATED_AT : null,
   };
+}
+
+function seedTickets(): TicketItem[] {
+  return [
+    {
+      id: 'TK-2048',
+      title: '导出报表时偶发 500 错误',
+      requester: '赵敏',
+      category: '缺陷',
+      priority: 'high',
+      status: 'progress',
+      createdAt: '2026-06-28 10:24',
+      updatedAt: '2026-06-29 09:02',
+      satisfaction: 0,
+      description: '在数据分析页导出近 90 天报表时，约 1/5 概率返回 500，刷新后可恢复。',
+      messages: [
+        { id: 'm-2048-1', content: '你好，导出报表偶尔会失败，麻烦看下。', direction: 'other', time: '2026-06-28 10:24' },
+        { id: 'm-2048-2', content: '已收到，正在排查导出服务的超时配置。', direction: 'self', time: '2026-06-28 11:10' },
+      ],
+    },
+    {
+      id: 'TK-2050',
+      title: '希望支持按部门筛选用户',
+      requester: '孙莉',
+      category: '需求',
+      priority: 'medium',
+      status: 'accepted',
+      createdAt: '2026-06-27 16:40',
+      updatedAt: '2026-06-28 09:15',
+      satisfaction: 0,
+      description: '用户管理列表希望增加“部门”筛选项，便于按团队管理成员。',
+      messages: [
+        { id: 'm-2050-1', content: '能否在用户列表加一个部门筛选？', direction: 'other', time: '2026-06-27 16:40' },
+      ],
+    },
+    {
+      id: 'TK-2041',
+      title: '登录后偶尔跳回登录页',
+      requester: '周杰',
+      category: '缺陷',
+      priority: 'high',
+      status: 'resolved',
+      createdAt: '2026-06-25 08:12',
+      updatedAt: '2026-06-26 17:50',
+      satisfaction: 4,
+      description: '部分用户登录成功后数秒内被登出，疑似 token 续期问题。',
+      messages: [
+        { id: 'm-2041-1', content: '登录后过一会就被踢出来了。', direction: 'other', time: '2026-06-25 08:12' },
+        { id: 'm-2041-2', content: '已修复 token 续期逻辑，请再试试。', direction: 'self', time: '2026-06-26 17:50' },
+        { id: 'm-2041-3', content: '可以了，谢谢！', direction: 'other', time: '2026-06-26 18:05' },
+      ],
+    },
+  ];
+}
+
+function nowTicketLabel() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function pageTickets(items: TicketItem[], url: URL) {
+  const current = Math.max(Number(url.searchParams.get('page') ?? '1') || 1, 1);
+  const rawSize = Number(url.searchParams.get('pageSize') ?? '50');
+  const pageSize = Math.min(Math.max(Number.isFinite(rawSize) && rawSize > 0 ? rawSize : 50, 1), 200);
+  const start = (current - 1) * pageSize;
+  return {
+    items: items.slice(start, start + pageSize),
+    total: items.length,
+    page: current,
+    pageSize,
+  };
+}
+
+function actorName(state: DemoState, request: Request | null, init: RequestInit) {
+  const username = sessionUsername(request, init);
+  const user = state.users.find((item) => item.username === username);
+  return user?.displayName?.trim() || username || 'unknown';
+}
+
+function nextMockId(state: DemoState, prefix: string) {
+  return `${prefix}-${Date.now().toString(36)}-${state.nextMessageSeq++}`;
+}
+
+function toCommentResponse(item: CommentItem) {
+  return { id: item.id, content: item.content, user: item.user, time: item.time };
 }
 
 function audit(
@@ -594,6 +756,11 @@ function readState(storageKey: string): DemoState {
       return {
         ...seeded,
         ...parsed,
+        tickets: parsed.tickets ?? seeded.tickets,
+        chatMessages: parsed.chatMessages ?? seeded.chatMessages,
+        comments: parsed.comments ?? seeded.comments,
+        nextTicketNumber: parsed.nextTicketNumber ?? seeded.nextTicketNumber,
+        nextMessageSeq: parsed.nextMessageSeq ?? seeded.nextMessageSeq,
         passwords: { ...seeded.passwords, ...(parsed.passwords ?? {}) },
         twoFactorByUser: { ...seeded.twoFactorByUser, ...(parsed.twoFactorByUser ?? {}) },
         pendingTwoFactor: parsed.pendingTwoFactor ?? {},
@@ -1347,6 +1514,155 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     state.media = state.media.filter((mediaItem) => mediaItem.id !== item.id);
     writeState(storageKey, state);
     return makeJson({ message: '删除成功' });
+  }
+
+  const TICKET_STATUSES: TicketStatus[] = ['open', 'accepted', 'progress', 'resolved', 'closed'];
+  const TICKET_PRIORITIES: TicketPriority[] = ['high', 'medium', 'low'];
+  const COMMENT_TARGETS: CommentTargetType[] = ['ticket', 'project'];
+
+  if (path === '/api/tickets' && method === 'GET') {
+    const keyword = url.searchParams.get('keyword')?.trim().toLowerCase();
+    const status = url.searchParams.get('status')?.trim().toLowerCase();
+    if (status && !TICKET_STATUSES.includes(status as TicketStatus)) {
+      return makeError('无效的工单状态', 400);
+    }
+    let items = [...state.tickets];
+    if (status) items = items.filter((item) => item.status === status);
+    if (keyword) {
+      items = items.filter((item) => `${item.title} ${item.requester} ${item.id}`.toLowerCase().includes(keyword));
+    }
+    items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || b.id.localeCompare(a.id));
+    return makeJson(pageTickets(items, url));
+  }
+
+  if (path === '/api/tickets' && method === 'POST') {
+    const title = String(body.title ?? '').trim();
+    if (!title) return makeError('工单标题不能为空', 400);
+    const priority = String(body.priority ?? 'medium').trim().toLowerCase();
+    if (!TICKET_PRIORITIES.includes(priority as TicketPriority)) return makeError('无效的工单优先级', 400);
+    const stamp = nowTicketLabel();
+    const item: TicketItem = {
+      id: `TK-${state.nextTicketNumber++}`,
+      title,
+      requester: actorName(state, request, init),
+      category: String(body.category ?? '缺陷').trim() || '缺陷',
+      priority: priority as TicketPriority,
+      status: 'open',
+      createdAt: stamp,
+      updatedAt: stamp,
+      satisfaction: 0,
+      description: String(body.description ?? '').trim() || '（无描述）',
+      messages: [],
+    };
+    state.tickets.unshift(item);
+    writeState(storageKey, state);
+    return makeJson(item);
+  }
+
+  const ticketMessageMatch = path.match(/^\/api\/tickets\/([^/]+)\/messages$/);
+  if (ticketMessageMatch && method === 'POST') {
+    const item = state.tickets.find((ticket) => ticket.id === decodeURIComponent(ticketMessageMatch[1]));
+    if (!item) return makeError('工单不存在', 404);
+    const content = String(body.content ?? '').trim();
+    if (!content) return makeError('消息内容不能为空', 400);
+    const stamp = nowTicketLabel();
+    item.messages = [
+      ...item.messages,
+      { id: nextMockId(state, 'm'), content, direction: 'self', time: stamp },
+      { id: nextMockId(state, 'm'), content: '收到，我们会尽快跟进本工单（演示自动回复）。', direction: 'other', time: stamp },
+    ];
+    item.updatedAt = stamp;
+    writeState(storageKey, state);
+    return makeJson(item);
+  }
+
+  const ticketMatch = path.match(/^\/api\/tickets\/([^/]+)$/);
+  if (ticketMatch && method === 'GET') {
+    const item = state.tickets.find((ticket) => ticket.id === decodeURIComponent(ticketMatch[1]));
+    return item ? makeJson(item) : makeError('工单不存在', 404);
+  }
+
+  if (ticketMatch && method === 'PUT') {
+    const item = state.tickets.find((ticket) => ticket.id === decodeURIComponent(ticketMatch[1]));
+    if (!item) return makeError('工单不存在', 404);
+    if (body.priority != null) {
+      const priority = String(body.priority).trim().toLowerCase();
+      if (!TICKET_PRIORITIES.includes(priority as TicketPriority)) return makeError('无效的工单优先级', 400);
+      item.priority = priority as TicketPriority;
+    }
+    if (body.status != null) {
+      const status = String(body.status).trim().toLowerCase();
+      if (!TICKET_STATUSES.includes(status as TicketStatus)) return makeError('无效的工单状态', 400);
+      item.status = status as TicketStatus;
+    }
+    if (body.title != null) {
+      const title = String(body.title).trim();
+      if (!title) return makeError('工单标题不能为空', 400);
+      item.title = title;
+    }
+    if (body.category != null) item.category = String(body.category).trim() || item.category;
+    if (body.description != null) item.description = String(body.description).trim() || '（无描述）';
+    if (typeof body.satisfaction === 'number') item.satisfaction = body.satisfaction;
+    item.updatedAt = nowTicketLabel();
+    writeState(storageKey, state);
+    return makeJson(item);
+  }
+
+  if (path === '/api/chat/messages' && method === 'GET') {
+    return makeJson(state.chatMessages);
+  }
+
+  if (path === '/api/chat/messages' && method === 'POST') {
+    const content = String(body.content ?? '').trim();
+    if (!content) return makeError('消息内容不能为空', 400);
+    const now = new Date().toISOString();
+    state.chatMessages = [
+      ...state.chatMessages,
+      { id: nextMockId(state, 'chat'), content, direction: 'self', time: now },
+      {
+        id: nextMockId(state, 'chat'),
+        content: `已收到你的消息：“${content}”。这是演示客服坞，稍后会有同事跟进（ChatWindow 组件示例）。`,
+        direction: 'other',
+        time: now,
+      },
+    ];
+    writeState(storageKey, state);
+    return makeJson(state.chatMessages);
+  }
+
+  if (path === '/api/comments' && method === 'GET') {
+    const targetType = url.searchParams.get('targetType')?.trim().toLowerCase();
+    const targetId = url.searchParams.get('targetId')?.trim();
+    if (!targetType || !COMMENT_TARGETS.includes(targetType as CommentTargetType)) {
+      return makeError('无效的评论目标类型', 400);
+    }
+    if (!targetId) return makeError('目标 ID 不能为空', 400);
+    const items = state.comments
+      .filter((item) => item.targetType === targetType && item.targetId === targetId)
+      .map(toCommentResponse);
+    return makeJson(items);
+  }
+
+  if (path === '/api/comments' && method === 'POST') {
+    const targetType = String(body.targetType ?? '').trim().toLowerCase();
+    const targetId = String(body.targetId ?? '').trim();
+    const content = String(body.body ?? '').trim();
+    if (!COMMENT_TARGETS.includes(targetType as CommentTargetType)) {
+      return makeError('无效的评论目标类型', 400);
+    }
+    if (!targetId) return makeError('目标 ID 不能为空', 400);
+    if (!content) return makeError('评论内容不能为空', 400);
+    const item: CommentItem = {
+      id: nextMockId(state, 'c'),
+      targetType: targetType as CommentTargetType,
+      targetId,
+      content,
+      user: { name: actorName(state, request, init) },
+      time: nowTicketLabel(),
+    };
+    state.comments.push(item);
+    writeState(storageKey, state);
+    return makeJson(toCommentResponse(item));
   }
 
   return makeError(`演示模式尚未覆盖接口：${method} ${path}`, 404);

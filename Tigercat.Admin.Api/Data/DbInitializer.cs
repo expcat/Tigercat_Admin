@@ -277,6 +277,8 @@ public static class DbInitializer
             await context.SaveChangesAsync(ct);
         }
 
+        await SeedCollaborationAsync(context, ct);
+
         // --- Seed default admin user (idempotent: skip if username exists) ---
         var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "admin", ct);
 
@@ -394,6 +396,147 @@ public static class DbInitializer
 
         await context.SaveChangesAsync(ct);
     }
+
+    private static async Task SeedCollaborationAsync(AdminDbContext context, CancellationToken ct)
+    {
+        var existingTicketIds = await context.Tickets.Select(t => t.PublicId).ToHashSetAsync(ct);
+        var newTickets = SeedTickets
+            .Where(t => !existingTicketIds.Contains(t.PublicId))
+            .Select(t => new TicketEntity
+            {
+                PublicId = t.PublicId,
+                Title = t.Title,
+                Requester = t.Requester,
+                Category = t.Category,
+                Priority = t.Priority,
+                Status = t.Status,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                Satisfaction = t.Satisfaction,
+                Description = t.Description,
+                Messages = t.Messages.Select(m => new TicketMessageEntity
+                {
+                    PublicId = m.PublicId,
+                    Content = m.Content,
+                    Direction = m.Direction,
+                    CreatedAt = m.CreatedAt
+                }).ToList()
+            })
+            .ToList();
+
+        if (newTickets.Count > 0)
+        {
+            context.Tickets.AddRange(newTickets);
+            await context.SaveChangesAsync(ct);
+        }
+
+        if (!await context.ChatMessages.AnyAsync(ct))
+        {
+            context.ChatMessages.Add(new ChatMessageEntity
+            {
+                PublicId = "chat-welcome",
+                Content = "你好，我是在线客服小虎，有任何关于后台的问题都可以问我～",
+                Direction = "other",
+                CreatedAt = new DateTime(2026, 6, 29, 9, 0, 0, DateTimeKind.Utc)
+            });
+            await context.SaveChangesAsync(ct);
+        }
+
+        var existingCommentIds = await context.Comments.Select(c => c.PublicId).ToHashSetAsync(ct);
+        var newComments = SeedComments
+            .Where(c => !existingCommentIds.Contains(c.PublicId))
+            .Select(c => new CommentEntity
+            {
+                PublicId = c.PublicId,
+                TargetType = c.TargetType,
+                TargetId = c.TargetId,
+                Body = c.Body,
+                UserName = c.UserName,
+                CreatedAt = c.CreatedAt
+            })
+            .ToList();
+
+        if (newComments.Count > 0)
+        {
+            context.Comments.AddRange(newComments);
+            await context.SaveChangesAsync(ct);
+        }
+    }
+
+    private static readonly (
+        string PublicId,
+        string Title,
+        string Requester,
+        string Category,
+        string Priority,
+        string Status,
+        DateTime CreatedAt,
+        DateTime UpdatedAt,
+        double Satisfaction,
+        string Description,
+        (string PublicId, string Content, string Direction, DateTime CreatedAt)[] Messages)[] SeedTickets =
+    [
+        (
+            "TK-2048",
+            "导出报表时偶发 500 错误",
+            "赵敏",
+            "缺陷",
+            "high",
+            "progress",
+            new DateTime(2026, 6, 28, 10, 24, 0),
+            new DateTime(2026, 6, 29, 9, 2, 0),
+            0,
+            "在数据分析页导出近 90 天报表时，约 1/5 概率返回 500，刷新后可恢复。",
+            [
+                ("m-2048-1", "你好，导出报表偶尔会失败，麻烦看下。", "other", new DateTime(2026, 6, 28, 10, 24, 0)),
+                ("m-2048-2", "已收到，正在排查导出服务的超时配置。", "self", new DateTime(2026, 6, 28, 11, 10, 0)),
+            ]
+        ),
+        (
+            "TK-2050",
+            "希望支持按部门筛选用户",
+            "孙莉",
+            "需求",
+            "medium",
+            "accepted",
+            new DateTime(2026, 6, 27, 16, 40, 0),
+            new DateTime(2026, 6, 28, 9, 15, 0),
+            0,
+            "用户管理列表希望增加“部门”筛选项，便于按团队管理成员。",
+            [
+                ("m-2050-1", "能否在用户列表加一个部门筛选？", "other", new DateTime(2026, 6, 27, 16, 40, 0)),
+            ]
+        ),
+        (
+            "TK-2041",
+            "登录后偶尔跳回登录页",
+            "周杰",
+            "缺陷",
+            "high",
+            "resolved",
+            new DateTime(2026, 6, 25, 8, 12, 0),
+            new DateTime(2026, 6, 26, 17, 50, 0),
+            4,
+            "部分用户登录成功后数秒内被登出，疑似 token 续期问题。",
+            [
+                ("m-2041-1", "登录后过一会就被踢出来了。", "other", new DateTime(2026, 6, 25, 8, 12, 0)),
+                ("m-2041-2", "已修复 token 续期逻辑，请再试试。", "self", new DateTime(2026, 6, 26, 17, 50, 0)),
+                ("m-2041-3", "可以了，谢谢！", "other", new DateTime(2026, 6, 26, 18, 5, 0)),
+            ]
+        ),
+    ];
+
+    private static readonly (
+        string PublicId,
+        string TargetType,
+        string TargetId,
+        string Body,
+        string UserName,
+        DateTime CreatedAt)[] SeedComments =
+    [
+        ("n-2048-1", "ticket", "TK-2048", "初步定位为导出队列在高峰期超时，已 @张运维 调整 worker 并发。", "李工", new DateTime(2026, 6, 28, 14, 30, 0)),
+        ("n-2041-1", "ticket", "TK-2041", "根因：刷新接口未带上最新 token，已修复并补充回归用例。", "王小虎", new DateTime(2026, 6, 26, 17, 40, 0)),
+    ];
 
     private static void UpsertMetadataValue(
         AdminDbContext context,

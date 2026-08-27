@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { Card, Text, Tag, Button, Input, Message } from '@expcat/tigercat-vue'
 import { Splitter } from '@expcat/tigercat-vue/Splitter'
 import { Resizable } from '@expcat/tigercat-vue/Resizable'
@@ -27,24 +27,21 @@ import type {
 import PageHeader from '../components/PageHeader.vue'
 import MutedPanel from '../components/MutedPanel.vue'
 import Icon from '../components/Icon.vue'
+import {
+  createTicket,
+  fetchTicket,
+  fetchTickets,
+  sendTicketMessage,
+  updateTicket,
+} from '../utils/tickets'
+import { createComment, fetchComments } from '../utils/comments'
+import type { CommentItem, Ticket, TicketPriority, TicketStatus } from '../utils/types'
 
-type TicketStatus = 'open' | 'accepted' | 'progress' | 'resolved' | 'closed'
-type TicketPriority = 'high' | 'medium' | 'low'
-
-interface Ticket {
-  id: string
-  title: string
-  requester: string
-  category: string
-  priority: TicketPriority
-  status: TicketStatus
-  createdAt: string
-  updatedAt: string
-  satisfaction: number
-  description: string
-  messages: ChatMessage[]
+interface TicketView extends Ticket {
   notes: CommentNode[]
 }
+
+const toCommentNodes = (items: CommentItem[]): CommentNode[] => items as CommentNode[]
 
 // ── 生命周期与状态映射 ─────────────────────────────
 const LIFECYCLE = ['已创建', '已受理', '处理中', '已解决', '已关闭']
@@ -74,96 +71,20 @@ const assignees: MentionOption[] = [
   { value: '陈测试', label: '陈测试 · 测试' },
 ]
 
-let seq = 0
-const nextId = (prefix: string) => `${prefix}-${Date.now()}-${seq++}`
+const toTicketView = (ticket: Ticket, notes: CommentNode[] = []): TicketView => ({
+  ...ticket,
+  messages: ticket.messages ?? [],
+  notes,
+})
 
-// ── 工单数据（页面内内存数据）────────────────────────
-const tickets = ref<Ticket[]>([
-  {
-    id: 'TK-2048',
-    title: '导出报表时偶发 500 错误',
-    requester: '赵敏',
-    category: '缺陷',
-    priority: 'high',
-    status: 'progress',
-    createdAt: '2026-06-28 10:24',
-    updatedAt: '2026-06-29 09:02',
-    satisfaction: 0,
-    description: '在数据分析页导出近 90 天报表时，约 1/5 概率返回 500，刷新后可恢复。',
-    messages: [
-      { id: 'm1', content: '你好，导出报表偶尔会失败，麻烦看下。', direction: 'other', time: '2026-06-28 10:24' },
-      { id: 'm2', content: '已收到，正在排查导出服务的超时配置。', direction: 'self', time: '2026-06-28 11:10' },
-    ],
-    notes: [
-      {
-        id: 'n1',
-        content: '初步定位为导出队列在高峰期超时，已 @张运维 调整 worker 并发。',
-        user: { name: '李工' },
-        time: '2026-06-28 14:30',
-      },
-    ],
-  },
-  {
-    id: 'TK-2050',
-    title: '希望支持按部门筛选用户',
-    requester: '孙莉',
-    category: '需求',
-    priority: 'medium',
-    status: 'accepted',
-    createdAt: '2026-06-27 16:40',
-    updatedAt: '2026-06-28 09:15',
-    satisfaction: 0,
-    description: '用户管理列表希望增加“部门”筛选项，便于按团队管理成员。',
-    messages: [
-      { id: 'm1', content: '能否在用户列表加一个部门筛选？', direction: 'other', time: '2026-06-27 16:40' },
-    ],
-    notes: [],
-  },
-  {
-    id: 'TK-2041',
-    title: '登录后偶尔跳回登录页',
-    requester: '周杰',
-    category: '缺陷',
-    priority: 'high',
-    status: 'resolved',
-    createdAt: '2026-06-25 08:12',
-    updatedAt: '2026-06-26 17:50',
-    satisfaction: 4,
-    description: '部分用户登录成功后数秒内被登出，疑似 token 续期问题。',
-    messages: [
-      { id: 'm1', content: '登录后过一会就被踢出来了。', direction: 'other', time: '2026-06-25 08:12' },
-      { id: 'm2', content: '已修复 token 续期逻辑，请再试试。', direction: 'self', time: '2026-06-26 17:50' },
-      { id: 'm3', content: '可以了，谢谢！', direction: 'other', time: '2026-06-26 18:05' },
-    ],
-    notes: [
-      {
-        id: 'n1',
-        content: '根因：刷新接口未带上最新 token，已修复并补充回归用例。',
-        user: { name: '王小虎' },
-        time: '2026-06-26 17:40',
-      },
-    ],
-  },
-  {
-    id: 'TK-2033',
-    title: '通知中心希望支持批量已读',
-    requester: '吴芳',
-    category: '需求',
-    priority: 'low',
-    status: 'closed',
-    createdAt: '2026-06-20 13:00',
-    updatedAt: '2026-06-22 10:20',
-    satisfaction: 5,
-    description: '通知较多时希望一键全部标记为已读。',
-    messages: [
-      { id: 'm1', content: '通知太多了，能不能一键已读？', direction: 'other', time: '2026-06-20 13:00' },
-      { id: 'm2', content: '已上线“全部已读”按钮，欢迎体验。', direction: 'self', time: '2026-06-22 10:20' },
-    ],
-    notes: [],
-  },
-])
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback
 
-// ── 列表筛选与选中 ─────────────────────────────────
+// ── 工单数据（Api / MockApi）────────────────────────
+const tickets = ref<TicketView[]>([])
+const loading = ref(false)
+const detailLoading = ref(false)
+
 const keyword = ref('')
 const statusFilter = ref<'all' | TicketStatus>('all')
 const statusFilters: { value: 'all' | TicketStatus; label: string }[] = [
@@ -174,21 +95,64 @@ const statusFilters: { value: 'all' | TicketStatus; label: string }[] = [
   { value: 'closed', label: '已关闭' },
 ]
 
-const filteredTickets = computed(() => {
-  const kw = keyword.value.trim().toLowerCase()
-  return tickets.value.filter((t) => {
-    const matchStatus = statusFilter.value === 'all' || t.status === statusFilter.value
-    const matchKw = !kw || `${t.title} ${t.requester} ${t.id}`.toLowerCase().includes(kw)
-    return matchStatus && matchKw
-  })
-})
+const filteredTickets = computed(() => tickets.value)
 
-const selectedId = ref<string | null>(tickets.value[0]?.id ?? null)
+const selectedId = ref<string | null>(null)
 const selected = computed(() => tickets.value.find((t) => t.id === selectedId.value) ?? null)
+
+async function loadTicketDetail(id: string) {
+  detailLoading.value = true
+  try {
+    const [ticketPayload, commentsPayload] = await Promise.all([
+      fetchTicket(id),
+      fetchComments('ticket', id),
+    ])
+    const notes = toCommentNodes(commentsPayload.data ?? [])
+    tickets.value = tickets.value.map((item) =>
+      item.id === id ? toTicketView(ticketPayload.data, notes) : item,
+    )
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '工单详情加载失败'), duration: 3000 })
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+async function loadTickets() {
+  loading.value = true
+  try {
+    const payload = await fetchTickets({
+      page: 1,
+      pageSize: 50,
+      status: statusFilter.value,
+      keyword: keyword.value,
+    })
+    const prevNotes = new Map(tickets.value.map((item) => [item.id, item.notes]))
+    const items = (payload.data.items ?? []).map((item) =>
+      toTicketView(item, prevNotes.get(item.id) ?? []),
+    )
+    tickets.value = items
+    if (!selectedId.value || !items.some((item) => item.id === selectedId.value)) {
+      selectedId.value = items[0]?.id ?? null
+    }
+    if (selectedId.value) {
+      await loadTicketDetail(selectedId.value)
+    }
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '工单列表加载失败'), duration: 3000 })
+  } finally {
+    loading.value = false
+  }
+}
 
 function selectTicket(id: string) {
   selectedId.value = id
+  void loadTicketDetail(id)
 }
+
+watch([keyword, statusFilter], () => {
+  void loadTickets()
+})
 
 const selectedDescriptions = computed<DescriptionsItem[]>(() => {
   const t = selected.value
@@ -205,40 +169,37 @@ const selectedDescriptions = computed<DescriptionsItem[]>(() => {
 
 // ── 对话 ──────────────────────────────────────────
 const draft = ref('')
-function handleSend(value: string) {
+async function handleSend(value: string) {
   const t = selected.value
   const text = value.trim()
   if (!t || !text) return
-  t.messages = [
-    ...t.messages,
-    { id: nextId('m'), content: text, direction: 'self', time: nowLabel() },
-  ]
-  draft.value = ''
-  window.setTimeout(() => {
-    t.messages = [
-      ...t.messages,
-      {
-        id: nextId('m'),
-        content: '收到，我们会尽快跟进本工单（演示自动回复）。',
-        direction: 'other',
-        time: nowLabel(),
-      },
-    ]
-  }, 700)
+  try {
+    const payload = await sendTicketMessage(t.id, text)
+    draft.value = ''
+    tickets.value = tickets.value.map((item) =>
+      item.id === t.id ? toTicketView(payload.data, item.notes) : item,
+    )
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '发送工单消息失败'), duration: 3000 })
+  }
 }
 
 // ── 内部备注（@指派人）─────────────────────────────
 const noteDraft = ref('')
-function handleAddNote() {
+async function handleAddNote() {
   const t = selected.value
   const text = noteDraft.value.trim()
   if (!t || !text) return
-  t.notes = [
-    ...t.notes,
-    { id: nextId('n'), content: text, user: { name: '我' }, time: nowLabel() },
-  ]
-  noteDraft.value = ''
-  Message.success({ content: '已添加内部备注（演示）', duration: 2000 })
+  try {
+    const payload = await createComment({ targetType: 'ticket', targetId: t.id, body: text })
+    tickets.value = tickets.value.map((item) =>
+      item.id === t.id ? { ...item, notes: [...item.notes, payload.data as CommentNode] } : item,
+    )
+    noteDraft.value = ''
+    Message.success({ content: '已添加内部备注', duration: 2000 })
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '添加内部备注失败'), duration: 3000 })
+  }
 }
 
 // ── 关闭工单 ───────────────────────────────────────
@@ -246,14 +207,22 @@ const confirmingClose = ref(false)
 function requestClose() {
   confirmingClose.value = true
 }
-function confirmClose() {
+async function confirmClose() {
   const t = selected.value
-  if (t) {
-    t.status = 'closed'
-    t.updatedAt = nowLabel()
+  if (!t) {
+    confirmingClose.value = false
+    return
   }
-  confirmingClose.value = false
-  Message.success({ content: '工单已关闭（演示）', duration: 2000 })
+  try {
+    const payload = await updateTicket(t.id, { status: 'closed' })
+    tickets.value = tickets.value.map((item) =>
+      item.id === t.id ? toTicketView(payload.data, item.notes) : item,
+    )
+    confirmingClose.value = false
+    Message.success({ content: '工单已关闭', duration: 2000 })
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '关闭工单失败'), duration: 3000 })
+  }
 }
 
 // ── 新建工单 ───────────────────────────────────────
@@ -265,38 +234,28 @@ function openDrawer() {
   formFiles.value = []
   drawerOpen.value = true
 }
-function submitTicket() {
+async function submitTicket() {
   const title = form.value.title.trim()
   if (!title) {
     Message.warning({ content: '请填写工单标题', duration: 2000 })
     return
   }
-  const id = `TK-${2050 + tickets.value.length + 1}`
-  const ticket: Ticket = {
-    id,
-    title,
-    requester: '我',
-    category: form.value.category,
-    priority: form.value.priority,
-    status: 'open',
-    createdAt: nowLabel(),
-    updatedAt: nowLabel(),
-    satisfaction: 0,
-    description: form.value.description.trim() || '（无描述）',
-    messages: [],
-    notes: [],
+  try {
+    const payload = await createTicket({
+      title,
+      category: form.value.category,
+      priority: form.value.priority,
+      description: form.value.description.trim() || '（无描述）',
+    })
+    statusFilter.value = 'all'
+    keyword.value = ''
+    drawerOpen.value = false
+    selectedId.value = payload.data.id
+    await loadTickets()
+    Message.success({ content: `工单 ${payload.data.id} 已创建`, duration: 2400 })
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '创建工单失败'), duration: 3000 })
   }
-  tickets.value = [ticket, ...tickets.value]
-  selectedId.value = id
-  statusFilter.value = 'all'
-  drawerOpen.value = false
-  Message.success({ content: `工单 ${id} 已创建（演示）`, duration: 2400 })
-}
-
-function nowLabel() {
-  const d = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 // ── 响应式：宽屏左右分栏，窄屏上下分栏 ──────────────
@@ -309,6 +268,7 @@ onMounted(() => {
   mql = window.matchMedia('(min-width: 1024px)')
   syncWide()
   mql.addEventListener('change', syncWide)
+  void loadTickets()
 })
 onBeforeUnmount(() => {
   mql?.removeEventListener('change', syncWide)
@@ -402,7 +362,12 @@ const openCount = computed(
             </button>
 
             <MutedPanel
-              v-if="filteredTickets.length === 0"
+              v-if="loading && filteredTickets.length === 0"
+              compact
+              description="正在加载工单…"
+            />
+            <MutedPanel
+              v-else-if="filteredTickets.length === 0"
               compact
               description="没有符合条件的工单，试试调整筛选或搜索关键词。"
             />
@@ -476,11 +441,11 @@ const openCount = computed(
               >
                 <ChatWindow
                   v-model="draft"
-                  :messages="selected.messages"
+                  :messages="(selected.messages as ChatMessage[])"
                   class="h-full"
                   placeholder="回复提交人，回车发送"
                   send-text="发送"
-                  empty-text="暂无对话，开始回复吧"
+                  :empty-text="detailLoading ? '正在加载对话…' : '暂无对话，开始回复吧'"
                   status-text="工单进行中"
                   status-variant="primary"
                   :show-avatar="false"
@@ -517,7 +482,9 @@ const openCount = computed(
           </template>
 
           <div v-else class="flex h-full items-center justify-center">
-            <MutedPanel description="请选择左侧工单查看详情、对话与内部协作。" />
+            <MutedPanel
+              :description="loading ? '正在加载工单…' : '请选择左侧工单查看详情、对话与内部协作。'"
+            />
           </div>
         </div>
       </Splitter>
