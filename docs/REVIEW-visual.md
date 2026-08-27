@@ -530,3 +530,38 @@
   5. **忘记密码：** 左栏标题/色板不同（Vue 蓝紫「找回账号访问权限」；React 青绿「重置您的登录密码」）。步骤 2 空校验文案：Vue「请输入新密码」；React「密码长度不能少于 6 位」（低）。完成 Result 同形。窄屏 OTP 两端都挤（中）。
   6. **清单其余：** leftover 渐变 pane 两端都有；游客 overlay 少，2FA/注册成功无额外焦点陷阱问题记入。紧凑未走。
 - **严重度：** 功能主路径两端可通过。中：Vue 2FA 错码 Message 不可见；两端忘记密码窄屏 OTP 挤叠。低：品牌组件名、2FA 说明句、RegisterSuccess Card/文案、Forgot 左栏色板与空校验文案。
+
+---
+
+## 3. Shell overlays (Vue)
+
+本期只走 Vue `http://127.0.0.1:5173`。未开 React `5174` 走查、未重启三端（Api 5137 / Vue 5173 / React 5174 仍为项 1 进程）。不是 MockApi / `dev:demo` / Aspire。chrome-devtools：先开 `chrome://inspect/#remote-debugging`（「Allow remote debugging for this browser instance」已勾选），再在隔离上下文 `vue-shell-overlays` 打开 `/login`，避免项 1/2 留下的会话与 OnboardingTour。账号 `admin` / `admin123`（无 2FA）。锁屏 PIN `123456`。首登 OnboardingTour 1/6 出现后点「关闭引导」关掉，**未审 Tour**。视口桌面 **1280×800**，浅色、非紧凑（除非后文切过）。项 27 挂件（CommandPalette / OnboardingTour / NotificationBell / ShellQuickActions / 改密 Modal / ⌘K / Bell / 快捷按钮）不作为独立走查面。
+
+### 3.1 LockScreen
+
+- **模块：** LockScreen 锁定屏幕
+- **端：** Vue
+- **视口：** 桌面 **1280×800**，隔离上下文 `vue-shell-overlays`，浅色
+- **复现：**
+  1. 登录后 `/dashboard`。点 Header 账号 `admin`，下拉含「个人中心 / 主题模式：跟随系统 / 修改密码 / **锁定屏幕** / 退出登录」。截图 `/tmp/vue-lock-avatar-menu.png`。
+  2. 点「锁定屏幕」。全屏遮罩 `data-testid="shell-lock-screen"`：`position:fixed; inset:0; z-index:2000`，`1280×800` 铺满视口，`pointer-events:auto`，`backdrop-filter:blur(8px)`，背景 `oklab(… / 0.92)`。侧栏/Header/TagsView/内容被糊住。卡片：`Avatar`「A」、标题 **admin**、副文「已锁定 · 输入 PIN 解锁」、`Statistic` 实时时钟（标题「2026年8月27日星期四」+ 时分秒）、6 格 `InputOTP`（masked numeric）、Alert「演示 PIN：123456」、`NumberKeyboard`（1–9 / 空键 / 0 / Delete / 确定）。`sessionStorage tigercat-admin:lock-screen` = `{"locked":true}`。URL 仍 `/dashboard`。截图 `/tmp/vue-lock-screen.png`。
+  3. **Esc 不能绕过：** 按 Escape，遮罩仍在，会话仍 `locked:true`，无其它 dialog。
+  4. **⌘K / Cmd-K 不能绕过：** `Meta+k` 与 `Control+k` 后仍只有锁屏 dialog，无命令面板文案、无 Spotlight。截图 `/tmp/vue-lock-screen-after-esc-cmdk.png`。
+  5. **错误 PIN：** 点 OTP 第 1 格键入 `000000`。Alert **PIN 错误，请重试**（`data-testid="shell-lock-error"`），六格清空，遮罩仍在。截图 `/tmp/vue-lock-wrong-pin.png`。
+  6. **正确 PIN 经 InputOTP：** 再点第 1 格键入 `123456`，遮罩卸载；`sessionStorage` 变为 `{"locked":false}`；仍停在 `http://127.0.0.1:5173/dashboard`，「欢迎回来，admin！」可见。截图 `/tmp/vue-lock-unlocked.png`。
+  7. **叠层 / leftover：** 锁屏 `z-[2000]` 高于 Header `10`、ChatDock 容器 `z-40`、水印（此时未开，DOM 无 overlay）。卡片 leftover：`rounded-2xl`、`shadow-lg`、`p2-avatar`、`bg-gradient-to-tr from-(--tiger-primary) to-blue-400`；token 用 `--tiger-bg-page` / `--tiger-bg-card` / `--tiger-border`。NumberKeyboard 文案中英混排（`Delete` 英文、`确定` 中文）。错 PIN 时 overlay `overflow-auto` 右侧出现滚动条（卡片略高于 800 高视口）。a11y 树在 modal 下仍露出「快捷操作」节点（项 27，不审功能），画面上被锁屏盖住。
+- **严重度：** 主路径通过（信息）。键盘中英混排 + overlay 滚动条：**低**。
+
+### 3.2 ThemeConfigDrawer
+
+- **模块：** ThemeConfigDrawer 主题配置
+- **端：** Vue
+- **视口：** 桌面 **1280×800**，浅色（随后切过深色再回浅色）
+- **复现：**
+  1. Header 调色板按钮 `data-testid="shell-theme-config-trigger"` `aria-label="主题配置"`。点开右侧 Drawer 标题「主题配置」，宽约 360px，宿主 `fixed inset-0 z-index:1000`（低于锁屏 `2000`）。内容：外观 `Segmented`（浅色 / 深色 / 跟随系统）；主色 `ColorSwatch` 4 列 8 色（蓝/紫/青/绿/橙/红/粉/灰）；紧凑密度 `Switch` + 副文「收紧内容区内边距，侧栏默认折叠」。默认 **跟随系统** + **蓝色** `#2563eb` + 开关关。遮罩盖住壳。截图 `/tmp/vue-theme-drawer.png`。
+  2. 点 **深色**：`html.dark` 立刻加上；`localStorage tigercat.admin.theme` = `{"mode":"dark","primaryColor":"#2563eb","compactMode":false}`；Drawer 与侧栏/主区变暗底。截图 `/tmp/vue-theme-dark.png`。
+  3. 点 **浅色**：`html.dark` 去掉；LS `mode=light`。截图 `/tmp/vue-theme-light.png`。
+  4. 点主色 **紫色**：`--tiger-primary` 变为 `#7c3aed`；Header 关闭钮描边、仪表盘 Tag、KPI 图标底、色块选中环同步变紫；LS `primaryColor=#7c3aed`。截图 `/tmp/vue-theme-primary-purple.png`。再点回蓝色，主色恢复 `#2563eb`。
+  5. **紧凑密度：** 指针点 `Switch`，滑块可拨到开（紫轨），`aria-checked=true`。但 `document.documentElement` **没有** `.compact`，侧栏仍 **240px**，「收起菜单」仍在，`#main-content-scroll` padding 仍 `24px`，LS `compactMode` 仍 `false`。关 Drawer 再开，开关内部态可与 `themePrefs.compactMode` 脱节（仍显示开、LS 仍 false）。空格键能拨动外观，同样不写 LS、不加 `.compact`。截图 `/tmp/vue-theme-compact.png`。
+  6. **leftover：** 调色板入口是自定义 `button`（`h-10 w-10 rounded-lg`），不是 Tigercat `Button`。Drawer / Segmented / ColorSwatch / Text 为 Tigercat。`Switch` 按 Tigercat Vue 契约应走 `modelValue` / `update:modelValue`；本抽屉绑的是 `:checked` + `@update:checked`，与观察一致（外观可拨、主题未应用）。
+- **严重度：** 浅色 / 深色 / 跟随系统 / 主色通过（信息）。紧凑密度开关不写 `compactMode`、不加 `.compact`、侧栏不折叠：**中**。
