@@ -982,3 +982,37 @@
   7. **Live DOM：** 本条未 attach Chrome，拒绝声称未测的选择器计数（例如 `/dashboard` 上 `TigerPageHeader` / `.p2-icon-chip` 节点数）→ **缺口**。结论靠源码无 import + 三张 shot 画面，不编造 DOM 选择器。
 - **双端：** 与 Vue **4.8** 同形：Home **不 import** `PageHeader`；主区第一块是欢迎 Card 不是 `TigerPageHeader`+`p2-icon-chip` 页头行；壳面包屑「管理中心 / 仪表盘」与 TagsView tab「仪表盘」不是 leftover PageHeader；`/users` **有** PageHeader 标题/副标题，Home 没有；残留 header-ish leftover 同一组（`p2-page-accent` / `p2-text-primary` / `p2-action-tile` / 图表 hex）；live `TigerPageHeader` 选择器计数两端都标缺口（本条未测）。**错位：** 欢迎卡左标 Vue 4.8 是 `AppLogo`，React 是 `LogoIcon`；React 另有 LogoIcon 渐变 `#3B82F6/#4F46E5` leftover（Vue 4.8 未列这项）。
 - **严重度：** `/dashboard` 不 import / 不渲染 `PageHeader`，主区第一块是欢迎 Card（LogoIcon +「欢迎回来，admin！」）：通过（信息，源码 + 1280/375 shot）。壳面包屑 / TagsView「仪表盘」不是 leftover PageHeader：通过（信息）。Home 残留 header-ish leftover（`p2-page-accent` / `p2-text-primary` / `p2-action-tile` / 图表 hex / LogoIcon 渐变）：**低**（已在 4b.1/4b.3/4b.4/4b.6，本条不升档）。Live `TigerPageHeader` 选择器计数：**缺口**（本会话未测，不声称）。
+
+---
+
+## 5. About (Vue)
+
+本期只走 Vue `http://127.0.0.1:5173/about`（`AboutPage.vue`）。未开 React `5174` 走查、未重启三端（Api 5137 / Vue 5173 / React 5174 仍为项 1 进程）。不是 MockApi / `dev:demo` / Aspire。未改产品代码。chrome-devtools：先开 `chrome://inspect/#remote-debugging`（「Allow remote debugging for this browser instance」已勾选，截图 `/tmp/vue-about-inspect-remote-debugging.png`），再在隔离上下文 **`vue-about`** 打开 `/login`，未复用 `vue-home-dashboard` / `vue-home-rest` / `vue-home-dark-mobile` / `vue-home-mobile-ph` / `vue-shell-overlays` / `vue-tags-chat` / `react-*`。账号 `admin` / `admin123`（无 2FA）。首登 OnboardingTour 1/6 出现后点「关闭引导」关掉，**未审 Tour**。未审 Cmd-K / Bell / ShellQuickActions / ChatDock / Lock / Theme（除 5.4 只为查 About token 而拨暗色）/ Watermark / TagsView。视口桌面 **1280×800**，浅色。走查前已读 `AboutPage.vue`、`PageHeader.vue`：AboutPage **有 import** `PageHeader` + Tigercat `NavigationMenu` / `Alert` / `Card` / `Text` / `Tag`。入口：侧栏底部「关于」→ `/about`。
+
+### 5.1 PageHeader + live info
+
+- **模块：** About PageHeader + GET `/api/info` 服务概览
+- **端：** Vue
+- **视口：** 桌面 **1280×800**，隔离上下文 `vue-about`，浅色
+- **复现：**
+  1. 登录后点侧栏底部 **关于**，URL **`http://127.0.0.1:5173/about`**。标题 `tigercat-admin-vue`。壳面包屑「管理中心 / 关于」；TagsView 选中「关于」（可关）；无「演示模式」Tag。截图 `/tmp/vue-about-info.png`（1280×800）。
+  2. **PageHeader 已挂：** 主区第一块是 `header.tiger-page-header` **977×65** at **(264,166)**，`class-name="min-w-0 overflow-hidden"`，底透明、底边 `--tiger-border` `rgb(229,231,235)`。左 leftover **`p2-icon-chip`** **48×48** at **(264,166)**（`h-12 w-12`，内 Icon 24，info），底 `color(srgb 0.145 0.388 0.922 / 0.14)`、色 `rgb(37,99,235)`（跟 `--tiger-primary` `#2563eb`）。标题 **「关于 Tigercat」** `Text` `size=lg` `weight=bold` leftover **`p2-text-primary`** **154×28** at **(324,166)**，色 `rgb(17,24,39)`（`--tiger-text` `#111827`）。副文 **「了解平台版本与服务信息」** `Text` `size=sm` `color=secondary` **154×20** at **(324,194)**，色 `rgb(75,85,99)`。右侧 `#actions` tags（`hidden sm:flex`，1280 下 `display:flex`）：**系统信息** `variant=primary` 底 `rgb(219,234,254)` / 字 `rgb(37,99,235)`；**已连接** `variant=success` 底 `rgb(220,252,231)` / 字 `rgb(22,163,74)`。与 Home **不 import** PageHeader 对照：本页 **有** 这条 chrome。
+  3. **GET `/api/info` 200：** 导航到 `/about` 后 `GET http://127.0.0.1:5173/api/info` **200**，`server: Kestrel`（不是 MockApi）。body `{"code":200,"message":"Success","data":{"name":"Tigercat Admin API","version":"1.0.0","description":"Tigercat Admin Backend API"},"success":true}`。无 Alert「信息加载失败」。无「正在加载服务信息...」。
+  4. **服务概览 Card：** `#about-info` 内 Tigercat Card 宿主 **977×108** at **(264,323)**，底 `--tiger-surface` `#ffffff`，边 `--tiger-border` `#e5e7eb`。源码 `<Card title="服务概览">` live 落到 **HTML `title="服务概览"`** 原生 tooltip，**没有** `tiger-card-header` / 可见「服务概览」标题（a11y 树也无该字）。卡内 leftover 三格 `grid-cols-1 md:grid-cols-3`（1280 下三列，各 **298×74** at y **340**）：**服务名称 / Tigercat Admin API**、**当前版本 / 1.0.0**、**服务描述 / Tigercat Admin Backend API**。与 API `data` 一致。每格 `border-slate-200 bg-slate-50/70`：边 `oklch(0.929 0.013 255.508)`、底 `oklab(0.984 … / 0.7)`，不是 `--tiger-border` / `--tiger-bg-card`。图标芯片 40×40 leftover **`bg-blue-100 text-blue-600` / `bg-purple-100 text-purple-600` / `bg-green-100 text-green-600`**。数值 `Text` 同时带 `text-[var(--tiger-text,#111827)]` 与 leftover **`text-slate-800`**，实算 `oklch(0.279 0.041 260.031)`。
+  5. **系统信息行（折下）：** 首屏 y **916** > 视口 800，shot 不可见。源码第四张 Card `title="系统信息"` 同样落到 HTML `title`；内三格运行环境 **.NET 10 + Vue 3** / 包管理器 **PNPM** / API 状态 Tag **● 已连接**（success）。本条不滚；5.2 滚到 stack 时再对一下。
+- **严重度：** PageHeader「关于 Tigercat / 了解平台版本与服务信息」+ tags 系统信息 / 已连接 + `/api/info` 200 三字段上屏：通过（信息）。`Card title` 未渲染可见标题、只剩 native `title` tooltip：**中**。leftover `slate-200` / `bg-slate-50/70` / `bg-*-100 text-*-600` / `text-slate-800` 不跟 `--tiger-*`：**低**（Roadmap leftover）。`p2-icon-chip` + `p2-text-primary` 已绑 `--tiger-primary` / `--tiger-text`：**低**（与 Home PageHeader chrome 同形）。
+
+### 5.2 NavigationMenu jumps
+
+本期 5.2 **先写前一会话已落盘的两张 nav shot**（PNG 像素 **1280×800**，浅色），不重写 5.1。截图 `/tmp/vue-about-nav.png`（点「服务信息」Trigger 后）与 `/tmp/vue-about-nav-stack.png`（点「技术栈」Trigger 后）。两张都 **看不见** 可见 Card 标题「服务概览 / 产品亮点 / 技术栈」（5.1 已记：`Card title` 落到 native `title` tooltip）。**shot 只证明 Trigger 打开 Content，不能证明点了 NavigationMenuLink 后 `scrollIntoView`。** 下面 live 只补：Trigger → Content link 的滚动位移、`#about-*` 矩形、`overflow-x-auto` vs `scrollWidth`。
+
+- **模块：** About NavigationMenu 锚点（服务信息 → `#about-info` / 特性 → `#about-features` / 技术栈 → `#about-stack`）
+- **端：** Vue
+- **视口：** 桌面 **1280×800**，浅色；shot 为前一会话隔离上下文 **`vue-about`**
+- **复现：**
+  1. **服务信息 Trigger（shot）：** `/tmp/vue-about-nav.png`（1280×800）。PageHeader 下一条横排 NavigationMenu：**服务信息** caret **朝上**（展开）/ **特性** caret 朝下 / **技术栈** caret 朝下。Trigger 下弹出白底圆角 Content，文案 **「查看服务名称、版本与连接状态」**（源码 `ABOUT_SECTIONS.info.description`）。主区仍是页顶：PageHeader「关于 Tigercat」+ 服务三格（服务名称 **Tigercat Admin API** / 当前版本 **1.0.0** / 服务描述 **Tigercat Admin Backend API**）+ 产品亮点四 pastel chips（清晰导航体验蓝 / 安全认证体系紫 / 快速响应接口橙 / 一致视觉语言绿）+ 技术栈上沿（前端框架 **Vue 3** / 构建工具 **Vite**）。与 `/tmp/vue-about-info.png` 同屏位置。**#about-info 已在视口内**，shot 上看不出滚动位移（先验：服务信息 jump 后 `#main-content-scroll` scrollTop=0）。
+  2. **技术栈 Trigger（shot）：** `/tmp/vue-about-nav-stack.png`（1280×800）。**技术栈** caret **朝上**（展开），弹出 **「了解前端、构建与 UI 组件」**（源码 `ABOUT_SECTIONS.stack.description`）。服务信息 / 特性 caret 朝下（收起）。**画面仍是页顶**——PageHeader、服务三格、亮点四格完整可见，技术栈仍只露 Vue 3 / Vite 上沿，**没有**滚到 `#about-stack` 整块或系统信息行。shot 只证明点了 **Trigger**；**没有**证明点了 Content 里的 `NavigationMenuLink`。特性（「浏览产品亮点与体验说明」）无独立 shot。
+  3. **锚点 vs 可见内容（shot + 源码，非可见 heading）：** `#about-info` = 服务概览三格（shot 全见）；`#about-features` = 产品亮点四 chips（shot 全见）；`#about-stack` = 技术栈（shot 只见 Vue 3 / Vite；源码还有开发语言 TypeScript / UI 组件 Tigercat UI，折下）。系统信息 Card 仍折下（5.1 已记 y≈916）。源码 `scrollToAboutSection` 对 `href` 做 `preventDefault` + `document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })`，目标 id 即 `#about-info` / `#about-features` / `#about-stack`。
+  4. **leftover `overflow-x-auto`（shot）：** 源码 `<NavigationMenu class-name="min-w-0 overflow-x-auto">`。1280 下三项「服务信息 特性 技术栈」同一行、右余白大，shot **看不见** nav 横向滚动条；页右是主区竖滚动条。三项之间有空隙，不像被裁切。`documentElement.scrollWidth===clientWidth` 与 nav 自身 scrollWidth **本条写 shot 时未测 → 缺口**（live 补）。
+- **严重度：** Trigger 打开 Content，文案与源码 description 一致：通过（信息，两张 1280×800 shot）。服务信息目标已在首屏、shot 无位移：信息（符合先验 scrollTop=0）。**点 Content link 后是否 smooth scroll 到 `#about-features` / `#about-stack`：缺口**（shot 未证明 Link 点击与滚动位移）。leftover `min-w-0 overflow-x-auto` 1280 下未见横条：**低**（Roadmap leftover；横溢数字待 live）。
+
