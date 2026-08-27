@@ -1,13 +1,26 @@
 <script setup lang="ts">
 import { inject, ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Alert, Card, Text, Tag, Select, Loading } from '@expcat/tigercat-vue'
+import { Alert, Card, Text, Tag, Select, Loading, Message } from '@expcat/tigercat-vue'
 import { LineChart } from '@expcat/tigercat-vue/LineChart'
 import { BarChart } from '@expcat/tigercat-vue/BarChart'
 import { PieChart } from '@expcat/tigercat-vue/PieChart'
 import { Marquee } from '@expcat/tigercat-vue/Marquee'
+import { DataExport } from '@expcat/tigercat-vue/DataExport'
 import type { Session, StatsOverview, StatsTrend } from '../utils'
-import { apiRequest } from '../utils'
+import { apiRequest, getAuthHeaders } from '../utils'
+import {
+  DATA_EXPORT_PLACEHOLDER_ROWS,
+  DATA_EXPORT_TRIGGER_FORMATS,
+  EXPORT_FORMAT_LABELS,
+  EXPORT_FORMATS,
+  OVERVIEW_EXPORT_FIELDS,
+  exportOverview,
+  handleDataExportError,
+  skipClientDataExport,
+  toExportColumns,
+  type ExportFormat,
+} from '../utils/export'
 import Icon from '../components/Icon.vue'
 import AppLogo from '../components/AppLogo.vue'
 import MetricCard from '../components/MetricCard.vue'
@@ -35,6 +48,8 @@ let trendRequestId = 0
 
 // 时间范围（天数）
 const trendDays = ref<number>(7)
+const exporting = ref(false)
+const exportColumns = computed(() => toExportColumns(OVERVIEW_EXPORT_FIELDS))
 const trendDaysOptions = [
   { value: 7, label: '近 7 天' },
   { value: 14, label: '近 14 天' },
@@ -109,6 +124,22 @@ watch(trendDays, async () => {
     trendLoading.value = false
   }
 })
+
+async function onExport(format: ExportFormat) {
+  exporting.value = true
+  try {
+    await exportOverview({
+      format,
+      days: trendDays.value,
+      headers: getAuthHeaders(),
+    })
+    Message.success({ content: '导出成功', duration: 3000 })
+  } catch (error: unknown) {
+    Message.error({ content: error instanceof Error ? error.message : '导出失败', duration: 3000 })
+  } finally {
+    exporting.value = false
+  }
+}
 
 onMounted(loadStats)
 
@@ -192,6 +223,25 @@ const ANNOUNCEMENTS = [
         <span class="text-(--tiger-text-secondary,#64748b)">{{ item }}</span>
       </span>
     </Marquee>
+
+    <div class="flex flex-wrap items-center justify-end gap-2">
+      <DataExport
+        v-for="format in EXPORT_FORMATS"
+        :key="format"
+        :columns="exportColumns"
+        :data-source="DATA_EXPORT_PLACEHOLDER_ROWS"
+        :formats="DATA_EXPORT_TRIGGER_FORMATS"
+        file-name="overview"
+        :labels="{
+          xlsxText: EXPORT_FORMAT_LABELS[format],
+          exportingText: '导出中...',
+          triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
+        }"
+        :disabled="exporting"
+        :cell-formatter="skipClientDataExport"
+        @error="(error: unknown) => handleDataExportError(error, format, onExport, (message) => Message.error({ content: message, duration: 3000 }))"
+      />
+    </div>
 
     <!-- 统计卡片 -->
     <MetricGrid :columns="4">

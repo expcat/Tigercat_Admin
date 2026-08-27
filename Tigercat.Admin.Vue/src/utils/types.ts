@@ -142,6 +142,33 @@ export interface DuplicateMediaResult {
   existing: MediaItem;
 }
 
+export type ReportType = 'daily' | 'weekly' | 'monthly';
+
+export type ReportExportField =
+  | 'visits'
+  | 'orders'
+  | 'conversionRate'
+  | 'revenue'
+  | 'channel'
+  | 'channelVisits'
+  | 'channelOrders'
+  | 'channelRate'
+  | 'channelAmount';
+
+export type AuditExportField =
+  | 'id'
+  | 'title'
+  | 'eventType'
+  | 'category'
+  | 'occurredAtUtc'
+  | 'actor'
+  | 'description';
+
+export interface ExportFieldOption<T extends string = string> {
+  key: T;
+  label: string;
+}
+
 export interface AuditLogItem {
   id: string;
   stream: string;

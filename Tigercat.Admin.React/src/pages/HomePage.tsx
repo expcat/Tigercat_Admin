@@ -6,11 +6,13 @@ import {
   Tag,
   Select,
   Loading,
+  Message,
 } from '@expcat/tigercat-react';
 import { LineChart } from '@expcat/tigercat-react/LineChart';
 import { BarChart } from '@expcat/tigercat-react/BarChart';
 import { PieChart } from '@expcat/tigercat-react/PieChart';
 import { Marquee } from '@expcat/tigercat-react/Marquee';
+import { DataExport } from '@expcat/tigercat-react/DataExport';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
   UsersIcon,
@@ -32,6 +34,18 @@ import {
 } from '../components/PageFragments';
 import type { StatsOverview, StatsTrend } from '../utils';
 import { apiRequest, getAuthHeaders } from '../utils';
+import {
+  DATA_EXPORT_PLACEHOLDER_ROWS,
+  DATA_EXPORT_TRIGGER_FORMATS,
+  EXPORT_FORMAT_LABELS,
+  EXPORT_FORMATS,
+  OVERVIEW_EXPORT_FIELDS,
+  exportOverview,
+  handleDataExportError,
+  skipClientDataExport,
+  toExportColumns,
+  type ExportFormat,
+} from '../utils/export';
 
 interface Notice {
   type: 'success' | 'error' | '';
@@ -127,6 +141,8 @@ function HomePage() {
   const [trendLoading, setTrendLoading] = useState(false);
   const [statsError, setStatsError] = useState('');
   const [trendDays, setTrendDays] = useState<number>(7);
+  const [exporting, setExporting] = useState(false);
+  const exportColumns = useMemo(() => toExportColumns(OVERVIEW_EXPORT_FIELDS), []);
   const trendRequestId = useRef(0);
 
   // --- 快捷操作跳转 ---
@@ -229,6 +245,22 @@ function HomePage() {
     [fetchTrend],
   );
 
+  const onExport = useCallback(async (format: ExportFormat) => {
+    setExporting(true);
+    try {
+      await exportOverview({
+        format,
+        days: trendDays,
+        headers: getAuthHeaders(),
+      });
+      Message.success({ content: '导出成功', duration: 3000 });
+    } catch (error: unknown) {
+      Message.error({ content: error instanceof Error ? error.message : '导出失败', duration: 3000 });
+    } finally {
+      setExporting(false);
+    }
+  }, [trendDays]);
+
   const errorMessage = homeError || statsError;
 
   return (
@@ -302,6 +334,30 @@ function HomePage() {
           </span>
         ))}
       </Marquee>
+
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {EXPORT_FORMATS.map((format) => (
+          <DataExport
+            key={format}
+            columns={exportColumns}
+            dataSource={DATA_EXPORT_PLACEHOLDER_ROWS}
+            formats={DATA_EXPORT_TRIGGER_FORMATS}
+            fileName="overview"
+            labels={{
+              xlsxText: EXPORT_FORMAT_LABELS[format],
+              exportingText: '导出中...',
+              triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
+            }}
+            disabled={exporting}
+            cellFormatter={skipClientDataExport}
+            onError={(error) =>
+              handleDataExportError(error, format, onExport, (message) =>
+                Message.error({ content: message, duration: 3000 }),
+              )
+            }
+          />
+        ))}
+      </div>
 
       <MetricGrid columns={4}>
         {statsCards.map((stat) => {

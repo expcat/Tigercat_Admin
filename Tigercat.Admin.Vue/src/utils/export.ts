@@ -1,4 +1,80 @@
+import type { DataExportFormat, TableColumn } from '@expcat/tigercat-core'
+import type { AuditExportField, ExportFieldOption, ReportExportField, ReportType } from './types'
+
 export type ExportFormat = 'csv' | 'json' | 'xlsx';
+
+export const EXPORT_FORMATS: ExportFormat[] = ['csv', 'json', 'xlsx'];
+
+/** Official DataExport 2.1.1 only types `xlsx` / `markdown`; pages skip its client serializer. */
+export const DATA_EXPORT_TRIGGER_FORMATS: DataExportFormat[] = ['xlsx'];
+
+export const EXPORT_FORMAT_LABELS: Record<ExportFormat, string> = {
+  csv: 'CSV',
+  json: 'JSON',
+  xlsx: 'Excel',
+};
+
+export const REPORT_EXPORT_FIELDS: ExportFieldOption<ReportExportField>[] = [
+  { key: 'visits', label: '访问量' },
+  { key: 'orders', label: '订单数' },
+  { key: 'conversionRate', label: '转化率' },
+  { key: 'revenue', label: '收入' },
+  { key: 'channel', label: '渠道' },
+  { key: 'channelVisits', label: '渠道访问量' },
+  { key: 'channelOrders', label: '渠道订单数' },
+  { key: 'channelRate', label: '渠道转化率' },
+  { key: 'channelAmount', label: '渠道金额' },
+];
+
+export const OVERVIEW_EXPORT_FIELDS: ExportFieldOption[] = [
+  { key: 'section', label: '分区' },
+  { key: 'key', label: '字段' },
+  { key: 'label', label: '名称' },
+  { key: 'value', label: '值' },
+];
+
+export const AUDIT_EXPORT_FIELDS: ExportFieldOption<AuditExportField>[] = [
+  { key: 'id', label: 'ID' },
+  { key: 'title', label: '标题' },
+  { key: 'eventType', label: '事件类型' },
+  { key: 'category', label: '分类' },
+  { key: 'occurredAtUtc', label: '发生时间' },
+  { key: 'actor', label: '操作者' },
+  { key: 'description', label: '说明' },
+];
+
+export const DATA_EXPORT_PLACEHOLDER_ROWS: Record<string, unknown>[] = [{ _skip: true }];
+
+const SKIP_CLIENT_DATA_EXPORT = 'TIGERCAT_ADMIN_USE_API_EXPORT';
+
+export function skipClientDataExport(): never {
+  throw new Error(SKIP_CLIENT_DATA_EXPORT);
+}
+
+export function isSkipClientDataExport(error: unknown): boolean {
+  return error instanceof Error && error.message === SKIP_CLIENT_DATA_EXPORT;
+}
+
+export function toExportColumns(fields: ExportFieldOption[]): TableColumn[] {
+  return fields.map((field) => ({
+    key: field.key,
+    title: field.label,
+    dataKey: field.key,
+  }));
+}
+
+export function handleDataExportError(
+  error: unknown,
+  format: ExportFormat,
+  onExport: (format: ExportFormat) => void | Promise<void>,
+  onError?: (message: string) => void,
+): void {
+  if (isSkipClientDataExport(error)) {
+    void onExport(format);
+    return;
+  }
+  onError?.(error instanceof Error ? error.message : '导出失败');
+}
 
 export interface ExportOptions {
   /** 导出实体类型：users | roles */
@@ -46,14 +122,56 @@ export async function exportData(options: ExportOptions): Promise<void> {
 }
 
 export async function exportAuditLogs(options: {
+  format?: ExportFormat;
+  fields?: string[];
   query?: Record<string, string | number | null | undefined>;
   headers?: HeadersInit;
 } = {}): Promise<void> {
-  const params = new URLSearchParams();
+  const format = options.format ?? 'csv';
+  const params = new URLSearchParams({ format });
+  if (options.fields && options.fields.length > 0) {
+    params.set('fields', options.fields.join(','));
+  }
   appendQueryParams(params, options.query);
+  await downloadExportResponse(`/api/audit-logs/export?${params}`, options.headers, 'audit-logs', format);
+}
 
-  const response = await fetch(`/api/audit-logs/export?${params}`, {
-    headers: options.headers ? new Headers(options.headers) : undefined,
+export async function exportReports(options: {
+  type: ReportType;
+  format: ExportFormat;
+  fields?: string[];
+  headers?: HeadersInit;
+}): Promise<void> {
+  const params = new URLSearchParams({
+    type: options.type,
+    format: options.format,
+  });
+  if (options.fields && options.fields.length > 0) {
+    params.set('fields', options.fields.join(','));
+  }
+  await downloadExportResponse(`/api/export/reports?${params}`, options.headers, 'reports', options.format);
+}
+
+export async function exportOverview(options: {
+  format: ExportFormat;
+  days?: number;
+  headers?: HeadersInit;
+}): Promise<void> {
+  const params = new URLSearchParams({ format: options.format });
+  if (options.days != null) {
+    params.set('days', String(options.days));
+  }
+  await downloadExportResponse(`/api/export/overview?${params}`, options.headers, 'overview', options.format);
+}
+
+async function downloadExportResponse(
+  url: string,
+  headers: HeadersInit | undefined,
+  entity: string,
+  format: ExportFormat,
+): Promise<void> {
+  const response = await fetch(url, {
+    headers: headers ? new Headers(headers) : undefined,
   });
 
   if (!response.ok) {
@@ -68,7 +186,7 @@ export async function exportAuditLogs(options: {
   }
 
   const blob = await response.blob();
-  downloadBlob(blob, getFilenameFromResponse(response, 'audit-logs', 'csv'));
+  downloadBlob(blob, getFilenameFromResponse(response, entity, format));
 }
 
 /**

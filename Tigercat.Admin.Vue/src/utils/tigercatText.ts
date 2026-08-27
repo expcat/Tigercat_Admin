@@ -81,4 +81,11 @@ export const appText = defineText({
     clickToUploadText: '上传文件',
     buttonAriaLabel: '上传文件',
   },
+  dataExport: {
+    triggerText: '导出',
+    triggerAriaLabel: '导出数据',
+    xlsxText: '导出 Excel',
+    markdownText: '导出 Markdown',
+    exportingText: '导出中...',
+  },
 })

@@ -14,6 +14,9 @@ import {
 } from '@expcat/tigercat-react';
 import { ActivityFeed } from '@expcat/tigercat-react/ActivityFeed';
 import { Timeline } from '@expcat/tigercat-react/Timeline';
+import { DataExport } from '@expcat/tigercat-react/DataExport';
+import { CheckboxGroup } from '@expcat/tigercat-react/CheckboxGroup';
+import { Checkbox } from '@expcat/tigercat-react/Checkbox';
 import type { ActivityItem, TimelineItem } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import {
@@ -36,6 +39,17 @@ import {
   normalizeInput,
   saveWorkbenchState,
 } from '../utils';
+import {
+  AUDIT_EXPORT_FIELDS,
+  DATA_EXPORT_PLACEHOLDER_ROWS,
+  DATA_EXPORT_TRIGGER_FORMATS,
+  EXPORT_FORMAT_LABELS,
+  EXPORT_FORMATS,
+  handleDataExportError,
+  skipClientDataExport,
+  toExportColumns,
+  type ExportFormat,
+} from '../utils/export';
 import { usePermission } from '../utils/permission';
 import type {
   AuditLogItem,
@@ -114,7 +128,10 @@ function AuditLogsPage() {
   const [retentionDays, setRetentionDays] = useState('90');
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
-  const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
+  const [exportFields, setExportFields] = useState<string[]>(
+    AUDIT_EXPORT_FIELDS.map((field) => field.key),
+  );
+  const exportColumns = useMemo(() => toExportColumns(AUDIT_EXPORT_FIELDS), []);
   const [exporting, setExporting] = useState(false);
   const [cleanupConfirmOpen, setCleanupConfirmOpen] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<AuditRetentionCleanupResult | null>(null);
@@ -182,28 +199,32 @@ function AuditLogsPage() {
     loadRetentionPolicy();
   }, [loadAuditLogs, loadRetentionPolicy]);
 
-  const handleConfirmExport = useCallback(async () => {
+  const onExport = useCallback(async (format: ExportFormat) => {
     if (logs.length === 0) {
       setErrorMessage('当前筛选没有可导出的结果');
-      setExportConfirmOpen(false);
+      return;
+    }
+    if (exportFields.length === 0) {
+      setErrorMessage('请至少选择一个导出字段');
       return;
     }
     setExporting(true);
     try {
       await exportAuditLogs({
+        format,
+        fields: exportFields,
         query: {
           keyword,
           category,
         },
         headers: getAuthHeaders(),
       });
-      setExportConfirmOpen(false);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '导出失败');
     } finally {
       setExporting(false);
     }
-  }, [category, keyword, logs.length]);
+  }, [category, exportFields, keyword, logs.length]);
 
   const handleSaveRetention = useCallback(async () => {
     const nextRetentionDays = Number(retentionDays);
@@ -339,11 +360,39 @@ function AuditLogsPage() {
             <Button variant="outline" onClick={loadAuditLogs}>
               刷新日志
             </Button>
-            {canExport && (
-              <Button variant="outline" onClick={() => setExportConfirmOpen(true)}>
-                导出 CSV
-              </Button>
-            )}
+            {canExport ? (
+              <>
+                {EXPORT_FORMATS.map((format) => (
+                  <DataExport
+                    key={format}
+                    columns={exportColumns}
+                    dataSource={DATA_EXPORT_PLACEHOLDER_ROWS}
+                    formats={DATA_EXPORT_TRIGGER_FORMATS}
+                    fileName="audit-logs"
+                    labels={{
+                      xlsxText: EXPORT_FORMAT_LABELS[format],
+                      exportingText: '导出中...',
+                      triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
+                    }}
+                    disabled={exporting}
+                    cellFormatter={skipClientDataExport}
+                    onError={(error) =>
+                      handleDataExportError(error, format, onExport, setErrorMessage)
+                    }
+                  />
+                ))}
+                <CheckboxGroup
+                  value={exportFields}
+                  className="flex w-full flex-wrap gap-x-4 gap-y-2 sm:w-auto"
+                  onChange={(value) => setExportFields(value.map(String))}>
+                  {AUDIT_EXPORT_FIELDS.map((field) => (
+                    <Checkbox key={field.key} value={field.key}>
+                      {field.label}
+                    </Checkbox>
+                  ))}
+                </CheckboxGroup>
+              </>
+            ) : null}
           </>
         }
       />
@@ -442,19 +491,6 @@ function AuditLogsPage() {
           icon={<CheckCircleIcon size={20} />}
         />
       </MetricGrid>
-
-      <Modal
-        open={exportConfirmOpen}
-        title="确认导出审计日志"
-        showDefaultFooter
-        okText={exporting ? '导出中…' : '导出 CSV'}
-        cancelText="取消"
-        onOk={handleConfirmExport}
-        onCancel={() => setExportConfirmOpen(false)}>
-        <Text color="secondary">
-          将按当前关键词和分类筛选导出最近审计窗口中的 {logs.length} 条记录。
-        </Text>
-      </Modal>
 
       <Modal
         open={cleanupConfirmOpen}

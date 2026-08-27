@@ -482,6 +482,109 @@ function makeBlob(text: string, filename: string, contentType = 'text/csv; chars
   });
 }
 
+const EXPORT_FORMATS = ['csv', 'json', 'xlsx'] as const;
+const REPORT_TYPES = ['daily', 'weekly', 'monthly'] as const;
+const REPORT_KPI: Record<(typeof REPORT_TYPES)[number], { visits: string; orders: string; conversionRate: string; revenue: string }> = {
+  daily: { visits: '18420', orders: '642', conversionRate: '3.5%', revenue: '128600 元' },
+  weekly: { visits: '126800', orders: '4380', conversionRate: '3.4%', revenue: '892400 元' },
+  monthly: { visits: '542000', orders: '18960', conversionRate: '3.6%', revenue: '3846200 元' },
+};
+const REPORT_CHANNELS = [
+  { channel: '自然搜索', channelVisits: '6820', channelOrders: '248', channelRate: '3.6%', channelAmount: '¥ 48,200' },
+  { channel: '付费广告', channelVisits: '5140', channelOrders: '196', channelRate: '3.8%', channelAmount: '¥ 39,600' },
+  { channel: '社交媒体', channelVisits: '3260', channelOrders: '108', channelRate: '3.3%', channelAmount: '¥ 21,400' },
+  { channel: '直接访问', channelVisits: '3200', channelOrders: '90', channelRate: '2.8%', channelAmount: '¥ 19,400' },
+];
+const REPORT_FIELDS = ['section', 'visits', 'orders', 'conversionRate', 'revenue', 'channel', 'channelVisits', 'channelOrders', 'channelRate', 'channelAmount'];
+const REPORT_KPI_FIELDS = ['visits', 'orders', 'conversionRate', 'revenue'];
+const REPORT_CHANNEL_FIELDS = ['channel', 'channelVisits', 'channelOrders', 'channelRate', 'channelAmount'];
+const OVERVIEW_FIELDS = ['section', 'key', 'label', 'value'];
+const AUDIT_EXPORT_FIELDS = ['id', 'stream', 'category', 'eventType', 'occurredAtUtc', 'traceId', 'title', 'description', 'actor'];
+
+function parseExportFormat(url: URL): string | Response {
+  const format = (url.searchParams.get('format') ?? 'csv').trim().toLowerCase();
+  if (!EXPORT_FORMATS.includes(format as (typeof EXPORT_FORMATS)[number])) {
+    return makeError(`不支持的格式，可选值：${EXPORT_FORMATS.join(', ')}`, 400);
+  }
+  return format;
+}
+
+function parseExportFields(raw: string | null, allFields: string[]): string[] {
+  if (!raw?.trim()) return allFields;
+  const requested = raw
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => allFields.some((field) => field.toLowerCase() === item.toLowerCase()))
+    .map((item) => allFields.find((field) => field.toLowerCase() === item.toLowerCase()) ?? item);
+  return requested.length > 0 ? requested : allFields;
+}
+
+function escapeCsv(value: unknown): string {
+  const text = value == null ? '' : String(value);
+  if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+function makeExportFile(rows: Array<Record<string, unknown>>, fields: string[], format: string, entityName: string): Response {
+  const filtered = rows.map((row) => {
+    const next: Record<string, unknown> = {};
+    for (const field of fields) next[field] = row[field] ?? '';
+    return next;
+  });
+
+  if (format === 'json') {
+    return makeBlob(JSON.stringify(filtered, null, 2), `${entityName}.json`, 'application/json; charset=utf-8');
+  }
+
+  const csv = [
+    fields.join(','),
+    ...filtered.map((row) => fields.map((field) => escapeCsv(row[field])).join(',')),
+  ].join('\n');
+
+  if (format === 'xlsx') {
+    return makeBlob(
+      csv,
+      `${entityName}.xlsx`,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+  }
+
+  return makeBlob(`\uFEFF${csv}`, `${entityName}.csv`, 'text/csv; charset=utf-8');
+}
+
+function filterAuditLogs(items: AuditLogItem[], url: URL): AuditLogItem[] {
+  const keyword = url.searchParams.get('keyword')?.trim().toLowerCase();
+  const category = url.searchParams.get('category')?.trim();
+  const eventType = url.searchParams.get('eventType')?.trim();
+  const actor = url.searchParams.get('actor')?.trim().toLowerCase();
+  const from = url.searchParams.get('from');
+  const to = url.searchParams.get('to');
+  let next = [...items];
+  if (keyword) {
+    next = next.filter((item) => `${item.title} ${item.description} ${item.eventType}`.toLowerCase().includes(keyword));
+  }
+  if (category) {
+    next = next.filter((item) => item.category.toLowerCase() === category.toLowerCase());
+  }
+  if (eventType) {
+    next = next.filter((item) => item.eventType.toLowerCase() === eventType.toLowerCase());
+  }
+  if (actor) {
+    next = next.filter((item) => (item.actor ?? '').toLowerCase().includes(actor));
+  }
+  if (from) {
+    const value = new Date(from).getTime();
+    if (!Number.isNaN(value)) next = next.filter((item) => new Date(item.occurredAtUtc).getTime() >= value);
+  }
+  if (to) {
+    const value = new Date(to).getTime();
+    if (!Number.isNaN(value)) next = next.filter((item) => new Date(item.occurredAtUtc).getTime() <= value);
+  }
+  return next.slice(0, 1000);
+}
+
 function readState(storageKey: string): DemoState {
   const seeded = initialState();
   try {
@@ -1008,9 +1111,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/audit-logs' && method === 'GET') {
-    const keyword = url.searchParams.get('keyword')?.trim().toLowerCase();
-    let items = [...state.auditLogs];
-    if (keyword) items = items.filter((item) => `${item.title} ${item.description} ${item.eventType}`.toLowerCase().includes(keyword));
+    const items = filterAuditLogs(state.auditLogs, url);
     return makeJson(page(items, url));
   }
 
@@ -1053,12 +1154,93 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/audit-logs/export' && method === 'GET') {
-    return makeBlob('id,title,eventType\n' + state.auditLogs.map((item) => `${item.id},${item.title},${item.eventType}`).join('\n'), 'audit-logs.csv');
+    const format = parseExportFormat(url);
+    if (format instanceof Response) return format;
+    const fields = parseExportFields(url.searchParams.get('fields'), AUDIT_EXPORT_FIELDS);
+    const items = filterAuditLogs(state.auditLogs, url);
+    const rows = items.map((item) => ({
+      id: item.id,
+      stream: item.stream,
+      category: item.category,
+      eventType: item.eventType,
+      occurredAtUtc: item.occurredAtUtc,
+      traceId: item.traceId,
+      title: item.title,
+      description: item.description,
+      actor: item.actor,
+    }));
+    return makeExportFile(rows, fields, format, 'audit-logs');
+  }
+
+  if (path === '/api/export/reports' && method === 'GET') {
+    const reportType = (url.searchParams.get('type') ?? '').trim().toLowerCase();
+    if (!REPORT_TYPES.includes(reportType as (typeof REPORT_TYPES)[number])) {
+      return makeError(`不支持的报表类型，可选值：${REPORT_TYPES.join(', ')}`, 400);
+    }
+    const format = parseExportFormat(url);
+    if (format instanceof Response) return format;
+    const fields = parseExportFields(url.searchParams.get('fields'), REPORT_FIELDS);
+    const includeKpi = fields.some((field) => REPORT_KPI_FIELDS.includes(field));
+    const includeChannel = fields.some((field) => REPORT_CHANNEL_FIELDS.includes(field));
+    const rows: Array<Record<string, unknown>> = [];
+    if (includeKpi || !includeChannel) {
+      const kpi = REPORT_KPI[reportType as (typeof REPORT_TYPES)[number]];
+      rows.push({
+        section: 'kpi',
+        visits: kpi.visits,
+        orders: kpi.orders,
+        conversionRate: kpi.conversionRate,
+        revenue: kpi.revenue,
+        channel: '',
+        channelVisits: '',
+        channelOrders: '',
+        channelRate: '',
+        channelAmount: '',
+      });
+    }
+    if (includeChannel || !includeKpi) {
+      for (const channel of REPORT_CHANNELS) {
+        rows.push({
+          section: 'channel',
+          visits: '',
+          orders: '',
+          conversionRate: '',
+          revenue: '',
+          ...channel,
+        });
+      }
+    }
+    return makeExportFile(rows, fields, format, 'reports');
+  }
+
+  if (path === '/api/export/overview' && method === 'GET') {
+    const format = parseExportFormat(url);
+    if (format instanceof Response) return format;
+    const days = Math.min(Math.max(Number(url.searchParams.get('days') ?? '7') || 7, 1), 90);
+    const rows: Array<Record<string, unknown>> = [
+      { section: 'overview', key: 'totalUsers', label: '总用户数', value: String(state.users.length) },
+      { section: 'overview', key: 'activeUsers', label: '活跃用户', value: String(state.users.filter((item) => item.status === 0).length) },
+      { section: 'overview', key: 'disabledUsers', label: '禁用用户', value: String(state.users.filter((item) => item.status !== 0).length) },
+      { section: 'overview', key: 'totalRoles', label: '总角色数', value: String(state.roles.length) },
+      { section: 'overview', key: 'totalPermissions', label: '总权限数', value: String(permissions.length) },
+    ];
+    for (let index = 0; index < days; index += 1) {
+      const date = new Date(Date.now() - (days - index - 1) * 86400000).toISOString().slice(0, 10);
+      rows.push({
+        section: 'trend',
+        key: date,
+        label: date,
+        value: String(2 + index + (index % 3)),
+      });
+    }
+    return makeExportFile(rows, OVERVIEW_FIELDS, format, 'overview');
   }
 
   if (path.startsWith('/api/export/') && method === 'GET') {
     const entity = path.split('/').pop() ?? 'data';
-    return makeBlob(`entity,id,name\n${entity},1,static-demo\n`, `${entity}.${url.searchParams.get('format') ?? 'csv'}`);
+    const format = parseExportFormat(url);
+    if (format instanceof Response) return format;
+    return makeBlob(`entity,id,name\n${entity},1,static-demo\n`, `${entity}.${format}`);
   }
 
   if (path === '/api/media' && method === 'GET') {

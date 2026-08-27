@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Card, Text, Button, Statistic, Message } from '@expcat/tigercat-react';
 import { Segmented } from '@expcat/tigercat-react/Segmented';
 import { PrintLayout, PrintPageBreak } from '@expcat/tigercat-react/PrintLayout';
@@ -7,12 +7,27 @@ import { Watermark } from '@expcat/tigercat-react/Watermark';
 import { QRCode } from '@expcat/tigercat-react/QRCode';
 import { Result } from '@expcat/tigercat-react/Result';
 import { Divider } from '@expcat/tigercat-react/Divider';
+import { DataExport } from '@expcat/tigercat-react/DataExport';
+import { CheckboxGroup } from '@expcat/tigercat-react/CheckboxGroup';
+import { Checkbox } from '@expcat/tigercat-react/Checkbox';
 import type { SegmentedOption, DescriptionsItem } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { PageActionPanel, MutedPanel } from '../components/PageFragments';
 import { FileTextIcon, DownloadIcon } from '../components/Icons';
-
-type ReportType = 'daily' | 'weekly' | 'monthly';
+import { getAuthHeaders } from '../utils';
+import {
+  DATA_EXPORT_PLACEHOLDER_ROWS,
+  DATA_EXPORT_TRIGGER_FORMATS,
+  EXPORT_FORMAT_LABELS,
+  EXPORT_FORMATS,
+  REPORT_EXPORT_FIELDS,
+  exportReports,
+  handleDataExportError,
+  skipClientDataExport,
+  toExportColumns,
+  type ExportFormat,
+} from '../utils/export';
+import type { ReportType } from '../utils/types';
 
 interface ReportMeta {
   title: string;
@@ -76,6 +91,11 @@ const CHANNEL_ROWS: ChannelRow[] = [
 
 function ReportsPage() {
   const [reportType, setReportType] = useState<ReportType>('daily');
+  const [exportFields, setExportFields] = useState<string[]>(
+    REPORT_EXPORT_FIELDS.map((field) => field.key),
+  );
+  const [exporting, setExporting] = useState(false);
+  const exportColumns = useMemo(() => toExportColumns(REPORT_EXPORT_FIELDS), []);
 
   const meta = REPORT_META[reportType];
   const kpis = KPIS[reportType];
@@ -91,6 +111,27 @@ function ReportsPage() {
     ],
     [reportType, meta],
   );
+
+  const onExport = useCallback(async (format: ExportFormat) => {
+    if (exportFields.length === 0) {
+      Message.error({ content: '请至少选择一个导出字段', duration: 3000 });
+      return;
+    }
+    setExporting(true);
+    try {
+      await exportReports({
+        type: reportType,
+        format,
+        fields: exportFields,
+        headers: getAuthHeaders(),
+      });
+      Message.success({ content: '导出成功', duration: 3000 });
+    } catch (error: unknown) {
+      Message.error({ content: error instanceof Error ? error.message : '导出失败', duration: 3000 });
+    } finally {
+      setExporting(false);
+    }
+  }, [exportFields, reportType]);
 
   const handlePrint = () => {
     Message.info({ content: '正在调起浏览器打印（可另存为 PDF）', duration: 1800 });
@@ -125,6 +166,37 @@ function ReportsPage() {
               </span>
               打印
             </Button>
+            {EXPORT_FORMATS.map((format) => (
+              <DataExport
+                key={format}
+                columns={exportColumns}
+                dataSource={DATA_EXPORT_PLACEHOLDER_ROWS}
+                formats={DATA_EXPORT_TRIGGER_FORMATS}
+                fileName="reports"
+                labels={{
+                  xlsxText: EXPORT_FORMAT_LABELS[format],
+                  exportingText: '导出中...',
+                  triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
+                }}
+                disabled={exporting}
+                cellFormatter={skipClientDataExport}
+                onError={(error) =>
+                  handleDataExportError(error, format, onExport, (message) =>
+                    Message.error({ content: message, duration: 3000 }),
+                  )
+                }
+              />
+            ))}
+            <CheckboxGroup
+              value={exportFields}
+              className="flex w-full flex-wrap gap-x-4 gap-y-2 sm:w-auto"
+              onChange={(value) => setExportFields(value.map(String))}>
+              {REPORT_EXPORT_FIELDS.map((field) => (
+                <Checkbox key={field.key} value={field.key}>
+                  {field.label}
+                </Checkbox>
+              ))}
+            </CheckboxGroup>
           </>
         }
       />
