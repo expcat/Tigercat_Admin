@@ -639,3 +639,34 @@
   7. **叠层 / leftover：** 锁屏 `z-[2000]` 高于 Header `10`、ChatDock 容器 `fixed bottom-6 right-6 z-40`（右下客服钮 + 未读 1 透过模糊可见、被锁屏盖住，**未走 ChatDock**）、水印（此时未开，DOM 无 overlay）。主题抽屉本步未开。卡片 leftover：`rounded-2xl`、`shadow-lg`、`p2-avatar`、`bg-gradient-to-tr from-(--tiger-primary) to-blue-400`；token 用 `--tiger-bg-page` / `--tiger-bg-card` / `--tiger-border`。NumberKeyboard 文案中英混排（`Delete` 英文、`确定` 中文）。a11y 树在 modal 下仍露出「快捷操作」节点（项 27，不审功能），画面上被锁屏盖住。`#tiger-message-container` `z-[9999]` 存在但空。
 - **双端：** 与 Vue 3.1 同形（入口菜单、全屏 `z-[2000]` 糊层、InputOTP + NumberKeyboard、Esc / ⌘K 不绕过、错 PIN Alert + 清空、正确 PIN 解锁）。Vue 3.1 记错 PIN 时 overlay 滚动条 + 键盘中英混排（低）；React 同。
 - **严重度：** 主路径通过（信息）。键盘中英混排 + overlay 滚动条：**低**。
+
+### 3b.2 ThemeConfigDrawer
+
+本期只走 React `http://127.0.0.1:5174` ThemeConfigDrawer。浅色 / 深色 / 跟随系统 / 主色 **不重走**：以上一会话已拍、本会话可读的四张 PNG 落笔记（live-walk 当时未写入本文件）。紧凑密度 Switch **本会话 live 核**。未开 Vue `5173` 页面，未改产品代码。未走 Watermark / TagsView / ChatDock，未审项 27。视口桌面 **1280×800**。四张图 IHDR 均为 **1280×800**，文件齐、可读。
+
+- **模块：** ThemeConfigDrawer 主题配置（PNG 读图：外观 / 主色；live：紧凑）
+- **端：** React
+- **视口：** 桌面 **1280×800**（四张既有 PNG 像素相同）
+- **复现（四张既有 PNG，未再切 light/dark/system/primary）：**
+  1. **Header 调色板触发 → Drawer 打开。** `/tmp/react-theme-drawer.png`。右侧 Drawer 已开，标题 **主题配置**，右上关闭 ×（圆角描边钮）。壳（侧栏 Tigercat / Header 面包屑「管理中心 / 仪表盘」/ 主区「欢迎回来，admin !」）被半透明遮罩糊住。Header 调色板入口本身在本批打开态图里被 mask 盖住，看不见按钮像素；从文件名 + Drawer 已开可确认走查路径是 Header 调色板打开本抽屉。内容：外观 `Segmented` **浅色 / 深色 / 跟随系统**（本图选中 **跟随系统**，白底胶囊在右）；主色 `ColorSwatch` 4 列 8 色（蓝勾选 + 蓝环 / 紫 / 青 / 绿 / 橙 / 红 / 粉 / 灰）；紧凑密度 `Switch` **关**（灰轨、白钮在左）+ 副文「收紧内容区内边距，侧栏默认折叠」。默认画面 = **跟随系统 + 蓝色主色 + 紧凑关**。KPI 图标底为蓝。侧栏仍展开（底栏「收起菜单」可见）。
+  2. **深色。** `/tmp/react-theme-dark.png`。Segmented 选中 **深色**。Drawer、侧栏、主区、KPI 卡均为暗底；折线仍可见。主色仍是蓝色勾选。紧凑 Switch 仍关。画面整壳已暗，**html.dark 从像素上看已生效**（类名本身读不到）。
+  3. **浅色。** `/tmp/react-theme-light.png`。Segmented 选中 **浅色**。Drawer / 侧栏 / 主区回到浅底。主色仍蓝色勾选。紧凑 Switch 仍关。与深色图对比，暗底已去掉。
+  4. **主色紫色。** `/tmp/react-theme-primary-purple.png`。Segmented 回到 **跟随系统**。ColorSwatch **紫色勾选 + 紫环**；KPI 图标底、仪表盘 Tag、欢迎卡 Logo 底、Drawer 关闭钮描边同步变紫。折线系列仍是蓝（未跟主色）。紧凑 Switch 仍关。`--tiger-primary` 具体 hex、`localStorage tigercat.admin.theme` JSON **本批 PNG 读不到，不发明**。
+  5. **leftover（画面可见）：** 四张都是右侧 Drawer + 全屏 mask，内层外观 / 主色 / 紧凑是 Tigercat Segmented / ColorSwatch / Switch / Text。Header 调色板触发钮被 mask 挡住，本批图不能从像素判定它是不是 leftover `<button>`。紫主色下折线仍蓝，属画面可见的未跟 token。四张 Switch 都关，侧栏都未折叠。
+- **严重度（PNG 段）：** 跟随系统默认 + 深色暗底 + 浅色回浅 + 紫色主色跟 KPI/Logo/Tag：通过（信息）。`html` class 字符串、`--tiger-primary` hex、`localStorage` 键值：PNG 未证。紧凑密度：四张均为关，见下 live。
+
+- **模块：** ThemeConfigDrawer 紧凑密度 Switch（live）
+- **端：** React
+- **视口：** 桌面 **1280×800**，隔离上下文 `react-theme-compact`（未复用 `react-shell-overlays` / `vue-shell-overlays` / `vue-tags-chat`），浅色、默认非紧凑
+- **复现：**
+  1. 先开 `chrome://inspect/#remote-debugging`（「Allow remote debugging for this browser instance」已勾选，截图 `/tmp/react-theme-inspect-remote-debugging.png`）。`new_page` isolatedContext `react-theme-compact` 打开 `http://127.0.0.1:5174/login`，`admin` / `admin123`。进 `/dashboard` 后 OnboardingTour 1/6 点「关闭引导」关掉，**未审 Tour**。
+  2. Header `button` `data-testid="shell-theme-config-trigger"` `aria-label="主题配置"`（leftover：自定义 `h-10 w-10 rounded-lg`，不是 Tigercat `Button`）。点开右侧 Drawer 标题 **主题配置**，宿主 `fixed` `z-index:1000`，宽约 360px + mask。Segmented **跟随系统**；ColorSwatch **蓝色**；`--tiger-primary` = `#2563eb`。拨前：`html` 无 class（无 `.compact`、无 `.dark`）；`localStorage tigercat.admin.theme` **不存在**（本隔离上下文未写过主题）；Switch `aria-checked=false`；侧栏 `aside` **240px**，「收起菜单」在；`#main-content-scroll` padding **24px**。
+  3. **拨开紧凑密度 Switch。** 滑块到开（蓝轨 `rgb(37, 99, 235)`，白钮在右），a11y `switch checked`，`aria-checked=true`。拨后立刻：
+     - `localStorage tigercat.admin.theme` = `{"mode":"system","primaryColor":"#2563eb","compactMode":true}`（键 `tigercat.admin.theme` 的 `compactMode` **已写入 true**）
+     - `document.documentElement` class = `compact`（**有** `.compact`，无 `.dark`）
+     - 侧栏 `aside` 宽 **64px**，带 `tiger-sidebar-collapsed`；画面为图标栏（品牌只剩「T」、菜单无文字）。Header 汉堡从「关闭导航菜单」变成「打开导航菜单」
+     - `#main-content-scroll` padding **16px**（由 24px 收紧）
+     - Switch `aria-checked=true` 与 LS `compactMode:true` **一致**
+  4. 截图 `/tmp/react-theme-compact.png`（1280×800）。Drawer 仍开：跟随系统 + 蓝色 + 紧凑开。未再切浅色/深色/主色。
+- **双端：** Vue **3.2** 紧凑 Switch 可拨到开，但 **不写** `compactMode`、**不加** `.compact`、侧栏仍 240px、`#main-content-scroll` 仍 24px（中）。React 本会话 **同一操作会写 LS / 加 `.compact` / 侧栏折到 64px / padding 24→16**。两端不一致：Vue 有缺陷，React 无此缺陷。
+- **严重度：** React 紧凑密度通过（信息）。双端紧凑：**中**（仅 Vue；React 已 live 否定同一 bug）。Header 调色板 leftover `<button>`：**低**（与 Vue 3.2 同形）。
