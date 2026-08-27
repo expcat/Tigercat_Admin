@@ -278,6 +278,7 @@ public static class DbInitializer
         }
 
         await SeedCollaborationAsync(context, ct);
+        await SeedProjectsAndCalendarAsync(context, ct);
 
         // --- Seed default admin user (idempotent: skip if username exists) ---
         var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "admin", ct);
@@ -536,6 +537,281 @@ public static class DbInitializer
     [
         ("n-2048-1", "ticket", "TK-2048", "初步定位为导出队列在高峰期超时，已 @张运维 调整 worker 并发。", "李工", new DateTime(2026, 6, 28, 14, 30, 0)),
         ("n-2041-1", "ticket", "TK-2041", "根因：刷新接口未带上最新 token，已修复并补充回归用例。", "王小虎", new DateTime(2026, 6, 26, 17, 40, 0)),
+        ("c-p-1001-1", "project", "1001", "仪表盘空状态文案建议改成「暂无运营数据」。", "赵敏", new DateTime(2026, 8, 21, 11, 20, 0)),
+        ("c-p-1001-2", "project", "1001", "权限码过滤菜单已经对上，demo 账号可用来演示 403。", "李工", new DateTime(2026, 8, 22, 9, 40, 0)),
+    ];
+
+    private static async Task SeedProjectsAndCalendarAsync(AdminDbContext context, CancellationToken ct)
+    {
+        var existingProjectIds = await context.Projects.Select(p => p.PublicId).ToHashSetAsync(ct);
+        var newProjects = SeedProjects
+            .Where(p => !existingProjectIds.Contains(p.PublicId))
+            .Select(p => new ProjectEntity
+            {
+                PublicId = p.PublicId,
+                Name = p.Name,
+                Summary = p.Summary,
+                Owner = p.Owner,
+                Department = p.Department,
+                Status = p.Status,
+                Progress = p.Progress,
+                Milestone = p.Milestone,
+                Budget = p.Budget,
+                StartAt = p.StartAt,
+                EndAt = p.EndAt,
+                Members = p.Members.Select((m, index) => new ProjectMemberEntity
+                {
+                    PublicId = m.PublicId,
+                    Name = m.Name,
+                    Role = m.Role,
+                    Color = m.Color,
+                    SortOrder = index
+                }).ToList(),
+                Activities = p.Activities.Select((a, index) => new ProjectActivityEntity
+                {
+                    PublicId = a.PublicId,
+                    Label = a.Label,
+                    Content = a.Content,
+                    Color = a.Color,
+                    SortOrder = index
+                }).ToList()
+            })
+            .ToList();
+
+        if (newProjects.Count > 0)
+        {
+            context.Projects.AddRange(newProjects);
+            await context.SaveChangesAsync(ct);
+        }
+
+        var existingEventIds = await context.CalendarEvents.Select(e => e.PublicId).ToHashSetAsync(ct);
+        var newEvents = SeedCalendarEvents
+            .Where(e => !existingEventIds.Contains(e.PublicId))
+            .Select(e => new CalendarEventEntity
+            {
+                PublicId = e.PublicId,
+                Date = e.Date,
+                Start = e.Start,
+                End = e.End,
+                Title = e.Title,
+                Type = e.Type,
+                Location = e.Location
+            })
+            .ToList();
+
+        if (newEvents.Count > 0)
+        {
+            context.CalendarEvents.AddRange(newEvents);
+            await context.SaveChangesAsync(ct);
+        }
+    }
+
+    private static readonly (
+        string PublicId,
+        string Name,
+        string Role,
+        string Color) MemberWang = ("m-wang", "王小虎", "前端", "#3b82f6");
+    private static readonly (
+        string PublicId,
+        string Name,
+        string Role,
+        string Color) MemberLi = ("m-li", "李工", "后端", "#22c55e");
+    private static readonly (
+        string PublicId,
+        string Name,
+        string Role,
+        string Color) MemberZhang = ("m-zhang", "张运维", "运维", "#f59e0b");
+    private static readonly (
+        string PublicId,
+        string Name,
+        string Role,
+        string Color) MemberChen = ("m-chen", "陈测试", "测试", "#a855f7");
+    private static readonly (
+        string PublicId,
+        string Name,
+        string Role,
+        string Color) MemberZhao = ("m-zhao", "赵敏", "产品", "#ef4444");
+    private static readonly (
+        string PublicId,
+        string Name,
+        string Role,
+        string Color) MemberSun = ("m-sun", "孙莉", "设计", "#14b8a6");
+
+    private static readonly (
+        string PublicId,
+        string Name,
+        string Summary,
+        string Owner,
+        string Department,
+        string Status,
+        int Progress,
+        int Milestone,
+        int Budget,
+        string StartAt,
+        string EndAt,
+        (string PublicId, string Name, string Role, string Color)[] Members,
+        (string PublicId, string Label, string Content, string Color)[] Activities)[] SeedProjects =
+    [
+        (
+            "1001",
+            "智能运营台",
+            "统一仪表盘、快捷跳转与运营指标的卡片工作台。",
+            "王小虎",
+            "平台研发部",
+            "active",
+            68,
+            2,
+            86,
+            "2026-03-12",
+            "2026-09-30",
+            [MemberWang, MemberLi, MemberZhao, MemberSun],
+            [
+                ("a1", "今天 09:20", "王小虎 更新了里程碑「联调验收」", "#3b82f6"),
+                ("a2", "昨天 18:04", "李工 合并权限接口联调分支", "#22c55e"),
+                ("a3", "08-21 11:12", "赵敏 补充运营指标口径说明", "#64748b"),
+            ]
+        ),
+        (
+            "1002",
+            "权限治理升级",
+            "梳理角色权限树、入口守卫与只读演示账号策略。",
+            "李工",
+            "安全治理组",
+            "planning",
+            18,
+            0,
+            42,
+            "2026-08-04",
+            "2026-11-15",
+            [MemberLi, MemberChen, MemberZhang],
+            [
+                ("a1", "08-18 16:30", "李工 提交权限矩阵初稿", "#3b82f6"),
+                ("a2", "08-16 10:05", "陈测试 列出回归用例范围", "#a855f7"),
+            ]
+        ),
+        (
+            "1003",
+            "媒体资源中台",
+            "图库、裁剪、标注与文件管理共用同一套媒体契约。",
+            "孙莉",
+            "内容中台",
+            "active",
+            54,
+            1,
+            63,
+            "2026-05-08",
+            "2026-10-20",
+            [MemberSun, MemberWang, MemberZhang, MemberChen],
+            [
+                ("a1", "08-20 15:44", "孙莉 完成 16:9 裁剪交互", "#14b8a6"),
+                ("a2", "08-19 09:18", "张运维 调整本地媒体存储配额", "#f59e0b"),
+            ]
+        ),
+        (
+            "1004",
+            "工单协作 2.0",
+            "主从分栏、生命周期步骤与内部备注讨论的协作模板。",
+            "赵敏",
+            "客户成功",
+            "paused",
+            41,
+            1,
+            55,
+            "2026-04-22",
+            "2026-12-01",
+            [MemberZhao, MemberWang, MemberLi],
+            [
+                ("a1", "08-12 19:00", "赵敏 暂停迭代，等待客服排期", "#f59e0b"),
+                ("a2", "08-08 11:26", "王小虎 完成 CommentThread 接入", "#3b82f6"),
+            ]
+        ),
+        (
+            "1005",
+            "报表打印服务",
+            "A4 打印布局、水印与渠道明细的导出演示。",
+            "陈测试",
+            "数据分析",
+            "done",
+            100,
+            3,
+            28,
+            "2026-02-10",
+            "2026-06-30",
+            [MemberChen, MemberLi, MemberZhao],
+            [
+                ("a1", "06-30 17:40", "陈测试 关闭里程碑「发布上线」", "#22c55e"),
+                ("a2", "06-28 10:16", "李工 补齐打印分页分隔", "#3b82f6"),
+            ]
+        ),
+        (
+            "1006",
+            "监控可观测性",
+            "资源水位、QPS/延迟滚动窗口与节点事件流。",
+            "张运维",
+            "基础设施",
+            "active",
+            72,
+            2,
+            91,
+            "2026-06-01",
+            "2026-09-15",
+            [MemberZhang, MemberLi, MemberChen, MemberWang],
+            [
+                ("a1", "今天 08:11", "张运维 调整默认刷新间隔为 3 秒", "#f59e0b"),
+                ("a2", "昨天 21:33", "李工 封顶事件流环形缓冲", "#22c55e"),
+            ]
+        ),
+        (
+            "1007",
+            "导入向导优化",
+            "字段映射、冲突策略与导入进度结果页的体验打磨。",
+            "李工",
+            "平台研发部",
+            "planning",
+            8,
+            0,
+            36,
+            "2026-08-18",
+            "2026-12-20",
+            [MemberLi, MemberSun, MemberChen],
+            [
+                ("a1", "08-19 14:22", "李工 收集现有向导痛点", "#3b82f6"),
+            ]
+        ),
+        (
+            "1008",
+            "帮助中心改版",
+            "锚点目录、FAQ 手风琴与无限加载文章列表。",
+            "王小虎",
+            "体验设计",
+            "done",
+            100,
+            3,
+            19,
+            "2026-01-15",
+            "2026-05-20",
+            [MemberWang, MemberSun, MemberZhao],
+            [
+                ("a1", "05-20 16:00", "王小虎 发布帮助中心改版", "#22c55e"),
+                ("a2", "05-18 09:42", "孙莉 完成目录吸顶视觉", "#14b8a6"),
+            ]
+        ),
+    ];
+
+    private static readonly (
+        string PublicId,
+        string Date,
+        string Start,
+        string End,
+        string Title,
+        string Type,
+        string Location)[] SeedCalendarEvents =
+    [
+        ("e1", "2026-06-29", "10:00", "11:00", "迭代站会", "meeting", "线上 · 腾讯会议"),
+        ("e2", "2026-06-29", "14:30", "15:30", "组件库设计评审", "review", "会议室 A"),
+        ("e3", "2026-06-30", "16:00", "17:00", "v1.6 发布窗口", "release", "生产环境"),
+        ("e4", "2026-07-01", "09:30", "10:00", "季度 OKR 对齐", "meeting", "会议室 B"),
+        ("e5", "2026-07-02", "15:00", "15:30", "安全合规提醒", "reminder", "—"),
     ];
 
     private static void UpsertMetadataValue(

@@ -168,6 +168,49 @@ type CommentItem = {
   targetId: string;
 };
 
+type ProjectStatus = 'planning' | 'active' | 'paused' | 'done';
+type CalendarEventType = 'meeting' | 'review' | 'release' | 'reminder';
+
+type ProjectMemberItem = {
+  id: string;
+  name: string;
+  role: string;
+  color: string;
+};
+
+type ProjectActivityItem = {
+  key: string;
+  label: string;
+  content: string;
+  color: string;
+};
+
+type ProjectItem = {
+  id: string;
+  name: string;
+  summary: string;
+  owner: string;
+  department: string;
+  status: ProjectStatus;
+  progress: number;
+  milestone: number;
+  budget: number;
+  startAt: string;
+  endAt: string;
+  members: ProjectMemberItem[];
+  activities: ProjectActivityItem[];
+};
+
+type CalendarEventItem = {
+  id: string;
+  date: string;
+  start: string;
+  end: string;
+  title: string;
+  type: CalendarEventType;
+  location: string;
+};
+
 type DemoState = {
   users: DemoUser[];
   roles: DemoRole[];
@@ -178,6 +221,8 @@ type DemoState = {
   tickets: TicketItem[];
   chatMessages: ChatMessageItem[];
   comments: CommentItem[];
+  projects: ProjectItem[];
+  calendarEvents: CalendarEventItem[];
   auditLogs: AuditLogItem[];
   retentionDays: number;
   nextUserId: number;
@@ -399,7 +444,25 @@ function initialState(): DemoState {
         user: { name: '王小虎' },
         time: '2026-06-26 17:40',
       },
+      {
+        id: 'c-p-1001-1',
+        targetType: 'project',
+        targetId: '1001',
+        content: '仪表盘空状态文案建议改成「暂无运营数据」。',
+        user: { name: '赵敏' },
+        time: '2026-08-21 11:20',
+      },
+      {
+        id: 'c-p-1001-2',
+        targetType: 'project',
+        targetId: '1001',
+        content: '权限码过滤菜单已经对上，demo 账号可用来演示 403。',
+        user: { name: '李工' },
+        time: '2026-08-22 09:40',
+      },
     ],
+    projects: seedProjects(),
+    calendarEvents: seedCalendarEvents(),
     auditLogs: [
       audit('auth-login', 'auth', 'auth.user.login', '用户登录', 'admin 登录了系统。', 'admin'),
       audit('user-update', 'user', 'admin.user.updated', '更新用户', 'admin 更新了用户 editor 的资料或角色配置。', 'admin'),
@@ -558,6 +621,171 @@ function seedTickets(): TicketItem[] {
   ];
 }
 
+function seedProjects(): ProjectItem[] {
+  const wang: ProjectMemberItem = { id: 'm-wang', name: '王小虎', role: '前端', color: '#3b82f6' };
+  const li: ProjectMemberItem = { id: 'm-li', name: '李工', role: '后端', color: '#22c55e' };
+  const zhang: ProjectMemberItem = { id: 'm-zhang', name: '张运维', role: '运维', color: '#f59e0b' };
+  const chen: ProjectMemberItem = { id: 'm-chen', name: '陈测试', role: '测试', color: '#a855f7' };
+  const zhao: ProjectMemberItem = { id: 'm-zhao', name: '赵敏', role: '产品', color: '#ef4444' };
+  const sun: ProjectMemberItem = { id: 'm-sun', name: '孙莉', role: '设计', color: '#14b8a6' };
+  return [
+    {
+      id: '1001',
+      name: '智能运营台',
+      summary: '统一仪表盘、快捷跳转与运营指标的卡片工作台。',
+      owner: '王小虎',
+      department: '平台研发部',
+      status: 'active',
+      progress: 68,
+      milestone: 2,
+      budget: 86,
+      startAt: '2026-03-12',
+      endAt: '2026-09-30',
+      members: [wang, li, zhao, sun],
+      activities: [
+        { key: 'a1', label: '今天 09:20', content: '王小虎 更新了里程碑「联调验收」', color: '#3b82f6' },
+        { key: 'a2', label: '昨天 18:04', content: '李工 合并权限接口联调分支', color: '#22c55e' },
+        { key: 'a3', label: '08-21 11:12', content: '赵敏 补充运营指标口径说明', color: '#64748b' },
+      ],
+    },
+    {
+      id: '1002',
+      name: '权限治理升级',
+      summary: '梳理角色权限树、入口守卫与只读演示账号策略。',
+      owner: '李工',
+      department: '安全治理组',
+      status: 'planning',
+      progress: 18,
+      milestone: 0,
+      budget: 42,
+      startAt: '2026-08-04',
+      endAt: '2026-11-15',
+      members: [li, chen, zhang],
+      activities: [
+        { key: 'a1', label: '08-18 16:30', content: '李工 提交权限矩阵初稿', color: '#3b82f6' },
+        { key: 'a2', label: '08-16 10:05', content: '陈测试 列出回归用例范围', color: '#a855f7' },
+      ],
+    },
+    {
+      id: '1003',
+      name: '媒体资源中台',
+      summary: '图库、裁剪、标注与文件管理共用同一套媒体契约。',
+      owner: '孙莉',
+      department: '内容中台',
+      status: 'active',
+      progress: 54,
+      milestone: 1,
+      budget: 63,
+      startAt: '2026-05-08',
+      endAt: '2026-10-20',
+      members: [sun, wang, zhang, chen],
+      activities: [
+        { key: 'a1', label: '08-20 15:44', content: '孙莉 完成 16:9 裁剪交互', color: '#14b8a6' },
+        { key: 'a2', label: '08-19 09:18', content: '张运维 调整本地媒体存储配额', color: '#f59e0b' },
+      ],
+    },
+    {
+      id: '1004',
+      name: '工单协作 2.0',
+      summary: '主从分栏、生命周期步骤与内部备注讨论的协作模板。',
+      owner: '赵敏',
+      department: '客户成功',
+      status: 'paused',
+      progress: 41,
+      milestone: 1,
+      budget: 55,
+      startAt: '2026-04-22',
+      endAt: '2026-12-01',
+      members: [zhao, wang, li],
+      activities: [
+        { key: 'a1', label: '08-12 19:00', content: '赵敏 暂停迭代，等待客服排期', color: '#f59e0b' },
+        { key: 'a2', label: '08-08 11:26', content: '王小虎 完成 CommentThread 接入', color: '#3b82f6' },
+      ],
+    },
+    {
+      id: '1005',
+      name: '报表打印服务',
+      summary: 'A4 打印布局、水印与渠道明细的导出演示。',
+      owner: '陈测试',
+      department: '数据分析',
+      status: 'done',
+      progress: 100,
+      milestone: 3,
+      budget: 28,
+      startAt: '2026-02-10',
+      endAt: '2026-06-30',
+      members: [chen, li, zhao],
+      activities: [
+        { key: 'a1', label: '06-30 17:40', content: '陈测试 关闭里程碑「发布上线」', color: '#22c55e' },
+        { key: 'a2', label: '06-28 10:16', content: '李工 补齐打印分页分隔', color: '#3b82f6' },
+      ],
+    },
+    {
+      id: '1006',
+      name: '监控可观测性',
+      summary: '资源水位、QPS/延迟滚动窗口与节点事件流。',
+      owner: '张运维',
+      department: '基础设施',
+      status: 'active',
+      progress: 72,
+      milestone: 2,
+      budget: 91,
+      startAt: '2026-06-01',
+      endAt: '2026-09-15',
+      members: [zhang, li, chen, wang],
+      activities: [
+        { key: 'a1', label: '今天 08:11', content: '张运维 调整默认刷新间隔为 3 秒', color: '#f59e0b' },
+        { key: 'a2', label: '昨天 21:33', content: '李工 封顶事件流环形缓冲', color: '#22c55e' },
+      ],
+    },
+    {
+      id: '1007',
+      name: '导入向导优化',
+      summary: '字段映射、冲突策略与导入进度结果页的体验打磨。',
+      owner: '李工',
+      department: '平台研发部',
+      status: 'planning',
+      progress: 8,
+      milestone: 0,
+      budget: 36,
+      startAt: '2026-08-18',
+      endAt: '2026-12-20',
+      members: [li, sun, chen],
+      activities: [
+        { key: 'a1', label: '08-19 14:22', content: '李工 收集现有向导痛点', color: '#3b82f6' },
+      ],
+    },
+    {
+      id: '1008',
+      name: '帮助中心改版',
+      summary: '锚点目录、FAQ 手风琴与无限加载文章列表。',
+      owner: '王小虎',
+      department: '体验设计',
+      status: 'done',
+      progress: 100,
+      milestone: 3,
+      budget: 19,
+      startAt: '2026-01-15',
+      endAt: '2026-05-20',
+      members: [wang, sun, zhao],
+      activities: [
+        { key: 'a1', label: '05-20 16:00', content: '王小虎 发布帮助中心改版', color: '#22c55e' },
+        { key: 'a2', label: '05-18 09:42', content: '孙莉 完成目录吸顶视觉', color: '#14b8a6' },
+      ],
+    },
+  ];
+}
+
+function seedCalendarEvents(): CalendarEventItem[] {
+  return [
+    { id: 'e1', date: '2026-06-29', start: '10:00', end: '11:00', title: '迭代站会', type: 'meeting', location: '线上 · 腾讯会议' },
+    { id: 'e2', date: '2026-06-29', start: '14:30', end: '15:30', title: '组件库设计评审', type: 'review', location: '会议室 A' },
+    { id: 'e3', date: '2026-06-30', start: '16:00', end: '17:00', title: 'v1.6 发布窗口', type: 'release', location: '生产环境' },
+    { id: 'e4', date: '2026-07-01', start: '09:30', end: '10:00', title: '季度 OKR 对齐', type: 'meeting', location: '会议室 B' },
+    { id: 'e5', date: '2026-07-02', start: '15:00', end: '15:30', title: '安全合规提醒', type: 'reminder', location: '—' },
+  ];
+}
+
 function nowTicketLabel() {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -565,9 +793,16 @@ function nowTicketLabel() {
 }
 
 function pageTickets(items: TicketItem[], url: URL) {
+  return pageItems(items, url, 50);
+}
+
+function pageItems<T>(items: T[], url: URL, defaultPageSize: number) {
   const current = Math.max(Number(url.searchParams.get('page') ?? '1') || 1, 1);
-  const rawSize = Number(url.searchParams.get('pageSize') ?? '50');
-  const pageSize = Math.min(Math.max(Number.isFinite(rawSize) && rawSize > 0 ? rawSize : 50, 1), 200);
+  const rawSize = Number(url.searchParams.get('pageSize') ?? String(defaultPageSize));
+  const pageSize = Math.min(
+    Math.max(Number.isFinite(rawSize) && rawSize > 0 ? rawSize : defaultPageSize, 1),
+    200,
+  );
   const start = (current - 1) * pageSize;
   return {
     items: items.slice(start, start + pageSize),
@@ -759,6 +994,8 @@ function readState(storageKey: string): DemoState {
         tickets: parsed.tickets ?? seeded.tickets,
         chatMessages: parsed.chatMessages ?? seeded.chatMessages,
         comments: parsed.comments ?? seeded.comments,
+        projects: parsed.projects ?? seeded.projects,
+        calendarEvents: parsed.calendarEvents ?? seeded.calendarEvents,
         nextTicketNumber: parsed.nextTicketNumber ?? seeded.nextTicketNumber,
         nextMessageSeq: parsed.nextMessageSeq ?? seeded.nextMessageSeq,
         passwords: { ...seeded.passwords, ...(parsed.passwords ?? {}) },
@@ -1663,6 +1900,71 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     state.comments.push(item);
     writeState(storageKey, state);
     return makeJson(toCommentResponse(item));
+  }
+
+  const PROJECT_STATUSES: ProjectStatus[] = ['planning', 'active', 'paused', 'done'];
+  const CALENDAR_TYPES: CalendarEventType[] = ['meeting', 'review', 'release', 'reminder'];
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+  const timePattern = /^\d{2}:\d{2}$/;
+
+  if (path === '/api/projects' && method === 'GET') {
+    const keyword = url.searchParams.get('keyword')?.trim().toLowerCase();
+    const status = url.searchParams.get('status')?.trim().toLowerCase();
+    if (status && !PROJECT_STATUSES.includes(status as ProjectStatus)) {
+      return makeError('无效的项目状态', 400);
+    }
+    let items = [...state.projects];
+    if (status) items = items.filter((item) => item.status === status);
+    if (keyword) {
+      items = items.filter((item) => `${item.name} ${item.owner} ${item.id}`.toLowerCase().includes(keyword));
+    }
+    items.sort((a, b) => a.id.localeCompare(b.id));
+    return makeJson(pageItems(items, url, 6));
+  }
+
+  const projectMatch = path.match(/^\/api\/projects\/([^/]+)$/);
+  if (projectMatch && method === 'GET') {
+    const item = state.projects.find((project) => project.id === decodeURIComponent(projectMatch[1]));
+    return item ? makeJson(item) : makeError('项目不存在', 404);
+  }
+
+  if (path === '/api/calendar/events' && method === 'GET') {
+    const from = url.searchParams.get('from')?.trim();
+    const to = url.searchParams.get('to')?.trim();
+    if (from && !datePattern.test(from)) return makeError('开始日期格式无效，需为 YYYY-MM-DD', 400);
+    if (to && !datePattern.test(to)) return makeError('结束日期格式无效，需为 YYYY-MM-DD', 400);
+    if (from && to && from > to) return makeError('开始日期不能晚于结束日期', 400);
+    let items = [...state.calendarEvents];
+    if (from) items = items.filter((item) => item.date >= from);
+    if (to) items = items.filter((item) => item.date <= to);
+    items.sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start) || a.id.localeCompare(b.id));
+    return makeJson(items);
+  }
+
+  if (path === '/api/calendar/events' && method === 'POST') {
+    const title = String(body.title ?? '').trim();
+    if (!title) return makeError('日程标题不能为空', 400);
+    const date = String(body.date ?? '').trim();
+    if (!datePattern.test(date)) return makeError('日期格式无效，需为 YYYY-MM-DD', 400);
+    const start = String(body.start ?? '').trim();
+    if (!timePattern.test(start)) return makeError('开始时间格式无效，需为 HH:mm', 400);
+    const end = String(body.end ?? '').trim();
+    if (!timePattern.test(end)) return makeError('结束时间格式无效，需为 HH:mm', 400);
+    const type = String(body.type ?? '').trim().toLowerCase();
+    if (!CALENDAR_TYPES.includes(type as CalendarEventType)) return makeError('无效的日程类型', 400);
+    const location = String(body.location ?? '').trim() || '—';
+    const item: CalendarEventItem = {
+      id: nextMockId(state, 'e'),
+      date,
+      start,
+      end,
+      title,
+      type: type as CalendarEventType,
+      location,
+    };
+    state.calendarEvents.push(item);
+    writeState(storageKey, state);
+    return makeJson(item);
   }
 
   return makeError(`演示模式尚未覆盖接口：${method} ${path}`, 404);

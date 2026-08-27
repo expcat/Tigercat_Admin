@@ -24,6 +24,10 @@ public class AdminDbContext : DbContext
     public DbSet<TicketMessageEntity> TicketMessages => Set<TicketMessageEntity>();
     public DbSet<ChatMessageEntity> ChatMessages => Set<ChatMessageEntity>();
     public DbSet<CommentEntity> Comments => Set<CommentEntity>();
+    public DbSet<ProjectEntity> Projects => Set<ProjectEntity>();
+    public DbSet<ProjectMemberEntity> ProjectMembers => Set<ProjectMemberEntity>();
+    public DbSet<ProjectActivityEntity> ProjectActivities => Set<ProjectActivityEntity>();
+    public DbSet<CalendarEventEntity> CalendarEvents => Set<CalendarEventEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -226,6 +230,67 @@ public class AdminDbContext : DbContext
             entity.Property(e => e.TargetId).IsRequired().HasMaxLength(64);
             entity.Property(e => e.Body).IsRequired().HasMaxLength(2000);
             entity.Property(e => e.UserName).IsRequired().HasMaxLength(80);
+        });
+
+        modelBuilder.Entity<ProjectEntity>(entity =>
+        {
+            entity.ToTable("Projects");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => e.Status);
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(120);
+            entity.Property(e => e.Summary).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Owner).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.Department).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.StartAt).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.EndAt).IsRequired().HasMaxLength(10);
+            entity.HasMany(e => e.Members)
+                .WithOne(m => m.Project)
+                .HasForeignKey(m => m.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(e => e.Activities)
+                .WithOne(a => a.Project)
+                .HasForeignKey(a => a.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ProjectMemberEntity>(entity =>
+        {
+            entity.ToTable("ProjectMembers");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ProjectId, e.PublicId }).IsUnique();
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.Role).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.Color).IsRequired().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<ProjectActivityEntity>(entity =>
+        {
+            entity.ToTable("ProjectActivities");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ProjectId, e.PublicId }).IsUnique();
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Label).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.Content).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Color).IsRequired().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<CalendarEventEntity>(entity =>
+        {
+            entity.ToTable("CalendarEvents");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => new { e.Date, e.Start });
+            entity.Property(e => e.PublicId).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Date).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.Start).IsRequired().HasMaxLength(5);
+            entity.Property(e => e.End).IsRequired().HasMaxLength(5);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(120);
+            entity.Property(e => e.Type).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Location).IsRequired().HasMaxLength(200);
         });
     }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { Card, Text, Tag, Button, Message } from '@expcat/tigercat-vue'
 import { Calendar } from '@expcat/tigercat-vue/Calendar'
 import { Countdown } from '@expcat/tigercat-vue/Countdown'
@@ -15,64 +15,53 @@ import { Radio } from '@expcat/tigercat-vue/Radio'
 import { Input } from '@expcat/tigercat-vue'
 import type {
   ListItem,
-  DatePickerSingleModelValue,
-  TimePickerSingleValue,
+  DatePickerModelValue,
+  TimePickerModelValue,
 } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import MutedPanel from '../components/MutedPanel.vue'
 import Icon from '../components/Icon.vue'
+import {
+  calendarQueryRange,
+  createCalendarEvent,
+  fetchCalendarEvents,
+  formatCalendarDate,
+  type CalendarEvent,
+  type CalendarEventType,
+} from '../utils/calendar'
 
-type EventType = 'meeting' | 'review' | 'release' | 'reminder'
-interface TeamEvent {
-  id: string
-  date: string // YYYY-MM-DD
-  start: string // HH:mm
-  end: string // HH:mm
-  title: string
-  type: EventType
-  location: string
-}
-
-const TYPE_META: Record<EventType, { label: string; variant: 'primary' | 'warning' | 'danger' | 'info' }> = {
+const TYPE_META: Record<CalendarEventType, { label: string; variant: 'primary' | 'warning' | 'danger' | 'info' }> = {
   meeting: { label: '会议', variant: 'primary' },
   review: { label: '评审', variant: 'warning' },
   release: { label: '发布', variant: 'danger' },
   reminder: { label: '提醒', variant: 'info' },
 }
 
-const pad = (n: number) => String(n).padStart(2, '0')
-const fmtDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-
-let seq = 0
-const nextId = () => `ev-${Date.now()}-${seq++}`
-
-const events = ref<TeamEvent[]>([
-  { id: 'e1', date: '2026-06-29', start: '10:00', end: '11:00', title: '迭代站会', type: 'meeting', location: '线上 · 腾讯会议' },
-  { id: 'e2', date: '2026-06-29', start: '14:30', end: '15:30', title: '组件库设计评审', type: 'review', location: '会议室 A' },
-  { id: 'e3', date: '2026-06-30', start: '16:00', end: '17:00', title: 'v1.6 发布窗口', type: 'release', location: '生产环境' },
-  { id: 'e4', date: '2026-07-01', start: '09:30', end: '10:00', title: '季度 OKR 对齐', type: 'meeting', location: '会议室 B' },
-  { id: 'e5', date: '2026-07-02', start: '15:00', end: '15:30', title: '安全合规提醒', type: 'reminder', location: '—' },
-])
-
+const events = ref<CalendarEvent[]>([])
+const loading = ref(false)
+const submitting = ref(false)
 const selectedDate = ref<Date>(new Date('2026-06-29T00:00:00'))
+
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback
+
 function onDateChange(value: unknown) {
   if (value instanceof Date) selectedDate.value = value
 }
 
-const selectedKey = computed(() => fmtDate(selectedDate.value))
+const selectedKey = computed(() => formatCalendarDate(selectedDate.value))
 const eventsForSelected = computed(() =>
   events.value
     .filter((e) => e.date === selectedKey.value)
     .sort((a, b) => a.start.localeCompare(b.start)),
 )
 
-const todayCount = computed(() => events.value.filter((e) => e.date === fmtDate(new Date())).length)
+const todayCount = computed(() => events.value.filter((e) => e.date === formatCalendarDate(new Date())).length)
 const monthCount = computed(() => {
   const ym = selectedKey.value.slice(0, 7)
   return events.value.filter((e) => e.date.startsWith(ym)).length
 })
 
-// ── 倒计时：下一个即将到来的日程 ───────────────────
 const upcoming = computed(() =>
   events.value
     .map((e) => ({ ...e, ts: new Date(`${e.date}T${e.start}:00`).getTime() }))
@@ -97,14 +86,13 @@ const upcomingList = computed<ListItem[]>(() =>
     })),
 )
 
-// ── 新建事件 ───────────────────────────────────────
 const drawerOpen = ref(false)
 const form = ref({
   title: '',
-  date: new Date('2026-06-29T00:00:00') as DatePickerSingleModelValue,
-  start: '10:00' as TimePickerSingleValue,
-  end: '11:00' as TimePickerSingleValue,
-  type: 'meeting' as EventType,
+  date: new Date('2026-06-29T00:00:00') as DatePickerModelValue,
+  start: '10:00' as TimePickerModelValue,
+  end: '11:00' as TimePickerModelValue,
+  type: 'meeting' as CalendarEventType,
   location: '',
 })
 function openDrawer() {
@@ -118,34 +106,68 @@ function openDrawer() {
   }
   drawerOpen.value = true
 }
-function toDateStr(value: DatePickerSingleModelValue): string {
+function toDateStr(value: DatePickerModelValue): string {
   if (!value) return selectedKey.value
-  return fmtDate(value instanceof Date ? value : new Date(value))
+  const single = Array.isArray(value) ? value[0] : value
+  if (!single) return selectedKey.value
+  return formatCalendarDate(single instanceof Date ? single : new Date(single))
 }
-function asTime(value: TimePickerSingleValue, fallback: string): string {
-  return typeof value === 'string' && value ? value : fallback
+function asTime(value: TimePickerModelValue, fallback: string): string {
+  const single = Array.isArray(value) ? value[0] : value
+  return typeof single === 'string' && single ? single : fallback
 }
-function submitEvent() {
+
+async function loadEvents() {
+  loading.value = true
+  try {
+    const range = calendarQueryRange(selectedDate.value)
+    const payload = await fetchCalendarEvents(range.from, range.to)
+    events.value = payload.data ?? []
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '日程加载失败'), duration: 3000 })
+  } finally {
+    loading.value = false
+  }
+}
+
+async function submitEvent() {
   const title = form.value.title.trim()
   if (!title) {
     Message.warning({ content: '请填写日程标题', duration: 2000 })
     return
   }
   const date = toDateStr(form.value.date)
-  const event: TeamEvent = {
-    id: nextId(),
-    date,
-    start: asTime(form.value.start, '10:00'),
-    end: asTime(form.value.end, '11:00'),
-    title,
-    type: form.value.type,
-    location: form.value.location.trim() || '—',
+  submitting.value = true
+  try {
+    await createCalendarEvent({
+      date,
+      start: asTime(form.value.start, '10:00'),
+      end: asTime(form.value.end, '11:00'),
+      title,
+      type: form.value.type,
+      location: form.value.location.trim() || '—',
+    })
+    selectedDate.value = new Date(`${date}T00:00:00`)
+    drawerOpen.value = false
+    Message.success({ content: `日程「${title}」已创建`, duration: 2400 })
+    await loadEvents()
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '创建日程失败'), duration: 3000 })
+  } finally {
+    submitting.value = false
   }
-  events.value = [...events.value, event]
-  selectedDate.value = new Date(`${date}T00:00:00`)
-  drawerOpen.value = false
-  Message.success({ content: `日程「${title}」已创建（演示）`, duration: 2400 })
 }
+
+watch(
+  () => `${selectedDate.value.getFullYear()}-${selectedDate.value.getMonth()}`,
+  () => {
+    void loadEvents()
+  },
+)
+
+onMounted(() => {
+  void loadEvents()
+})
 </script>
 
 <template>
@@ -197,7 +219,7 @@ function submitEvent() {
         <MutedPanel
           compact
           class="mt-3"
-          description="点击日期查看当天日程；事件按类型在右侧列表中以标记区分（演示数据）。"
+          description="点击日期查看当天日程；事件按类型在右侧列表中以标记区分。"
         />
       </Card>
 
@@ -210,7 +232,8 @@ function submitEvent() {
             </div>
           </template>
 
-          <div v-if="eventsForSelected.length" class="space-y-2">
+          <MutedPanel v-if="loading && events.length === 0" compact description="正在加载日程…" />
+          <div v-else-if="eventsForSelected.length" class="space-y-2">
             <Popover
               v-for="e in eventsForSelected"
               :key="e.id"
@@ -298,7 +321,7 @@ function submitEvent() {
         </div>
         <div class="flex justify-end gap-2 pt-2">
           <Button variant="outline" @click="drawerOpen = false">取消</Button>
-          <Button @click="submitEvent">创建事件</Button>
+          <Button :disabled="submitting" @click="submitEvent">创建事件</Button>
         </div>
       </div>
     </Drawer>

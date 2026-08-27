@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Avatar, AvatarGroup, Button, Card, Input, Tag, Text } from '@expcat/tigercat-vue'
+import { Avatar, AvatarGroup, Button, Card, Input, Message, Tag, Text } from '@expcat/tigercat-vue'
 import { Statistic } from '@expcat/tigercat-vue/Statistic'
 import { Progress } from '@expcat/tigercat-vue/Progress'
 import { Segmented } from '@expcat/tigercat-vue/Segmented'
@@ -13,13 +13,11 @@ import MetricCard from '../components/MetricCard.vue'
 import PageActionPanel from '../components/PageActionPanel.vue'
 import Icon from '../components/Icon.vue'
 import {
-  filterProjects,
+  fetchProjects,
   getProjectProgressStatus,
-  paginateProjects,
   PROJECT_PAGE_SIZE,
   PROJECT_STATUS_FILTERS,
   PROJECT_STATUS_META,
-  PROJECTS,
   type ProjectRecord,
   type ProjectStatusFilter,
 } from '../utils/projects'
@@ -28,19 +26,71 @@ const router = useRouter()
 const keyword = ref('')
 const statusFilter = ref<ProjectStatusFilter>('all')
 const page = ref(1)
+const loading = ref(false)
+const projects = ref<ProjectRecord[]>([])
+const total = ref(0)
+const statsProjects = ref<ProjectRecord[]>([])
 
-const filtered = computed(() => filterProjects(keyword.value, statusFilter.value))
-const paged = computed(() => paginateProjects(filtered.value, page.value))
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback
+
+const activeCount = computed(
+  () => statsProjects.value.filter((item) => item.status === 'active').length,
+)
+const doneCount = computed(
+  () => statsProjects.value.filter((item) => item.status === 'done').length,
+)
+const avgProgress = computed(() => {
+  if (statsProjects.value.length === 0) {
+    return 0
+  }
+  return Math.round(
+    statsProjects.value.reduce((sum, item) => sum + item.progress, 0) / statsProjects.value.length,
+  )
+})
+
+async function loadProjects() {
+  loading.value = true
+  try {
+    const payload = await fetchProjects({
+      page: page.value,
+      pageSize: PROJECT_PAGE_SIZE,
+      status: statusFilter.value,
+      keyword: keyword.value,
+    })
+    projects.value = payload.data.items ?? []
+    total.value = payload.data.total ?? 0
+  } catch (error: unknown) {
+    Message.error({ content: readErrorMessage(error, '项目列表加载失败'), duration: 3000 })
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadStats() {
+  try {
+    const payload = await fetchProjects({ page: 1, pageSize: 200 })
+    statsProjects.value = payload.data.items ?? []
+  } catch {
+    statsProjects.value = []
+  }
+}
 
 watch(keyword, () => {
   page.value = 1
 })
 
-const activeCount = PROJECTS.filter((item) => item.status === 'active').length
-const doneCount = PROJECTS.filter((item) => item.status === 'done').length
-const avgProgress = Math.round(
-  PROJECTS.reduce((sum, item) => sum + item.progress, 0) / PROJECTS.length,
+watch(
+  [keyword, statusFilter, page],
+  () => {
+    void loadProjects()
+  },
+  { immediate: true },
 )
+
+onMounted(() => {
+  void loadStats()
+})
 
 function handleStatusChange(value: string | number) {
   const next = String(value)
@@ -82,7 +132,7 @@ function statusMeta(project: ProjectRecord) {
     />
 
     <MetricGrid :columns="4">
-      <MetricCard title="项目总数" :value="PROJECTS.length" description="内存演示数据">
+      <MetricCard title="项目总数" :value="statsProjects.length" description="全部项目">
         <template #icon><Icon name="package" :size="20" /></template>
       </MetricCard>
       <MetricCard title="进行中" :value="activeCount" description="当前推进中的项目">
@@ -116,12 +166,12 @@ function statusMeta(project: ProjectRecord) {
     </PageActionPanel>
 
     <div
-      v-if="paged.length"
+      v-if="projects.length"
       data-testid="projects-grid"
       class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
     >
       <Card
-        v-for="project in paged"
+        v-for="project in projects"
         :key="project.id"
         hoverable
         class="cursor-pointer"
@@ -180,13 +230,15 @@ function statusMeta(project: ProjectRecord) {
       </Card>
     </div>
     <Card v-else>
-      <Empty description="没有符合条件的项目，试试调整搜索或状态筛选。" />
+      <Empty
+        :description="loading ? '正在加载项目…' : '没有符合条件的项目，试试调整搜索或状态筛选。'"
+      />
     </Card>
 
-    <div v-if="filtered.length" class="flex justify-end">
+    <div v-if="total" class="flex justify-end">
       <Pagination
         :current="page"
-        :total="filtered.length"
+        :total="total"
         :page-size="PROJECT_PAGE_SIZE"
         @update:current="handlePageChange"
       />

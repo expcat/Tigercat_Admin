@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, Text, Tag, Button, Input, Message } from '@expcat/tigercat-react';
 import { Calendar } from '@expcat/tigercat-react/Calendar';
 import { Countdown } from '@expcat/tigercat-react/Countdown';
@@ -15,55 +15,41 @@ import type {
   ListItem,
   TagVariant,
   BadgeVariant,
-  DatePickerSingleModelValue,
-  TimePickerSingleValue,
 } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { MutedPanel } from '../components/PageFragments';
 import { CalendarIcon, PlusIcon } from '../components/Icons';
+import {
+  calendarQueryRange,
+  createCalendarEvent,
+  fetchCalendarEvents,
+  formatCalendarDate,
+  type CalendarEvent,
+  type CalendarEventType,
+} from '../utils/calendar';
 
-type EventType = 'meeting' | 'review' | 'release' | 'reminder';
-interface TeamEvent {
-  id: string;
-  date: string; // YYYY-MM-DD
-  start: string; // HH:mm
-  end: string; // HH:mm
-  title: string;
-  type: EventType;
-  location: string;
-}
-
-const TYPE_META: Record<EventType, { label: string; variant: TagVariant }> = {
+const TYPE_META: Record<CalendarEventType, { label: string; variant: TagVariant }> = {
   meeting: { label: '会议', variant: 'primary' },
   review: { label: '评审', variant: 'warning' },
   release: { label: '发布', variant: 'danger' },
   reminder: { label: '提醒', variant: 'info' },
 };
 
-const pad = (n: number) => String(n).padStart(2, '0');
-const fmtDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-const SEED_EVENTS: TeamEvent[] = [
-  { id: 'e1', date: '2026-06-29', start: '10:00', end: '11:00', title: '迭代站会', type: 'meeting', location: '线上 · 腾讯会议' },
-  { id: 'e2', date: '2026-06-29', start: '14:30', end: '15:30', title: '组件库设计评审', type: 'review', location: '会议室 A' },
-  { id: 'e3', date: '2026-06-30', start: '16:00', end: '17:00', title: 'v1.6 发布窗口', type: 'release', location: '生产环境' },
-  { id: 'e4', date: '2026-07-01', start: '09:30', end: '10:00', title: '季度 OKR 对齐', type: 'meeting', location: '会议室 B' },
-  { id: 'e5', date: '2026-07-02', start: '15:00', end: '15:30', title: '安全合规提醒', type: 'reminder', location: '—' },
-];
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
 
 function CalendarPage() {
-  const seqRef = useRef(0);
-  const nextId = () => `ev-${Date.now()}-${seqRef.current++}`;
-
-  const [events, setEvents] = useState<TeamEvent[]>(SEED_EVENTS);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date('2026-06-29T00:00:00'));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form, setForm] = useState<{
     title: string;
-    date: DatePickerSingleModelValue;
-    start: TimePickerSingleValue;
-    end: TimePickerSingleValue;
-    type: EventType;
+    date: Date | null;
+    start: string;
+    end: string;
+    type: CalendarEventType;
     location: string;
   }>({
     title: '',
@@ -74,7 +60,36 @@ function CalendarPage() {
     location: '',
   });
 
-  const selectedKey = fmtDate(selectedDate);
+  const selectedKey = formatCalendarDate(selectedDate);
+  const monthKey = `${selectedDate.getFullYear()}-${selectedDate.getMonth()}`;
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadEvents = async () => {
+      setLoading(true);
+      try {
+        const range = calendarQueryRange(selectedDate);
+        const payload = await fetchCalendarEvents(range.from, range.to);
+        if (!cancelled) {
+          setEvents(payload.data ?? []);
+        }
+      } catch (error: unknown) {
+        if (!cancelled) {
+          Message.error({ content: readErrorMessage(error, '日程加载失败'), duration: 3000 });
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+    void loadEvents();
+    return () => {
+      cancelled = true;
+    };
+    // selectedDate is read inside to compute the visible-month range; monthKey is the refetch trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthKey]);
 
   const eventsForSelected = useMemo(
     () =>
@@ -85,7 +100,7 @@ function CalendarPage() {
   );
 
   const todayCount = useMemo(
-    () => events.filter((e) => e.date === fmtDate(new Date())).length,
+    () => events.filter((e) => e.date === formatCalendarDate(new Date())).length,
     [events],
   );
   const monthCount = useMemo(() => {
@@ -128,33 +143,41 @@ function CalendarPage() {
     setDrawerOpen(true);
   };
 
-  const toDateStr = (value: DatePickerSingleModelValue): string => {
+  const toDateStr = (value: Date | null): string => {
     if (!value) return selectedKey;
-    return fmtDate(value instanceof Date ? value : new Date(value));
+    return formatCalendarDate(value);
   };
-  const asTime = (value: TimePickerSingleValue, fallback: string): string =>
-    typeof value === 'string' && value ? value : fallback;
+  const asTime = (value: string, fallback: string): string =>
+    value ? value : fallback;
 
-  const submitEvent = () => {
+  const submitEvent = async () => {
     const title = form.title.trim();
     if (!title) {
       Message.warning({ content: '请填写日程标题', duration: 2000 });
       return;
     }
     const date = toDateStr(form.date);
-    const event: TeamEvent = {
-      id: nextId(),
-      date,
-      start: asTime(form.start, '10:00'),
-      end: asTime(form.end, '11:00'),
-      title,
-      type: form.type,
-      location: form.location.trim() || '—',
-    };
-    setEvents((prev) => [...prev, event]);
-    setSelectedDate(new Date(`${date}T00:00:00`));
-    setDrawerOpen(false);
-    Message.success({ content: `日程「${title}」已创建（演示）`, duration: 2400 });
+    setSubmitting(true);
+    try {
+      await createCalendarEvent({
+        date,
+        start: asTime(form.start, '10:00'),
+        end: asTime(form.end, '11:00'),
+        title,
+        type: form.type,
+        location: form.location.trim() || '—',
+      });
+      setSelectedDate(new Date(`${date}T00:00:00`));
+      setDrawerOpen(false);
+      Message.success({ content: `日程「${title}」已创建`, duration: 2400 });
+      const range = calendarQueryRange(new Date(`${date}T00:00:00`));
+      const payload = await fetchCalendarEvents(range.from, range.to);
+      setEvents(payload.data ?? []);
+    } catch (error: unknown) {
+      Message.error({ content: readErrorMessage(error, '创建日程失败'), duration: 3000 });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -207,7 +230,7 @@ function CalendarPage() {
           <MutedPanel
             compact
             className="mt-3"
-            description="点击日期查看当天日程；事件按类型在右侧列表中以标记区分（演示数据）。"
+            description="点击日期查看当天日程；事件按类型在右侧列表中以标记区分。"
           />
         </Card>
 
@@ -219,7 +242,9 @@ function CalendarPage() {
                 <Badge content={eventsForSelected.length} variant="primary" standalone />
               </div>
             }>
-            {eventsForSelected.length ? (
+            {loading && events.length === 0 ? (
+              <MutedPanel compact description="正在加载日程…" />
+            ) : eventsForSelected.length ? (
               <div className="space-y-2">
                 {eventsForSelected.map((e) => (
                   <Popover
@@ -298,20 +323,20 @@ function CalendarPage() {
               <Text weight="medium" className="mb-1 block">
                 开始
               </Text>
-              <TimePicker value={form.start} onChange={(t) => setForm((s) => ({ ...s, start: t }))} showSeconds={false} />
+              <TimePicker value={form.start} onChange={(t) => setForm((s) => ({ ...s, start: t ?? '10:00' }))} showSeconds={false} />
             </div>
             <div>
               <Text weight="medium" className="mb-1 block">
                 结束
               </Text>
-              <TimePicker value={form.end} onChange={(t) => setForm((s) => ({ ...s, end: t }))} showSeconds={false} />
+              <TimePicker value={form.end} onChange={(t) => setForm((s) => ({ ...s, end: t ?? '11:00' }))} showSeconds={false} />
             </div>
           </div>
           <div>
             <Text weight="medium" className="mb-1 block">
               类型
             </Text>
-            <RadioGroup value={form.type} onChange={(value) => setForm((s) => ({ ...s, type: value as EventType }))}>
+            <RadioGroup value={form.type} onChange={(value) => setForm((s) => ({ ...s, type: value as CalendarEventType }))}>
               <Radio value="meeting">会议</Radio>
               <Radio value="review">评审</Radio>
               <Radio value="release">发布</Radio>
@@ -328,7 +353,9 @@ function CalendarPage() {
             <Button variant="outline" onClick={() => setDrawerOpen(false)}>
               取消
             </Button>
-            <Button onClick={submitEvent}>创建事件</Button>
+            <Button disabled={submitting} onClick={() => void submitEvent()}>
+              创建事件
+            </Button>
           </div>
         </div>
       </Drawer>

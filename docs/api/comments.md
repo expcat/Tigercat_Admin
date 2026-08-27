@@ -2,7 +2,7 @@
 
 返回结构、认证头和通用错误见 [../api.md](../api.md)。本组接口均需登录（`RequireLogin`），不额外校验权限码。
 
-评论是通用资源，`targetType` 目前为 `ticket` 或 `project`。工单页的 `CommentThread` 使用 `targetType=ticket`；项目详情本期仍用页面静态评论，但 `targetType=project` 的读写接口已经可用。
+评论是通用资源，`targetType` 目前为 `ticket` 或 `project`。工单页的 `CommentThread` 使用 `targetType=ticket`；项目详情使用 `targetType=project`。
 
 ## 对象
 

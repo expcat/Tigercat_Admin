@@ -147,6 +147,21 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(CreateCommentRequest))]
 [JsonSerializable(typeof(ApiResponse<CommentResponse>))]
 [JsonSerializable(typeof(ApiResponse<CommentResponse[]>))]
+// Projects / calendar
+[JsonSerializable(typeof(ProjectMemberResponse))]
+[JsonSerializable(typeof(ProjectMemberResponse[]))]
+[JsonSerializable(typeof(ProjectActivityResponse))]
+[JsonSerializable(typeof(ProjectActivityResponse[]))]
+[JsonSerializable(typeof(ProjectResponse))]
+[JsonSerializable(typeof(ProjectResponse[]))]
+[JsonSerializable(typeof(PagedResponse<ProjectResponse>))]
+[JsonSerializable(typeof(ApiResponse<ProjectResponse>))]
+[JsonSerializable(typeof(ApiResponse<PagedResponse<ProjectResponse>>))]
+[JsonSerializable(typeof(CalendarEventResponse))]
+[JsonSerializable(typeof(CalendarEventResponse[]))]
+[JsonSerializable(typeof(CreateCalendarEventRequest))]
+[JsonSerializable(typeof(ApiResponse<CalendarEventResponse>))]
+[JsonSerializable(typeof(ApiResponse<CalendarEventResponse[]>))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }

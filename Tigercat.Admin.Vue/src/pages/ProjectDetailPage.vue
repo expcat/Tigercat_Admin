@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Avatar, AvatarGroup, Button, Card, Tag, Text } from '@expcat/tigercat-vue'
+import { Avatar, AvatarGroup, Button, Card, Message, Tag, Text } from '@expcat/tigercat-vue'
 import { Descriptions } from '@expcat/tigercat-vue/Descriptions'
 import { Progress } from '@expcat/tigercat-vue/Progress'
 import { Steps, StepsItem } from '@expcat/tigercat-vue/Steps'
@@ -11,7 +11,7 @@ import { Anchor, AnchorLink } from '@expcat/tigercat-vue/Anchor'
 import { Timeline } from '@expcat/tigercat-vue/Timeline'
 import { CommentThread } from '@expcat/tigercat-vue/CommentThread'
 import { Empty } from '@expcat/tigercat-vue/Empty'
-import type { DescriptionsItem } from '@expcat/tigercat-core'
+import type { CommentNode, DescriptionsItem } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import MetricGrid from '../components/MetricGrid.vue'
 import MetricCard from '../components/MetricCard.vue'
@@ -20,7 +20,7 @@ import PageActionPanel from '../components/PageActionPanel.vue'
 import ChartEmptyState from '../components/ChartEmptyState.vue'
 import Icon from '../components/Icon.vue'
 import {
-  getProjectById,
+  fetchProject,
   getProjectProgressStatus,
   getProjectRemainDays,
   PROJECT_DETAIL_TABS,
@@ -28,20 +28,31 @@ import {
   PROJECT_STATUS_META,
   readProjectId,
   type ProjectDetailTab,
+  type ProjectRecord,
 } from '../utils/projects'
+import { fetchComments } from '../utils/comments'
+import { ApiError } from '../utils/request'
+import type { CommentItem } from '../utils/types'
 
 const route = useRoute()
 const router = useRouter()
 const activeTab = ref<ProjectDetailTab>('overview')
+const loading = ref(false)
+const project = ref<ProjectRecord | null>(null)
+const comments = ref<CommentNode[]>([])
 
 const id = computed(() => readProjectId(route.params.id))
-const project = computed(() => getProjectById(id.value))
 const status = computed(() =>
   project.value ? PROJECT_STATUS_META[project.value.status] : null,
 )
 const remainDays = computed(() =>
   project.value ? getProjectRemainDays(project.value) : 0,
 )
+
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback
+
+const toCommentNodes = (items: CommentItem[]): CommentNode[] => items as CommentNode[]
 
 const overviewItems = computed<DescriptionsItem[]>(() => {
   const current = project.value
@@ -60,9 +71,41 @@ const overviewItems = computed<DescriptionsItem[]>(() => {
   ]
 })
 
-watch(id, () => {
-  activeTab.value = 'overview'
-})
+async function loadDetail() {
+  loading.value = true
+  project.value = null
+  comments.value = []
+  if (!id.value) {
+    loading.value = false
+    return
+  }
+
+  try {
+    const [projectPayload, commentsPayload] = await Promise.all([
+      fetchProject(id.value),
+      fetchComments('project', id.value),
+    ])
+    project.value = projectPayload.data
+    comments.value = toCommentNodes(commentsPayload.data ?? [])
+  } catch (error: unknown) {
+    if (!(error instanceof ApiError && error.status === 404)) {
+      Message.error({ content: readErrorMessage(error, '项目详情加载失败'), duration: 3000 })
+    }
+    project.value = null
+    comments.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+watch(
+  id,
+  () => {
+    activeTab.value = 'overview'
+    void loadDetail()
+  },
+  { immediate: true },
+)
 
 function goBackToList() {
   router.push({ name: 'projects' })
@@ -95,7 +138,22 @@ function getScrollContainer(): HTMLElement | Window {
 </script>
 
 <template>
-  <div v-if="!project" class="space-y-6">
+  <div v-if="loading" class="space-y-6">
+    <PageHeader
+      icon="package"
+      title="项目详情"
+      subtitle="正在加载项目…"
+      :tags="[
+        { label: '项目', variant: 'primary' },
+        { label: '加载中', variant: 'info' },
+      ]"
+    />
+    <Card>
+      <Empty description="正在加载项目…" />
+    </Card>
+  </div>
+
+  <div v-else-if="!project" class="space-y-6">
     <PageHeader
       icon="package"
       title="未找到项目"
@@ -131,7 +189,7 @@ function getScrollContainer(): HTMLElement | Window {
 
     <PageActionPanel
       title="项目详情"
-      description="标准列表到详情模板：概要、里程碑、成员与讨论均使用页面内演示数据。"
+      description="标准列表到详情模板：概要、里程碑、成员与讨论均来自项目与评论接口。"
     >
       <template #actions>
         <Button variant="outline" @click="goBackToList">返回项目列表</Button>
@@ -248,8 +306,8 @@ function getScrollContainer(): HTMLElement | Window {
               <Card>
                 <template #header><Text weight="bold">讨论</Text></template>
                 <CommentThread
-                  v-if="project.comments.length"
-                  :nodes="project.comments"
+                  v-if="comments.length"
+                  :nodes="comments"
                   :show-reply="false"
                   :show-like="false"
                   :show-more="false"

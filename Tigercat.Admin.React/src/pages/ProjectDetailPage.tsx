@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Avatar, AvatarGroup, Button, Card, Tag, Text } from '@expcat/tigercat-react';
+import { Avatar, AvatarGroup, Button, Card, Message, Tag, Text } from '@expcat/tigercat-react';
 import { Descriptions } from '@expcat/tigercat-react/Descriptions';
 import { Progress } from '@expcat/tigercat-react/Progress';
 import { Steps, StepsItem } from '@expcat/tigercat-react/Steps';
@@ -10,7 +10,7 @@ import { Anchor, AnchorLink } from '@expcat/tigercat-react/Anchor';
 import { Timeline } from '@expcat/tigercat-react/Timeline';
 import { CommentThread } from '@expcat/tigercat-react/CommentThread';
 import { Empty } from '@expcat/tigercat-react/Empty';
-import type { DescriptionsItem } from '@expcat/tigercat-core';
+import type { CommentNode, DescriptionsItem } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import {
   ChartEmptyState,
@@ -21,7 +21,7 @@ import {
 } from '../components/PageFragments';
 import { ClockIcon, PackageIcon, UsersIcon, ZapIcon } from '../components/Icons';
 import {
-  getProjectById,
+  fetchProject,
   getProjectProgressStatus,
   getProjectRemainDays,
   PROJECT_DETAIL_TABS,
@@ -31,9 +31,17 @@ import {
   type ProjectDetailTab,
   type ProjectRecord,
 } from '../utils/projects';
+import { fetchComments } from '../utils/comments';
+import { ApiError } from '../utils/request';
+import type { CommentItem } from '../utils/types';
 
 const getScrollContainer = (): HTMLElement | Window =>
   document.getElementById('main-content-scroll') ?? window;
+
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+
+const toCommentNodes = (items: CommentItem[]): CommentNode[] => items as CommentNode[];
 
 function tabFromHref(href: string): ProjectDetailTab {
   if (href.includes('members')) {
@@ -49,8 +57,54 @@ function ProjectDetailPage() {
   const navigate = useNavigate();
   const params = useParams();
   const id = readProjectId(params.id);
-  const project = getProjectById(id);
   const [activeTab, setActiveTab] = useState<ProjectDetailTab>('overview');
+  const [loading, setLoading] = useState(false);
+  const [project, setProject] = useState<ProjectRecord | null>(null);
+  const [comments, setComments] = useState<CommentNode[]>([]);
+
+  useEffect(() => {
+    setActiveTab('overview');
+  }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadDetail = async () => {
+      setLoading(true);
+      setProject(null);
+      setComments([]);
+      if (!id) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const [projectPayload, commentsPayload] = await Promise.all([
+          fetchProject(id),
+          fetchComments('project', id),
+        ]);
+        if (cancelled) {
+          return;
+        }
+        setProject(projectPayload.data);
+        setComments(toCommentNodes(commentsPayload.data ?? []));
+      } catch (error: unknown) {
+        if (!cancelled) {
+          if (!(error instanceof ApiError && error.status === 404)) {
+            Message.error({ content: readErrorMessage(error, '项目详情加载失败'), duration: 3000 });
+          }
+          setProject(null);
+          setComments([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+    void loadDetail();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   const overviewItems = useMemo<DescriptionsItem[]>(() => {
     if (!project) {
@@ -84,6 +138,25 @@ function ProjectDetailPage() {
     setActiveTab(tabFromHref(href));
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          icon={<PackageIcon size={24} />}
+          title="项目详情"
+          subtitle="正在加载项目…"
+          tags={[
+            { label: '项目', variant: 'primary' },
+            { label: '加载中', variant: 'info' },
+          ]}
+        />
+        <Card>
+          <Empty description="正在加载项目…" />
+        </Card>
+      </div>
+    );
+  }
+
   if (!project) {
     return (
       <div className="space-y-6">
@@ -115,6 +188,7 @@ function ProjectDetailPage() {
   return (
     <ProjectDetailContent
       project={project}
+      comments={comments}
       overviewItems={overviewItems}
       activeTab={activeTab}
       onTabChange={handleTabChange}
@@ -126,6 +200,7 @@ function ProjectDetailPage() {
 
 function ProjectDetailContent({
   project,
+  comments,
   overviewItems,
   activeTab,
   onTabChange,
@@ -133,6 +208,7 @@ function ProjectDetailContent({
   onBack,
 }: {
   project: ProjectRecord;
+  comments: CommentNode[];
   overviewItems: DescriptionsItem[];
   activeTab: ProjectDetailTab;
   onTabChange: (key: string | number) => void;
@@ -156,7 +232,7 @@ function ProjectDetailContent({
 
       <PageActionPanel
         title="项目详情"
-        description="标准列表到详情模板：概要、里程碑、成员与讨论均使用页面内演示数据。"
+        description="标准列表到详情模板：概要、里程碑、成员与讨论均来自项目与评论接口。"
         actions={
           <Button variant="outline" onClick={onBack}>
             返回项目列表
@@ -193,7 +269,7 @@ function ProjectDetailContent({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_220px]">
         <div className="min-w-0 space-y-4">
-          <Tabs activeKey={activeTab} onChange={onTabChange}>
+          <Tabs activeKey={activeTab} onActiveKeyChange={onTabChange}>
             <TabPane tabKey="overview" label="概览">
               <div id="project-overview" className="space-y-4">
                 <Card header={<Text weight="bold">项目概要</Text>}>
@@ -275,9 +351,9 @@ function ProjectDetailContent({
                   )}
                 </Card>
                 <Card header={<Text weight="bold">讨论</Text>}>
-                  {project.comments.length ? (
+                  {comments.length ? (
                     <CommentThread
-                      nodes={project.comments}
+                      nodes={comments}
                       showReply={false}
                       showLike={false}
                       showMore={false}

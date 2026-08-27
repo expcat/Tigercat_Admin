@@ -41,6 +41,8 @@
 | 工单 | [docs/api/tickets.md](api/tickets.md) |
 | 聊天坞 | [docs/api/chat.md](api/chat.md) |
 | 评论 | [docs/api/comments.md](api/comments.md) |
+| 项目 | [docs/api/projects.md](api/projects.md) |
+| 日历 | [docs/api/calendar.md](api/calendar.md) |
 | 系统设置 | [docs/api/settings.md](api/settings.md) |
 | 媒体资源 | [docs/api/media.md](api/media.md) |
 
