@@ -565,3 +565,37 @@
   5. **紧凑密度：** 指针点 `Switch`，滑块可拨到开（紫轨），`aria-checked=true`。但 `document.documentElement` **没有** `.compact`，侧栏仍 **240px**，「收起菜单」仍在，`#main-content-scroll` padding 仍 `24px`，LS `compactMode` 仍 `false`。关 Drawer 再开，开关内部态可与 `themePrefs.compactMode` 脱节（仍显示开、LS 仍 false）。空格键能拨动外观，同样不写 LS、不加 `.compact`。截图 `/tmp/vue-theme-compact.png`。
   6. **leftover：** 调色板入口是自定义 `button`（`h-10 w-10 rounded-lg`），不是 Tigercat `Button`。Drawer / Segmented / ColorSwatch / Text 为 Tigercat。`Switch` 按 Tigercat Vue 契约应走 `modelValue` / `update:modelValue`；本抽屉绑的是 `:checked` + `@update:checked`，与观察一致（外观可拨、主题未应用）。
 - **严重度：** 浅色 / 深色 / 跟随系统 / 主色通过（信息）。紧凑密度开关不写 `compactMode`、不加 `.compact`、侧栏不折叠：**中**。
+
+### 3.3 Watermark
+
+本期只读既有 PNG，未再走 LockScreen / ThemeConfigDrawer，未改产品代码。6 张图均为 Vue；5 张整页 **1280×800** 浅色，1 张 tile 裁切 **180×80**。文件齐、5 张整页可读；`vue-watermark-tile.png` 几乎全黑、看不出字。图中无地址栏，不从像素发明 URL；画面是系统设置 / 仪表盘 / 锁屏。
+
+- **模块：** 全局内容水印（`/settings` `theme.watermark`）
+- **端：** Vue
+- **视口：** 桌面 **1280×800**（tile 裁切 180×80）
+- **复现：**
+  1. **关：** `/tmp/vue-watermark-settings-off.png`。面包屑「管理中心 / 系统管理 / 系统设置」。TagsView：未选「仪表盘」（无关闭钮）、选中「系统设置」带 ×。Card「全局内容水印」+ Tag `theme.watermark`；副文「在内容区（含多标签条）叠加当前用户名与日期。立即生效，保存在本机；不影响内容页草稿水印演示。」。`Switch` 关（灰轨）。内容区、标签条、侧栏、Header **均无** 斜向「admin / 日期」叠层。右下 ChatDock 未读 1。
+  2. **拨开后立刻一帧：** `/tmp/vue-watermark-switch-no-overlay.png`。同一设置页，开关已是开（蓝轨、白钮在右），**画面仍无** 斜向水印。标签「仪表盘 / 系统设置」仍清晰、× 仍在。静态图不能证明事件没发出，只证明拨开当帧叠层未画出。
+  3. **开且叠层可见：** `/tmp/vue-watermark-on-settings.png`。开关仍开。内容区斜向重复两行：**admin** + **2026-08-27**（浅灰、约 −20°）。侧栏与 Header 无水印。TagsView「仪表盘 / 系统设置」字与 × 仍完整可读，未见水印字压在标签文案上。Logo 卡 / 水印卡 / 登录锁定数字仍能读。
+  4. **仪表盘仍在：** `/tmp/vue-watermark-on-dashboard.png`。TagsView：选中「仪表盘」（无 ×）、「系统设置」带 ×。KPI / 折线 / 饼图 / 快捷块上同样 **admin** + **2026-08-27** 斜向铺满。侧栏、Header 无水印。右下 `+` 与客服钮叠在水印之上（仍可见未读 1）。标签条文案仍清晰。
+  5. **tile 裁切不可读：** `/tmp/vue-watermark-tile.png` 180×80、2494 字节，几乎全黑，看不出用户名或日期。不以它作正文证据。
+  6. **锁屏盖住水印：** `/tmp/vue-watermark-under-lock.png`。全屏锁屏卡（Avatar A、**admin**、PIN、键盘、时钟 10:37:44 / 2026年8月27日星期四）。背后糊成深蓝，**读不出** 「admin / 2026-08-27」水印字。锁屏盖住水印层。
+  7. **pointer-events / 不挡标签：** 静态 PNG **点不到**，不能实测 `pointer-events: none`。能确认的是：开水印后标签条仍完整、选中态与 × 仍在，水印是半透明斜字不是实心挡板。侧栏/Header 未被盖。
+- **严重度：** `/settings` 开关 → 用户名+当天日期叠层、锁屏盖住水印、标签条不被字挡住：通过（信息）。拨开当帧无叠层：低（随后同页已有叠层；静态图无法区分渲染间隙与开关内部态）。`pointer-events: none`：PNG 未证，不升严重度。
+
+### 3.4 TagsView
+
+本期 live-walk Vue `http://127.0.0.1:5173`。先开 `chrome://inspect/#remote-debugging`（「Allow remote debugging for this browser instance」已勾选），隔离上下文 `vue-tags-chat` 打开 `/login`，`admin` / `admin123`。首登 OnboardingTour 点「关闭引导」，**未审 Tour**。视口桌面 **1280×800**，浅色。未开 React，未改产品代码。未审项 27。
+
+- **模块：** TagsView 多标签条
+- **端：** Vue
+- **视口：** 桌面 **1280×800**，隔离上下文 `vue-tags-chat`，浅色
+- **复现：**
+  1. **仅仪表盘：** 登录后 `/dashboard`。`sessionStorage tigercat-admin:tags-view` = `{"keys":["home"],"activeKey":"home"}`。TagsView 只有「仪表盘」选中，**无关闭钮**（`closableBtn=false`）。「标签操作」三项全 disabled：关闭当前 / 关闭其他 / 关闭全部。截图 `/tmp/vue-tags-home-only.png`、`/tmp/vue-tags-close-all-home-only.png`。
+  2. **开多标签：** 侧栏进系统设置、用户管理、项目列表。URL `/projects`。标签顺序 **仪表盘**（无 ×）/ **系统设置**（×「关闭系统设置」）/ **用户管理**（×）/ **项目列表**（选中，×「关闭项目列表」）。storage `keys=["home","settings","users","projects"]` `activeKey=projects`。截图 `/tmp/vue-tags-multi.png`。
+  3. **`/projects/:id` 高亮项目列表：** 点「智能运营台」查看详情。URL **`http://127.0.0.1:5173/projects/1001`**。未新增详情标签；TagsView 仍是上列四枚，**项目列表** `data-active=true`。侧栏「项目列表」`aria-current=page`、字色 `rgb(37, 99, 235)`、`font-medium`。面包屑仍「项目 / 项目列表」。storage `activeKey` 仍 `projects`。截图 `/tmp/vue-tags-project-detail.png`。
+  4. **关闭当前：** 「标签操作」菜单「关闭当前 / 关闭其他 / 关闭全部」（截图 `/tmp/vue-tags-actions-menu.png`）。在 `/projects/1001` 点「关闭当前」。项目列表标签消失，跳到相邻 **用户管理**，URL `/users`。剩 仪表盘 / 系统设置 / 用户管理（选中）。storage `{"keys":["home","settings","users"],"activeKey":"users"}`。截图 `/tmp/vue-tags-close-current.png`。
+  5. **关闭其他：** 仍在用户管理，点「关闭其他」。系统设置标签去掉；仪表盘保留且仍无 ×；用户管理仍选中，URL 仍 `/users`。storage `{"keys":["home","users"],"activeKey":"users"}`。此时「关闭其他」变 disabled（没有其它可关标签）。截图 `/tmp/vue-tags-close-others.png`。
+  6. **关闭全部：** 点「关闭全部」。只剩仪表盘，URL `/dashboard`，「欢迎回来，admin！」。storage `{"keys":["home"],"activeKey":"home"}`。再开「标签操作」：关闭当前 / 其他 / 全部 **全 disabled**。仪表盘始终无 ×。
+  7. **刷新恢复：** 再打开系统设置 + 用户管理。刷新前 storage `{"keys":["home","settings","users"],"activeKey":"users"}`，URL `/users`。浏览器 reload 后仍 `/users`，三枚标签仍在，用户管理选中，系统设置仍带 ×，仪表盘仍无 ×。storage 同形。截图 `/tmp/vue-tags-after-refresh.png`。Tour 未再挡住壳。
+- **严重度：** 通过（信息）。多标签开/关当前/其他/全部、刷新恢复、仪表盘不可关、`/projects/:id` 高亮「项目列表」均按预期。
