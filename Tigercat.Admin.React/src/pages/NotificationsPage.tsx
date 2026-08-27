@@ -4,11 +4,19 @@ import type { NotificationItem } from '@expcat/tigercat-core';
 import {
   Button,
   Card,
+  Form,
+  FormItem,
+  Input,
+  Message,
+  Modal,
+  Select,
   Text,
   notification,
 } from '@expcat/tigercat-react';
 import { NotificationCenter } from '@expcat/tigercat-react/NotificationCenter';
+import { Textarea } from '@expcat/tigercat-react/Textarea';
 import { PageHeader } from '../components/PageHeader';
+import { PermissionGuard } from '../components/PermissionGuard';
 import {
   BellIcon,
   CheckCircleIcon,
@@ -24,18 +32,49 @@ import {
 import {
   buildNotificationGroups,
   countUnreadNotifications,
+  createNotification,
+  fetchNotifications,
   findNotificationById,
   getNotificationGroupLabel,
+  notifyNotificationsChanged,
   setNotificationReadState,
 } from '../utils/notifications';
-import { apiRequest, getAuthHeaders } from '../utils';
+import { apiRequest, getAuthHeaders, normalizeInput } from '../utils';
 import { usePermission } from '../utils/permission';
 import type {
   AdminNotificationGroupKey,
   AdminNotificationItem,
   AdminNotificationToastType,
-  PagedResult,
 } from '../utils/types';
+
+type CreateFormState = {
+  title: string;
+  description: string;
+  groupKey: AdminNotificationGroupKey;
+  toastType: AdminNotificationToastType;
+  linkUrl: string;
+};
+
+const EMPTY_CREATE_FORM: CreateFormState = {
+  title: '',
+  description: '',
+  groupKey: 'ops',
+  toastType: 'info',
+  linkUrl: '',
+};
+
+const GROUP_OPTIONS = [
+  { label: '系统运维', value: 'ops' },
+  { label: '安全提醒', value: 'security' },
+  { label: '版本动态', value: 'release' },
+];
+
+const TOAST_OPTIONS = [
+  { label: '信息', value: 'info' },
+  { label: '成功', value: 'success' },
+  { label: '警告', value: 'warning' },
+  { label: '错误', value: 'error' },
+];
 
 const formatDateTime = (value: string) =>
   new Date(value).toLocaleString('zh-CN', {
@@ -85,19 +124,20 @@ function showNotification(
 function NotificationsPage() {
   const navigate = useNavigate();
   const { has: hasPerm } = usePermission();
+  const canCreate = hasPerm('notification:create');
   const [notifications, setNotifications] = useState<AdminNotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [createOpen, setCreateOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [createForm, setCreateForm] = useState<CreateFormState>({ ...EMPTY_CREATE_FORM });
 
   const loadNotifications = useCallback(async () => {
     setLoading(true);
     setErrorMessage('');
 
     try {
-      const payload = await apiRequest<PagedResult<AdminNotificationItem>>(
-        '/api/notifications?page=1&pageSize=100',
-        { headers: getAuthHeaders() },
-      );
+      const payload = await fetchNotifications();
       setNotifications(payload.data.items);
     } catch (error) {
       const message =
@@ -170,6 +210,7 @@ function NotificationsPage() {
           setNotifications((prev) => setNotificationReadState(prev, item.id, true));
           try {
             await persistReadState(String(item.id), true);
+            notifyNotificationsChanged();
           } catch {
             setNotifications((prev) => setNotificationReadState(prev, item.id, false));
           }
@@ -195,6 +236,7 @@ function NotificationsPage() {
 
       try {
         await persistReadState(String(item.id), read);
+        notifyNotificationsChanged();
       } catch (error) {
         setNotifications((prev) =>
           setNotificationReadState(prev, item.id, !read),
@@ -228,6 +270,7 @@ function NotificationsPage() {
             groupKey: groupKey ? String(groupKey) : null,
           }),
         });
+        notifyNotificationsChanged();
         await loadNotifications();
       } catch (error) {
         showNotification(
@@ -250,6 +293,45 @@ function NotificationsPage() {
     [loadNotifications],
   );
 
+  const openCreateModal = () => {
+    setCreateForm({ ...EMPTY_CREATE_FORM });
+    setCreateOpen(true);
+  };
+
+  const submitCreate = async () => {
+    const title = createForm.title.trim();
+    if (!title) {
+      Message.warning({ content: '请填写通知标题', duration: 2000 });
+      return;
+    }
+    const linkUrl = createForm.linkUrl?.trim() ?? '';
+    if (linkUrl && !isSafeInternalLink(linkUrl)) {
+      Message.error({ content: '通知链接必须是站内路径', duration: 3000 });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createNotification({
+        groupKey: createForm.groupKey,
+        title,
+        description: createForm.description.trim(),
+        toastType: createForm.toastType,
+        linkUrl: linkUrl || null,
+      });
+      setCreateOpen(false);
+      notifyNotificationsChanged();
+      showNotification('success', '通知已创建', title);
+      await loadNotifications();
+    } catch (error) {
+      Message.error({
+        content: error instanceof Error ? error.message : '创建通知失败',
+        duration: 3000,
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -267,9 +349,16 @@ function NotificationsPage() {
         title="通知收件箱"
         description="通知来自后端数据源，未读状态、分组和批量已读会持久化保存。"
         actions={
-          <Button variant="outline" onClick={loadNotifications}>
-            刷新通知
-          </Button>
+          <>
+            {canCreate && (
+              <PermissionGuard code="notification:create">
+                <Button onClick={openCreateModal}>创建通知</Button>
+              </PermissionGuard>
+            )}
+            <Button variant="outline" onClick={loadNotifications}>
+              刷新通知
+            </Button>
+          </>
         }
       />
 
@@ -339,6 +428,74 @@ function NotificationsPage() {
           ))}
         </div>
       </Card>
+
+      <Modal
+        open={createOpen}
+        title="创建通知"
+        showDefaultFooter
+        okText={submitting ? '创建中...' : '创建'}
+        cancelText="取消"
+        onOk={() => void submitCreate()}
+        onCancel={() => setCreateOpen(false)}>
+        <div className="p2-modal-scroll">
+          <Form model={createForm as Record<string, unknown>} labelWidth={88}>
+            <FormItem label="标题" name="title">
+              <Input
+                value={createForm.title}
+                placeholder="请输入通知标题"
+                onChange={(val) =>
+                  setCreateForm((prev) => ({ ...prev, title: normalizeInput(val) }))
+                }
+              />
+            </FormItem>
+            <FormItem label="描述" name="description">
+              <Textarea
+                value={createForm.description}
+                rows={4}
+                placeholder="请输入通知描述（选填）"
+                onChange={(e) =>
+                  setCreateForm((prev) => ({ ...prev, description: e.target.value }))
+                }
+              />
+            </FormItem>
+            <FormItem label="分组" name="groupKey">
+              <Select
+                value={createForm.groupKey}
+                options={GROUP_OPTIONS}
+                placeholder="请选择分组"
+                onChange={(val) =>
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    groupKey: (val as AdminNotificationGroupKey) ?? 'ops',
+                  }))
+                }
+              />
+            </FormItem>
+            <FormItem label="类型" name="toastType">
+              <Select
+                value={createForm.toastType}
+                options={TOAST_OPTIONS}
+                placeholder="请选择类型"
+                onChange={(val) =>
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    toastType: (val as AdminNotificationToastType) ?? 'info',
+                  }))
+                }
+              />
+            </FormItem>
+            <FormItem label="链接" name="linkUrl">
+              <Input
+                value={createForm.linkUrl ?? ''}
+                placeholder="站内路径，例如 /monitor（选填）"
+                onChange={(val) =>
+                  setCreateForm((prev) => ({ ...prev, linkUrl: normalizeInput(val) }))
+                }
+              />
+            </FormItem>
+          </Form>
+        </div>
+      </Modal>
     </div>
   );
 }

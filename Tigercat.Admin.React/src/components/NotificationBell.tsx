@@ -4,8 +4,12 @@ import { Badge, Button, Text, notification } from '@expcat/tigercat-react';
 import { Popover } from '@expcat/tigercat-react/Popover';
 import { BellIcon } from './Icons';
 import { apiRequest, getAuthHeaders } from '../utils';
-import { countUnreadNotifications } from '../utils/notifications';
-import type { AdminNotificationItem, PagedResult } from '../utils/types';
+import {
+  countUnreadNotifications,
+  fetchNotifications,
+  NOTIFICATIONS_CHANGED_EVENT,
+} from '../utils/notifications';
+import type { AdminNotificationItem } from '../utils/types';
 
 const formatTime = (value: string) =>
   new Date(value).toLocaleString('zh-CN', {
@@ -29,10 +33,7 @@ export function NotificationBell() {
   const loadNotifications = useCallback(async () => {
     setLoading(true);
     try {
-      const payload = await apiRequest<PagedResult<AdminNotificationItem>>(
-        '/api/notifications?page=1&pageSize=100',
-        { headers: getAuthHeaders() },
-      );
+      const payload = await fetchNotifications();
       setItems(payload.data.items);
     } catch {
       // 顶部铃铛失败时保持静默，通知中心页面会展示详细错误。
@@ -42,8 +43,23 @@ export function NotificationBell() {
   }, []);
 
   useEffect(() => {
-    loadNotifications();
+    void loadNotifications();
   }, [loadNotifications]);
+
+  useEffect(() => {
+    const onChanged = () => {
+      void loadNotifications();
+    };
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, onChanged);
+  }, [loadNotifications]);
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (next) {
+      void loadNotifications();
+    }
+  };
 
   const handleItemClick = (item: AdminNotificationItem) => {
     setOpen(false);
@@ -163,7 +179,7 @@ export function NotificationBell() {
   return (
     <Popover
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
       trigger="click"
       placement="bottom-end"
       width={360}

@@ -328,6 +328,7 @@ const permissions: PermissionInfo[] = [
   ['task:view', '查看任务面板'],
   ['task:create', '创建运维任务'],
   ['task:edit', '编辑运维任务'],
+  ['notification:create', '创建通知'],
 ].map(([code, description], index) => ({
   id: index + 1,
   code,
@@ -426,7 +427,7 @@ function initialState(): DemoState {
       setting(9, 'theme.primaryColor', '#2563eb', '默认主色调'),
       setting(10, 'theme.compactMode', 'false', '紧凑模式（侧边栏默认折叠）'),
       setting(11, 'ops.auditRetentionDays', '90', '审计日志保留天数'),
-      setting(12, 'security.permissionSeedVersion', '2026.06.02.1', '权限种子数据版本'),
+      setting(12, 'security.permissionSeedVersion', '2026.08.27.1', '权限种子数据版本'),
       setting(13, 'security.permissionSeedChecksum', 'demo-static-checksum', '权限种子数据摘要'),
     ],
     media: [
@@ -1035,6 +1036,117 @@ function nextMockId(state: DemoState, prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${state.nextMessageSeq++}`;
 }
 
+type MonitorNodeStatus = 'healthy' | 'warning' | 'critical';
+type MonitorNodeState = {
+  id: string;
+  name: string;
+  zone: string;
+  cpu: number;
+  memory: number;
+};
+type MonitorEventItem = {
+  id: string;
+  title: string;
+  description: string;
+  time: string;
+  status: { label: string; variant: string };
+};
+
+const MONITOR_EVENT_TEMPLATES: Array<{ title: string; description: string; label: string; variant: string }> = [
+  { title: 'API 网关流量升高', description: '入口 QPS 超过近窗均值', label: '告警', variant: 'warning' },
+  { title: '工作节点恢复', description: '心跳已恢复，流量重新接入', label: '恢复', variant: 'success' },
+  { title: '缓存命中率回升', description: '热点 key 预热完成', label: '正常', variant: 'success' },
+  { title: 'CPU 水位抖动', description: '瞬时计算任务推高水位', label: '抖动', variant: 'info' },
+  { title: '磁盘清理完成', description: '临时文件回收，可用空间回升', label: '运维', variant: 'primary' },
+  { title: '延迟回落到基线', description: 'P95 延迟已回到滚动窗口中位', label: '正常', variant: 'success' },
+  { title: '节点探活超时', description: '单次探活未响应，已自动重试', label: '异常', variant: 'danger' },
+  { title: '自动扩容触发', description: '副本数 +1，等待就绪', label: '扩容', variant: 'info' },
+];
+
+const MONITOR_FEED_CAP = 20;
+
+function clampMonitor(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function walkMonitor(current: number, min: number, max: number, step: number) {
+  return clampMonitor(current + (Math.random() * 2 - 1) * step, min, max);
+}
+
+function monitorHealth(cpu: number, memory: number): MonitorNodeStatus {
+  const load = Math.max(cpu, memory);
+  if (load >= 85) return 'critical';
+  if (load >= 70) return 'warning';
+  return 'healthy';
+}
+
+function createMonitorEvent(tickCount: number, at: Date, template: (typeof MONITOR_EVENT_TEMPLATES)[number]): MonitorEventItem {
+  return {
+    id: `evt-${tickCount}-${at.getTime()}`,
+    title: template.title,
+    description: template.description,
+    time: at.toISOString(),
+    status: { label: template.label, variant: template.variant },
+  };
+}
+
+const monitorWalker = {
+  cpu: 54,
+  memory: 61,
+  disk: 67,
+  qps: 1056,
+  latency: 45,
+  tickCount: 3,
+  nodes: [
+    { id: 'api-hz-1', name: 'api-hz-1', zone: '华东', cpu: 46, memory: 58 },
+    { id: 'api-bj-1', name: 'api-bj-1', zone: '华北', cpu: 62, memory: 71 },
+    { id: 'worker-hz-1', name: 'worker-hz-1', zone: '华东', cpu: 38, memory: 44 },
+    { id: 'cache-hz-1', name: 'cache-hz-1', zone: '华东', cpu: 51, memory: 63 },
+  ] as MonitorNodeState[],
+  events: [
+    createMonitorEvent(1, new Date(Date.now() - 9000), MONITOR_EVENT_TEMPLATES[0]),
+    createMonitorEvent(2, new Date(Date.now() - 6000), MONITOR_EVENT_TEMPLATES[1]),
+    createMonitorEvent(3, new Date(Date.now() - 3000), MONITOR_EVENT_TEMPLATES[2]),
+  ] as MonitorEventItem[],
+};
+
+function nextMonitorSnapshot() {
+  monitorWalker.tickCount += 1;
+  monitorWalker.cpu = Math.round(walkMonitor(monitorWalker.cpu, 18, 96, 5));
+  monitorWalker.memory = Math.round(walkMonitor(monitorWalker.memory, 28, 92, 4));
+  monitorWalker.disk = Math.round(walkMonitor(monitorWalker.disk, 40, 88, 2));
+  monitorWalker.qps = Math.round(walkMonitor(monitorWalker.qps, 720, 1480, 48));
+  monitorWalker.latency = Math.round(walkMonitor(monitorWalker.latency, 18, 86, 3.5) * 10) / 10;
+  monitorWalker.nodes = monitorWalker.nodes.map((node, index) => ({
+    ...node,
+    cpu: Math.round(walkMonitor(node.cpu, 16, 96, 6 + index)),
+    memory: Math.round(walkMonitor(node.memory, 24, 94, 5)),
+  }));
+  const template = monitorWalker.tickCount < MONITOR_EVENT_TEMPLATES.length
+    ? MONITOR_EVENT_TEMPLATES[monitorWalker.tickCount % MONITOR_EVENT_TEMPLATES.length]
+    : MONITOR_EVENT_TEMPLATES[Math.floor(Math.random() * MONITOR_EVENT_TEMPLATES.length)];
+  monitorWalker.events = [
+    createMonitorEvent(monitorWalker.tickCount, new Date(), template),
+    ...monitorWalker.events,
+  ].slice(0, MONITOR_FEED_CAP);
+  const serverTime = new Date().toISOString();
+  return {
+    cpu: monitorWalker.cpu,
+    memory: monitorWalker.memory,
+    disk: monitorWalker.disk,
+    qps: monitorWalker.qps,
+    latency: monitorWalker.latency,
+    nodes: monitorWalker.nodes.map((node) => ({
+      ...node,
+      status: monitorHealth(node.cpu, node.memory),
+    })),
+    events: monitorWalker.events,
+    serverTime,
+    tickCount: monitorWalker.tickCount,
+    lastTickAt: serverTime,
+  };
+}
+
 function toCommentResponse(item: CommentItem) {
   return { id: item.id, content: item.content, user: item.user, time: item.time };
 }
@@ -1328,6 +1440,10 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
 
   if (path === '/api/home' && method === 'GET') return makeJson('Hello world');
 
+  if (path === '/api/monitor/snapshot' && method === 'GET') {
+    return makeJson(nextMonitorSnapshot());
+  }
+
   if (path === '/api/auth/login' && method === 'POST') {
     const username = String(body.username ?? '').trim().toLowerCase();
     const password = String(body.password ?? '');
@@ -1615,6 +1731,50 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     if (groupKey) items = items.filter((item) => item.groupKey === groupKey);
     if (unread === 'true') items = items.filter((item) => !item.read);
     return makeJson(page(items, url));
+  }
+
+  if (path === '/api/notifications' && method === 'POST') {
+    const title = String(body.title ?? '').trim();
+    if (!title) return makeError('标题不能为空', 400);
+    const groupKey = String(body.groupKey ?? '').trim().toLowerCase();
+    if (!['ops', 'security', 'release'].includes(groupKey)) {
+      return makeError('无效的通知分组', 400);
+    }
+    const toastType = String(body.toastType ?? '').trim().toLowerCase();
+    if (!['info', 'success', 'warning', 'error'].includes(toastType)) {
+      return makeError('无效的通知类型', 400);
+    }
+    const rawLink = body.linkUrl == null ? '' : String(body.linkUrl).trim();
+    if (rawLink && !(rawLink.startsWith('/') && !rawLink.startsWith('//'))) {
+      return makeError('通知链接必须是站内路径', 400);
+    }
+    const now = new Date().toISOString();
+    const meta = body.meta && typeof body.meta === 'object' && !Array.isArray(body.meta)
+      ? Object.fromEntries(
+          Object.entries(body.meta as Record<string, unknown>)
+            .filter(([key, value]) => key.trim() && value != null)
+            .map(([key, value]) => [key.trim(), String(value)]),
+        )
+      : {};
+    const item: NotificationItem = {
+      id: `notif-${Date.now().toString(36)}-${state.nextMessageSeq++}`,
+      groupKey: groupKey as NotificationItem['groupKey'],
+      title,
+      description: String(body.description ?? '').trim(),
+      time: now,
+      read: false,
+      toastType: toastType as NotificationItem['toastType'],
+      meta,
+      linkUrl: rawLink || null,
+    };
+    state.notifications.unshift(item);
+    writeState(storageKey, state);
+    return makeJson({
+      ...item,
+      createdAt: now,
+      readAt: null,
+      updatedAt: null,
+    });
   }
 
   const notificationMatch = path.match(/^\/api\/notifications\/([^/]+)\/read$/);

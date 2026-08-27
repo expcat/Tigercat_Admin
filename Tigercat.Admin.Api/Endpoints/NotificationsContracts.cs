@@ -17,3 +17,11 @@ public record NotificationItemResponse(
 public record UpdateNotificationReadRequest(bool Read);
 
 public record MarkNotificationsReadRequest(string? GroupKey);
+
+public record CreateNotificationRequest(
+    string? GroupKey,
+    string? Title,
+    string? Description,
+    string? ToastType,
+    string? LinkUrl,
+    Dictionary<string, string>? Meta);

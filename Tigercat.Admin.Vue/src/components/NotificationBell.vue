@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Badge, Button, Text, notification } from '@expcat/tigercat-vue'
 import { Popover } from '@expcat/tigercat-vue/Popover'
 import Icon from './Icon.vue'
 import { apiRequest, getAuthHeaders } from '../utils'
-import { countUnreadNotifications } from '../utils/notifications'
-import type { AdminNotificationItem, PagedResult } from '../utils/types'
+import {
+  countUnreadNotifications,
+  fetchNotifications,
+  NOTIFICATIONS_CHANGED_EVENT,
+} from '../utils/notifications'
+import type { AdminNotificationItem } from '../utils/types'
 
 const router = useRouter()
 
@@ -29,10 +33,7 @@ const formatTime = (value: string) =>
 const loadNotifications = async () => {
   loading.value = true
   try {
-    const payload = await apiRequest<PagedResult<AdminNotificationItem>>(
-      '/api/notifications?page=1&pageSize=100',
-      { headers: getAuthHeaders() },
-    )
+    const payload = await fetchNotifications()
     items.value = payload.data.items
   } catch {
     // 顶部铃铛失败时保持静默，通知中心页面会展示详细错误。
@@ -92,7 +93,24 @@ const handleViewAll = () => {
   router.push({ name: 'notifications' })
 }
 
-onMounted(loadNotifications)
+watch(open, (isOpen) => {
+  if (isOpen) {
+    void loadNotifications()
+  }
+})
+
+function onNotificationsChanged() {
+  void loadNotifications()
+}
+
+onMounted(() => {
+  void loadNotifications()
+  window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, onNotificationsChanged)
+})
+
+onUnmounted(() => {
+  window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, onNotificationsChanged)
+})
 </script>
 
 <template>

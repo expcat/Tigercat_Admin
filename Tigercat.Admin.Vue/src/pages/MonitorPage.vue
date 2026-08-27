@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
-import { Button, Card, Tag, Text } from '@expcat/tigercat-vue'
+import { Button, Card, Tag, Text, Message } from '@expcat/tigercat-vue'
 import { Statistic } from '@expcat/tigercat-vue/Statistic'
 import { Progress } from '@expcat/tigercat-vue/Progress'
 import { Segmented } from '@expcat/tigercat-vue/Segmented'
@@ -11,7 +11,6 @@ import { LineChart } from '@expcat/tigercat-vue/LineChart'
 import { ActivityFeed } from '@expcat/tigercat-vue/ActivityFeed'
 import type {
   ActivityItem,
-  AreaChartDatum,
   LineChartDatum,
   ProgressStatus,
   SegmentedOption,
@@ -24,26 +23,22 @@ import MutedPanel from '../components/MutedPanel.vue'
 import PageActionPanel from '../components/PageActionPanel.vue'
 import ChartEmptyState from '../components/ChartEmptyState.vue'
 import Icon from '../components/Icon.vue'
+import {
+  fetchMonitorSnapshot,
+  type MonitorNode,
+  type MonitorNodeStatus,
+  type MonitorSnapshot,
+} from '../utils/monitor'
 
 type IntervalSec = '2' | '3' | '5'
-type NodeHealth = 'healthy' | 'warning' | 'critical'
 
-interface MonitorNode {
-  id: string
-  name: string
-  zone: string
-  cpu: number
-  memory: number
-  status: NodeHealth
-}
-
-interface MonitorSnapshot {
+interface MonitorViewState {
   cpu: number
   memory: number
   disk: number
   qps: number
   latency: number
-  qpsSeries: AreaChartDatum[]
+  qpsSeries: LineChartDatum[]
   latencySeries: LineChartDatum[]
   nodes: MonitorNode[]
   events: ActivityItem[]
@@ -67,26 +62,11 @@ const GAUGE_SEGMENTS = [
   { range: [85, 100] as [number, number], color: '#ef4444' },
 ]
 
-const NODE_STATUS_META: Record<NodeHealth, { label: string; variant: TagVariant }> = {
+const NODE_STATUS_META: Record<MonitorNodeStatus, { label: string; variant: TagVariant }> = {
   healthy: { label: '健康', variant: 'success' },
   warning: { label: '告警', variant: 'warning' },
   critical: { label: '异常', variant: 'danger' },
 }
-
-const EVENT_TEMPLATES: Array<{
-  title: string
-  description: string
-  status: { label: string; variant: TagVariant }
-}> = [
-  { title: 'API 网关流量升高', description: '入口 QPS 超过近窗均值', status: { label: '告警', variant: 'warning' } },
-  { title: '工作节点恢复', description: '心跳已恢复，流量重新接入', status: { label: '恢复', variant: 'success' } },
-  { title: '缓存命中率回升', description: '热点 key 预热完成', status: { label: '正常', variant: 'success' } },
-  { title: 'CPU 水位抖动', description: '瞬时计算任务推高水位', status: { label: '抖动', variant: 'info' } },
-  { title: '磁盘清理完成', description: '临时文件回收，可用空间回升', status: { label: '运维', variant: 'primary' } },
-  { title: '延迟回落到基线', description: 'P95 延迟已回到滚动窗口中位', status: { label: '正常', variant: 'success' } },
-  { title: '节点探活超时', description: '单次探活未响应，已自动重试', status: { label: '异常', variant: 'danger' } },
-  { title: '自动扩容触发', description: '副本数 +1，等待就绪', status: { label: '扩容', variant: 'info' } },
-]
 
 const SEED_NODES: Array<Pick<MonitorNode, 'id' | 'name' | 'zone'>> = [
   { id: 'api-hz-1', name: 'api-hz-1', zone: '华东' },
@@ -107,23 +87,7 @@ function formatClock(date: Date): string {
   })
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value))
-}
-
-function walk(current: number, min: number, max: number, step: number): number {
-  return clamp(current + (Math.random() * 2 - 1) * step, min, max)
-}
-
-function round0(value: number): number {
-  return Math.round(value)
-}
-
-function round1(value: number): number {
-  return Math.round(value * 10) / 10
-}
-
-function healthFromLoad(cpu: number, memory: number): NodeHealth {
+function healthFromLoad(cpu: number, memory: number): MonitorNodeStatus {
   const load = Math.max(cpu, memory)
   if (load >= 85) return 'critical'
   if (load >= 70) return 'warning'
@@ -136,31 +100,35 @@ function progressStatus(value: number): ProgressStatus {
   return 'success'
 }
 
-function pushWindow(series: AreaChartDatum[], point: AreaChartDatum): AreaChartDatum[] {
+function pushWindow(series: LineChartDatum[], point: LineChartDatum): LineChartDatum[] {
   return [...series, point].slice(-WINDOW_SIZE)
 }
 
-function seedWindow(values: number[], now: Date, intervalMs: number): AreaChartDatum[] {
+function seedWindow(values: number[], now: Date, intervalMs: number): LineChartDatum[] {
   return values.map((y, index) => ({
     x: formatClock(new Date(now.getTime() - (values.length - 1 - index) * intervalMs)),
     y,
   }))
 }
 
-function pickEvent(tickCount: number, now: Date): ActivityItem {
-  const template = EVENT_TEMPLATES[tickCount % EVENT_TEMPLATES.length]
-  const jittered = EVENT_TEMPLATES[Math.floor(Math.random() * EVENT_TEMPLATES.length)]
-  const chosen = tickCount < EVENT_TEMPLATES.length ? template : jittered
-  return {
-    id: `evt-${tickCount}-${now.getTime()}`,
-    title: chosen.title,
-    description: chosen.description,
-    time: now.toISOString(),
-    status: chosen.status,
+function nodeStatus(value: string | undefined): MonitorNodeStatus {
+  if (value === 'warning' || value === 'critical' || value === 'healthy') {
+    return value
   }
+  return 'healthy'
 }
 
-function createSeedSnapshot(): MonitorSnapshot {
+function toActivityItems(events: MonitorSnapshot['events']): ActivityItem[] {
+  return events.slice(0, FEED_CAP).map((item) => ({
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    time: item.time,
+    status: item.status,
+  }))
+}
+
+function createSeedSnapshot(): MonitorViewState {
   const now = new Date()
   const intervalMs = Number(DEFAULT_INTERVAL) * 1000
   const nodes: MonitorNode[] = [
@@ -180,53 +148,64 @@ function createSeedSnapshot(): MonitorSnapshot {
     latencySeries: seedWindow(SEED_LATENCY, now, intervalMs),
     nodes,
     events: [
-      pickEvent(1, new Date(now.getTime() - 9000)),
-      pickEvent(2, new Date(now.getTime() - 6000)),
-      pickEvent(3, new Date(now.getTime() - 3000)),
+      {
+        id: 'evt-seed-1',
+        title: 'API 网关流量升高',
+        description: '入口 QPS 超过近窗均值',
+        time: new Date(now.getTime() - 9000).toISOString(),
+        status: { label: '告警', variant: 'warning' as TagVariant },
+      },
+      {
+        id: 'evt-seed-2',
+        title: '工作节点恢复',
+        description: '心跳已恢复，流量重新接入',
+        time: new Date(now.getTime() - 6000).toISOString(),
+        status: { label: '恢复', variant: 'success' as TagVariant },
+      },
+      {
+        id: 'evt-seed-3',
+        title: '缓存命中率回升',
+        description: '热点 key 预热完成',
+        time: new Date(now.getTime() - 3000).toISOString(),
+        status: { label: '正常', variant: 'success' as TagVariant },
+      },
     ].reverse(),
     lastTickAt: formatClock(now),
     tickCount: 3,
   }
 }
 
-function applyTick(prev: MonitorSnapshot): MonitorSnapshot {
-  const now = new Date()
-  const cpu = round0(walk(prev.cpu, 18, 96, 5))
-  const memory = round0(walk(prev.memory, 28, 92, 4))
-  const disk = round0(walk(prev.disk, 40, 88, 2))
-  const qps = round0(walk(prev.qps, 720, 1480, 48))
-  const latency = round1(walk(prev.latency, 18, 86, 3.5))
-  const clock = formatClock(now)
-  const tickCount = prev.tickCount + 1
-  const nodes = prev.nodes.map((node, index) => {
-    const nextCpu = round0(walk(node.cpu, 16, 96, 6 + index))
-    const nextMemory = round0(walk(node.memory, 24, 94, 5))
-    return {
-      ...node,
-      cpu: nextCpu,
-      memory: nextMemory,
-      status: healthFromLoad(nextCpu, nextMemory),
-    }
-  })
-
+function applyRemoteSnapshot(prev: MonitorViewState, data: MonitorSnapshot): MonitorViewState {
+  const at = data.serverTime ? new Date(data.serverTime) : new Date()
+  const clock = Number.isNaN(at.getTime()) ? formatClock(new Date()) : formatClock(at)
+  const nodes = (data.nodes ?? []).map((node) => ({
+    ...node,
+    status: nodeStatus(node.status),
+  }))
   return {
-    cpu,
-    memory,
-    disk,
-    qps,
-    latency,
-    qpsSeries: pushWindow(prev.qpsSeries, { x: clock, y: qps }),
-    latencySeries: pushWindow(prev.latencySeries, { x: clock, y: latency }),
+    cpu: data.cpu,
+    memory: data.memory,
+    disk: data.disk,
+    qps: data.qps,
+    latency: data.latency,
+    qpsSeries: pushWindow(prev.qpsSeries, { x: clock, y: data.qps }),
+    latencySeries: pushWindow(prev.latencySeries, { x: clock, y: data.latency }),
     nodes,
-    events: [pickEvent(tickCount, now), ...prev.events].slice(0, FEED_CAP),
+    events: toActivityItems(data.events ?? []),
     lastTickAt: clock,
-    tickCount,
+    tickCount: data.tickCount ?? prev.tickCount + 1,
   }
 }
 
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback
+
 const intervalSec = ref<IntervalSec>(DEFAULT_INTERVAL)
 const paused = ref(false)
-const snapshot = ref<MonitorSnapshot>(createSeedSnapshot())
+const snapshot = ref<MonitorViewState>(createSeedSnapshot())
+const loading = ref(false)
+const errorMessage = ref('')
+const initialized = ref(false)
 
 let timer = 0
 
@@ -237,10 +216,28 @@ function clearTimer() {
   }
 }
 
+async function loadSnapshot() {
+  if (!initialized.value) {
+    loading.value = true
+  }
+  try {
+    const payload = await fetchMonitorSnapshot()
+    snapshot.value = applyRemoteSnapshot(snapshot.value, payload.data)
+    errorMessage.value = ''
+    initialized.value = true
+  } catch (error: unknown) {
+    const message = readErrorMessage(error, '监控快照加载失败，请稍后重试。')
+    errorMessage.value = message
+    Message.error({ content: message, duration: 3000 })
+  } finally {
+    loading.value = false
+  }
+}
+
 function startTimer() {
   clearTimer()
   timer = window.setInterval(() => {
-    snapshot.value = applyTick(snapshot.value)
+    void loadSnapshot()
   }, Number(intervalSec.value) * 1000)
 }
 
@@ -251,6 +248,7 @@ watch(
       clearTimer()
       return
     }
+    void loadSnapshot()
     startTimer()
   },
   { immediate: true },
@@ -311,16 +309,16 @@ function formatTickLabel(value: string | number) {
     <PageHeader
       icon="monitor"
       title="实时监控"
-      subtitle="定时器驱动的资源水位、吞吐延迟与节点事件演示，数据仅存在于当前页面"
+      subtitle="轮询监控快照，展示资源水位、吞吐延迟与节点事件"
       :tags="[
-        { label: '实时演示', variant: 'success' },
-        { label: '内存数据', variant: 'info' },
+        { label: '实时快照', variant: 'success' },
+        { label: '登录可见', variant: 'info' },
       ]"
     />
 
     <PageActionPanel
       title="刷新控制"
-      description="页内 setInterval 模拟实时流，默认 3 秒一拍；暂停后停止 tick，卸载时清除定时器。"
+      description="按 2 / 3 / 5 秒轮询 GET /api/monitor/snapshot，默认 3 秒；暂停后停止请求，卸载时清除定时器。"
     >
       <template #actions>
         <Segmented
@@ -329,7 +327,7 @@ function formatTickLabel(value: string | number) {
           @update:model-value="handleIntervalChange"
         />
         <Tag :variant="paused ? 'warning' : 'success'" size="sm">
-          {{ paused ? '已暂停' : '刷新中' }}
+          {{ paused ? '已暂停' : loading && !initialized ? '加载中' : '刷新中' }}
         </Tag>
         <Tag variant="info" size="sm">最近 {{ snapshot.lastTickAt }}</Tag>
         <Button variant="outline" @click="handleTogglePause">
@@ -337,6 +335,15 @@ function formatTickLabel(value: string | number) {
         </Button>
       </template>
     </PageActionPanel>
+
+    <Card v-if="errorMessage">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Text color="secondary">{{ errorMessage }}</Text>
+        <Button variant="outline" @click="loadSnapshot">
+          重试
+        </Button>
+      </div>
+    </Card>
 
     <MetricGrid :columns="4">
       <MetricCard title="当前 QPS" :value="snapshot.qps" description="近窗滚动">
@@ -456,7 +463,7 @@ function formatTickLabel(value: string | number) {
 
     <MutedPanel
       title="演示说明"
-      description="本页不请求后端，也不走 MockApi。CPU / 内存 / 磁盘做随机游走，QPS 与延迟维护固定长度滚动窗口，事件流按上限裁剪。切换刷新间隔会重置定时器；离开页面时 interval 会被清除。"
+      description="本页轮询 GET /api/monitor/snapshot。服务端用内存步进生成指标，不读取真实主机。QPS 与延迟在前端拼接最近 20 点；事件流按接口返回封顶。暂停后不再发请求。"
     />
   </div>
 </template>

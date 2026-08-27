@@ -194,6 +194,7 @@ app.MapEndpoint<CalendarEndpoints>();
 app.MapEndpoint<ContentEndpoints>();
 app.MapEndpoint<JobsEndpoints>();
 app.MapEndpoint<ImportJobsEndpoints>();
+app.MapEndpoint<MonitorEndpoints>();
 
 app.MapGet("/api/health", GetHealth)
     .WithName("HealthCheck");

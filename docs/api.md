@@ -72,7 +72,8 @@ JSON API 默认返回 `ApiResponse<T>`：
 | 角色与权限 | [api/roles.md](api/roles.md) | `/api/roles`、角色权限、角色用户、权限列表 |
 | 仪表盘统计、导出 | [api/dashboard-export.md](api/dashboard-export.md) | `/api/stats/*`、`/api/export/*`（users / roles / reports / overview） |
 | 审计日志 | [api/audit.md](api/audit.md) | `/api/audit-logs`、导出、保留策略、清理 |
-| 通知中心 | [api/notifications.md](api/notifications.md) | `/api/notifications`、已读、批量已读 |
+| 通知中心 | [api/notifications.md](api/notifications.md) | `/api/notifications`、创建广播、已读、批量已读 |
+| 实时监控 | [api/monitor.md](api/monitor.md) | `/api/monitor/snapshot` |
 | 任务面板 | [api/tasks.md](api/tasks.md) | `/api/tasks`、流转、完成 |
 | 工单 | [api/tickets.md](api/tickets.md) | `/api/tickets`、状态流转、工单消息 |
 | 聊天坞 | [api/chat.md](api/chat.md) | `/api/chat/messages` |

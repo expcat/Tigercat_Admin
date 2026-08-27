@@ -37,6 +37,7 @@
 | 仪表盘统计、导出 | [docs/api/dashboard-export.md](api/dashboard-export.md) |
 | 审计日志 | [docs/api/audit.md](api/audit.md) |
 | 通知中心 | [docs/api/notifications.md](api/notifications.md) |
+| 实时监控 | [docs/api/monitor.md](api/monitor.md) |
 | 任务面板 | [docs/api/tasks.md](api/tasks.md) |
 | 工单 | [docs/api/tickets.md](api/tickets.md) |
 | 聊天坞 | [docs/api/chat.md](api/chat.md) |

@@ -2,7 +2,25 @@ import type {
   NotificationGroup,
   NotificationItem,
 } from '@expcat/tigercat-core';
-import type { AdminNotificationGroupKey, AdminNotificationItem } from './types';
+import { apiRequest } from './request';
+import { getAuthHeaders } from './auth';
+import type {
+  AdminNotificationGroupKey,
+  AdminNotificationItem,
+  AdminNotificationToastType,
+  PagedResult,
+} from './types';
+
+export const NOTIFICATIONS_CHANGED_EVENT = 'tigercat-admin:notifications-changed';
+
+export interface CreateNotificationPayload {
+  groupKey: AdminNotificationGroupKey;
+  title: string;
+  description: string;
+  toastType: AdminNotificationToastType;
+  linkUrl?: string | null;
+  meta?: Record<string, string>;
+}
 
 const NOTIFICATION_GROUP_LABELS: Record<AdminNotificationGroupKey, string> = {
   ops: '系统运维',
@@ -164,4 +182,26 @@ export function findNotificationById(
   id: string | number,
 ): AdminNotificationItem | undefined {
   return items.find((item) => item.id === String(id));
+}
+
+export function notifyNotificationsChanged(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
+}
+
+export function fetchNotifications() {
+  return apiRequest<PagedResult<AdminNotificationItem>>(
+    '/api/notifications?page=1&pageSize=100',
+    { headers: getAuthHeaders() },
+  );
+}
+
+export function createNotification(payload: CreateNotificationPayload) {
+  return apiRequest<AdminNotificationItem>('/api/notifications', {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
 }
