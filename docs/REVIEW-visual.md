@@ -493,3 +493,39 @@
 - **双端：** Vue 2.16 同为步骤 2 + 「重置密码」/「上一步」；空新密码红字是 **请输入新密码**，React 是 **密码长度不能少于 6 位**。
 - **严重度：** 通过（信息）。空校验文案双端不一致：**低**。
 
+
+### 2b.16 ForgotPassword 完成 Result
+
+- **模块：** ForgotPassword 完成
+- **端：** React
+- **视口：** 桌面 **1280×800**，浅色。取证来自同一次 React 走查会话的 PNG（`/tmp/react-r2-forgot-success.png`、`/tmp/react-forgot-success.png`）。r3 会话在步骤 2 空校验后因 max-turns 中断，未再拍 r3 成功页。
+- **复现：**
+  1. 步骤 1、2 为勾，当前 **3 完成**。
+  2. 绿色圆勾 Result：**密码已重置** / **请使用新密码登录系统**。实心按钮 **返回登录**。无倒计时数字。
+  3. 左栏仍是青绿渐变 + 「重置您的登录密码」。未改 admin 密码。
+- **双端：** 与 Vue 2.17 同文案、同三步完成态。Roadmap 只要完成 Result，两端都无倒计时。
+- **严重度：** 通过（信息）
+
+### 2b.17 React 暗色 + 移动 ~375px
+
+- **模块：** 游客页 `.dark` / 窄屏溢出
+- **端：** React
+- **视口：** 暗色窄屏（既有 PNG `/tmp/react-login-dark-mobile.png`、`/tmp/react-forgot-dark-mobile.png`）。本条未再 live 量 `scrollWidth`。
+- **复现：**
+  1. 登录：左渐变栏收起，顶栏 `LogoIcon` + 「Tigercat Admin」；标题「欢迎回来」。暗底卡、紫主按钮。未见横溢。
+  2. 忘记密码步骤 1：暗底单栏卡 + Steps。「验证码」标签与 InputOTP 格重叠（「验」几乎被挡住）。与 Vue 2.22「第六格被 overflow-hidden 裁切 / 号叠进 OTP 行」同属窄屏 OTP 挤叠，表现不完全一样。
+- **严重度：** 忘记密码窄屏 OTP/标签叠字：**中**。登录暗色窄屏通过（信息）。紧凑未切（游客页无主题抽屉）。
+
+### 2b.99 双端错位（汇总）
+
+- **模块：** Vue vs React 游客页对齐
+- **端：** Vue / React
+- **视口：** 见上各条
+- **复现：**
+  1. **壳：** 两端都是居中 leftover 双栏渐变卡 + 内层 Tigercat `Card variant="transparent"` `p-0`。React 左栏用 `LogoIcon`，Vue 用 `AppLogo`；桌面同形。
+  2. **登录：** 空校验文案两端同「请输入用户名/密码」。错密 Message 文案同「用户名或密码错误」；Vue toast 进 `#tiger-message-container`，React 为顶栏 toast（2b.4 两记略有出入，均可见）。admin 成功与已登录重定向两端一致。
+  3. **2FA：** React Alert 无 Vue 那句「验证通过后才会写入会话…」（2b.7，低）。错码/重发 Message：Vue 2.20 记容器空、**不可见（中）**；React toast **可见**。成功路径两端都进 dashboard。
+  4. **注册成功：** Vue Result 走查记未包 transparent Card；React 有 Card。副文「返回登录」vs「跳转登录」（2b.12，低）。
+  5. **忘记密码：** 左栏标题/色板不同（Vue 蓝紫「找回账号访问权限」；React 青绿「重置您的登录密码」）。步骤 2 空校验文案：Vue「请输入新密码」；React「密码长度不能少于 6 位」（低）。完成 Result 同形。窄屏 OTP 两端都挤（中）。
+  6. **清单其余：** leftover 渐变 pane 两端都有；游客 overlay 少，2FA/注册成功无额外焦点陷阱问题记入。紧凑未走。
+- **严重度：** 功能主路径两端可通过。中：Vue 2FA 错码 Message 不可见；两端忘记密码窄屏 OTP 挤叠。低：品牌组件名、2FA 说明句、RegisterSuccess Card/文案、Forgot 左栏色板与空校验文案。
