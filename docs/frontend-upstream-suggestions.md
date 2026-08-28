@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-本次核查：当前仓库使用 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` 为 `1.5.0`（2026-06-29 核查）。1–3 条来自路线图「阶段 0 — 全局 Shell 增强」，已在本项目用变通方式处理。4–6 条来自全站视觉走查（`docs/REVIEW-visual.md`），本仓库盖不到，等上游补 API 后再去英文。升级版本时需重新验证。
+本次核查：当前仓库使用 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` 为 `1.5.0`（2026-06-29 核查）。1–3 条来自路线图「阶段 0 — 全局 Shell 增强」，已在本项目用变通方式处理。4–6 条来自全站视觉走查，本仓库盖不到，等上游补 API 后再去英文（见 [Roadmap.md](../Roadmap.md)「视觉残留」）。升级版本时需重新验证。
 
 ## 待上游改进
 

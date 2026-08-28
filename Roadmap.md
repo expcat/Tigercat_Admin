@@ -2,7 +2,7 @@
 
 视觉走查 1–27 与对应修复已完成（`feat/visual-fix` 已合入）。本文只留**还可能回头做**的视觉残留，以及既有非视觉收尾入口。不发明产品功能。
 
-非视觉推迟项仍只维护在 [`docs/roadmap-followups.md`](docs/roadmap-followups.md)。上游组件缺口见 [`docs/frontend-upstream-suggestions.md`](docs/frontend-upstream-suggestions.md)。已确认的包 API / 口径与本会话 Auth live 取证见 [`docs/REVIEW-visual.md`](docs/REVIEW-visual.md)。
+非视觉推迟项仍只维护在 [`docs/roadmap-followups.md`](docs/roadmap-followups.md)。上游组件缺口见 [`docs/frontend-upstream-suggestions.md`](docs/frontend-upstream-suggestions.md)。包 API / 口径残留见下文「视觉残留」与「视觉口径」。
 
 路径前缀：Vue = `Tigercat.Admin.Vue/src/`，React = `Tigercat.Admin.React/src/`。
 
@@ -27,7 +27,7 @@
 
 ## 视觉走查未再 live 复验（缺口，不是实现清单）
 
-2026-08-28 会话只 live 走了游客 / Auth（空校验、错密、2FA 错码、注册成功 Result），见 `docs/REVIEW-visual.md`。下面这些仍无本会话 live 证据，**不是**待实现功能。未重走原因写在各条。包 API / 口径 mismatch 不当缺陷重走。
+2026-08-28 会话只 live 走了游客 / Auth（空校验、错密、2FA 错码、注册成功 Result），均通过、不是缺陷。下面这些仍无本会话 live 证据，**不是**待实现功能。未重走原因写在各条。包 API / 口径 mismatch 见上文与 [`docs/frontend-upstream-suggestions.md`](docs/frontend-upstream-suggestions.md)，不当缺陷重走。
 
 **Shell**（本会话未开登录后壳、未切 375 / 紧凑）
 
