@@ -40,7 +40,12 @@ export default function ExceptionPage({ status }: ExceptionPageProps) {
   const [autoJumpEnabled, setAutoJumpEnabled] = useState(status === 404);
   // React Router 把 idx 写进 history.state；未知路径走 Navigate replace 时
   // navigationType 是 REPLACE，但上一页仍在栈里，idx > 0 才能返回。
-  const canGoBack = Number(window.history.state?.idx) > 0;
+  const historyState = window.history.state as { back?: unknown; idx?: number; position?: number } | null;
+  const canGoBack =
+    historyState?.back != null ||
+    (typeof historyState?.idx === 'number' && historyState.idx > 0) ||
+    (typeof historyState?.position === 'number' && historyState.position > 0) ||
+    window.history.length > 1;
 
   const goBack = () => {
     setAutoJumpEnabled(false);
