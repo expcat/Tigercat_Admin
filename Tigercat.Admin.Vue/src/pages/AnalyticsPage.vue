@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Card, Button, Message } from '@expcat/tigercat-vue'
+import { Card, Button, Message, Text } from '@expcat/tigercat-vue'
 import { Statistic } from '@expcat/tigercat-vue/Statistic'
 import { Progress } from '@expcat/tigercat-vue/Progress'
 import { Segmented } from '@expcat/tigercat-vue/Segmented'
@@ -221,7 +221,7 @@ const seriesPoints = computed<ChartSeriesPoint[]>(() =>
     value: customValues.value[i],
   })),
 )
-const legendItems: ChartLegendItem[] = [{ index: 0, label: '月度转化', color: '#3b82f6' }]
+const legendItems: ChartLegendItem[] = [{ index: 0, label: '月度转化', color: 'var(--tiger-primary)' }]
 
 // ── 明细表 + 客户端分页 ─────────────────────────
 const baseChannels = [
@@ -275,14 +275,15 @@ function handlePageChange(value: number) {
 
     <!-- 工具栏 -->
     <Card>
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <Segmented
           :model-value="range"
           @update:model-value="handleRangeChange"
           :options="rangeOptions"
         />
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex min-w-0 flex-wrap items-center gap-3">
           <DatePicker
+            class="w-full max-w-56"
             :model-value="dateRange"
             @update:model-value="handleDateRangeChange"
             range
@@ -312,44 +313,52 @@ function handlePageChange(value: number) {
 
     <!-- 图表网格 -->
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <Card title="访问趋势">
+      <Card>
+        <template #header><Text weight="bold">访问趋势</Text></template>
         <Skeleton v-if="loading" :rows="4" />
-        <AreaChart v-else :data="areaData" :height="240" />
+        <AreaChart v-else :data="areaData" :height="240" responsive />
       </Card>
 
-      <Card title="流量构成">
+      <Card>
+        <template #header><Text weight="bold">流量构成</Text></template>
         <Skeleton v-if="loading" :rows="4" />
         <DonutChart
           v-else
           :data="donutData"
           :height="240"
+          responsive
           :center-value="donutTotal"
           center-label="总访问"
           :show-legend="true"
         />
       </Card>
 
-      <Card title="转化漏斗">
+      <Card>
+        <template #header><Text weight="bold">转化漏斗</Text></template>
         <Skeleton v-if="loading" :rows="4" />
-        <FunnelChart v-else :data="funnelData" :height="240" />
+        <FunnelChart v-else :data="funnelData" :height="240" responsive />
       </Card>
 
-      <Card title="目标达成率">
+      <Card>
+        <template #header><Text weight="bold">目标达成率</Text></template>
         <Skeleton v-if="loading" :rows="4" />
         <GaugeChart v-else :value="gaugeValue" :min="0" :max="100" :height="240" />
       </Card>
 
-      <Card title="能力雷达">
+      <Card>
+        <template #header><Text weight="bold">能力雷达</Text></template>
         <Skeleton v-if="loading" :rows="4" />
         <RadarChart v-else :data="radarData" :height="240" />
       </Card>
 
-      <Card title="访问分布">
+      <Card>
+        <template #header><Text weight="bold">访问分布</Text></template>
         <Skeleton v-if="loading" :rows="4" />
         <ScatterChart v-else :data="scatterData" :height="240" />
       </Card>
 
-      <Card title="活跃热力">
+      <Card>
+        <template #header><Text weight="bold">活跃热力</Text></template>
         <Skeleton v-if="loading" :rows="4" />
         <HeatmapChart
           v-else
@@ -357,29 +366,35 @@ function handlePageChange(value: number) {
           :x-labels="heatmapX"
           :y-labels="heatmapY"
           :height="240"
+          min-color="var(--tiger-bg-hover, #dbeafe)"
+          max-color="var(--tiger-primary)"
         />
       </Card>
 
-      <Card title="区域份额">
+      <Card>
+        <template #header><Text weight="bold">区域份额</Text></template>
         <Skeleton v-if="loading" :rows="4" />
         <TreeMapChart v-else :data="treeMapData" :height="240" />
       </Card>
 
-      <Card title="渠道层级构成">
+      <Card>
+        <template #header><Text weight="bold">渠道层级构成</Text></template>
         <Skeleton v-if="loading" :rows="4" />
         <SunburstChart v-else :data="sunburstData" :height="240" />
       </Card>
 
-      <Card title="组织 / 渠道分布">
+      <Card>
+        <template #header><Text weight="bold">组织 / 渠道分布</Text></template>
         <Skeleton v-if="loading" :rows="4" />
-        <div v-else class="overflow-auto">
-          <OrgChart :data="orgData" :height="240" />
+        <div v-else class="overflow-auto max-h-[360px]">
+          <OrgChart :data="orgData" :width="640" :height="320" />
         </div>
       </Card>
     </div>
 
     <!-- 自定义图表（图表基元组合） -->
-    <Card title="自定义图表（图表基元组合）">
+    <Card>
+        <template #header><Text weight="bold">自定义图表（图表基元组合）</Text></template>
       <Skeleton v-if="loading" :rows="4" />
       <template v-else>
         <div class="overflow-auto">
@@ -387,7 +402,7 @@ function handlePageChange(value: number) {
             <ChartGrid :x-scale="xScale" :y-scale="yScale" />
             <ChartAxis orientation="bottom" :scale="xScale" />
             <ChartAxis orientation="left" :scale="yScale" />
-            <ChartSeries :data="seriesPoints" type="line" color="#3b82f6" />
+            <ChartSeries :data="seriesPoints" type="line" color="var(--tiger-primary)" />
             <ChartTooltip content="月度转化趋势" :visible="false" />
           </ChartCanvas>
         </div>
@@ -396,7 +411,8 @@ function handlePageChange(value: number) {
     </Card>
 
     <!-- 明细表 -->
-    <Card title="渠道明细">
+    <Card>
+        <template #header><Text weight="bold">渠道明细</Text></template>
       <Skeleton v-if="loading" :rows="6" />
       <template v-else>
         <Table :columns="tableColumns" :data-source="pagedRows" :pagination="false" striped />
