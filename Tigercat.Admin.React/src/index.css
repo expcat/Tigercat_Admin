@@ -97,6 +97,20 @@
     padding-right: 0.25rem;
   }
 
+  @media (max-width: 767px) {
+    .p2-table-toolbar-stack [class*="toolbar"] {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.75rem;
+    }
+
+    .p2-table-toolbar-stack [class*="toolbar"] > * {
+      width: 100%;
+      max-width: 100%;
+    }
+  }
+
   /* Premium styling for dropdown items in React */
   .tiger-dropdown-item {
     color: var(--tiger-text, #374151) !important;
