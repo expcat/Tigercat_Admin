@@ -1771,3 +1771,40 @@
   5. **overflow：** `documentElement` **375===375**；`#main-content-scroll` **375===375** / `scrollHeight=1494` / `clientHeight=598`（竖溢预期）。无页面横溢。
 - **双端 vs Vue 8.7：** Vue 8.7 **缺口**（两场失败不开第三场）。本条是 Performance 仅有的 375 事实，不能声称 Vue 同形。
 - **严重度：** 375 浅色首屏壳 + KPI 单列 + 无页级横溢：通过（信息，`/tmp/react-performance-mobile-375.png`）。四 Tab / VirtualList / Kanban 折下未拍：**缺口**（本条只一次 375，不二开）。FAB 压第四 KPI：信息（壳，不审 Chat）。品牌/面包屑折行：信息（壳）。
+
+---
+
+## 9. Projects + ProjectDetail (Vue)
+
+本期隔离上下文 **`vue-projects`**。先 `chrome://inspect/#remote-debugging`（Allow 仍勾，未再截）。`http://127.0.0.1:5173/login` → admin/admin123 → 关 OnboardingTour。未改产品代码。未停 Api。未审 Tour / Cmd-K / Bell / ChatDock。视口桌面 **1280×800** 浅色，后 emulate 一次 **375×812**。入口：侧栏 **项目 → 项目列表** → `/projects`。详情 `/projects/:id` 不进侧栏。
+
+### 9.1 列表卡片网格 + 筛选分页
+
+- **模块：** `/projects` PageHeader + KPI + 筛选 + 卡片网格 + Pagination
+- **端：** Vue
+- **视口：** 桌面 **1280×800**，隔离上下文 `vue-projects`
+- **复现：**
+  1. URL **`http://127.0.0.1:5173/projects`**。截图 `/tmp/vue-projects-list.png`。PageHeader「项目列表」+ tags 项目/演示数据。KPI **项目总数 8 / 进行中 3 / 已完成 2 / 平均进度 58**。筛选 Input + Segmented 全部/规划中/进行中/已暂停/已完成（默认全部）。网格 `xl:grid-cols-3` live `315px 315px 315px`，page 1 六卡 **1001–1006**（智能运营台 68% 进行中 … 监控可观测性 72%）。Pagination「共 8 条」第 1/2 页。侧栏 **项目列表** 高亮。TagsView 选中「项目列表」。无「演示模式」Tag。`documentElement` / `#main-content-scroll` 无横溢（MAIN `scrollHeight=1169`）。
+  2. 点 **第 2 页**。截图 `/tmp/vue-projects-page2.png`。卡 **1007 导入向导优化** 8% 规划中 / **1008 帮助中心改版** 100% 已完成。下一页 disabled。
+  3. 搜索 **`zzz-no-match`**。截图 `/tmp/vue-projects-empty.png`。Empty「没有符合条件的项目，试试调整搜索或状态筛选。」KPI 仍 8/3/2/58（stats 不随当前页筛选）。分页消失。
+- **严重度：** 8 项目、pageSize=6、网格 3 列、筛选空态：通过（信息，三张 shot）。error Alert：**缺口**（Api 未停）。暗色：**缺口**（本期 375 优先）。
+
+### 9.2 ProjectDetail + 未知 id
+
+- **模块：** `/projects/:id` Tabs/锚点/Steps/评论；未知 id 空态；侧栏仍高亮项目列表；TagsView 标题
+- **端：** Vue
+- **视口：** 桌面 **1280×800**
+- **复现：**
+  1. `/projects/1001`。截图 `/tmp/vue-projects-detail.png`。PageHeader「智能运营台」+ tags 进行中/平台研发部。KPI 进度 68 / 成员 4 / 预算 86 / 剩余 38。Tabs 概览/成员/动态。概览 Descriptions + Steps 需求评审/开发实现/联调验收（当前）/发布上线。右栏锚点 概览/成员/动态 `#project-*`。面包屑仍「项目 / 项目列表」。侧栏 **项目列表** `aria-current=page`。TagsView **仍是「项目列表」**（详情不新开标签）。
+  2. 点 Tab **成员**。截图 `/tmp/vue-projects-detail-members.png`。`aria-selected=true`。成员列表上屏。动态/评论区未深滚（body 含「评论」字样，细节 **缺口**）。
+  3. `/projects/no-such-id`。截图 `/tmp/vue-projects-unknown.png`。PageHeader「未找到项目 / 没有编号为 no-such-id 的项目」+ tag 未找到。Empty「该项目不存在或已被移除…」。按钮「返回项目列表」。侧栏仍 **项目列表** 高亮；TagsView 仍「项目列表」；面包屑仍「项目 / 项目列表」。
+- **严重度：** 详情 1001 + 未知 id 空态 + 侧栏/TagsView 仍「项目列表」：通过（信息）。动态/评论交互、锚点 smooth scroll：**缺口**。
+
+### 9.3 Mobile ~375px
+
+- **模块：** `/projects` 窄屏卡片单列（Roadmap 移动主从）
+- **端：** Vue
+- **视口：** ~**375×812**，浅色；同上下文 emulate
+- **复现：**
+  1. 回 `/projects` 后 emulate **375×812×2,mobile,touch**。截图 `/tmp/vue-projects-mobile-375.png`。汉堡 + 品牌折行；无侧栏。KPI 单列入首屏。网格 `grid-cols-1` **327px**；六卡 y **1087+** 均 vis=false（折下）。`documentElement` / main **375===375** 无横溢。
+- **严重度：** 375 单列 + 无横溢：通过（信息）。折下卡片 / 详情 375 主从：**缺口**（一次 375 只拍列表首屏）。
