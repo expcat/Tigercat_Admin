@@ -1808,3 +1808,32 @@
 - **复现：**
   1. 回 `/projects` 后 emulate **375×812×2,mobile,touch**。截图 `/tmp/vue-projects-mobile-375.png`。汉堡 + 品牌折行；无侧栏。KPI 单列入首屏。网格 `grid-cols-1` **327px**；六卡 y **1087+** 均 vis=false（折下）。`documentElement` / main **375===375** 无横溢。
 - **严重度：** 375 单列 + 无横溢：通过（信息）。折下卡片 / 详情 375 主从：**缺口**（一次 375 只拍列表首屏）。
+
+---
+
+## 9b. Projects + ProjectDetail (React)
+
+本期隔离上下文 **`react-projects`**。`http://127.0.0.1:5174/login` admin/admin123，关 Tour。未复用 `vue-projects` / `react-performance*`。桌面 **1280×800** 浅色。未改产品代码。未停 Api。
+
+### 9b.1 列表 + 分页 + 空筛选
+
+- **模块：** `/projects` 卡片网格 / 筛选分页 / Empty
+- **端：** React
+- **视口：** 桌面 **1280×800**
+- **复现：**
+  1. `/projects`。截图 `/tmp/react-projects-list.png`。KPI **8 / 3 / 2 / 58**。page 1 六卡 1001–1006 文案/进度与 Vue 9.1 同。Pagination 共 8 条。无「演示模式」Tag。
+  2. 第 2 页。截图 `/tmp/react-projects-page2.png`。1007 导入向导优化 8% / 1008 帮助中心改版 100%。
+  3. 搜索 `zzz-no-match`。截图 `/tmp/react-projects-empty.png`。Empty「没有符合条件的项目，试试调整搜索或状态筛选。」
+- **双端 vs Vue 9.1：** KPI/六卡/分页/空文案 **同形**。错位：React 卡内「1001 · 王小虎」拆成三枚 StaticText（Vue 一整句）。
+- **严重度：** 通过（信息）。error：**缺口**（Api 未停）。暗色 / 375：**缺口**（Vue 9.3 已拍 375；本端未 emulate）。
+
+### 9b.2 Detail + 未知 id
+
+- **模块：** `/projects/1001` 与 `/projects/no-such-id`
+- **端：** React
+- **视口：** 桌面 **1280×800**
+- **复现：**
+  1. `/projects/1001`。截图 `/tmp/react-projects-detail.png`。PageHeader 智能运营台 + 进行中/平台研发部。KPI 68/4/86/38。Tabs 概览/成员/动态。Steps 需求评审→发布上线，当前 联调验收。锚点 `#project-overview|members|activity`。侧栏 **项目列表** 高亮。TagsView 仍「项目列表」。a11y 树 Steps 旁多出 StaticText **「3」「4」**（Vue 9.2 快照未见这两枚独立数字）。
+  2. `/projects/no-such-id`。截图 `/tmp/react-projects-unknown.png`。未找到项目 / 没有编号为 no-such-id 的项目 / Empty 该项目不存在… / 返回项目列表。侧栏+TagsView 仍「项目列表」。
+- **双端 vs Vue 9.2：** 未知 id 空态 + 侧栏/标签仍列表 **同形通过**。成员 Tab 本条未点（Vue 9.2 已点）。Steps 数字节点 **错位（低）**。
+- **严重度：** 详情+未知 id：通过（信息）。成员/动态/评论/375：**缺口**。
