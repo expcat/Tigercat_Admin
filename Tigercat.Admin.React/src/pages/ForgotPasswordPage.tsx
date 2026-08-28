@@ -130,7 +130,7 @@ function ForgotPasswordPage() {
 
   return (
     <div
-      className="flex flex-col md:flex-row w-full min-h-[500px] rounded-2xl overflow-hidden shadow-2xl border border-(--tiger-border,#e2e8f0) dark:border-slate-850 bg-(--tiger-bg-card,#ffffff) dark:bg-slate-900/90 backdrop-blur-md animate-fade-in-up"
+      className="flex flex-col md:flex-row w-full min-h-[500px] rounded-2xl overflow-x-clip overflow-y-visible shadow-2xl border border-(--tiger-border,#e2e8f0) dark:border-slate-850 bg-(--tiger-bg-card,#ffffff) dark:bg-slate-900/90 backdrop-blur-md animate-fade-in-up"
       style={{
         '--tiger-primary': '#0d9488',
         '--tiger-primary-hover': '#0f766e',
@@ -193,7 +193,7 @@ function ForgotPasswordPage() {
 
         <Card variant="transparent" className="p-0">
           {current === 0 && (
-            <Form model={{ target, code }} labelWidth={88}>
+            <Form model={{ target, code }} labelWidth={72} className="min-w-0">
               <FormItem name="target" label="账号">
                 {usePhoneMask ? (
                   <div data-testid="forgot-phone-mask">
@@ -223,12 +223,14 @@ function ForgotPasswordPage() {
                   />
                 )}
               </FormItem>
-              <FormItem name="code" label="验证码">
-                <div className="flex flex-col gap-3">
-                  <div data-testid="auth-otp-input" className="flex justify-center sm:justify-start">
+              <div className="mb-4 min-w-0 space-y-2">
+                <p className="p2-text-primary text-sm">验证码</p>
+                <div className="flex min-w-0 flex-col gap-3">
+                  <div data-testid="auth-otp-input" className="flex min-w-0 w-full justify-start overflow-x-auto">
                     <InputOTP
                       value={code}
                       length={OTP_LENGTH}
+                      size="sm"
                       type="numeric"
                       ariaLabel="验证码"
                       status={codeError ? 'error' : undefined}
@@ -260,7 +262,7 @@ function ForgotPasswordPage() {
                     )}
                   </div>
                 </div>
-              </FormItem>
+              </div>
               {sentTo ? (
                 <p className="p2-text-secondary mb-3 text-xs">验证码已发送至 {sentTo}</p>
               ) : null}
