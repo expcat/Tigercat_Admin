@@ -1879,3 +1879,34 @@
   2. 点新增用户。截图 `/tmp/react-users-create-modal.png`。同四字段 Modal。
 - **双端 vs Vue 10.1：** 表数据/列/分页/Modal **同形**。错位：React 空搜「搜索」disabled。
 - **严重度：** 通过（信息）。空搜 disabled：**低**（双端错位）。375/右键/裁剪：**缺口**（Vue 10.2 已记 375 **中**，本端未 emulate）。
+
+---
+
+## 11. Roles (Vue)
+
+复用 `vue-projects` 会话 `/roles`。桌面 **1280×800**。
+
+### 11.1 表格 + 权限树 Modal
+
+- **模块：** `/roles` DataTable / 新增角色 / 权限树
+- **端：** Vue
+- **视口：** 桌面 **1280×800**
+- **复现：**
+  1. `/roles`。截图 `/tmp/vue-roles-list.png`。PageHeader「角色管理 / 维护平台角色与权限配置」+ tags 权限中心/已启用。按钮 导出 + 新增角色。4 行 Admin 22项 1人 / Editor 16项 0人 / Viewer 8项 0人 / Demo 6项 1人。分页共 4 条。
+  2. 行「操作」菜单：编辑角色 / 权限配置。点 **权限配置**。截图 `/tmp/vue-roles-perm-tree.png`。Modal「权限配置 - Admin」树 22/22 全勾。分组标题 leftover 英文 **setting / media / audit / notification / task**（仪表盘/用户管理/角色管理是中文）。树内搜索占位 **Search...** 英文。删除 Popconfirm / 导出 / 375 卡片：**缺口**。
+- **严重度：** 4 角色表 + 权限树 Modal：通过（信息）。分组名/Search 英文 leftover：**低**。移动树是否可点：**缺口**。
+
+---
+
+## 11b. Roles (React)
+
+复用 `react-projects` `/roles`。桌面 **1280×800**。
+
+### 11b.1 表格
+
+- **模块：** `/roles` 对照 Vue 11.1
+- **端：** React
+- **视口：** 桌面 **1280×800**
+- **复现：** `/roles`。截图 `/tmp/react-roles-list.png`。同 4 行、同权限数。搜索钮空关键字 **disabled**（同 Users 10b）。权限树本条未点。
+- **双端 vs Vue 11.1：** 表 **同形**。权限树 React **缺口**。
+- **严重度：** 列表通过（信息）。权限树/Popconfirm/375：**缺口**。
