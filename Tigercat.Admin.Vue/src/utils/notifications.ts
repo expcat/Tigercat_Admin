@@ -4,6 +4,7 @@ import type {
 } from '@expcat/tigercat-core';
 import { apiRequest } from './request';
 import { getAuthHeaders } from './auth';
+import { formatDisplayDateTime } from './common';
 import type {
   AdminNotificationGroupKey,
   AdminNotificationItem,
@@ -132,7 +133,7 @@ export function buildNotificationGroups(
         id: item.id,
         title: item.title,
         description: item.description,
-        time: item.time,
+        time: formatDisplayDateTime(item.time),
         read: item.read,
         meta: item.meta,
       })),
