@@ -418,7 +418,7 @@ function TicketsPage() {
                         <StepsItem
                           key={label}
                           title={label}
-                          description={idx === STATUS_META[selected.status].step ? '当前阶段' : ''}
+                          {...(idx === STATUS_META[selected.status].step ? { description: '当前阶段' } : {})}
                         />
                       ))}
                     </Steps>

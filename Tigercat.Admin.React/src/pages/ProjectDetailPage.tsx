@@ -281,7 +281,7 @@ function ProjectDetailContent({
                       <StepsItem
                         key={label}
                         title={label}
-                        description={index === project.milestone ? '当前阶段' : ''}
+                        {...(index === project.milestone ? { description: '当前阶段' } : {})}
                       />
                     ))}
                   </Steps>
