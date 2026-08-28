@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button } from '@expcat/tigercat-vue'
+import { Button, Card } from '@expcat/tigercat-vue'
 import { Result } from '@expcat/tigercat-vue/Result'
 import { Countdown } from '@expcat/tigercat-vue/Countdown'
 import AppLogo from '../components/AppLogo.vue'
@@ -45,6 +45,7 @@ function goToLogin() {
         <AppLogo :size="48" class="shadow-md rounded-xl" />
         <h2 class="p2-text-primary text-xl font-bold">Tigercat Admin</h2>
       </div>
+      <Card variant="transparent" class="p-0">
       <Result status="success" title="注册成功" sub-title="账号已创建，即将返回登录页">
         <div v-if="autoJumpEnabled" class="mb-4 flex justify-center">
           <Countdown
@@ -59,6 +60,7 @@ function goToLogin() {
           <Button variant="primary" @click="goToLogin">立即登录</Button>
         </div>
       </Result>
+      </Card>
     </div>
   </div>
 </template>

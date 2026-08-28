@@ -195,7 +195,7 @@ function LoginPage({ onSuccess }: LoginPageProps) {
           
           <div className="space-y-6 my-auto pt-6">
             <h2 className="text-2xl font-bold leading-tight">极速、精美的全栈管理系统解决方案</h2>
-            <div className="space-y-4 text-indigo-100 text-sm">
+            <div className="space-y-4 text-pretty text-indigo-100 text-sm">
               <div className="flex items-center gap-3 hover:translate-x-1 transition-transform duration-200">
                 <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/15 text-white font-semibold">1</span>
                 <span>基于 .NET 10 Minimal API 与 Aspire 编排</span>

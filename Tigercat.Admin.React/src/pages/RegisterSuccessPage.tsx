@@ -54,7 +54,7 @@ function RegisterSuccessPage() {
           <Result
             status="success"
             title="注册成功"
-            subTitle="即将自动跳转到登录页"
+            subTitle="账号已创建，即将返回登录页"
             extra={
               <Button variant="primary" onClick={goToLogin}>
                 立即登录
@@ -66,7 +66,7 @@ function RegisterSuccessPage() {
                 value={countdownTarget}
                 format="s"
                 suffix="秒"
-                title="即将自动跳转登录"
+                title="即将自动返回登录"
                 onFinish={() => navigate('/login')}
               />
             </div>

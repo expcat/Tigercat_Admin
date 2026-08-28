@@ -163,7 +163,7 @@ function goToLogin() {
         </div>
         <div class="space-y-6 my-auto pt-6">
           <h2 class="text-2xl font-bold leading-tight">找回账号访问权限</h2>
-          <div class="space-y-4 text-indigo-100 text-sm">
+          <div class="space-y-4 text-pretty text-indigo-100 text-sm">
             <div class="flex items-center gap-3">
               <span class="flex items-center justify-center w-6 h-6 rounded-full bg-white/15 text-white font-semibold">1</span>
               <span>验证邮箱或手机号身份</span>
