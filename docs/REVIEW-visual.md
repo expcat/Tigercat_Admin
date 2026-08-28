@@ -1910,3 +1910,61 @@
 - **复现：** `/roles`。截图 `/tmp/react-roles-list.png`。同 4 行、同权限数。搜索钮空关键字 **disabled**（同 Users 10b）。权限树本条未点。
 - **双端 vs Vue 11.1：** 表 **同形**。权限树 React **缺口**。
 - **严重度：** 列表通过（信息）。权限树/Popconfirm/375：**缺口**。
+
+---
+
+## 12. Settings (Vue) / 12b (React)
+
+复用登录会话。桌面 **1280×800**。`/settings`。
+
+- **模块：** 分组设置 / Logo 上传 / 水印开关 / ColorPicker / 保存
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**
+- **复现：**
+  1. Vue `/settings` 截图 `/tmp/vue-settings.png`。PageHeader「系统设置」。卡：站点 Logo（暂无、上传文件、Media tag）/ 全局内容水印 `theme.watermark` switch / 登录锁定/失败次数/密码长度/复杂密码/会话超时 / 审计保留 90 / 权限种子 checksum+version / site.logo / site.name「Tigercat Admin」/ 紧凑模式 / 主题 浅色/深色/跟随系统（默认跟随）/ 主色 **Pick color**。恢复默认值、保存修改 **disabled**（未改）。
+  2. React 同页截图 `/tmp/react-settings.png`。字段同形。水印开关未点（留给项 3）。ColorPicker 英文 **Pick color** 两端同。
+- **双端：** **同形**。
+- **严重度：** 分组 Card + Logo 空态 + 水印开关可见：通过（信息）。Pick color 英文 leftover：**低**。保存/恢复/校验/暗色 ColorPicker：**缺口**（未改值）。
+
+---
+
+## 13. Files (Vue) / 13b (React)
+
+- **模块：** `/files` FileManager 空库
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**
+- **复现：** 两端 URL `/files`。截图 `/tmp/vue-files-empty.png` / `/tmp/react-files-empty.png`。PageHeader「文件管理」。筛选类型 / 查看详情 disabled / 删除选中 disabled / SplitButton 上传文件。File path **Root**。Empty「暂无媒体资源」。说明「被 Logo 或头像引用的媒体会在删除时返回冲突提示。」两端同形。
+- **严重度：** 空库 Empty 通过（信息）。上传/预览/右键/删除确认/移动列表：**缺口**。
+
+---
+
+## 14. Notifications (Vue) / 14b (React)
+
+- **模块：** `/notifications` NotificationCenter
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**
+- **复现：** 截图 `/tmp/vue-notifications.png` / `/tmp/react-notifications.png`。Badge 未读总数 **2** / 系统运维 1 / 安全提醒 1 / 版本动态 0。Header 铃铛仍 2。创建通知 + 刷新。中心 Tabs 系统运维(1) 选中；条目「发布窗口确认」时间 **完整 ISO** `2026-08-27T13:13:57.6204372`（未格式化，cite Monitor 7.4 **中**）。列表另有「会话策略复核」。两端同形。
+- **严重度：** 未读统计与页内 Badge 一致：通过。ISO 时间未格式化：**中**（cite 7.4）。创建广播表单/空/暗色：**缺口**。
+
+---
+
+## 15. Tasks (Vue) / 15b (React)
+
+- **模块：** `/tasks` TaskBoard vs Performance Kanban
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**
+- **复现：**
+  1. 截图 `/tmp/vue-tasks-board.png` / `/tmp/react-tasks-board.png`。PageHeader「任务面板」+ tags TaskBoard/DragDrop/WIP。KPI 任务总数 6 / 超期 5 / 阻塞 1。筛：搜索/负责人/Date MM/DD/YYYY / **Select an option** 英文。列 **需求池 2 / 待执行 1/4 / 执行中 1/3 / 待验收 1/2 / 已完成 1**；每列 **+ 添加任务**。卡有优先级 Tag、负责人、截止、详情钮。
+  2. **vs Performance 8.5 Kanban：** TaskBoard 是 5 列工作流 + WIP 上限 + 加卡 + 后端任务；Performance 是 4 列 接入/处理中/验证/完成 + 前后端泳道、无加卡、page-local 6 卡。视觉差明确。
+- **双端：** 列/卡/WIP **同形**。Date 英文分隔与 Select an option 两端同。
+- **严重度：** TaskBoard 挂载 + 与 Performance Kanban 场景差可见：通过。Select an option / Show date picker 英文 leftover：**低**（同 Users 10.2）。拖拽/详情 Modal/空列/375 横滚：**缺口**。
+
+---
+
+## 16. AuditLogs (Vue) / 16b (React)
+
+- **模块：** `/audit-logs` 空/错（Redis in-memory）
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**
+- **复现：** 截图 `/tmp/vue-audit-logs.png` / `/tmp/react-audit-logs.png`。Alert **「日志加载失败 / 审计日志暂时不可用，请检查 Redis 连接状态」**（项 1 env：redis.target=in-memory；**未停 Api**）。计数 认证事件 0 / 用户事件 0 / 总计 0。Empty「暂无审计事件」「暂无可展示的时间线数据。」「暂无可查看的审计详情」。导出 CSV/JSON/Excel。保留天数 + 预览清理。两端同形。
+- **严重度：** error Alert + 空态同时上屏：通过（信息，环境 Redis 非阻塞产品布局）。详情 JSON/清理确认/移动：**缺口**。
