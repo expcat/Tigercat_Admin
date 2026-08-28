@@ -2,3 +2,7 @@ packages:
   - 'Tigercat.Admin.Vue'
   - 'Tigercat.Admin.React'
   - 'Tigercat.Admin.MockApi'
+minimumReleaseAgeExclude:
+  - '@expcat/tigercat-core@2.1.2'
+  - '@expcat/tigercat-react@2.1.2'
+  - '@expcat/tigercat-vue@2.1.2'
