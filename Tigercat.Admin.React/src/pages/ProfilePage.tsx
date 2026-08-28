@@ -299,7 +299,7 @@ function ProfilePage() {
               </Card>
 
               <Card title="电子签名">
-                <Signature height={160} clearable />
+                <Signature height={160} clearable clearText="清除" />
                 <Space className="mt-3">
                   <Button onClick={() => handleSave('电子签名')}>保存签名</Button>
                 </Space>
