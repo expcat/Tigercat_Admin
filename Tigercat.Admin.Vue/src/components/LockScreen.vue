@@ -119,7 +119,7 @@ onBeforeUnmount(() => {
     aria-labelledby="shell-lock-screen-title"
     data-testid="shell-lock-screen"
     tabindex="-1"
-    class="fixed inset-0 z-[2000] flex items-center justify-center overflow-auto bg-(--tiger-bg-page,#0f172a)/92 px-4 py-8 backdrop-blur-sm"
+    class="fixed inset-0 z-[2000] flex items-center justify-center overflow-hidden bg-(--tiger-bg-page,#0f172a)/92 px-4 py-4 backdrop-blur-sm"
   >
     <div class="flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-card,#ffffff) p-6 shadow-lg">
       <Avatar
@@ -156,6 +156,8 @@ onBeforeUnmount(() => {
         :model-value="pin"
         mode="number"
         :max-length="LOCK_SCREEN_PIN_LENGTH"
+        delete-text="删除"
+        confirm-text="确定"
         aria-label="锁屏 PIN 数字键盘"
         @update:model-value="handlePinChange"
       />
