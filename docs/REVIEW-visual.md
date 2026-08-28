@@ -1968,3 +1968,123 @@
 - **视口：** 桌面 **1280×800**
 - **复现：** 截图 `/tmp/vue-audit-logs.png` / `/tmp/react-audit-logs.png`。Alert **「日志加载失败 / 审计日志暂时不可用，请检查 Redis 连接状态」**（项 1 env：redis.target=in-memory；**未停 Api**）。计数 认证事件 0 / 用户事件 0 / 总计 0。Empty「暂无审计事件」「暂无可展示的时间线数据。」「暂无可查看的审计详情」。导出 CSV/JSON/Excel。保留天数 + 预览清理。两端同形。
 - **严重度：** error Alert + 空态同时上屏：通过（信息，环境 Redis 非阻塞产品布局）。详情 JSON/清理确认/移动：**缺口**。
+
+---
+
+## 17. Profile (Vue) / 17b (React)
+
+- **模块：** `/profile` Tabs / 资料 / 2FA UI
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**
+- **复现：**
+  1. 截图 `/tmp/vue-profile.png` / `/tmp/react-profile.png`。PageHeader「个人中心」。Tabs 基本资料/安全设置/偏好/登录设备。资料：admin / 超级管理员 / 平台研发部 / 邮箱 admin@tigercat.dev / 注册 2025-08-12。Rating 4 disabled。两端同形。
+  2. Vue 点 **安全设置**。截图 `/tmp/vue-profile-security.png`。两步验证 switch + InputOTP 六格 +「确认绑定」disabled + 演示码 123456。手机 MaskInput `138 0013 8000`。Signature pad + 英文 **Clear** leftover + 清除/保存签名。React 安全 Tab 未点（同形缺口）。偏好/设备/暗色 375：**缺口**。
+- **严重度：** 资料 Tab 通过。2FA 界面（只看 UI 不改实现）通过。Clear 英文 leftover：**低**。
+
+---
+
+## 18. Calendar (Vue) / 18b (React)
+
+- **模块：** `/calendar` 月视图 / 当日列表 / Countdown
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**
+- **复现：** 截图 `/tmp/vue-calendar.png` / `/tmp/react-calendar.png`。月 **June 2026**（英文 leftover）+ Sun–Sat。选中 6/29：今日日程 KPI **0** 但右侧「2026-06-29 日程」**2** 条（迭代站会 / 组件库设计评审）——KPI「今日」与选中日列表口径可能不同（演示冻结 6 月）。Countdown「00 天 00:44:xx」。本月 3 项。即将到来 Empty。新建事件未点。两端同形。
+- **严重度：** 月视图+当日列表+倒计时：通过。June/Sun 英文 leftover：**低**。今日 KPI=0 vs 选中日 2 条：**低**（口径）。新建 Drawer/暗色窄屏：**缺口**。
+
+---
+
+## 19. Content (Vue) / 19b (React)
+
+- **模块：** `/content` 三态编辑器 / 草稿水印
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**
+- **复现：** 截图 `/tmp/vue-content.png` / `/tmp/react-content.png`。富文本选中；标题「组件库 v1.6 发布说明」；草稿 Tag；工具条英文 Bold/Italic/…。分类 前端 / 栏目 文档/指南 / Tags 发布、组件库。**错位：** React「立即发布」switch **checked**，Vue **未勾**。Markdown/代码/发布 Result 未点。
+- **严重度：** 富文本工作台通过。立即发布默认态双端不一致：**低**。工具条英文 leftover：**低**。另两编辑态/暗色：**缺口**。
+
+---
+
+## 20. Gallery (Vue) / 20b (React)
+
+- **模块：** `/gallery` Carousel / Masonry / ImageCompare / 空相册
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**
+- **复现：** 截图 `/tmp/vue-gallery.png` / `/tmp/react-gallery.png`。精选轮播（Vue 当时 Slide 2 仪表盘截图，React Slide 1 产品概览——autoplay 相位差）。网格 7 图 + 查看/标注/裁剪。版本对比 ImageCompare 50%。Vue 点 **空相册**：截图 `/tmp/vue-gallery-empty.png`，文案「该相册暂无图片…」。灯箱/标注 Drawer 未点。
+- **严重度：** 轮播+网格+空相册：通过。轮播相位差：信息。灯箱/裁剪 Drawer/移动：**缺口**。
+
+---
+
+## 21. Import (Vue) / 21b (React)
+
+- **模块：** `/import` FormWizard 步骤 1
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**
+- **复现：** 截图 `/tmp/vue-import.png` / `/tmp/react-import.png`。四步 选择数据源/字段映射/参数配置/确认并导入。上传钮英文 **Upload file by clicking or dragging**。目标表「人力资源 / 员工表」。**错位：** React「追加」radio **checked**，Vue 未勾。步骤 2–4 / Result / 窄屏步骤条：**缺口**。
+- **严重度：** 向导步骤 1 通过。Upload 英文 leftover：**低**。追加默认勾双端不一致：**低**。
+
+---
+
+## 22. Jobs (Vue) / 22b (React)
+
+- **模块：** `/jobs` 列表启停 / Gantt / Stepper
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**
+- **复现：** 截图 `/tmp/vue-jobs.png` / `/tmp/react-jobs.png`。KPI 4/2/1/1。四任务 JOB-1001…1004，Cron、进度、编辑。Gantt「执行时间轴」。Stepper 排队/运行/回调/完成。**错位：** React JOB-1004（失败）switch **checked**；Vue 该行 switch 未呈 checked。新建 Drawer / NumberKeyboard / 暗色时间轴：**缺口**。
+- **严重度：** 列表+Gantt 通过。失败任务 switch 双端不一致：**低**。
+
+---
+
+## 23. Reports (Vue) / 23b (React)
+
+- **模块：** `/reports` PrintLayout / KPI / 渠道表
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**
+- **复现：** 截图 `/tmp/vue-reports.png` / `/tmp/react-reports.png`。类型 运营日报默认。KPI 18420 / 642 / 3.5% / 128600。四渠道表。QR。Result「报表生成完成」。两端同形。打印预览/暗色打印区：**缺口**。
+- **严重度：** A4 预览区未撑破 1280：通过（信息）。
+
+---
+
+## 24. Help (Vue) / 24b (React)
+
+- **模块：** `/help` Anchor / FAQ / Kbd / InfiniteScroll
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**
+- **复现：** 截图 `/tmp/vue-help.png` / `/tmp/react-help.png`。KPI 14/4/4/7×24。目录锚点 #help-start/shortcuts/faq/articles。Kbd ⌘K。FAQ 第一项展开。Highlight「令牌」在代码块。**错位：** React 文章区已滚到 14 篇 +「没有更多帮助文章了」；Vue 首屏约 10 篇（InfiniteScroll 未滚完）。移动吸顶：**缺口**。
+- **严重度：** 锚点/FAQ/Kbd 通过。InfiniteScroll 首屏条数双端差：信息。
+
+---
+
+## 25. Tickets (Vue) / 25b (React)
+
+- **模块：** `/tickets` 主从 Splitter / ChatWindow / CommentThread
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**
+- **复现：** 截图 `/tmp/vue-tickets.png` / `/tmp/react-tickets.png`。左列表 TK-2048/2050/2041，待跟进 2。右详情 TK-2048 处理中。Steps 已创建→已关闭。对话两句。内部备注 @张运维。发送 disabled（空输入）。React Steps 旁多独立数字 3/4/5（cite 项目详情 9b）。新建 Drawer/关闭确认/375 上下 Splitter：**缺口**。
+- **严重度：** 宽屏左右主从+对话+备注：通过。Steps 数字节点 React 多：**低**。
+
+---
+
+## 26. Exception 403/404/500 (Vue) / 26b (React)
+
+- **模块：** `/403` `/404` `/500` 独立居中，不套 MainLayout
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**
+- **复现：**
+  1. `/403` 截图 `/tmp/vue-403.png` / `/tmp/react-403.png`。无侧栏/Header/TagsView。Result 403 无权访问。返回首页 / 返回上一页。Empty「没有可返回的历史记录」（本会话刚从业务页 navigate 进来，仍显示无历史）。
+  2. `/404` 截图 `/tmp/vue-404.png` / `/tmp/react-404.png`。页面不存在 + 倒计时「即将自动返回首页 N 秒」。React 倒计时结束后曾落到 `/dashboard`（live 观察到）。
+  3. `/500` 截图 `/tmp/vue-500.png` / `/tmp/react-500.png`。服务异常演示文案。无壳。
+  4. demo 直访 `/users` 进 403：**缺口**（本期一直用 admin）。未知路径 `*`：**缺口**（未输乱路径）。暗色移动：**缺口**。
+- **严重度：** 三态独立居中无壳：通过。无历史 Empty 在有 SPA history 时仍出现：**低**。demo 403：**缺口**。
+
+---
+
+## 27. Extra Shell (Vue) / 27b (React)
+
+- **模块：** CommandPalette / NotificationBell / ShellQuickActions / 帮助跳 /about
+- **端：** Vue + React
+- **视口：** 桌面 **1280×800**，复用 dashboard
+- **复现：**
+  1. Vue/React `Control+k` 打开 dialog「命令面板」+ combobox「搜索页面或操作，按回车执行」。截图 `/tmp/vue-shell-cmdk-bell.png`（Vue，Cmd-K 后曾叠铃铛点击）/ `/tmp/react-shell-cmdk.png`。
+  2. Vue 点右下 **快捷操作** 展开 **帮助 / 反馈**（在 ChatDock 上方）。截图 `/tmp/vue-shell-quick-actions.png`。点 **帮助** → URL **`/about`**（Roadmap：帮助实际进关于页）。
+  3. 铃铛 Header Badge **2** 与通知中心未读 2 一致（14 已记）。Popover 明细未稳定拍到（与 Cmd-K 叠点）。
+  4. OnboardingTour：本会话登录即「关闭引导」，未清 `tigercat-admin:onboarding-tour:done` 重走 6 步。改密 Modal：头像下拉未稳定打开。Tour/改密/移动侧栏 Drawer：**缺口**。
+- **严重度：** ⌘K 命令面板 + 快捷操作帮助→`/about`：通过。Tour 全步/改密校验/铃铛 Popover 细目：**缺口**。
