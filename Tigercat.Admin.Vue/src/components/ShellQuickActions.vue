@@ -54,7 +54,9 @@ const sendFeedback = () => {
   <BackTop
     :target="getScrollTarget"
     :visibility-height="240"
-    class="!fixed !bottom-6 !left-6 !right-auto !ml-0 !mr-0"
+    position="fixed"
+    placement="bottom-left"
+    :offset="24"
   >
     <Icon name="arrowUp" :size="20" />
   </BackTop>

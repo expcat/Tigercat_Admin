@@ -57,7 +57,9 @@ export function ShellQuickActions() {
       <BackTop
         target={getScrollTarget}
         visibilityHeight={240}
-        className="!fixed !bottom-6 !left-6 !right-auto !ml-0 !mr-0"
+        position="fixed"
+        placement="bottom-left"
+        offset={24}
       >
         <ArrowUpIcon size={20} />
       </BackTop>

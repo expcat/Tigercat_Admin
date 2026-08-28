@@ -57,6 +57,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 - 全局水印：`/settings` 的 `theme.watermark` 开关控制是否在 Header 下方内容区（多标签条 + 页面出口）叠一层 Tigercat `Watermark`。水印文案为两行数组：当前用户名、当天日期 `YYYY-MM-DD`（如 `admin` / `2026-08-23`）。开关立即生效，写入 `localStorage` 键 `tigercat-admin:watermark`（无新 API 端点）。关闭时不渲染 Shell `Watermark`；内容编辑页 / 报表页的页内水印演示保持独立。覆盖层外框是 `absolute inset-0` 且 `pointer-events: none`；`Watermark` 本身保持 `relative h-full w-full`（组件总会加上 `relative`，不要把 `absolute` 写在 Watermark 上，否则与组件 class 冲突后高度为 0）。锁屏遮罩仍覆盖水印层。
 - 主题配置抽屉：Header 通知铃铛旁的调色板按钮打开右侧 `Drawer`。控件接 `utils/theme.ts`：`Segmented` 切换 light / dark / system，`ColorSwatch` 选 `COLOR_PRESETS` 主色，`Switch` 控制 `compactMode`。变更立即 `saveThemePreferences` + `applyTheme`（含根节点 `.dark` 与 `.compact`）。头像下拉「主题模式」循环切换仍保留。不进左侧菜单。
 - 消息铃铛 toast：点击 Popover 内单条通知时用 `notification.*({ title, description, actions, onClick })`。`actions` 渲染「查看」按钮（`closeOnClick: true`），整条 `onClick` 仍跳转 `/notifications`；不要只靠整条点击、也不要自绘 toast 按钮。
+- 回到顶部：`BackTop` 的 `target` 指向 `#main-content-scroll`（页面滚在 `Content` 而非 `window`）。容器滚动时显式传 `position="fixed"`、`placement="bottom-left"`、`offset={24}`（Vue `:offset="24"`），不要再用 `!fixed !bottom-*` 覆盖内置 sticky 类。
 - Content：`min-h-0 overflow-auto p-3 sm:p-4 md:p-6`，内部最大宽度 `max-w-7xl`。
 - 访客页：登录、注册、忘记密码与注册成功使用居中 Guest shell，不进入后台布局；表单卡片用 `Card variant="transparent"`（v1.2.39+），不再用 `className` 手写透明/无边框/无阴影样式。由于 transparent 变体仍保留组件 size 内边距，Guest 页继续保留 `className="p-0"` / `class="p-0"`。
 
@@ -221,3 +222,4 @@ LLM 生成新页面或复刻页面时，至少满足：
 | `Card` | React / Vue | `v1.2.39` 起新增 `variant="transparent"`（透明、无边框、无阴影）。 | 登录/注册页改用该变体，并保留 `p-0` 类以延续页面级布局约定。 |
 | `Popover` / `Dropdown` | React / Vue | `v1.2.39` 起经 Escape 或外部点击关闭后自动恢复触发器焦点；`v1.2.41` 起浮层统一高于表格 sticky 层。 | 行内操作菜单直接使用上游浮层层级，不再添加全局行 z-index 覆盖。 |
 | `Notification` | React / Vue | `v2.1.2` 起 imperative API 支持 `actions`（`label` / `type` / `closeOnClick` / `onClick`），整条 `onClick` 仍可用。 | 消息铃铛点单条通知时传 `actions: [{ label: '查看', type: 'primary', closeOnClick: true }]`，并保留整条点击跳转通知中心。 |
+| `BackTop` | React / Vue | `v2.1.2` 起支持 `position`（`auto` / `fixed` / `sticky`）、`placement`、`offset`。`auto` 在非 window `target` 时仍走 sticky。 | `ShellQuickActions` 对内容容器滚动使用 `position="fixed"` + `placement="bottom-left"` + `offset={24}`，不再写 `!important` 覆盖类。 |

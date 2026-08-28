@@ -19,7 +19,7 @@
 ### workaround 待清理（依赖上游，见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)）
 
 - [x] **Notification 富交互**：铃铛单条通知 toast 使用 `actions`（「查看」）并保留整条 `onClick` 跳转通知中心（v2.1.2）。
-- [ ] **BackTop 定位**：上游提供容器定位 props 后，移除 `ShellQuickActions` 中 `!fixed !bottom-6 !left-6 !right-auto !ml-0 !mr-0` 覆盖类（upstream #2）。
+- [x] **BackTop 定位**：`ShellQuickActions` 使用 `position="fixed"` + `placement="bottom-left"` + `offset={24}`，不再用 `!important` 覆盖类（v2.1.2）。
 - [ ] **独立 FloatButton 定位**：上游提供悬浮定位/偏移后，移除 `ChatDock` 中自包的 `fixed bottom-6 right-6 z-40` 容器（upstream #3）。
 
 ### 可选增强
