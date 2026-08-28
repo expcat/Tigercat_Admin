@@ -235,9 +235,9 @@ onMounted(() => {
               <td class="px-3 py-3" @click.stop>
                 <div class="flex items-center gap-2">
                   <Switch
-                    :checked="job.enabled"
+                    :model-value="job.enabled"
                     :disabled="togglingId === job.id"
-                    @update:checked="(v: boolean) => toggleJob(job, v)"
+                    @update:model-value="(v: boolean) => toggleJob(job, v)"
                   />
                   <Tag :variant="STATUS_META[job.status].variant" size="sm">
                     {{ STATUS_META[job.status].label }}
@@ -344,7 +344,7 @@ onMounted(() => {
           <NumberKeyboard v-model="form.batchSize" mode="number" :max-length="6" />
         </div>
         <div class="flex items-center gap-2">
-          <Switch v-model:checked="form.enabled" />
+          <Switch v-model="form.enabled" />
           <Text size="sm" color="secondary">保存后立即启用</Text>
         </div>
         <div class="flex justify-end gap-2 pt-2">
