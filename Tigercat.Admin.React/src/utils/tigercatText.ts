@@ -17,6 +17,8 @@ export const appText = defineText({
   },
   select: {
     doneText: '完成',
+    placeholder: '请选择',
+    emptyText: '暂无选项',
   },
   colorPicker: {
     trigger: '选择颜色',

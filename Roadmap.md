@@ -14,7 +14,6 @@
 
 | 项 | Vue | React | 修好看起来像 |
 | -- | --- | ----- | ------------ |
-| Users / Tasks 卡片排序「Select an option」 | `pages/UsersPage.vue`、`pages/TasksPage.vue` | 同名 `.tsx` | 排序下拉中文 placeholder（等 `TigerLocaleSelect` 有键） |
 | Content 工具条 Bold / Italic | `pages/ContentPage.vue` | `pages/ContentPage.tsx` | 工具条中文（等编辑器 labels） |
 
 ## 视觉口径（不修，除非产品改定义）
