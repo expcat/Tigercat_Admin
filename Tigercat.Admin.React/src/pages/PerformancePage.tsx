@@ -94,8 +94,8 @@ const TABLE_COLUMNS: TableColumn<PerformanceRow>[] = [
 ];
 
 const KANBAN_SWIMLANES: KanbanSwimlane[] = [
-  { id: 'frontend', label: '前端', color: '#3b82f6' },
-  { id: 'backend', label: '后端', color: '#22c55e' },
+  { id: 'frontend', label: '前端', color: 'var(--tiger-info)' },
+  { id: 'backend', label: '后端', color: 'var(--tiger-success)' },
 ];
 
 function pad2(value: number): string {
@@ -392,11 +392,11 @@ function PerformancePage() {
             <Card className="overflow-hidden p-0">
               <div className="overflow-x-auto">
                 <VirtualTable
-                  data={tableRows}
+                  dataSource={tableRows}
                   columns={TABLE_COLUMNS}
                   rowKey="id"
-                  rowHeight={TABLE_ROW_HEIGHT}
-                  height={TABLE_HEIGHT}
+                  virtualItemHeight={TABLE_ROW_HEIGHT}
+                  virtualHeight={TABLE_HEIGHT}
                   stickyHeader
                   striped
                   bordered

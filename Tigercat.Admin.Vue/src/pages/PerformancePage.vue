@@ -88,8 +88,8 @@ const TABLE_COLUMNS: TableColumn[] = [
 ]
 
 const KANBAN_SWIMLANES: KanbanSwimlane[] = [
-  { id: 'frontend', label: '前端', color: '#3b82f6' },
-  { id: 'backend', label: '后端', color: '#22c55e' },
+  { id: 'frontend', label: '前端', color: 'var(--tiger-info)' },
+  { id: 'backend', label: '后端', color: 'var(--tiger-success)' },
 ]
 
 function pad2(value: number): string {
@@ -388,11 +388,11 @@ function logLine(index: number): PerformanceLog {
           <Card class="overflow-hidden p-0">
             <div class="overflow-x-auto">
               <VirtualTable
-                :data="tableRows"
+                :data-source="tableRows"
                 :columns="TABLE_COLUMNS"
                 row-key="id"
-                :row-height="TABLE_ROW_HEIGHT"
-                :height="TABLE_HEIGHT"
+                :virtual-item-height="TABLE_ROW_HEIGHT"
+                :virtual-height="TABLE_HEIGHT"
                 sticky-header
                 striped
                 bordered
