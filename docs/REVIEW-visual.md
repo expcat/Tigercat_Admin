@@ -1741,3 +1741,33 @@
   2. 泳道 8 点 leftover **`rgb(59,130,246)` / `rgb(34,197,94)`** = `#3b82f6` / `#22c55e`。内层 `.tiger-task-board` `scrollWidth=1324` / `clientWidth=977`；完成列 clipR **1564**；页级 `1280===1280` / main `1025===1025`。MutedPanel `#f8fafc`。未拖卡。未开 `/tasks`。
 - **双端 vs Vue 8.5：** 4 列几何 / 泳道 hex / 1324 vs 977 **同形**。TaskBoard compare 两端缺口（项 15）。
 - **严重度：** 挂载 4 列 6 卡 2 泳道：通过（信息，`/tmp/react-performance-kanban.png`）。完成列需内层横滚：**低**（cite 8.5）。泳道 leftover hex：**低**（cite 8.5）。8b.3 prop mismatch：**中**（cite）。live card-move / TaskBoard / 暗色 / 375：**缺口**（8b.6/8b.7 走）。
+
+### 8b.6 Dark tokens
+
+本期隔离上下文 **`react-performance`**（与 8b.1–8b.5 同一上下文，未新开）。ThemeConfigDrawer 只切「深色」，关抽屉后仍停 `/performance`。未把 Theme 当产品再走。视口 **1280×800**。
+
+- **模块：** Performance 暗色 token（默认 list Tab）
+- **端：** React
+- **视口：** 桌面 **1280×800**，深色；隔离上下文 `react-performance`
+- **复现：**
+  1. 点 `data-testid=shell-theme-config-trigger` → 外观 **深色** → 关 ×。`html` class = **`dark`**。`localStorage tigercat.admin.theme` = `{"mode":"dark","primaryColor":"#2563eb","compactMode":false}`。截图 `/tmp/react-performance-dark.png`（PageHeader + KPI 12,000/10,000/8/6 + PageActionPanel + 四 Tab + VirtualList 上沿）。无「演示模式」Tag。
+  2. **token：** `--tiger-primary=#2563eb` / `--tiger-bg-page=#0d1117` / `--tiger-bg-card=#161b22` / `--tiger-bg-hover=#1b212c` / `--tiger-text=#f0f6fc` / `--tiger-text-secondary=#8b949f` / `--tiger-border=#304050` / `--tiger-surface=#111827` / `--tiger-surface-muted=#1f2937` / `--tiger-info=#60a5fa` / `--tiger-warning=#fbbf24` / `--tiger-success=#4ade80`。`--tiger-tag-*-bg` **空**。`#main-content-scroll` 底 `rgb(31,41,55)`。页级无横溢。
+  3. **PageHeader** 边 `--tiger-border`；`p2-text-primary` 字 `#f0f6fc`。MutedPanel 底 **`rgb(27,33,44)` = `#1b212c`**（不是浅色 `#f8fafc`）。Tag **运维** 底 `#dbeafe` / **演示数据** `#e0f2fe` / **万级数据** `#fef9c3` 暗色仍浅 fallback。
+- **双端 vs Vue 8.6：** shell/PageHeader/KPI/MutedPanel `#1b212c` **同形通过**；Tag 浅底 fallback **同形中**（cite 8.6 / 7b.5）。好于 About 5.4 leftover slate 砖。
+- **严重度：** `html.dark` + 壳/PageHeader/MutedPanel 跟 `--tiger-*`：通过（信息，`/tmp/react-performance-dark.png`）。Tag 底 fallback 暗色仍浅：**中**（cite Vue 8.6，同形不升档）。8b.3 空表：**中**（cite，不重开）。375：**缺口**（8b.7）。
+
+### 8b.7 Mobile ~375px
+
+本期隔离上下文 **`react-performance-375`**（浅色默认，未复用 `react-performance` 暗色）。emulate **375×812×2,mobile,touch**。Vue **8.7** 已记两场失败不开第三场，本条是 Performance 唯一一次 375 取证。
+
+- **模块：** Performance `/performance` 窄屏 ~375（壳汉堡 / KPI 单列 / 四 Tab 是否换行 / list 高度 / 页级横溢）
+- **端：** React
+- **视口：** ~**375×812**，浅色；隔离上下文 `react-performance-375`
+- **复现：**
+  1. 登录 admin 后进 `/performance`，再 emulate。截图 `/tmp/react-performance-mobile-375.png`（PNG 视口 375×812）。汉堡三条杠；品牌「管理中心」折成两行；面包屑「管理中心 / 运维 / 大数据演示」折三行；TagsView 仪表盘 + 大数据演示；无侧栏（`aside` 不在 375 盒）；无「演示模式」Tag。
+  2. **PageHeader** **327×85** at y **238**：标题「大数据演示」+ 副文折两行。tags 运维/演示数据/万级数据 **不见**（`hidden sm:flex`）。
+  3. **KPI 单列：** 四卡各 **327×110** at y **347 / 473 / 599 / 725**（桌面 8b.1 是 4 列 232）。第四张「看板卡片 6」被视口底 + FAB `+` / 聊天气泡裁切。
+  4. **四 Tab** 同行 y **1041** vis=false（折下），各宽 **82**，x 24/106/188/269（4×82+间距仍进 375，**未换行**）。list y **1108** vis=false，`LIST_HEIGHT=420` 不在首屏。kanban 横溢本条未切 Tab。
+  5. **overflow：** `documentElement` **375===375**；`#main-content-scroll` **375===375** / `scrollHeight=1494` / `clientHeight=598`（竖溢预期）。无页面横溢。
+- **双端 vs Vue 8.7：** Vue 8.7 **缺口**（两场失败不开第三场）。本条是 Performance 仅有的 375 事实，不能声称 Vue 同形。
+- **严重度：** 375 浅色首屏壳 + KPI 单列 + 无页级横溢：通过（信息，`/tmp/react-performance-mobile-375.png`）。四 Tab / VirtualList / Kanban 折下未拍：**缺口**（本条只一次 375，不二开）。FAB 压第四 KPI：信息（壳，不审 Chat）。品牌/面包屑折行：信息（壳）。
