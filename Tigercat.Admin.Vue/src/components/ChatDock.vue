@@ -90,26 +90,27 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="fixed bottom-6 right-6 z-40">
+  <FloatButton
+    floating
+    placement="bottom-right"
+    :offset="24"
+    type="primary"
+    size="lg"
+    data-tour="chat-dock"
+    :aria-label="props.open ? '关闭在线客服' : '联系在线客服'"
+    :tooltip="props.open ? '关闭在线客服' : '联系在线客服'"
+    @click="toggle"
+  >
+    <Icon :name="props.open ? 'x' : 'message'" :size="22" />
     <Badge
       :content="unread"
       :max="99"
       :show-zero="false"
-      :standalone="false"
+      standalone
       variant="danger"
-    >
-      <FloatButton
-        type="primary"
-        size="lg"
-        data-tour="chat-dock"
-        :aria-label="props.open ? '关闭在线客服' : '联系在线客服'"
-        :tooltip="props.open ? '关闭在线客服' : '联系在线客服'"
-        @click="toggle"
-      >
-        <Icon :name="props.open ? 'x' : 'message'" :size="22" />
-      </FloatButton>
-    </Badge>
-  </div>
+      class="pointer-events-none absolute -right-1 -top-1"
+    />
+  </FloatButton>
 
   <Drawer
     placement="right"

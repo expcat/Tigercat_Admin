@@ -20,7 +20,7 @@
 
 - [x] **Notification 富交互**：铃铛单条通知 toast 使用 `actions`（「查看」）并保留整条 `onClick` 跳转通知中心（v2.1.2）。
 - [x] **BackTop 定位**：`ShellQuickActions` 使用 `position="fixed"` + `placement="bottom-left"` + `offset={24}`，不再用 `!important` 覆盖类（v2.1.2）。
-- [ ] **独立 FloatButton 定位**：上游提供悬浮定位/偏移后，移除 `ChatDock` 中自包的 `fixed bottom-6 right-6 z-40` 容器（upstream #3）。
+- [x] **独立 FloatButton 定位**：`ChatDock` 使用 `floating` + `placement="bottom-right"` + `offset={24}`，未读 `Badge` 叠在按钮内；快捷组用 `offset.y: '6.5rem'` 错开（v2.1.2）。
 
 ### 可选增强
 

@@ -68,26 +68,27 @@ export function ChatDock({ open, onOpenChange }: ChatDockProps) {
 
   return (
     <>
-      <div className="fixed bottom-6 right-6 z-40">
+      <FloatButton
+        floating
+        placement="bottom-right"
+        offset={24}
+        type="primary"
+        size="lg"
+        data-tour="chat-dock"
+        aria-label={open ? '关闭在线客服' : '联系在线客服'}
+        tooltip={open ? '关闭在线客服' : '联系在线客服'}
+        onClick={() => onOpenChange(!open)}
+      >
+        {open ? <XIcon size={22} /> : <MessageIcon size={22} />}
         <Badge
           content={unread}
           max={99}
           showZero={false}
-          standalone={false}
+          standalone
           variant="danger"
-        >
-          <FloatButton
-            type="primary"
-            size="lg"
-            data-tour="chat-dock"
-            aria-label={open ? '关闭在线客服' : '联系在线客服'}
-            tooltip={open ? '关闭在线客服' : '联系在线客服'}
-            onClick={() => onOpenChange(!open)}
-          >
-            {open ? <XIcon size={22} /> : <MessageIcon size={22} />}
-          </FloatButton>
-        </Badge>
-      </div>
+          className="pointer-events-none absolute -right-1 -top-1"
+        />
+      </FloatButton>
 
       <Drawer
         placement="right"

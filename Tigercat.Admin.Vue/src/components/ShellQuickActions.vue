@@ -25,7 +25,7 @@ const sendFeedback = () => {
 </script>
 
 <template>
-  <FloatButtonGroup trigger="click" :style="{ bottom: '6.5rem' }">
+  <FloatButtonGroup trigger="click" placement="bottom-right" :offset="{ y: '6.5rem' }">
     <template #trigger>
       <FloatButton type="primary" size="lg" aria-label="快捷操作" tooltip="快捷操作">
         <Icon name="plus" :size="22" />

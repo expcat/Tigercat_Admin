@@ -27,7 +27,8 @@ export function ShellQuickActions() {
     <>
       <FloatButtonGroup
         trigger="click"
-        style={{ bottom: '6.5rem' }}
+        placement="bottom-right"
+        offset={{ y: '6.5rem' }}
         triggerNode={
           <FloatButton type="primary" size="lg" aria-label="快捷操作" tooltip="快捷操作">
             <PlusIcon size={22} />
