@@ -63,10 +63,20 @@ export function NotificationBell() {
 
   const handleItemClick = (item: AdminNotificationItem) => {
     setOpen(false);
+    const goNotifications = () => navigate('/notifications');
     const config = {
       title: item.title,
       description: item.description,
-      onClick: () => navigate('/notifications'),
+      onClick: goNotifications,
+      actions: [
+        {
+          key: 'view',
+          label: '查看',
+          type: 'primary' as const,
+          closeOnClick: true,
+          onClick: goNotifications,
+        },
+      ],
     };
     switch (item.toastType) {
       case 'success':

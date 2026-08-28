@@ -44,10 +44,22 @@ const loadNotifications = async () => {
 
 const handleItemClick = (item: AdminNotificationItem) => {
   open.value = false
+  const goNotifications = () => {
+    void router.push({ name: 'notifications' })
+  }
   const config = {
     title: item.title,
     description: item.description,
-    onClick: () => router.push({ name: 'notifications' }),
+    onClick: goNotifications,
+    actions: [
+      {
+        key: 'view',
+        label: '查看',
+        type: 'primary' as const,
+        closeOnClick: true,
+        onClick: goNotifications,
+      },
+    ],
   }
   switch (item.toastType) {
     case 'success':
