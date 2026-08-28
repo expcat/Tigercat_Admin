@@ -1679,3 +1679,65 @@
   3. 点 Tab **低层看板**，MAIN `scrollTop=380`。截图 `/tmp/vue-performance-dark-kanban.png`。MutedPanel **Kanban** 底 `#1b212c`。列 **接入/处理中/验证/完成** 底 `rgb(31,41,55)` = `--tiger-surface-muted` `#1f2937`；卡底 `--tiger-surface` `#111827`、字 `rgb(255,255,255)`。8 枚泳道圆点仍 leftover **`rgb(59,130,246)` = `#3b82f6`** / **`rgb(34,197,94)` = `#22c55e`**（暗色 `--tiger-info=#60a5fa` / `--tiger-success=#4ade80` **未吃**）。内层 `.tiger-task-board` `scrollWidth=1324` / `clientWidth=977`（cite 8.5 同数）；`documentElement` / `#main-content-scroll` 仍无页级横溢。完成列 clipR **1564** vis 边缘。未拖卡，status **尚未移动卡片**。
   4. **list 行 Tag 暗色浅岛（8.6 默认 Tab 补量）：** DEBUG Tag 底 `rgb(31,41,55)` / 字 `--tiger-text` `#f0f6fc`（跟 muted）；INFO 底 `rgb(219,234,254)` = `#dbeafe` / 字 `--tiger-primary`；WARN 底 `#fef9c3` / 字 `--tiger-warning` `#fbbf24`；ERROR 底 `rgb(254,226,226)` = `#fee2e2` / 字 `--tiger-error` `#f87171`。行边 `--tiger-border` `#304050`。INFO/WARN/ERROR Tag 底 fallback 暗色仍浅，与 8.6 复现 4 PageHeader Tag **同形中**（不另开）。
 - **严重度：** 暗色 table/drag/kanban 均挂载、MutedPanel 三 Tab 都走 `--tiger-bg-hover=#1b212c`、drag 项 / kanban 列卡跟 `--tiger-bg-card` / `--tiger-surface` / `--tiger-surface-muted`：通过（信息，`vue-performance-dark` + `/tmp/vue-performance-dark-table.png` / `/tmp/vue-performance-dark-drag.png` / `/tmp/vue-performance-dark-kanban.png`）。8.3 VirtualTable 空表 + height 400：**中**（cite，暗色同形不升档）。泳道 leftover hex `#3b82f6/#22c55e` 暗色仍 leftover，对暗色 `--tiger-info/#60a5fa` / `--tiger-success/#4ade80`：**低**（cite 8.5，补 8.6 缺口，不升档）。list INFO/WARN/ERROR Tag 底浅 fallback：**中**（cite 8.6 复现 4，同形不另开）。live reorder / card-move / 375：**缺口**（8.7 已记；本条不重开 375）。
+
+---
+
+## 8b. Performance (React)
+
+本期只走 React `http://127.0.0.1:5174/performance`（`PerformancePage.tsx`）。未重启三端（Api 5137 / Vue 5173 / React 5174 仍为项 1 进程）。不是 MockApi / `dev:demo` / Aspire。未改产品代码。未停 Api。chrome-devtools：先开 `chrome://inspect/#remote-debugging`（Allow 已勾选，截图 `/tmp/react-performance-inspect-remote-debugging.png`），再在隔离上下文 **`react-performance`** 打开 `/login`，未复用 `vue-performance*` / `vue-monitor*` / `vue-analytics*` / `vue-about*` / `vue-home-*` / `vue-shell-*` / `react-monitor*` / `react-analytics*` / `react-about*` / `react-home-*` / `react-shell-*`。账号 `admin` / `admin123`（无 2FA）。首登 OnboardingTour 点「关闭引导」，**未审 Tour**。未审 Cmd-K / Bell / ShellQuickActions / ChatDock / Lock / Theme / Watermark / TagsView。视口桌面 **1280×800**，浅色。页面内造数，**不**打 `/api/performance`。包 `@expcat/tigercat-react` **2.1.1** VirtualTable 实接口 `dataSource` / `virtualHeight` / `virtualItemHeight`。源码绑 `data={tableRows}` `height={TABLE_HEIGHT}` `rowHeight={TABLE_ROW_HEIGHT}`。
+
+### 8b.1 PageHeader + four tabs
+
+- **模块：** Performance PageHeader + 四 Tab 标签可见；对照 Vue **8.1**
+- **端：** React
+- **视口：** 桌面 **1280×800**，隔离上下文 **`react-performance`**，浅色；`html.className=""`。`documentElement` `--tiger-primary=#2563eb` / `--tiger-text=#111827` / `--tiger-text-secondary=#6b7280` / `--tiger-border=#e5e7eb` / `--tiger-surface=#ffffff` / `--tiger-info=#3b82f6` / `--tiger-warning=#d97706`；`--tiger-bg-hover` **空**；`--tiger-bg-card` **空**；`--tiger-tag-*-bg` **空**。`#main-content-scroll` MAIN **1040×658** at **(240,142)**，`clientWidth=1025` / `scrollWidth=1025` / `scrollHeight=1012`。`documentElement` **1280===1280**。
+- **复现：**
+  1. 登录后 URL **`http://127.0.0.1:5174/performance`**。标题 `tigercat-admin-react`。壳面包屑「管理中心 / 运维 / 大数据演示」；TagsView 选中「大数据演示」；无「演示模式」Tag。截图 `/tmp/react-performance-header.png`（PNG **1280×800** 浅色）。
+  2. **PageHeader** `header.tiger-page-header` **977×65** at **(264,166)**。leftover `p2-icon-chip` **48×48** 色 `rgb(37,99,235)`；`p2-text-primary`「大数据演示」色 `--tiger-text` `#111827`。副文与 tags **运维 / 演示数据 / 万级数据** 同 Vue 8.1。KPI **12,000 / 10,000 / 8 / 6**。PageActionPanel 可见标题「页面内造数，不走后端」。
+  3. **四 Tab 标签：** 万级日志流 **112×42** at **(264,531)** `aria-selected=true`；万行多列 **112×42** at **(376,531)**；自由拖拽 **112×42** at **(488,531)**；低层看板 **112×42** at **(600,531)**（Vue 8.1 后三枚宽 **96**，本端 **112**）。默认 `[data-testid=performance-virtual-list]` **977×556** at **(264,574)**。
+  4. **Tab 切换路径：** chrome-devtools `click` 万行多列 / 低层看板只把 `role=tab` 置 focus，**不**改 `aria-selected`、不挂 pane（Enter 同）。Vue 8.1 同工具可切。包 `data-tiger-tab-key=s:table`，chunk 会 `slice(2)` 再 `onChange`；页面 `handleTabChange` 守卫认 `'table'`，源码路径应能切。本条 **未**用物理指针，不断定产品 Tab 坏。为拍 table/drag/kanban，用 React fiber `useState.dispatch('table'|'drag'|'kanban')` 强切（不改产品文件）。真实鼠标是否可切：**缺口**。
+- **双端 vs Vue 8.1：** PageHeader / KPI / PageActionPanel / 默认 list **同形通过**。错位：React Tab 后三枚宽 112 vs Vue 96。CDP click 切 Tab Vue 可、React 本会话不可（人工鼠标缺口）。
+- **严重度：** PageHeader + 四 Tab 标签 + 默认 list 挂载：通过（信息，`react-performance` + `/tmp/react-performance-header.png`）。`p2-icon-chip` / `p2-text-primary`：**低**（cite 8.1）。CDP 切 Tab 失败、人工鼠标：**缺口**。
+
+### 8b.2 VirtualList
+
+- **模块：** 默认 Tab 万级日志流 `VirtualList`（`LOG_COUNT=12000` / `LIST_HEIGHT=420` / `LIST_ITEM_HEIGHT=48`）
+- **端：** React
+- **视口：** 桌面 **1280×800** 浅色（cite 8b.1）
+- **复现：**
+  1. 内层 scroller height **420** / `scrollHeight` **576000**（12000×48）。近端 `scrollTop=575580`。截图 `/tmp/react-performance-list.png`。可见 `#11984–#12000`（ERROR/DEBUG/INFO/WARN Tag + mono 时间 + logger + 中文消息）。
+  2. leftover `MutedPanel` 底 **`rgb(248,250,252)` = `#f8fafc`**（`--tiger-bg-hover` 空）。wrapping Card 无 `title` / 无 `tiger-card-header`。壳未撑成 12000 行（MAIN `scrollHeight=1012`）。
+- **双端 vs Vue 8.2：** 近端行、576000 内高、MutedPanel `#f8fafc`、无 title wrapping Card **同形**。
+- **严重度：** 万级 VirtualList 近端上屏、内层 576000 不撑破壳：通过（信息，`/tmp/react-performance-list.png`）。leftover `p2-muted-panel`：**低**（cite Vue 8.2 / Monitor 7.3）。
+
+### 8b.3 VirtualTable
+
+- **模块：** Tab 万行多列；对照 Vue **8.3** `:data` vs `dataSource` **中**
+- **端：** React
+- **视口：** 桌面 **1280×800** 浅色
+- **复现：**
+  1. fiber 强切 `activeTab='table'` 后挂 `[data-testid=performance-virtual-table]`。截图 `/tmp/react-performance-table.png`。列头 编号/服务/区域/状态/延迟(MS)/体积(KB)/时间；body **「暂无数据」**；`aria-rowcount=0`。KPI 表格行数仍 **10,000**。
+  2. 源码 `data={tableRows}` `height={TABLE_HEIGHT}` `rowHeight={TABLE_ROW_HEIGHT}`。包 2.1.1 接口 `dataSource` / `virtualHeight`（默认 400）/ `virtualItemHeight`。`data` 到不了 `dataSource`。表体盒约 **977×434** at y **676**（Vue 8.3 live height **400**；本端量到含 chrome 434，空 body 同）。MutedPanel 底 `#f8fafc`。
+- **双端 vs Vue 8.3：** **同形中** — 两端都把万行绑到不存在的 `data`/`height`/`row-height`，Empty 稳态，KPI 10,000 闲置。
+- **严重度：** prop 错绑 `data` vs `dataSource`：万行从不渲染：**中**（`/tmp/react-performance-table.png` + 源码 + 包 `.d.mts`）。leftover MutedPanel：**低**（cite 8b.2）。sticky/中段/近端：**缺口**（空表无行）。
+
+### 8b.4 useDrag
+
+- **模块：** Tab 自由拖拽 `useDrag`
+- **端：** React
+- **视口：** 桌面 **1280×800** 浅色
+- **复现：**
+  1. fiber 强切 `drag`。截图 `/tmp/react-performance-drag.png`。status **尚未拖拽**；Button **恢复顺序**；queue-1…queue-8 文案与 Vue 8.4 同（首卡「日志检索超时排查 / 王小虎 · 第 1 位」）。**当前顺序** 文案可见（Vue 8.4 shot 折下未见；本端 snapshot 有全文）。MutedPanel `#f8fafc`。未 live reorder。
+- **双端 vs Vue 8.4：** filled 8 / 尚未拖拽 / 恢复顺序 / seed 文案 **同形**。live reorder 两端都缺口。
+- **严重度：** 挂载 filled 8：通过（信息，`/tmp/react-performance-drag.png`）。leftover MutedPanel：**低**。live reorder：**缺口**。
+
+### 8b.5 Kanban
+
+- **模块：** Tab 低层看板 `Kanban`；对照 Vue **8.5**
+- **端：** React
+- **视口：** 桌面 **1280×800** 浅色；MAIN `scrollTop=380`
+- **复现：**
+  1. fiber 强切 `kanban`。截图 `/tmp/react-performance-kanban.png`。KPI 看板卡片 **6**；status **尚未移动卡片**；列接入 2 / 处理中 2/3 / 验证 1 / 完成 1；6 卡文案同 Vue 8.5。
+  2. 泳道 8 点 leftover **`rgb(59,130,246)` / `rgb(34,197,94)`** = `#3b82f6` / `#22c55e`。内层 `.tiger-task-board` `scrollWidth=1324` / `clientWidth=977`；完成列 clipR **1564**；页级 `1280===1280` / main `1025===1025`。MutedPanel `#f8fafc`。未拖卡。未开 `/tasks`。
+- **双端 vs Vue 8.5：** 4 列几何 / 泳道 hex / 1324 vs 977 **同形**。TaskBoard compare 两端缺口（项 15）。
+- **严重度：** 挂载 4 列 6 卡 2 泳道：通过（信息，`/tmp/react-performance-kanban.png`）。完成列需内层横滚：**低**（cite 8.5）。泳道 leftover hex：**低**（cite 8.5）。8b.3 prop mismatch：**中**（cite）。live card-move / TaskBoard / 暗色 / 375：**缺口**（8b.6/8b.7 走）。
