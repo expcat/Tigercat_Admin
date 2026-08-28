@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-本次核查：当前仓库使用 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` 为 `1.5.0`（2026-06-29 核查）。下列事项在实现路线图「阶段 0 — 全局 Shell 增强」时发现，已在本项目用变通方式处理，建议上游后续完善；升级版本时需重新验证。
+本次核查：当前仓库使用 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` 为 `1.5.0`（2026-06-29 核查）。1–3 条来自路线图「阶段 0 — 全局 Shell 增强」，已在本项目用变通方式处理。4–6 条来自全站视觉走查（`docs/REVIEW-visual.md`），本仓库盖不到，等上游补 API 后再去英文。升级版本时需重新验证。
 
 ## 待上游改进
 
@@ -32,5 +32,30 @@
 - **本项目处理**：`ChatDock` 将客服 `FloatButton`（含 `Badge`）包裹在 `fixed bottom-6 right-6 z-40` 容器中实现右下角悬浮。
 
 ---
+
+
+---
+
+### 4. `ColorPicker` 无 labels / placeholder（「Pick color」）
+
+- **现象**：Settings 页颜色选择触发器显示包内英文「Pick color」。`@expcat/tigercat-vue` / `@expcat/tigercat-react` 的 ColorPicker 不暴露 `labels`、`placeholder` 或等价 locale 键，本页无法改文案。Review 12。
+- **建议**：为 ColorPicker 增加 `labels`（至少覆盖触发器 / 面板标题 / 清空）或接入与 Select 一致的 locale，使中文站点不必包一层假文案。
+- **本项目处理**：不另造文案层。等上游补 API 后再改 `pages/SettingsPage`。
+
+---
+
+### 5. `TigerLocaleSelect` 无 placeholder 键（「Select an option」）
+
+- **现象**：Users / Tasks 卡片排序 Select 显示「Select an option」。`TigerLocaleSelect` 目前只暴露 `doneText`，没有 placeholder / emptyOption 键。Users 10.2、Tasks 15。
+- **建议**：为 locale Select 增加 `placeholder`（及空选项文案）键，并随 `locale=zh-CN` 给出中文默认值。
+- **本项目处理**：不在页面硬编码覆盖。等上游补键后再改 `pages/UsersPage`、`pages/TasksPage`。
+
+---
+
+### 6. 富文本编辑器工具条无 labels（Bold / Italic）
+
+- **现象**：Content 页工具条显示引擎内部英文 Bold / Italic 等。页面没有 labels API 可改这些 chrome。Review 19。
+- **建议**：为内置富文本 / Markdown 工具条提供 `labels`（或 locale 字典），覆盖加粗、斜体、标题、列表等按钮。
+- **本项目处理**：不包一套自定义工具条。等上游补 labels 后再改 `pages/ContentPage`。
 
 *后续发现新的上游改进事项时，请同步更新本文档及 [frontend.md](frontend.md) 中的使用约定。*
