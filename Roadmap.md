@@ -10,11 +10,7 @@
 
 ## 视觉残留（包 API 盖不到）
 
-上游补 `labels` / locale 键之后再动；本仓库不要为它们另造一套文案层。
-
-| 项 | Vue | React | 修好看起来像 |
-| -- | --- | ----- | ------------ |
-| Content 工具条 Bold / Italic | `pages/ContentPage.vue` | `pages/ContentPage.tsx` | 工具条中文（等编辑器 labels） |
+原先因缺少 `labels` / locale 键而留下的 ColorPicker / Select / 编辑器英文 chrome，已随 Tigercat `v2.1.2` 在 `appText` 落地。当前无新的包 API 缺口。
 
 ## 视觉口径（不修，除非产品改定义）
 
@@ -66,7 +62,7 @@
 - AuditLogs 详情 JSON / 清理确认 / 移动。
 - Profile 偏好 / 设备 / 暗色 375；React 安全 Tab 未点。
 - Calendar 新建 Drawer / 暗色窄屏。「今日」KPI 口径见上文，不当缺陷重走。
-- Content Markdown / 代码 / 发布 Result / 暗色。工具条 Bold/Italic 是包 API 缺口，不当缺陷重走。
+- Content Markdown / 代码 / 发布 Result / 暗色。工具条文案走 ConfigProvider `richTextEditor` / `markdownEditor`（v2.1.2）。
 - Gallery 灯箱 / 标注裁剪 Drawer / 移动。
 - Import 步骤 2–4 / Result / 窄屏步骤条。
 - Jobs 新建 Drawer / NumberKeyboard / 暗色时间轴。
