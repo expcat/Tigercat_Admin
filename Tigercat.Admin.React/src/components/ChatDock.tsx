@@ -4,6 +4,7 @@ import { Badge, Drawer, Message } from '@expcat/tigercat-react';
 import { FloatButton } from '@expcat/tigercat-react/FloatButton';
 import { ChatWindow } from '@expcat/tigercat-react/ChatWindow';
 import { fetchChatMessages, sendChatMessage } from '../utils/chat';
+import { formatDisplayDateTime } from '../utils/common';
 import { MessageIcon, XIcon } from './Icons';
 
 interface ChatDockProps {
@@ -13,6 +14,14 @@ interface ChatDockProps {
 
 const readErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
+
+function mapChatMessages(items: ChatMessage[] | undefined): ChatMessage[] {
+  return (items ?? []).map((item) => ({
+    ...item,
+    content: String(item.content ?? '').replaceAll('客服坞', '客服回复'),
+    time: formatDisplayDateTime(item.time),
+  }));
+}
 
 export function ChatDock({ open, onOpenChange }: ChatDockProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -31,7 +40,7 @@ export function ChatDock({ open, onOpenChange }: ChatDockProps) {
       setLoading(true);
       try {
         const payload = await fetchChatMessages();
-        setMessages((payload.data ?? []) as ChatMessage[]);
+        setMessages(mapChatMessages(payload.data as ChatMessage[] | undefined));
       } catch (error: unknown) {
         Message.error({ content: readErrorMessage(error, '客服消息加载失败'), duration: 3000 });
       } finally {
@@ -50,7 +59,7 @@ export function ChatDock({ open, onOpenChange }: ChatDockProps) {
     try {
       const payload = await sendChatMessage(text);
       setDraft('');
-      setMessages((payload.data ?? []) as ChatMessage[]);
+      setMessages(mapChatMessages(payload.data as ChatMessage[] | undefined));
       setUnread((prev) => (open ? prev : prev + 1));
     } catch (error: unknown) {
       Message.error({ content: readErrorMessage(error, '发送客服消息失败'), duration: 3000 });
@@ -90,6 +99,7 @@ export function ChatDock({ open, onOpenChange }: ChatDockProps) {
         onClose={() => onOpenChange(false)}
       >
         <ChatWindow
+          className="h-full min-h-0 [&_textarea]:resize-none"
           messages={messages}
           value={draft}
           placeholder="输入消息，回车发送"
