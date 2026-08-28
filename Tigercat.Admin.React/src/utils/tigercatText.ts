@@ -18,6 +18,16 @@ export const appText = defineText({
   select: {
     doneText: '完成',
   },
+  colorPicker: {
+    trigger: '选择颜色',
+    panelTitle: '颜色',
+    clear: '清空',
+    hue: '色相',
+    alpha: '透明度',
+    value: '颜色值',
+    preview: '颜色预览',
+    selectPreset: '选择 {color}',
+  },
   datePicker: {
     locale: 'zh-CN',
   },

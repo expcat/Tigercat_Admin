@@ -14,7 +14,6 @@
 
 | 项 | Vue | React | 修好看起来像 |
 | -- | --- | ----- | ------------ |
-| Settings ColorPicker「Pick color」 | `pages/SettingsPage.vue` | `pages/SettingsPage.tsx` | 选色按钮中文（等 ColorPicker 提供 labels） |
 | Users / Tasks 卡片排序「Select an option」 | `pages/UsersPage.vue`、`pages/TasksPage.vue` | 同名 `.tsx` | 排序下拉中文 placeholder（等 `TigerLocaleSelect` 有键） |
 | Content 工具条 Bold / Italic | `pages/ContentPage.vue` | `pages/ContentPage.tsx` | 工具条中文（等编辑器 labels） |
 
@@ -61,7 +60,7 @@
 - Projects 详情动态/评论、锚点 smooth scroll、详情 375。
 - Users 行右键 / 头像裁剪 / 导出 / 空表 / 暗色；375 卡片折下未拍全。
 - Roles 删除 Popconfirm、导出、375 卡片、移动树是否可点；React 权限树未点。
-- Settings 保存 / 恢复 / 校验 / 暗色 ColorPicker（未改值）。ColorPicker 英文是包 API 缺口，不当缺陷重走。
+- Settings 保存 / 恢复 / 校验 / 暗色 ColorPicker（未改值）。ColorPicker 触发器走 ConfigProvider `colorPicker` 文案（v2.1.2）。
 - Files 上传 / 预览 / 右键 / 删除确认 / 移动列表。
 - Notifications 创建广播表单 / 空 / 暗色。
 - Tasks 拖拽 / 详情 Modal / 空列 / 375 横滚。
