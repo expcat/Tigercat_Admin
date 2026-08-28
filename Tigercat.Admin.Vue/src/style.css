@@ -21,6 +21,12 @@
   --tiger-component-table-stripe-bg: var(--tiger-bg-page);
   --tiger-component-table-hover-bg: var(--tiger-bg-hover);
   --tiger-component-table-header-bg: var(--tiger-bg-page);
+  --tiger-tag-default-bg: var(--tiger-surface-muted, #1f2937);
+  --tiger-tag-primary-bg: color-mix(in srgb, var(--tiger-primary) 22%, var(--tiger-bg-card));
+  --tiger-tag-success-bg: color-mix(in srgb, var(--tiger-success, #4ade80) 22%, var(--tiger-bg-card));
+  --tiger-tag-warning-bg: color-mix(in srgb, var(--tiger-warning, #fbbf24) 22%, var(--tiger-bg-card));
+  --tiger-tag-danger-bg: color-mix(in srgb, var(--tiger-error, #f87171) 22%, var(--tiger-bg-card));
+  --tiger-tag-info-bg: color-mix(in srgb, var(--tiger-info, #60a5fa) 22%, var(--tiger-bg-card));
   color-scheme: dark;
 }
 
@@ -95,6 +101,20 @@
     max-height: min(66vh, 32rem);
     overflow-y: auto;
     padding-right: 0.25rem;
+  }
+
+  @media (max-width: 767px) {
+    .p2-table-toolbar-stack [class*="toolbar"] {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.75rem;
+    }
+
+    .p2-table-toolbar-stack [class*="toolbar"] > * {
+      width: 100%;
+      max-width: 100%;
+    }
   }
 
   /* ── MainHeader Premium Styling ── */

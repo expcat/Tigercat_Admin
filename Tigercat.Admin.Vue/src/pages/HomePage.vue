@@ -77,10 +77,17 @@ const trendChartData = computed(() => {
 const distributionChartData = computed(() => {
   if (!overview.value) return []
   return [
-    { value: overview.value.activeUsers, label: 'Active' },
-    { value: overview.value.disabledUsers, label: 'Disabled' },
+    { value: overview.value.activeUsers, label: '启用' },
+    { value: overview.value.disabledUsers, label: '停用' },
   ]
 })
+
+const trendXTicks = computed(() => (trendDays.value <= 14 ? Math.min(trendDays.value, 8) : 6))
+const chartPrimary = 'var(--tiger-primary)'
+const chartError = 'var(--tiger-error, #dc2626)'
+const chartSuccess = 'var(--tiger-success, #16a34a)'
+const chartWarning = 'var(--tiger-warning, #d97706)'
+const chartInfo = 'var(--tiger-info, #3b82f6)'
 
 // --- API 请求 ---
 async function fetchOverview() {
@@ -282,15 +289,17 @@ const ANNOUNCEMENTS = [
           v-else-if="trendChartData.length"
           :data="trendChartData"
           :height="220"
+          responsive
           :show-area="true"
           :area-opacity="0.15"
           :show-points="true"
           :point-size="4"
           :include-zero="true"
-          line-color="#3b82f6"
+          :line-color="chartPrimary"
           :animated="true"
           x-axis-label="日期"
           y-axis-label="新增用户"
+          :x-ticks="trendXTicks"
           :x-tick-format="(v: string | number) => String(v).slice(5)"
           :stroke-gradient="true"
           :point-gradient="true"
@@ -299,7 +308,10 @@ const ANNOUNCEMENTS = [
       </Card>
 
       <!-- 用户状态分布（饼图） -->
-      <Card title="用户状态分布" class="lg:col-span-1">
+      <Card class="lg:col-span-1 overflow-visible">
+        <template #header>
+          <Text size="base" weight="bold">用户状态分布</Text>
+        </template>
         <div v-if="statsLoading" class="flex items-center justify-center h-52">
           <Loading />
         </div>
@@ -307,9 +319,10 @@ const ANNOUNCEMENTS = [
           v-else-if="distributionChartData.length"
           :data="distributionChartData"
           :height="220"
-          :colors="['#3b82f6', '#ef4444']"
+          responsive
+          :colors="[chartPrimary, chartError]"
           :show-labels="true"
-          label-position="outside"
+          label-position="inside"
           :show-legend="true"
           legend-position="bottom"
           :shadow="true"
@@ -322,7 +335,10 @@ const ANNOUNCEMENTS = [
     <!-- 内容区域 -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- 快捷操作 -->
-      <Card title="快捷操作" class="lg:col-span-1">
+      <Card class="lg:col-span-1">
+        <template #header>
+          <Text size="base" weight="bold">快捷操作</Text>
+        </template>
         <div class="grid grid-cols-2 gap-3">
           <button
             v-for="action in quickActions"
@@ -339,20 +355,24 @@ const ANNOUNCEMENTS = [
       </Card>
 
       <!-- 概览详情（柱状图） -->
-      <Card title="用户概览" class="lg:col-span-2">
+      <Card class="lg:col-span-2">
+        <template #header>
+          <Text size="base" weight="bold">用户概览</Text>
+        </template>
         <div v-if="statsLoading" class="flex items-center justify-center h-52">
           <Loading />
         </div>
         <BarChart
           v-else-if="overview"
           :data="[
-            { x: '总用户', y: overview.totalUsers, color: '#3b82f6' },
-            { x: '活跃', y: overview.activeUsers, color: '#22c55e' },
-            { x: '禁用', y: overview.disabledUsers, color: '#ef4444' },
-            { x: '角色', y: overview.totalRoles, color: '#a855f7' },
-            { x: '权限', y: overview.totalPermissions, color: '#f97316' },
+            { x: '总用户', y: overview.totalUsers, color: chartPrimary },
+            { x: '活跃', y: overview.activeUsers, color: chartSuccess },
+            { x: '禁用', y: overview.disabledUsers, color: chartError },
+            { x: '角色', y: overview.totalRoles, color: chartInfo },
+            { x: '权限', y: overview.totalPermissions, color: chartWarning },
           ]"
           :height="220"
+          responsive
           :show-grid="true"
           :animated="true"
           :bar-radius="6"
@@ -364,7 +384,10 @@ const ANNOUNCEMENTS = [
     </div>
 
     <!-- 系统信息 -->
-    <Card title="系统信息">
+    <Card>
+      <template #header>
+        <Text size="base" weight="bold">系统信息</Text>
+      </template>
       <MetricGrid :columns="4">
         <MetricCard title="系统版本" value="v1.0.0" :framed="false">
           <template #icon><Icon name="package" :size="20" /></template>

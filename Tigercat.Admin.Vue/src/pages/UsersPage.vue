@@ -792,7 +792,7 @@ onMounted(() => {
     </div>
 
     <ContextMenu>
-      <div @contextmenu.capture="onUsersContextMenu">
+      <div class="p2-table-toolbar-stack min-w-0" @contextmenu.capture="onUsersContextMenu">
         <DataTableWithToolbar
           :columns="columns"
           :data-source="users as any"

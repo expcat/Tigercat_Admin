@@ -37,7 +37,13 @@ const content = computed(() => {
 // Capture the countdown target once when the page is entered.
 const countdownTarget = Date.now() + 5000
 const autoJumpEnabled = ref(props.status === 404)
-const canGoBack = computed(() => window.history.state?.back != null)
+const canGoBack = computed(() => {
+  const state = window.history.state as { back?: unknown; idx?: number; position?: number } | null
+  if (state?.back != null) return true
+  if (typeof state?.idx === 'number' && state.idx > 0) return true
+  if (typeof state?.position === 'number' && state.position > 0) return true
+  return window.history.length > 1
+})
 
 function goHome() {
   autoJumpEnabled.value = false

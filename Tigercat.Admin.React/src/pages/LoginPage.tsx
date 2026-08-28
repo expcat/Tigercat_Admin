@@ -40,6 +40,8 @@ function LoginPage({ onSuccess }: LoginPageProps) {
   const [otpChallengeId, setOtpChallengeId] = useState('');
   const [otpDeadline, setOtpDeadline] = useState<number | null>(null);
   const [otpCanResend, setOtpCanResend] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [otpNotice, setOtpNotice] = useState('');
 
   const startOtp = (username: string, challengeId?: string) => {
     setOtpUsername(username);
@@ -47,6 +49,8 @@ function LoginPage({ onSuccess }: LoginPageProps) {
     setOtpChallengeId(challengeId || '');
     setOtpCanResend(false);
     setOtpDeadline(Date.now() + OTP_RESEND_MS);
+    setOtpError('');
+    setOtpNotice('');
     setStep('otp');
   };
 
@@ -105,8 +109,11 @@ function LoginPage({ onSuccess }: LoginPageProps) {
             expiresAt: data.expiresAt,
           });
         } catch (error: any) {
+          const content = error.message || '验证码错误';
+          setOtpNotice('');
+          setOtpError(content);
           Message.error({
-            content: error.message,
+            content,
             duration: 3000,
           });
         } finally {
@@ -136,7 +143,10 @@ function LoginPage({ onSuccess }: LoginPageProps) {
     setOtpCode('');
     setOtpCanResend(false);
     setOtpDeadline(Date.now() + OTP_RESEND_MS);
-    Message.success({ content: '已重新发送，演示验证码：' + DEMO_OTP_CODE, duration: 2000 });
+    setOtpError('');
+    const notice = '已重新发送，演示验证码：' + DEMO_OTP_CODE;
+    setOtpNotice(notice);
+    Message.success({ content: notice, duration: 2000 });
   };
 
   const backToLogin = () => {
@@ -146,6 +156,8 @@ function LoginPage({ onSuccess }: LoginPageProps) {
     setOtpChallengeId('');
     setOtpDeadline(null);
     setOtpCanResend(false);
+    setOtpError('');
+    setOtpNotice('');
     setLoading(false);
   };
 
@@ -183,7 +195,7 @@ function LoginPage({ onSuccess }: LoginPageProps) {
           
           <div className="space-y-6 my-auto pt-6">
             <h2 className="text-2xl font-bold leading-tight">极速、精美的全栈管理系统解决方案</h2>
-            <div className="space-y-4 text-indigo-100 text-sm">
+            <div className="space-y-4 text-pretty text-indigo-100 text-sm">
               <div className="flex items-center gap-3 hover:translate-x-1 transition-transform duration-200">
                 <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/15 text-white font-semibold">1</span>
                 <span>基于 .NET 10 Minimal API 与 Aspire 编排</span>
@@ -284,7 +296,14 @@ function LoginPage({ onSuccess }: LoginPageProps) {
 
             <Card variant="transparent" className="p-0">
               <div className="space-y-4 min-w-0">
-                <Alert type="info" title="演示验证码：123456" showIcon />
+                <Alert
+                  type="info"
+                  title="演示验证码：123456"
+                  description="验证通过后才会写入会话，返回登录可重新输入凭据。"
+                  showIcon
+                />
+                {otpError ? <Alert type="error" title={otpError} showIcon /> : null}
+                {otpNotice ? <Alert type="success" title={otpNotice} showIcon /> : null}
                 <div data-testid="auth-otp-input" className="flex justify-center">
                   <InputOTP
                     value={otpCode}

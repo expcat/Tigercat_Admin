@@ -66,7 +66,7 @@ const goToLogin = () => {
         
         <div class="space-y-6 my-auto pt-6">
           <h2 class="text-2xl font-bold leading-tight">创建您的管理账号</h2>
-          <div class="space-y-4 text-pink-100 text-sm">
+          <div class="space-y-4 text-pretty text-pink-100 text-sm">
             <div class="flex items-center gap-3 hover:translate-x-1 transition-transform duration-200">
               <span class="flex items-center justify-center w-6 h-6 rounded-full bg-white/15 text-white font-semibold">✓</span>
               <span>即刻体验全功能的后台管理系统</span>

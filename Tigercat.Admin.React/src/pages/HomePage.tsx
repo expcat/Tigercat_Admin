@@ -171,21 +171,28 @@ function HomePage() {
   const distributionChartData = useMemo(() => {
     if (!overview) return [];
     return [
-      { value: overview.activeUsers, label: 'Active' },
-      { value: overview.disabledUsers, label: 'Disabled' },
+      { value: overview.activeUsers, label: '启用' },
+      { value: overview.disabledUsers, label: '停用' },
     ];
   }, [overview]);
+
+  const chartPrimary = 'var(--tiger-primary)';
+  const chartError = 'var(--tiger-error, #dc2626)';
+  const chartSuccess = 'var(--tiger-success, #16a34a)';
+  const chartWarning = 'var(--tiger-warning, #d97706)';
+  const chartInfo = 'var(--tiger-info, #3b82f6)';
+  const trendXTicks = trendDays <= 14 ? Math.min(trendDays, 8) : 6;
 
   const barChartData = useMemo(() => {
     if (!overview) return [];
     return [
-      { x: '总用户', y: overview.totalUsers, color: '#3b82f6' },
-      { x: '活跃', y: overview.activeUsers, color: '#22c55e' },
-      { x: '禁用', y: overview.disabledUsers, color: '#ef4444' },
-      { x: '角色', y: overview.totalRoles, color: '#a855f7' },
-      { x: '权限', y: overview.totalPermissions, color: '#f97316' },
+      { x: '总用户', y: overview.totalUsers, color: chartPrimary },
+      { x: '活跃', y: overview.activeUsers, color: chartSuccess },
+      { x: '禁用', y: overview.disabledUsers, color: chartError },
+      { x: '角色', y: overview.totalRoles, color: chartInfo },
+      { x: '权限', y: overview.totalPermissions, color: chartWarning },
     ];
-  }, [overview]);
+  }, [overview, chartPrimary, chartError, chartSuccess, chartWarning, chartInfo]);
 
   // --- API 请求 ---
   const fetchOverview = useCallback(async () => {
@@ -400,15 +407,17 @@ function HomePage() {
             <LineChart
               data={trendChartData}
               height={220}
+              responsive
               showArea={true}
               areaOpacity={0.15}
               showPoints={true}
               pointSize={4}
               includeZero={true}
-              lineColor="#3b82f6"
+              lineColor={chartPrimary}
               animated={true}
               xAxisLabel="日期"
               yAxisLabel="新增用户"
+              xTicks={trendXTicks}
               xTickFormat={(v) => String(v).slice(5)}
               strokeGradient={true}
               pointGradient={true}
@@ -419,7 +428,7 @@ function HomePage() {
         </Card>
 
         {/* 用户状态分布（饼图） */}
-        <Card title="用户状态分布" className="lg:col-span-1">
+        <Card header={<Text size="base" weight="bold">用户状态分布</Text>} className="lg:col-span-1 overflow-visible">
           {statsLoading ? (
             <div className="flex items-center justify-center h-52">
               <Loading />
@@ -428,9 +437,9 @@ function HomePage() {
             <PieChart
               data={distributionChartData}
               height={220}
-              colors={['#3b82f6', '#ef4444']}
+              colors={[chartPrimary, chartError]}
               showLabels={true}
-              labelPosition="outside"
+              labelPosition="inside"
               showLegend={true}
               legendPosition="bottom"
               shadow={true}
@@ -445,7 +454,7 @@ function HomePage() {
       {/* 内容区域 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 快捷操作 */}
-        <Card title="快捷操作" className="lg:col-span-1">
+        <Card header={<Text size="base" weight="bold">快捷操作</Text>} className="lg:col-span-1">
           <div className="grid grid-cols-2 gap-3">
             {quickActions.map((action) => {
               const IconComponent = action.icon;
@@ -467,7 +476,7 @@ function HomePage() {
         </Card>
 
         {/* 概览详情（柱状图） */}
-        <Card title="用户概览" className="lg:col-span-2">
+        <Card header={<Text size="base" weight="bold">用户概览</Text>} className="lg:col-span-2">
           {statsLoading ? (
             <div className="flex items-center justify-center h-52">
               <Loading />
@@ -476,6 +485,7 @@ function HomePage() {
             <BarChart
               data={barChartData}
               height={220}
+              responsive
               showGrid={true}
               animated={true}
               barRadius={6}
@@ -489,7 +499,7 @@ function HomePage() {
       </div>
 
       {/* 系统信息 */}
-      <Card title="系统信息">
+      <Card header={<Text size="base" weight="bold">系统信息</Text>}>
         <MetricGrid columns={4}>
           <MetricCard
             framed={false}

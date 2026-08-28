@@ -64,7 +64,7 @@ function ForgotPasswordPage() {
       setSentTo(payload?.data?.sentTo || nextTarget);
       setCanResend(false);
       setCodeDeadline(Date.now() + OTP_RESEND_MS);
-      Message.success({ content: '验证码已发送', duration: 2000 });
+      Message.success({ content: '验证码已发送至 ' + (payload?.data?.sentTo || nextTarget), duration: 2500 });
     } catch (error: any) {
       Message.error({ content: error.message, duration: 3000 });
     } finally {
@@ -92,7 +92,10 @@ function ForgotPasswordPage() {
 
   const validatePasswords = () => {
     let valid = true;
-    if (password.length < 6) {
+    if (!password) {
+      setPasswordError('请输入新密码');
+      valid = false;
+    } else if (password.length < 6) {
       setPasswordError('密码长度不能少于 6 位');
       valid = false;
     } else {
@@ -130,7 +133,7 @@ function ForgotPasswordPage() {
 
   return (
     <div
-      className="flex flex-col md:flex-row w-full min-h-[500px] rounded-2xl overflow-hidden shadow-2xl border border-(--tiger-border,#e2e8f0) dark:border-slate-850 bg-(--tiger-bg-card,#ffffff) dark:bg-slate-900/90 backdrop-blur-md animate-fade-in-up"
+      className="flex flex-col md:flex-row w-full min-h-[500px] rounded-2xl overflow-x-clip overflow-y-visible shadow-2xl border border-(--tiger-border,#e2e8f0) dark:border-slate-850 bg-(--tiger-bg-card,#ffffff) dark:bg-slate-900/90 backdrop-blur-md animate-fade-in-up"
       style={{
         '--tiger-primary': '#0d9488',
         '--tiger-primary-hover': '#0f766e',
@@ -138,7 +141,7 @@ function ForgotPasswordPage() {
         '--tiger-focus-ring': '#0d9488',
       } as React.CSSProperties}
     >
-      <div className="hidden md:flex md:w-[42%] bg-gradient-to-br from-teal-600 via-cyan-600 to-sky-600 p-8 flex-col justify-between text-white relative overflow-hidden">
+      <div className="hidden md:flex md:w-[42%] bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 p-8 flex-col justify-between text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-2xl -mr-20 -mt-20 pointer-events-none animate-pulse-slow" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-cyan-400/20 rounded-full blur-3xl -ml-32 -mb-32 pointer-events-none" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none" />
@@ -149,8 +152,8 @@ function ForgotPasswordPage() {
             <span className="font-bold text-xl tracking-wider">Tigercat Admin</span>
           </div>
           <div className="space-y-6 my-auto pt-6">
-            <h2 className="text-2xl font-bold leading-tight">重置您的登录密码</h2>
-            <div className="space-y-4 text-cyan-100 text-sm">
+            <h2 className="text-2xl font-bold leading-tight">找回账号访问权限</h2>
+            <div className="space-y-4 text-pretty text-indigo-100 text-sm">
               <div className="flex items-center gap-3">
                 <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/15 text-white font-semibold">1</span>
                 <span>验证邮箱或手机号身份</span>
@@ -180,7 +183,7 @@ function ForgotPasswordPage() {
 
         <div className="mb-6 text-center md:text-left">
           <h1 className="p2-text-primary text-2xl font-bold tracking-tight">忘记密码</h1>
-          <p className="p2-text-secondary text-sm mt-1">通过验证码重置账号密码</p>
+          <p className="p2-text-secondary text-sm mt-1">通过邮箱或手机号重置登录密码</p>
         </div>
 
         <div className="mb-6 overflow-x-auto">
@@ -193,7 +196,7 @@ function ForgotPasswordPage() {
 
         <Card variant="transparent" className="p-0">
           {current === 0 && (
-            <Form model={{ target, code }} labelWidth={88}>
+            <Form model={{ target, code }} labelWidth={72} className="min-w-0">
               <FormItem name="target" label="账号">
                 {usePhoneMask ? (
                   <div data-testid="forgot-phone-mask">
@@ -223,12 +226,14 @@ function ForgotPasswordPage() {
                   />
                 )}
               </FormItem>
-              <FormItem name="code" label="验证码">
-                <div className="flex flex-col gap-3">
-                  <div data-testid="auth-otp-input" className="flex justify-center sm:justify-start">
+              <div className="mb-4 min-w-0 space-y-2">
+                <p className="p2-text-primary text-sm">验证码</p>
+                <div className="flex min-w-0 flex-col gap-3">
+                  <div data-testid="auth-otp-input" className="flex min-w-0 w-full justify-start overflow-x-auto">
                     <InputOTP
                       value={code}
                       length={OTP_LENGTH}
+                      size="sm"
                       type="numeric"
                       ariaLabel="验证码"
                       status={codeError ? 'error' : undefined}
@@ -260,7 +265,7 @@ function ForgotPasswordPage() {
                     )}
                   </div>
                 </div>
-              </FormItem>
+              </div>
               {sentTo ? (
                 <p className="p2-text-secondary mb-3 text-xs">验证码已发送至 {sentTo}</p>
               ) : null}

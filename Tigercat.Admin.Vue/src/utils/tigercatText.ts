@@ -15,6 +15,18 @@ export const appText = defineText({
     loadingText: '加载中...',
     emptyText: '暂无数据',
   },
+  select: {
+    doneText: '完成',
+  },
+  datePicker: {
+    locale: 'zh-CN',
+  },
+  calendar: {
+    previousMonth: '上个月',
+    nextMonth: '下个月',
+    previousYear: '上一年',
+    nextYear: '下一年',
+  },
   modal: {
     closeAriaLabel: '关闭',
     okText: '确定',

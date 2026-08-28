@@ -965,6 +965,7 @@ function UsersPage() {
             cardBreakpoint="md"
             cardLayout={USER_CARD_LAYOUT}
             emptyText="暂无用户数据"
+            className="p2-table-toolbar-stack"
             toolbar={tableToolbar}
             onSearchChange={handleSearch}
             onSearch={handleSearch}

@@ -29,6 +29,7 @@ import {
   type MonitorNodeStatus,
   type MonitorSnapshot,
 } from '../utils/monitor'
+import { formatDisplayDateTime } from '../utils/common'
 
 type IntervalSec = '2' | '3' | '5'
 
@@ -57,9 +58,9 @@ const intervalOptions: SegmentedOption[] = [
 ]
 
 const GAUGE_SEGMENTS = [
-  { range: [0, 70] as [number, number], color: '#22c55e' },
-  { range: [70, 85] as [number, number], color: '#f59e0b' },
-  { range: [85, 100] as [number, number], color: '#ef4444' },
+  { range: [0, 70] as [number, number], color: 'var(--tiger-success)' },
+  { range: [70, 85] as [number, number], color: 'var(--tiger-warning)' },
+  { range: [85, 100] as [number, number], color: 'var(--tiger-error)' },
 ]
 
 const NODE_STATUS_META: Record<MonitorNodeStatus, { label: string; variant: TagVariant }> = {
@@ -123,7 +124,7 @@ function toActivityItems(events: MonitorSnapshot['events']): ActivityItem[] {
     id: item.id,
     title: item.title,
     description: item.description,
-    time: item.time,
+    time: formatDisplayDateTime(item.time),
     status: item.status,
   }))
 }
@@ -152,21 +153,21 @@ function createSeedSnapshot(): MonitorViewState {
         id: 'evt-seed-1',
         title: 'API 网关流量升高',
         description: '入口 QPS 超过近窗均值',
-        time: new Date(now.getTime() - 9000).toISOString(),
+        time: formatDisplayDateTime(new Date(now.getTime() - 9000)),
         status: { label: '告警', variant: 'warning' as TagVariant },
       },
       {
         id: 'evt-seed-2',
         title: '工作节点恢复',
         description: '心跳已恢复，流量重新接入',
-        time: new Date(now.getTime() - 6000).toISOString(),
+        time: formatDisplayDateTime(new Date(now.getTime() - 6000)),
         status: { label: '恢复', variant: 'success' as TagVariant },
       },
       {
         id: 'evt-seed-3',
         title: '缓存命中率回升',
         description: '热点 key 预热完成',
-        time: new Date(now.getTime() - 3000).toISOString(),
+        time: formatDisplayDateTime(new Date(now.getTime() - 3000)),
         status: { label: '正常', variant: 'success' as TagVariant },
       },
     ].reverse(),
@@ -370,7 +371,8 @@ function formatTickLabel(value: string | number) {
     </MetricGrid>
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-      <Card v-for="gauge in gauges" :key="gauge.key" :title="`${gauge.label} 水位`">
+      <Card v-for="gauge in gauges" :key="gauge.key">
+        <template #header><Text weight="bold">{{ gauge.label }} 水位</Text></template>
         <GaugeChart
           :value="gauge.value"
           :min="0"
@@ -394,7 +396,7 @@ function formatTickLabel(value: string | number) {
       <Card>
         <Statistic title="QPS" :value="snapshot.qps" suffix="req/s" group-separator />
         <div v-if="snapshot.qpsSeries.length" class="mt-3">
-          <AreaChart :data="snapshot.qpsSeries" :height="140" />
+          <AreaChart :data="snapshot.qpsSeries" :height="140" responsive :x-ticks="6" />
         </div>
         <ChartEmptyState v-else description="暂无 QPS 滚动数据" height-class="h-36" />
       </Card>
@@ -404,10 +406,12 @@ function formatTickLabel(value: string | number) {
           <LineChart
             :data="snapshot.latencySeries"
             :height="140"
+            responsive
+            :x-ticks="6"
             :show-area="false"
             :show-points="false"
             :include-zero="true"
-            line-color="#3b82f6"
+            line-color="var(--tiger-primary)"
             :x-tick-format="formatTickLabel"
           />
         </div>
@@ -416,7 +420,8 @@ function formatTickLabel(value: string | number) {
     </div>
 
     <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-      <Card title="节点状态">
+      <Card>
+        <template #header><Text weight="bold">节点状态</Text></template>
         <div class="mb-3 flex items-center gap-2">
           <Badge :content="healthyCount" variant="success" standalone />
           <Text size="sm" color="secondary">个节点健康</Text>
@@ -450,14 +455,17 @@ function formatTickLabel(value: string | number) {
         </div>
       </Card>
 
-      <Card title="实时事件">
-        <ActivityFeed
-          v-if="snapshot.events.length"
-          :items="snapshot.events"
-          empty-text="暂无实时事件"
-          :group-by="groupMonitorEvents"
-        />
-        <ChartEmptyState v-else description="暂无实时事件" height-class="min-h-40" />
+      <Card>
+        <template #header><Text weight="bold">实时事件</Text></template>
+        <div class="max-h-[420px] overflow-y-auto">
+          <ActivityFeed
+            v-if="snapshot.events.length"
+            :items="snapshot.events"
+            empty-text="暂无实时事件"
+            :group-by="groupMonitorEvents"
+          />
+          <ChartEmptyState v-else description="暂无实时事件" height-class="min-h-40" />
+        </div>
       </Card>
     </div>
 

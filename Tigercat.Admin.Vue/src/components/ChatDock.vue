@@ -5,6 +5,7 @@ import { Badge, Drawer, Message } from '@expcat/tigercat-vue'
 import { FloatButton } from '@expcat/tigercat-vue/FloatButton'
 import { ChatWindow } from '@expcat/tigercat-vue/ChatWindow'
 import { fetchChatMessages, sendChatMessage } from '../utils/chat'
+import { formatDisplayDateTime } from '../utils/common'
 import Icon from './Icon.vue'
 
 const props = withDefaults(
@@ -28,11 +29,19 @@ const loading = ref(false)
 const readErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback
 
+function mapChatMessages(items: ChatMessage[] | undefined): ChatMessage[] {
+  return (items ?? []).map((item) => ({
+    ...item,
+    content: String(item.content ?? '').replaceAll('客服坞', '客服回复'),
+    time: formatDisplayDateTime(item.time),
+  }))
+}
+
 const loadMessages = async () => {
   loading.value = true
   try {
     const payload = await fetchChatMessages()
-    messages.value = (payload.data ?? []) as ChatMessage[]
+    messages.value = mapChatMessages(payload.data as ChatMessage[] | undefined)
   } catch (error: unknown) {
     Message.error({ content: readErrorMessage(error, '客服消息加载失败'), duration: 3000 })
   } finally {
@@ -57,7 +66,7 @@ const handleSend = async (value: string) => {
   try {
     const payload = await sendChatMessage(text)
     draft.value = ''
-    messages.value = (payload.data ?? []) as ChatMessage[]
+    messages.value = mapChatMessages(payload.data as ChatMessage[] | undefined)
     if (!props.open) {
       unread.value += 1
     }
@@ -113,6 +122,7 @@ onMounted(() => {
     @close="setOpen(false)"
   >
     <ChatWindow
+      class="h-full min-h-0 [&_textarea]:resize-none"
       v-model="draft"
       :messages="messages"
       placeholder="输入消息，回车发送"

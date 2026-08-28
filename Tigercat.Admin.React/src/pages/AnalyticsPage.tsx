@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Message } from '@expcat/tigercat-react';
+import { Card, Button, Message, Text } from '@expcat/tigercat-react';
 import { Statistic } from '@expcat/tigercat-react/Statistic';
 import { Progress } from '@expcat/tigercat-react/Progress';
 import { Segmented } from '@expcat/tigercat-react/Segmented';
@@ -117,7 +117,7 @@ const tableColumns: TableColumn[] = [
   { key: 'trend', title: '趋势' },
 ];
 
-const legendItems: ChartLegendItem[] = [{ index: 0, label: '月度转化', color: '#3b82f6' }];
+const legendItems: ChartLegendItem[] = [{ index: 0, label: '月度转化', color: 'var(--tiger-primary)' }];
 
 const CANVAS_W = 560;
 const CANVAS_H = 240;
@@ -293,10 +293,17 @@ function AnalyticsPage() {
 
       {/* 工具栏 */}
       <Card>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <Segmented value={range} onChange={handleRangeChange} options={rangeOptions} />
-          <div className="flex flex-wrap items-center gap-3">
-            <DatePicker range value={dateRange} onChange={(r) => setDateRange(r)} placeholder="自定义区间" clearable />
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <DatePicker
+              className="w-full max-w-56"
+              range
+              value={dateRange}
+              onChange={(r) => setDateRange(r)}
+              placeholder="自定义区间"
+              clearable
+            />
             <ButtonGroup>
               <Button variant="outline" onClick={handleRefresh}>
                 刷新
@@ -329,63 +336,70 @@ function AnalyticsPage() {
 
       {/* 图表网格 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card title="访问趋势">
-          {loading ? <Skeleton rows={4} /> : <AreaChart data={areaData} height={240} />}
+        <Card header={<Text weight="bold">访问趋势</Text>}>
+          {loading ? <Skeleton rows={4} /> : <AreaChart data={areaData} height={240} responsive />}
         </Card>
 
-        <Card title="流量构成">
+        <Card header={<Text weight="bold">流量构成</Text>}>
           {loading ? (
             <Skeleton rows={4} />
           ) : (
-            <DonutChart data={donutData} height={240} centerValue={donutTotal} centerLabel="总访问" showLegend />
+            <DonutChart data={donutData} height={240} responsive centerValue={donutTotal} centerLabel="总访问" showLegend />
           )}
         </Card>
 
-        <Card title="转化漏斗">
-          {loading ? <Skeleton rows={4} /> : <FunnelChart data={funnelData} height={240} />}
+        <Card header={<Text weight="bold">转化漏斗</Text>}>
+          {loading ? <Skeleton rows={4} /> : <FunnelChart data={funnelData} height={240} responsive />}
         </Card>
 
-        <Card title="目标达成率">
+        <Card header={<Text weight="bold">目标达成率</Text>}>
           {loading ? <Skeleton rows={4} /> : <GaugeChart value={gaugeValue} min={0} max={100} height={240} />}
         </Card>
 
-        <Card title="能力雷达">
+        <Card header={<Text weight="bold">能力雷达</Text>}>
           {loading ? <Skeleton rows={4} /> : <RadarChart data={radarData} height={240} />}
         </Card>
 
-        <Card title="访问分布">
+        <Card header={<Text weight="bold">访问分布</Text>}>
           {loading ? <Skeleton rows={4} /> : <ScatterChart data={scatterData} height={240} />}
         </Card>
 
-        <Card title="活跃热力">
+        <Card header={<Text weight="bold">活跃热力</Text>}>
           {loading ? (
             <Skeleton rows={4} />
           ) : (
-            <HeatmapChart data={heatmapData} xLabels={heatmapX} yLabels={heatmapY} height={240} />
+            <HeatmapChart
+              data={heatmapData}
+              xLabels={heatmapX}
+              yLabels={heatmapY}
+              height={240}
+              minColor="var(--tiger-bg-hover, #dbeafe)"
+              maxColor="var(--tiger-primary)"
+            />
           )}
         </Card>
 
-        <Card title="区域份额">
+        <Card header={<Text weight="bold">区域份额</Text>}>
           {loading ? <Skeleton rows={4} /> : <TreeMapChart data={treeMapData} height={240} />}
         </Card>
 
-        <Card title="渠道层级构成">
+        <Card header={<Text weight="bold">渠道层级构成</Text>}>
           {loading ? <Skeleton rows={4} /> : <SunburstChart data={sunburstData} height={240} />}
         </Card>
 
-        <Card title="组织 / 渠道分布">
+        <Card header={<Text weight="bold">组织 / 渠道分布</Text>}>
           {loading ? (
             <Skeleton rows={4} />
           ) : (
-            <div className="overflow-auto">
-              <OrgChart data={orgData} height={240} />
+            <div className="overflow-auto max-h-[360px]">
+              <OrgChart data={orgData} width={640} height={320} />
             </div>
           )}
         </Card>
       </div>
 
       {/* 自定义图表（图表基元组合） */}
-      <Card title="自定义图表（图表基元组合）">
+      <Card header={<Text weight="bold">自定义图表（图表基元组合）</Text>}>
         {loading ? (
           <Skeleton rows={4} />
         ) : (
@@ -395,7 +409,7 @@ function AnalyticsPage() {
                 <ChartGrid xScale={xScale} yScale={yScale} />
                 <ChartAxis orientation="bottom" scale={xScale} />
                 <ChartAxis orientation="left" scale={yScale} />
-                <ChartSeries data={seriesPoints} type="line" color="#3b82f6" />
+                <ChartSeries data={seriesPoints} type="line" color="var(--tiger-primary)" />
                 <ChartTooltip content="月度转化趋势" visible={false} />
               </ChartCanvas>
             </div>
@@ -405,7 +419,7 @@ function AnalyticsPage() {
       </Card>
 
       {/* 明细表 */}
-      <Card title="渠道明细">
+      <Card header={<Text weight="bold">渠道明细</Text>}>
         {loading ? (
           <Skeleton rows={6} />
         ) : (

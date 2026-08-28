@@ -49,19 +49,19 @@ const infoCards = computed(() => [
     label: '服务名称',
     value: info.value?.name || 'Tigercat Admin API',
     icon: 'package',
-    iconClass: 'bg-blue-100 text-blue-600'
+    iconClass: 'bg-(--tiger-primary)/10 text-(--tiger-primary)'
   },
   {
     label: '当前版本',
     value: info.value?.version || 'v1.0.0',
     icon: 'tag',
-    iconClass: 'bg-purple-100 text-purple-600'
+    iconClass: 'bg-(--tiger-primary)/10 text-(--tiger-primary)'
   },
   {
     label: '服务描述',
     value: info.value?.description || 'Tigercat Admin Backend API',
     icon: 'megaphone',
-    iconClass: 'bg-green-100 text-green-600'
+    iconClass: 'bg-(--tiger-success,#16a34a)/10 text-(--tiger-success,#16a34a)'
   }
 ])
 
@@ -70,29 +70,29 @@ const highlights = [
     title: '清晰导航体验',
     description: '统一的侧边栏布局，快速定位关键模块。',
     icon: 'compass',
-    className: 'from-blue-50 to-blue-100',
-    iconClass: 'text-blue-600'
+    className: 'from-(--tiger-bg-hover,#f8fafc) to-(--tiger-bg-card,#ffffff)',
+    iconClass: 'text-(--tiger-primary)'
   },
   {
     title: '安全认证体系',
     description: '基于令牌的认证机制，保障后台安全。',
     icon: 'lock',
-    className: 'from-purple-50 to-purple-100',
-    iconClass: 'text-purple-600'
+    className: 'from-(--tiger-bg-hover,#f8fafc) to-(--tiger-bg-card,#ffffff)',
+    iconClass: 'text-(--tiger-primary)'
   },
   {
     title: '快速响应接口',
     description: '轻量化 API 提供稳定的管理体验。',
     icon: 'zap',
-    className: 'from-orange-50 to-orange-100',
-    iconClass: 'text-orange-600'
+    className: 'from-(--tiger-bg-hover,#f8fafc) to-(--tiger-bg-card,#ffffff)',
+    iconClass: 'text-(--tiger-warning,#d97706)'
   },
   {
     title: '一致视觉语言',
     description: '保持与首页一致的风格与组件呈现。',
     icon: 'palette',
-    className: 'from-green-50 to-green-100',
-    iconClass: 'text-green-600'
+    className: 'from-(--tiger-bg-hover,#f8fafc) to-(--tiger-bg-card,#ffffff)',
+    iconClass: 'text-(--tiger-success,#16a34a)'
   }
 ]
 
@@ -101,25 +101,25 @@ const techStack = [
     label: '前端框架',
     value: 'Vue 3',
     icon: 'package',
-    iconClass: 'bg-green-100 text-green-600'
+    iconClass: 'bg-(--tiger-success,#16a34a)/10 text-(--tiger-success,#16a34a)'
   },
   {
     label: '构建工具',
     value: 'Vite',
     icon: 'zap',
-    iconClass: 'bg-orange-100 text-orange-600'
+    iconClass: 'bg-(--tiger-warning,#d97706)/10 text-(--tiger-warning,#d97706)'
   },
   {
     label: '开发语言',
     value: 'TypeScript',
     icon: 'code',
-    iconClass: 'bg-blue-100 text-blue-600'
+    iconClass: 'bg-(--tiger-primary)/10 text-(--tiger-primary)'
   },
   {
     label: 'UI 组件',
     value: 'Tigercat UI',
     icon: 'palette',
-    iconClass: 'bg-purple-100 text-purple-600'
+    iconClass: 'bg-(--tiger-primary)/10 text-(--tiger-primary)'
   }
 ]
 
@@ -128,19 +128,19 @@ const systemInfo = computed(() => [
     label: '运行环境',
     value: '.NET 10 + Vue 3',
     icon: 'settings',
-    iconClass: 'bg-indigo-100 text-indigo-600'
+    iconClass: 'bg-(--tiger-info,#3b82f6)/10 text-(--tiger-info,#3b82f6)'
   },
   {
     label: '包管理器',
     value: 'PNPM',
     icon: 'package',
-    iconClass: 'bg-blue-100 text-blue-600'
+    iconClass: 'bg-(--tiger-primary)/10 text-(--tiger-primary)'
   },
   {
     label: 'API 状态',
     value: connectionStatus.value.label,
     icon: 'globe',
-    iconClass: 'bg-green-100 text-green-600',
+    iconClass: 'bg-(--tiger-success,#16a34a)/10 text-(--tiger-success,#16a34a)',
     tagVariant: connectionStatus.value.variant as TagVariant
   }
 ])
@@ -234,7 +234,8 @@ onMounted(() => {
     />
 
     <div id="about-info">
-    <Card title="服务概览">
+    <Card>
+      <template #header><Text weight="bold">服务概览</Text></template>
       <div v-if="loading" class="flex items-center justify-center py-10">
         <Text size="sm" color="secondary">正在加载服务信息...</Text>
       </div>
@@ -242,14 +243,14 @@ onMounted(() => {
         <div
           v-for="item in infoCards"
           :key="item.label"
-          class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70"
+          class="flex items-center gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-hover,#f8fafc)"
         >
           <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="item.iconClass">
             <Icon :name="item.icon" :size="20" />
           </div>
           <div>
             <Text size="xs" color="secondary">{{ item.label }}</Text>
-            <Text size="sm" weight="medium" class="text-slate-800">{{ item.value }}</Text>
+            <Text size="sm" weight="medium">{{ item.value }}</Text>
           </div>
         </div>
       </div>
@@ -257,19 +258,20 @@ onMounted(() => {
     </div>
 
     <div id="about-features">
-    <Card title="产品亮点">
+    <Card>
+      <template #header><Text weight="bold">产品亮点</Text></template>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div
           v-for="item in highlights"
           :key="item.title"
-          class="flex items-start gap-3 p-4 rounded-xl border border-slate-200 bg-linear-to-br"
+          class="flex items-start gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-linear-to-br"
           :class="item.className"
         >
-          <div class="w-10 h-10 rounded-lg bg-white/70 flex items-center justify-center text-xl">
+          <div class="w-10 h-10 rounded-lg bg-(--tiger-surface,#ffffff) flex items-center justify-center text-xl">
             <Icon :name="item.icon" :size="20" :class="item.iconClass" />
           </div>
           <div>
-            <Text size="sm" weight="medium" class="text-slate-800">{{ item.title }}</Text>
+            <Text size="sm" weight="medium">{{ item.title }}</Text>
             <Text size="xs" color="secondary" class="mt-1">{{ item.description }}</Text>
           </div>
         </div>
@@ -278,31 +280,33 @@ onMounted(() => {
     </div>
 
     <div id="about-stack">
-    <Card title="技术栈">
+    <Card>
+      <template #header><Text weight="bold">技术栈</Text></template>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div
           v-for="item in techStack"
           :key="item.label"
-          class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70"
+          class="flex items-center gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-hover,#f8fafc)"
         >
           <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="item.iconClass">
             <Icon :name="item.icon" :size="20" />
           </div>
           <div>
             <Text size="xs" color="secondary">{{ item.label }}</Text>
-            <Text size="sm" weight="medium" class="text-slate-800">{{ item.value }}</Text>
+            <Text size="sm" weight="medium">{{ item.value }}</Text>
           </div>
         </div>
       </div>
     </Card>
     </div>
 
-    <Card title="系统信息">
+    <Card>
+      <template #header><Text weight="bold">系统信息</Text></template>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div
           v-for="item in systemInfo"
           :key="item.label"
-          class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70"
+          class="flex items-center gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-hover,#f8fafc)"
         >
           <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="item.iconClass">
             <Icon :name="item.icon" :size="20" />
@@ -310,7 +314,7 @@ onMounted(() => {
           <div>
             <Text size="xs" color="secondary">{{ item.label }}</Text>
             <Tag v-if="item.tagVariant" :variant="item.tagVariant" size="sm">● {{ item.value }}</Tag>
-            <Text v-else size="sm" weight="medium" class="text-slate-800">{{ item.value }}</Text>
+            <Text v-else size="sm" weight="medium">{{ item.value }}</Text>
           </div>
         </div>
       </div>

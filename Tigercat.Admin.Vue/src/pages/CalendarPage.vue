@@ -213,6 +213,7 @@ onMounted(() => {
           :model-value="selectedDate"
           mode="month"
           :fullscreen="true"
+          locale="zh-CN"
           @update:model-value="onDateChange"
           @change="onDateChange"
         />

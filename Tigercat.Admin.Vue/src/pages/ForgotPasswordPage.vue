@@ -148,7 +148,7 @@ function goToLogin() {
 
 <template>
   <div
-    class="flex flex-col md:flex-row w-full min-h-[500px] rounded-2xl overflow-hidden shadow-2xl border border-(--tiger-border,#e2e8f0) dark:border-slate-850 bg-(--tiger-bg-card,#ffffff) dark:bg-slate-900/90 backdrop-blur-md animate-fade-in-up"
+    class="flex flex-col md:flex-row w-full min-h-[500px] rounded-2xl overflow-x-clip overflow-y-visible shadow-2xl border border-(--tiger-border,#e2e8f0) dark:border-slate-850 bg-(--tiger-bg-card,#ffffff) dark:bg-slate-900/90 backdrop-blur-md animate-fade-in-up"
     style="--tiger-primary: #4f46e5; --tiger-primary-hover: #4338ca; --tiger-primary-disabled: #c7d2fe; --tiger-focus-ring: #4f46e5;"
   >
     <div class="hidden md:flex md:w-[42%] bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 p-8 flex-col justify-between text-white relative overflow-hidden">
@@ -163,7 +163,7 @@ function goToLogin() {
         </div>
         <div class="space-y-6 my-auto pt-6">
           <h2 class="text-2xl font-bold leading-tight">找回账号访问权限</h2>
-          <div class="space-y-4 text-indigo-100 text-sm">
+          <div class="space-y-4 text-pretty text-indigo-100 text-sm">
             <div class="flex items-center gap-3">
               <span class="flex items-center justify-center w-6 h-6 rounded-full bg-white/15 text-white font-semibold">1</span>
               <span>验证邮箱或手机号身份</span>
@@ -195,7 +195,7 @@ function goToLogin() {
         <p class="p2-text-secondary text-sm mt-1">通过邮箱或手机号重置登录密码</p>
       </div>
 
-      <Card variant="transparent" class="p-0 overflow-hidden">
+      <Card variant="transparent" class="p-0">
         <div class="mb-6 overflow-x-auto">
           <Steps :current="current" size="small">
             <StepsItem title="验证身份" description="邮箱 / 手机号" />
@@ -204,7 +204,7 @@ function goToLogin() {
           </Steps>
         </div>
 
-        <Form v-if="current === 0" :label-width="88">
+        <Form v-if="current === 0" class="min-w-0" :label-width="72">
           <FormItem label="账号">
             <div v-if="usePhoneMask" data-testid="forgot-phone-mask">
               <MaskInput
@@ -225,12 +225,14 @@ function goToLogin() {
               @update:model-value="(val: string) => { target = val; targetError = '' }"
             />
           </FormItem>
-          <FormItem label="验证码">
-            <div class="flex flex-col gap-3">
-              <div data-testid="auth-otp-input" class="flex justify-center sm:justify-start">
+          <div class="mb-4 min-w-0 space-y-2">
+            <p class="p2-text-primary text-sm">验证码</p>
+            <div class="flex min-w-0 flex-col gap-3">
+              <div data-testid="auth-otp-input" class="flex min-w-0 w-full justify-start overflow-x-auto">
                 <InputOTP
                   :model-value="code"
                   :length="OTP_LENGTH"
+                  size="sm"
                   type="numeric"
                   aria-label="验证码"
                   :status="codeError ? 'error' : undefined"
@@ -259,7 +261,7 @@ function goToLogin() {
                 />
               </div>
             </div>
-          </FormItem>
+          </div>
           <div class="mt-8 flex flex-col gap-3">
             <Button variant="primary" block html-type="button" @click="submitIdentity">下一步</Button>
             <button type="button" class="text-center text-sm font-medium text-[var(--tiger-primary,#3b82f6)] hover:underline" @click="goToLogin">返回登录</button>

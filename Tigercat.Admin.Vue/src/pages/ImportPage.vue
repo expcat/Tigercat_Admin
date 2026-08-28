@@ -287,7 +287,7 @@ onBeforeUnmount(() => {
               </div>
               <div>
                 <Text weight="medium" class="mb-1 block">导入模式</Text>
-                <RadioGroup v-model:value="mode">
+                <RadioGroup v-model="mode">
                   <Radio value="append">追加</Radio>
                   <Radio value="overwrite">覆盖</Radio>
                   <Radio value="upsert">更新插入</Radio>
@@ -318,7 +318,7 @@ onBeforeUnmount(() => {
               </div>
               <div>
                 <Text weight="medium" class="mb-1 block">冲突策略</Text>
-                <RadioGroup v-model:value="conflict">
+                <RadioGroup v-model="conflict">
                   <Radio value="skip">跳过</Radio>
                   <Radio value="overwrite">覆盖</Radio>
                   <Radio value="error">报错中止</Radio>

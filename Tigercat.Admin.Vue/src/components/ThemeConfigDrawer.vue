@@ -77,8 +77,8 @@ function handleOpenChange(value: boolean) {
           <Text size="sm" color="secondary">收紧内容区内边距，侧栏默认折叠</Text>
         </div>
         <Switch
-          :checked="props.themePrefs.compactMode"
-          @update:checked="(checked: boolean) => patchTheme({ compactMode: checked })"
+          :model-value="props.themePrefs.compactMode"
+          @update:model-value="(checked: boolean) => patchTheme({ compactMode: checked })"
         />
       </div>
     </div>

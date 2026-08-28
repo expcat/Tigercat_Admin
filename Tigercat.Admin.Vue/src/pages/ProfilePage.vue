@@ -295,7 +295,7 @@ function handleSave(scope: string) {
             </Card>
 
             <Card title="电子签名">
-              <Signature v-model="signature" :height="160" clearable />
+              <Signature v-model="signature" :height="160" clearable clear-text="清除" />
               <Space class="mt-3">
                 <Button variant="outline" @click="signature = ''">清除</Button>
                 <Button @click="handleSave('电子签名')">保存签名</Button>
