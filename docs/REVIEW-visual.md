@@ -1837,3 +1837,45 @@
   2. `/projects/no-such-id`。截图 `/tmp/react-projects-unknown.png`。未找到项目 / 没有编号为 no-such-id 的项目 / Empty 该项目不存在… / 返回项目列表。侧栏+TagsView 仍「项目列表」。
 - **双端 vs Vue 9.2：** 未知 id 空态 + 侧栏/标签仍列表 **同形通过**。成员 Tab 本条未点（Vue 9.2 已点）。Steps 数字节点 **错位（低）**。
 - **严重度：** 详情+未知 id：通过（信息）。成员/动态/评论/375：**缺口**。
+
+---
+
+## 10. Users (Vue)
+
+复用登录会话 **`vue-projects`** 直达 `/users`（未新开隔离上下文；cookie 仍是 admin）。桌面 **1280×800** 浅色，后 emulate 一次 375。未改产品代码。未停 Api。
+
+### 10.1 DataTable + SplitButton + 新增 Modal
+
+- **模块：** `/users` PageHeader / SplitButton 新增用户 / DataTableWithToolbar / 服务端分页提示 leftover `p2-muted-panel`
+- **端：** Vue
+- **视口：** 桌面 **1280×800**
+- **复现：**
+  1. URL **`http://127.0.0.1:5173/users`**。截图 `/tmp/vue-users-list.png`。PageHeader「用户管理 / 管理平台用户账号、角色与权限」+ tags 核心模块/运行中。SplitButton **新增用户** + 更多操作。MutedPanel「列表采用服务端分页…最多返回 100 条」。表 5 行：admin 管理员 Admin / demo 演示账号 Demo / rv2vue0827 / rv2react0827 / rv2r0827c，状态均「正常」。列 ID/用户名/显示名/状态/角色/创建时间/操作；操作列有锁定钮。分页「显示第 1 到 5 条，共 5 条」。批量启用/禁用/删除 disabled。无「演示模式」Tag。
+  2. 点 **新增用户**。截图 `/tmp/vue-users-create-modal.png`。Modal「新增用户」：用户名/密码/显示名称/角色多选 + 取消/确定。未填、未提交。头像裁剪 / 行右键 / 导出 / 空表：**缺口**。
+- **严重度：** 列表 5 行 + SplitButton + 新增 Modal：通过（信息）。leftover `p2-muted-panel`：**低**（cite Performance）。右键/裁剪/导出/空/错：**缺口**。
+
+### 10.2 Mobile ~375px 卡片模式
+
+- **模块：** `/users` md 以下卡片模式
+- **端：** Vue
+- **视口：** ~**375×812**
+- **复现：**
+  1. emulate **375×812×2,mobile,touch**。截图 `/tmp/vue-users-mobile-375.png`。汉堡壳；PageHeader 无 tags。SplitButton 新增用户满宽。工具栏搜索 **「搜索」蓝钮叠在搜索框上**；批量三钮挤一行；齿轮列设置。其下 **全选** checkbox 卡 + **「Select an option」** 英文下拉（leftover i18n）。用户卡片折下未全入镜。无页级横溢 375===375。
+- **严重度：** 搜索钮叠搜索框 + 英文「Select an option」：**中**。卡片模式折下未拍全：**缺口**。暗色：**缺口**。
+
+---
+
+## 10b. Users (React)
+
+复用 **`react-projects`** 直达 `/users`。桌面 **1280×800**。
+
+### 10b.1 DataTable + 新增 Modal
+
+- **模块：** `/users` 与 Vue 10.1 对照
+- **端：** React
+- **视口：** 桌面 **1280×800**
+- **复现：**
+  1. `/users`。截图 `/tmp/react-users-list.png`。五行与 Vue 同（admin/demo/rv2*）。SplitButton 新增用户。**搜索按钮 disabled**（空关键字；Vue 10.1 搜索钮可点）。
+  2. 点新增用户。截图 `/tmp/react-users-create-modal.png`。同四字段 Modal。
+- **双端 vs Vue 10.1：** 表数据/列/分页/Modal **同形**。错位：React 空搜「搜索」disabled。
+- **严重度：** 通过（信息）。空搜 disabled：**低**（双端错位）。375/右键/裁剪：**缺口**（Vue 10.2 已记 375 **中**，本端未 emulate）。
