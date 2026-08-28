@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, provide, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ConfigProvider, Message, MessageContainer } from '@expcat/tigercat-vue'
+import { ConfigProvider, Message } from '@expcat/tigercat-vue'
 import { LoadingBarContainer } from '@expcat/tigercat-vue/LoadingBar'
 import { appText } from './utils/tigercatText'
 import {
@@ -208,9 +208,9 @@ provide('updateTheme', updateTheme)
 <template>
   <ConfigProvider :locale="appText">
     <div id="tiger-loading-bar-container-root"></div>
+    <div id="tiger-message-container-root"></div>
     <RouterView v-slot="{ Component }">
       <component :is="Component" @success="onLoginSuccess" />
     </RouterView>
-    <MessageContainer />
   </ConfigProvider>
 </template>
