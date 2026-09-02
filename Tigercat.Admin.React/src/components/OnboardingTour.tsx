@@ -64,6 +64,7 @@ export function OnboardingTour() {
 
   const finishTour = () => {
     setOpen(false);
+    setCurrent(0);
     try {
       localStorage.setItem(TOUR_DONE_KEY, '1');
     } catch {

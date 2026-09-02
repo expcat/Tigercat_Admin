@@ -32,7 +32,7 @@ const readErrorMessage = (error: unknown, fallback: string) =>
 function mapChatMessages(items: ChatMessage[] | undefined): ChatMessage[] {
   return (items ?? []).map((item) => ({
     ...item,
-    content: String(item.content ?? '').replaceAll('客服坞', '客服回复'),
+    content: String(item.content ?? '').split('客服坞').join('客服回复'),
     time: formatDisplayDateTime(item.time),
   }))
 }

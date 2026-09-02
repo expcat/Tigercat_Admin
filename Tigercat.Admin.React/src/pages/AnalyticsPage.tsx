@@ -27,8 +27,8 @@ import { ChartTooltip } from '@expcat/tigercat-react/ChartTooltip';
 import { createLinearScale, createBandScale } from '@expcat/tigercat-core';
 import type {
   SegmentedOption,
-  AreaChartDatum,
-  DonutChartDatum,
+  LineChartDatum,
+  PieChartDatum,
   FunnelChartDatum,
   RadarChartDatum,
   ScatterChartDatum,
@@ -39,7 +39,7 @@ import type {
   ChartSeriesPoint,
   ChartLegendItem,
   TableColumn,
-  DatePickerRangeModelValue,
+  DatePickerInputDate,
 } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { TrendingUpIcon } from '../components/Icons';
@@ -130,7 +130,9 @@ const PAGE_SIZE = 5;
 
 function AnalyticsPage() {
   const [range, setRange] = useState<string | number>('30');
-  const [dateRange, setDateRange] = useState<DatePickerRangeModelValue | null>(null);
+  const [dateRange, setDateRange] = useState<
+    [DatePickerInputDate | null, DatePickerInputDate | null] | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
 
@@ -172,12 +174,12 @@ function AnalyticsPage() {
     [factor],
   );
 
-  const areaData: AreaChartDatum[] = useMemo(
+  const areaData: LineChartDatum[] = useMemo(
     () => months.map((m, i) => ({ x: m, y: Math.round(baseTrend[i] * factor) })),
     [factor],
   );
 
-  const donutData: DonutChartDatum[] = useMemo(
+  const donutData: PieChartDatum[] = useMemo(
     () => [
       { value: Math.round(42 * factor), label: '直接访问' },
       { value: Math.round(28 * factor), label: '搜索引擎' },
@@ -410,7 +412,7 @@ function AnalyticsPage() {
                 <ChartAxis orientation="bottom" scale={xScale} />
                 <ChartAxis orientation="left" scale={yScale} />
                 <ChartSeries data={seriesPoints} type="line" color="var(--tiger-primary)" />
-                <ChartTooltip content="月度转化趋势" visible={false} />
+                <ChartTooltip content="月度转化趋势" open={false} />
               </ChartCanvas>
             </div>
             <ChartLegend items={legendItems} className="mt-2" />

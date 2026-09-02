@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { SpotlightItem } from '@expcat/tigercat-core';
 import { Spotlight } from '@expcat/tigercat-react/Spotlight';
@@ -145,17 +145,6 @@ export function CommandPalette({
         break;
     }
   };
-
-  useEffect(() => {
-    const handleKeydown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        setOpen((prev) => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeydown);
-    return () => window.removeEventListener('keydown', handleKeydown);
-  }, []);
 
   return (
     <Spotlight

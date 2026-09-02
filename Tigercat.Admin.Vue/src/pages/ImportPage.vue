@@ -15,7 +15,7 @@ import type {
   WizardStep,
   TransferItem,
   CascaderOption,
-  CascaderValue,
+  CascaderModelValue,
   DescriptionsItem,
   UploadFile,
 } from '@expcat/tigercat-core'
@@ -85,7 +85,7 @@ const current = ref(0)
 const files = ref<UploadFile[]>([])
 const mode = ref<ImportMode>('append')
 const mappedKeys = ref<(string | number)[]>(['name', 'email', 'dept'])
-const target = ref<CascaderValue>(['hr', 'employees'])
+const target = ref<CascaderModelValue>(['hr', 'employees'])
 const batchSize = ref(1000)
 const conflict = ref<ImportConflict>('skip')
 
@@ -100,7 +100,7 @@ const readErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback
 
 const targetText = computed(() => {
-  if (!target.value.length) return '未选择'
+  if (!target.value?.length) return '未选择'
   const labels: string[] = []
   let level = TARGET_OPTIONS
   for (const v of target.value) {
@@ -177,6 +177,11 @@ async function handleFinish() {
   if (!mappedKeys.value.length) {
     Message.warning({ content: '请至少映射一个字段', duration: 2200 })
     current.value = 1
+    return
+  }
+  if (!target.value?.length) {
+    Message.warning({ content: '请选择目标数据表', duration: 2200 })
+    current.value = 0
     return
   }
   importing.value = true
@@ -306,7 +311,7 @@ onBeforeUnmount(() => {
                 :data-source="SOURCE_FIELDS"
                 source-title="源字段"
                 target-title="目标字段"
-                show-search
+                searchable
               />
               <MutedPanel compact description="将左侧源字段移动到右侧即建立映射；未映射字段将被忽略。" />
             </div>

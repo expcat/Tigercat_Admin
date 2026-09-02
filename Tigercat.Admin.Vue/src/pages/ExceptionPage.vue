@@ -64,25 +64,28 @@ function goBack() {
   <div class="min-h-screen bg-(--tiger-bg-page,#f8fafc) p-4 flex flex-col items-center justify-center">
     <div class="w-full max-w-md">
       <Result :status="content.status" :title="content.title" :sub-title="content.subTitle">
-        <div v-if="status === 404 && autoJumpEnabled" class="mb-4 flex justify-center">
+        <template #extra>
+          <div class="flex justify-center gap-2">
+            <Button @click="goHome">返回首页</Button>
+            <Button variant="outline" @click="goBack">返回上一页</Button>
+          </div>
+        </template>
+        <div class="flex flex-col items-center">
           <Countdown
+            v-if="status === 404 && autoJumpEnabled"
             :value="countdownTarget"
             format="s"
             suffix="秒"
             title="即将自动返回首页"
             @finish="goHome"
           />
+          <Empty
+            v-if="!canGoBack"
+            class="mt-4"
+            description="没有可返回的历史记录"
+            :show-image="false"
+          />
         </div>
-        <div class="flex justify-center gap-2">
-          <Button @click="goHome">返回首页</Button>
-          <Button variant="outline" @click="goBack">返回上一页</Button>
-        </div>
-        <Empty
-          v-if="!canGoBack"
-          class="mt-4"
-          description="没有可返回的历史记录"
-          :show-image="false"
-        />
       </Result>
     </div>
   </div>

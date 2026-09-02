@@ -787,9 +787,9 @@ function UsersPage() {
     loadUsers();
   };
 
-  const handlePageSizeChange = (_current: number, nextPageSize: number) => {
-    persistQuery({ pageSize: nextPageSize, page: 1 });
-    setPageSize(nextPageSize);
+  const handlePageSizeChange = (page: { current: number; pageSize: number }) => {
+    persistQuery({ pageSize: page.pageSize, page: 1 });
+    setPageSize(page.pageSize);
     setCurrentPage(1);
     loadUsers();
   };
@@ -839,8 +839,13 @@ function UsersPage() {
 
   const tableToolbar = useMemo(
     () => ({
+      searchMode: 'remote' as const,
       searchValue: keyword,
       searchPlaceholder: '搜索用户名或显示名...',
+      onSearchChange: handleSearch,
+      onSearch: handleSearch,
+      onFiltersChange: handleToolbarFiltersChange,
+      onBulkAction: handleBulkAction,
       filters: [
         {
           key: 'status',
@@ -882,7 +887,16 @@ function UsersPage() {
       selectedCount: selectedRowKeys.length,
       showColumnSettings: true,
     }),
-    [canDelete, canEdit, keyword, selectedRowKeys, statusFilter],
+    [
+      canDelete,
+      canEdit,
+      handleBulkAction,
+      handleSearch,
+      handleToolbarFiltersChange,
+      keyword,
+      selectedRowKeys,
+      statusFilter,
+    ],
   );
 
   const serverPaginationHint = useMemo(() => {
@@ -967,16 +981,10 @@ function UsersPage() {
             emptyText="暂无用户数据"
             className="p2-table-toolbar-stack"
             toolbar={tableToolbar}
-            onSearchChange={handleSearch}
-            onSearch={handleSearch}
-            onFiltersChange={handleToolbarFiltersChange}
-            onPageChange={(current, nextPageSize) =>
-              handlePageChange({ current, pageSize: nextPageSize })
-            }
+            onPageChange={handlePageChange}
             onPageSizeChange={handlePageSizeChange}
             onSelectionChange={handleSelectionChange}
             onSortChange={handleSortChange}
-            onBulkAction={handleBulkAction}
             onHiddenColumnKeysChange={handleHiddenColumnsChange}
           />
         </div>

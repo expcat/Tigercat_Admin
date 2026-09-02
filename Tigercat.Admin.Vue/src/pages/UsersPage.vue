@@ -550,18 +550,18 @@ const paginationConfig = computed(() => ({
   pageSizeText: (size: number) => `${size} 条/页`,
 }))
 
-function handlePageChange(current: number, nextPageSize: number) {
-  if (nextPageSize !== pageSize.value) {
+function handlePageChange(page: { current: number; pageSize: number }) {
+  if (page.pageSize !== pageSize.value) {
     return
   }
 
-  currentPage.value = current
+  currentPage.value = page.current
   persistQuery()
   loadUsers()
 }
 
-function handlePageSizeChange(_current: number, nextPageSize: number) {
-  pageSize.value = nextPageSize
+function handlePageSizeChange(page: { current: number; pageSize: number }) {
+  pageSize.value = page.pageSize
   currentPage.value = 1
   persistQuery()
   loadUsers()
@@ -633,6 +633,7 @@ const roleOptions = computed(() =>
 )
 
 const tableToolbar = computed(() => ({
+  searchMode: 'remote' as const,
   searchValue: keyword.value,
   searchPlaceholder: '搜索用户名或显示名...',
   filters: [

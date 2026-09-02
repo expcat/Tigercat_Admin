@@ -213,7 +213,6 @@ onMounted(() => {
           :model-value="selectedDate"
           mode="month"
           :fullscreen="true"
-          locale="zh-CN"
           @update:model-value="onDateChange"
           @change="onDateChange"
         />
@@ -309,7 +308,7 @@ onMounted(() => {
         </div>
         <div>
           <Text weight="medium" class="mb-1 block">类型</Text>
-          <RadioGroup v-model:value="form.type">
+          <RadioGroup v-model="form.type">
             <Radio value="meeting">会议</Radio>
             <Radio value="review">评审</Radio>
             <Radio value="release">发布</Radio>

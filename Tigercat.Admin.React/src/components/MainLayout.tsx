@@ -139,7 +139,7 @@ export function MainLayout({
           placement="left"
           open={sidebarOpen}
           onClose={handleSidebarClose}
-          onAfterLeave={() => {
+          onAfterClose={() => {
             document
               .querySelector<HTMLButtonElement>('[aria-controls="main-sidebar"]')
               ?.focus();
@@ -148,7 +148,6 @@ export function MainLayout({
           mask={true}
           maskClosable={true}
           destroyOnClose={true}
-          destroyOnCloseAfterLeave={true}
           fullscreenOnMobile={false}
           width="240px"
           panelStyle={{

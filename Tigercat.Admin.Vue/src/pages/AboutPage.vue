@@ -6,6 +6,7 @@ import {
   NavigationMenuContent,
   NavigationMenuItem,
   NavigationMenuLink,
+  NavigationMenuList,
   NavigationMenuTrigger,
 } from '@expcat/tigercat-vue/NavigationMenu'
 import type { TagVariant } from '@expcat/tigercat-core'
@@ -206,22 +207,24 @@ onMounted(() => {
       ]"
     />
 
-    <NavigationMenu class-name="min-w-0 overflow-x-auto">
-      <NavigationMenuItem
-        v-for="section in ABOUT_SECTIONS"
-        :key="section.key"
-        :value="section.key"
-      >
-        <NavigationMenuTrigger>{{ section.label }}</NavigationMenuTrigger>
-        <NavigationMenuContent>
-          <NavigationMenuLink
-            :href="section.href"
-            @click="scrollToAboutSection($event, section.href)"
-          >
-            {{ section.description }}
-          </NavigationMenuLink>
-        </NavigationMenuContent>
-      </NavigationMenuItem>
+    <NavigationMenu aria-label="关于分区" class-name="min-w-0 overflow-x-auto">
+      <NavigationMenuList>
+        <NavigationMenuItem
+          v-for="section in ABOUT_SECTIONS"
+          :key="section.key"
+          :value="section.key"
+        >
+          <NavigationMenuTrigger>{{ section.label }}</NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <NavigationMenuLink
+              :href="section.href"
+              @click="scrollToAboutSection($event, section.href)"
+            >
+              {{ section.description }}
+            </NavigationMenuLink>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+      </NavigationMenuList>
     </NavigationMenu>
 
     <Alert

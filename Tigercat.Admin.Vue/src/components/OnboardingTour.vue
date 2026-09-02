@@ -51,6 +51,7 @@ const steps: TourStep[] = [
 
 const finishTour = () => {
   open.value = false
+  current.value = 0
   try {
     localStorage.setItem(TOUR_DONE_KEY, '1')
   } catch {

@@ -36,7 +36,7 @@ test.describe('全局水印与主题配置抽屉', () => {
 
     await page
       .getByTestId('setting-theme-watermark')
-      .getByRole('switch')
+      .locator('label')
       .click();
 
     const watermark = page.getByTestId('shell-watermark');
@@ -84,6 +84,9 @@ test.describe('全局水印与主题配置抽屉', () => {
 
     await drawer.getByText('深色', { exact: true }).click();
     await expect(page.locator('html')).toHaveClass(/dark/);
+
+    await page.keyboard.press('Escape');
+    await expect(drawer).toBeHidden();
 
     await page.locator('.p2-header-user-btn').click();
     await expect(page.getByText('主题模式：深色')).toBeVisible();

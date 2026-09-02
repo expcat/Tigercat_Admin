@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { SpotlightItem } from '@expcat/tigercat-core'
 import { Spotlight } from '@expcat/tigercat-vue/Spotlight'
@@ -127,20 +127,6 @@ const handleSelect = (item: SpotlightItem) => {
   }
 }
 
-const handleKeydown = (event: KeyboardEvent) => {
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-    event.preventDefault()
-    open.value = !open.value
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeydown)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleKeydown)
-})
 </script>
 
 <template>

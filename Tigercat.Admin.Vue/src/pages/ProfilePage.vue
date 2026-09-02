@@ -169,9 +169,7 @@ function handleBirthdayChange(value: unknown) {
   birthday.value = value as DatePickerModelValue
 }
 function handleQuietHoursChange(value: TimePickerModelValue) {
-  if (Array.isArray(value)) {
-    quietHours.value = value
-  }
+  quietHours.value = value
 }
 function handleSave(scope: string) {
   Message.success({ content: `${scope}已保存（演示）`, duration: 2400 })
@@ -243,9 +241,9 @@ function handleSave(scope: string) {
                   <Text size="sm" color="secondary" class="block">登录时额外校验身份验证器动态码</Text>
                 </div>
                 <Switch
-                  :checked="security.twoFactor || twoFactorPending"
+                  :model-value="security.twoFactor || twoFactorPending"
                   :disabled="twoFactorLoading"
-                  @update:checked="handleTwoFactorChange"
+                  @update:model-value="handleTwoFactorChange"
                 />
               </div>
               <Divider spacing="sm" />
@@ -254,7 +252,7 @@ function handleSave(scope: string) {
                   <Text weight="medium">登录提醒</Text>
                   <Text size="sm" color="secondary" class="block">新设备登录时发送邮件通知</Text>
                 </div>
-                <Switch v-model:checked="security.loginAlert" />
+                <Switch v-model="security.loginAlert" />
               </div>
               <Divider spacing="sm" />
               <div class="flex items-center justify-between gap-4 py-2">
@@ -262,7 +260,7 @@ function handleSave(scope: string) {
                   <Text weight="medium">异地登录保护</Text>
                   <Text size="sm" color="secondary" class="block">非常用地登录时需二次确认</Text>
                 </div>
-                <Switch v-model:checked="security.remoteProtect" />
+                <Switch v-model="security.remoteProtect" />
               </div>
             </div>
           </Card>
@@ -371,7 +369,7 @@ function handleSave(scope: string) {
                 <Text weight="medium">邮件摘要</Text>
                 <Text size="sm" color="secondary" class="block">每周发送一次工作摘要邮件</Text>
               </div>
-              <Switch v-model:checked="emailDigest" />
+              <Switch v-model="emailDigest" />
             </div>
 
             <div class="flex justify-end">
@@ -391,7 +389,7 @@ function handleSave(scope: string) {
                 <Badge :content="devices.length" variant="primary" standalone />
               </div>
             </template>
-            <List :data-source="devices" bordered="bordered" />
+            <List :data-source="devices" bordered />
           </Card>
 
           <Card title="登录历史">

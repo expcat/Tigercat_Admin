@@ -82,18 +82,20 @@ function handleRestoreDefaults() {
   Message.success({ content: '已恢复默认值，请确认保存修改', duration: 3000 })
 }
 
-async function handleLogoUpload(options: UploadRequestOptions) {
-  try {
-    options.onProgress?.(20)
-    const media = await uploadMediaFile(options.file, 'logo')
-    options.onProgress?.(100)
-    options.onSuccess?.(media)
-    editValues.value = { ...editValues.value, 'site.logo': media.url }
-    Message.success({ content: 'Logo 已上传，请保存设置以持久化引用', duration: 3000 })
-  } catch (e: any) {
-    options.onError?.(e)
-    Message.error({ content: e.message || 'Logo 上传失败', duration: 3000 })
-  }
+function handleLogoUpload(options: UploadRequestOptions) {
+  void (async () => {
+    try {
+      options.onProgress?.(20)
+      const media = await uploadMediaFile(options.file, 'logo')
+      options.onProgress?.(100)
+      options.onSuccess?.(media)
+      editValues.value = { ...editValues.value, 'site.logo': media.url }
+      Message.success({ content: 'Logo 已上传，请保存设置以持久化引用', duration: 3000 })
+    } catch (e: any) {
+      options.onError?.(e)
+      Message.error({ content: e.message || 'Logo 上传失败', duration: 3000 })
+    }
+  })()
 }
 
 function scrollToTargetSetting() {
@@ -193,9 +195,9 @@ watch([targetSettingKey, loading], scrollToTargetSetting)
             </Text>
           </div>
           <Switch
-            :checked="watermarkEnabled"
+            :model-value="watermarkEnabled"
             data-testid="setting-theme-watermark-switch"
-            @update:checked="(val: boolean) => setWatermarkEnabled(val)"
+            @update:model-value="(val: boolean) => setWatermarkEnabled(val)"
           />
         </div>
       </Card>
@@ -219,8 +221,8 @@ watch([targetSettingKey, loading], scrollToTargetSetting)
 
               <Switch
                 v-if="getControl(item.key).type === 'switch'"
-                :checked="editValues[item.key] === 'true'"
-                @update:checked="(val: boolean) => (editValues[item.key] = String(val))"
+                :model-value="editValues[item.key] === 'true'"
+                @update:model-value="(val: boolean) => (editValues[item.key] = String(val))"
                 :disabled="!canEdit"
               />
               <Select

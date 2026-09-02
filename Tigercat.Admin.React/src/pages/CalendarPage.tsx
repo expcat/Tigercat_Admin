@@ -226,7 +226,7 @@ function CalendarPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card header={<Text weight="bold">日历</Text>} className="lg:col-span-2">
-          <Calendar value={selectedDate} mode="month" fullscreen locale="zh-CN" onChange={(d) => setSelectedDate(d)} />
+          <Calendar value={selectedDate} mode="month" fullscreen onChange={(d) => setSelectedDate(d)} />
           <MutedPanel
             compact
             className="mt-3"

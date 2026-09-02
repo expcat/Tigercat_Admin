@@ -201,7 +201,9 @@ function SettingsPage() {
                   listType="picture-card"
                   showFileList={false}
                   maxSize={2 * 1024 * 1024}
-                  customRequest={handleLogoUpload}
+                  customRequest={(options) => {
+                    void handleLogoUpload(options);
+                  }}
                 />
 
                 <div className="p2-muted-panel px-4 py-3 text-sm">

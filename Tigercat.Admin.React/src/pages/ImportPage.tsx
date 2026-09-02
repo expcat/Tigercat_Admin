@@ -14,7 +14,7 @@ import type {
   WizardStep,
   TransferItem,
   CascaderOption,
-  CascaderValue,
+  CascaderModelValue,
   DescriptionsItem,
   UploadFile,
 } from '@expcat/tigercat-core';
@@ -80,8 +80,8 @@ const CONFLICT_LABELS: Record<string, string> = {
   error: '报错中止',
 };
 
-function resolveTargetText(value: CascaderValue): string {
-  if (!value.length) return '未选择';
+function resolveTargetText(value: CascaderModelValue): string {
+  if (!value?.length) return '未选择';
   const labels: string[] = [];
   let level: CascaderOption[] | undefined = TARGET_OPTIONS;
   for (const v of value) {
@@ -101,7 +101,7 @@ function ImportPage() {
   const [files, setFiles] = useState<UploadFile[]>([]);
   const [mode, setMode] = useState<ImportMode>('append');
   const [mappedKeys, setMappedKeys] = useState<(string | number)[]>(['name', 'email', 'dept']);
-  const [target, setTarget] = useState<CascaderValue>(['hr', 'employees']);
+  const [target, setTarget] = useState<CascaderModelValue>(['hr', 'employees']);
   const [batchSize, setBatchSize] = useState(1000);
   const [conflict, setConflict] = useState<ImportConflict>('skip');
 
@@ -188,6 +188,11 @@ function ImportPage() {
       setCurrent(1);
       return;
     }
+    if (!target?.length) {
+      Message.warning({ content: '请选择目标数据表', duration: 2200 });
+      setCurrent(0);
+      return;
+    }
     setImporting(true);
     setImportProgress(0);
     setDone(false);
@@ -265,7 +270,7 @@ function ImportPage() {
             dataSource={SOURCE_FIELDS}
             sourceTitle="源字段"
             targetTitle="目标字段"
-            showSearch
+            searchable
           />
           <MutedPanel compact description="将左侧源字段移动到右侧即建立映射；未映射字段将被忽略。" />
         </div>

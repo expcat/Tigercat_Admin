@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-当前仓库使用 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `2.1.2`。此前建议项已在上游落地。
+当前仓库使用 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `2.1.3`。此前建议项已在上游落地。
 
 ## 待上游改进
 

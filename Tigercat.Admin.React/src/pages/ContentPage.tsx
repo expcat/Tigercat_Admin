@@ -17,7 +17,7 @@ import type {
   TreeNode,
   TreeSelectValue,
   CascaderOption,
-  CascaderValue,
+  CascaderModelValue,
   MentionOption,
 } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
@@ -96,8 +96,8 @@ const DEFAULT_MARKDOWN =
 const DEFAULT_CODE =
   'export const version = "1.6.0";\n\nexport function release() {\n  return `Tigercat ${version} ready`;\n}';
 
-function columnText(value: CascaderValue): string {
-  if (!value.length) return '未选择';
+function columnText(value: CascaderModelValue): string {
+  if (!value?.length) return '未选择';
   const labels: string[] = [];
   let level = COLUMN_OPTIONS;
   for (const v of value) {
@@ -123,7 +123,7 @@ function ContentPage() {
 
   const [title, setTitle] = useState('组件库 v1.6 发布说明');
   const [category, setCategory] = useState<TreeSelectValue>('frontend');
-  const [column, setColumn] = useState<CascaderValue>(['docs', 'guide']);
+  const [column, setColumn] = useState<CascaderModelValue>(['docs', 'guide']);
   const [tags, setTags] = useState<string[]>(['发布', '组件库']);
   const [collaborators, setCollaborators] = useState('@Alice 请补充前端改动；@Bob 复核设计稿。');
   const [publishNow, setPublishNow] = useState(true);
@@ -326,7 +326,7 @@ function ContentPage() {
                     value={category}
                     treeData={CATEGORY_TREE}
                     placeholder="选择内容分类"
-                    showSearch
+                    searchable
                     defaultExpandAll
                     onChange={setCategory}
                   />

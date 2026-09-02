@@ -5,6 +5,7 @@ import {
   NavigationMenuContent,
   NavigationMenuItem,
   NavigationMenuLink,
+  NavigationMenuList,
   NavigationMenuTrigger,
 } from '@expcat/tigercat-react/NavigationMenu';
 import type { TagVariant } from '@expcat/tigercat-core';
@@ -209,19 +210,21 @@ function AboutPage() {
         ]}
       />
 
-      <NavigationMenu className="min-w-0 overflow-x-auto">
-        {ABOUT_SECTIONS.map((section) => (
-          <NavigationMenuItem key={section.key} value={section.key}>
-            <NavigationMenuTrigger>{section.label}</NavigationMenuTrigger>
-            <NavigationMenuContent>
-              <NavigationMenuLink
-                href={section.href}
-                onClick={(event) => scrollToAboutSection(event, section.href)}>
-                {section.description}
-              </NavigationMenuLink>
-            </NavigationMenuContent>
-          </NavigationMenuItem>
-        ))}
+      <NavigationMenu aria-label="关于分区" className="min-w-0 overflow-x-auto">
+        <NavigationMenuList>
+          {ABOUT_SECTIONS.map((section) => (
+            <NavigationMenuItem key={section.key} value={section.key}>
+              <NavigationMenuTrigger>{section.label}</NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <NavigationMenuLink
+                  href={section.href}
+                  onClick={(event) => scrollToAboutSection(event, section.href)}>
+                  {section.description}
+                </NavigationMenuLink>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+          ))}
+        </NavigationMenuList>
       </NavigationMenu>
 
       {errorMessage && (

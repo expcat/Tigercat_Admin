@@ -508,7 +508,7 @@ const openCount = computed(
         </div>
         <div>
           <Text weight="medium" class="mb-1 block">分类</Text>
-          <RadioGroup v-model:value="form.category">
+          <RadioGroup v-model="form.category">
             <Radio value="缺陷">缺陷</Radio>
             <Radio value="需求">需求</Radio>
             <Radio value="咨询">咨询</Radio>
@@ -516,7 +516,7 @@ const openCount = computed(
         </div>
         <div>
           <Text weight="medium" class="mb-1 block">优先级</Text>
-          <RadioGroup v-model:value="form.priority">
+          <RadioGroup v-model="form.priority">
             <Radio value="high">高</Radio>
             <Radio value="medium">中</Radio>
             <Radio value="low">低</Radio>

@@ -27,7 +27,8 @@ import {
   Input,
   Message,
 } from '@expcat/tigercat-react';
-import { LoadingBar, LoadingBarContainer } from '@expcat/tigercat-react/LoadingBar';
+import { LoadingBar } from '@expcat/tigercat-react/LoadingBar';
+import { LoadingBarContainer } from '@expcat/tigercat-react/LoadingBarContainer';
 import { MainLayout } from './components/MainLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { GuestRoute } from './components/GuestRoute';

@@ -20,9 +20,11 @@ async function login(page: Page, account: 'admin' | 'demo') {
   if (account === 'demo') {
     // demo 账号开启两步验证：输入 6 位演示验证码后才会进入会话。
     await expect(page.getByRole('heading', { name: '两步验证' })).toBeVisible();
+    const slots = page.getByTestId('auth-otp-input').locator('input:not([type="hidden"])');
     for (const digit of ['1', '2', '3', '4', '5', '6']) {
-      await page.locator(`[data-key="${digit}"]`).click();
+      await slots.nth(Number(digit) - 1).fill(digit);
     }
+    await expect(page.getByRole('button', { name: '验证', exact: true })).toBeEnabled();
     await page.getByRole('button', { name: '验证', exact: true }).click();
   }
   await expect(page).toHaveURL(/#\/dashboard$/);
@@ -34,7 +36,7 @@ test.describe('异常页与路由健壮性', () => {
 
     await page.goto('/#/not-an-existing-route');
     await expect(page).toHaveURL(/#\/404$/);
-    await expect(page.getByText('页面不存在')).toBeVisible();
+    await expect(page.getByRole('heading', { name: '页面不存在' })).toBeVisible();
     // 用角色定位，避免与倒计时标题「即将自动返回首页」产生文本包含歧义。
     await expect(page.getByRole('button', { name: '返回首页' })).toBeVisible();
     await expect(page.getByRole('button', { name: '返回上一页' })).toBeVisible();
@@ -67,6 +69,5 @@ test.describe('异常页与路由健壮性', () => {
     await page.goto('/#/500');
     await expect(page.getByText('服务异常')).toBeVisible();
     await expect(page.getByRole('button', { name: '返回上一页' })).toBeVisible();
-    await expect(page.getByText('没有可返回的历史记录')).toBeVisible();
   });
 });

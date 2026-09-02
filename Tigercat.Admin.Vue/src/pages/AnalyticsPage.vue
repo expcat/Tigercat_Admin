@@ -28,8 +28,8 @@ import { ChartTooltip } from '@expcat/tigercat-vue/ChartTooltip'
 import { createLinearScale, createBandScale } from '@expcat/tigercat-core'
 import type {
   SegmentedOption,
-  AreaChartDatum,
-  DonutChartDatum,
+  LineChartDatum,
+  PieChartDatum,
   FunnelChartDatum,
   RadarChartDatum,
   ScatterChartDatum,
@@ -40,7 +40,7 @@ import type {
   ChartSeriesPoint,
   ChartLegendItem,
   TableColumn,
-  DatePickerRangeModelValue,
+  DatePickerInputDate,
 } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 
@@ -51,7 +51,7 @@ const rangeOptions: SegmentedOption[] = [
   { value: '30', label: '近 30 天' },
   { value: '90', label: '近 90 天' },
 ]
-const dateRange = ref<DatePickerRangeModelValue | null>(null)
+const dateRange = ref<[DatePickerInputDate | null, DatePickerInputDate | null] | null>(null)
 const loading = ref(true)
 
 const factor = computed(() => {
@@ -71,7 +71,7 @@ function handleRangeChange(value: string | number) {
   triggerLoading()
 }
 function handleDateRangeChange(value: unknown) {
-  dateRange.value = value as DatePickerRangeModelValue | null
+  dateRange.value = value as [DatePickerInputDate | null, DatePickerInputDate | null] | null
 }
 function handleRefresh() {
   page.value = 1
@@ -98,11 +98,11 @@ const kpis = computed(() => [
 // ── 各类图表数据 ────────────────────────────────
 const months = ['1月', '2月', '3月', '4月', '5月', '6月']
 const baseTrend = [120, 200, 150, 260, 300, 260]
-const areaData = computed<AreaChartDatum[]>(() =>
+const areaData = computed<LineChartDatum[]>(() =>
   months.map((m, i) => ({ x: m, y: Math.round(baseTrend[i] * factor.value) })),
 )
 
-const donutData = computed<DonutChartDatum[]>(() => [
+const donutData = computed<PieChartDatum[]>(() => [
   { value: Math.round(42 * factor.value), label: '直接访问' },
   { value: Math.round(28 * factor.value), label: '搜索引擎' },
   { value: Math.round(18 * factor.value), label: '社交媒体' },
@@ -403,7 +403,7 @@ function handlePageChange(value: number) {
             <ChartAxis orientation="bottom" :scale="xScale" />
             <ChartAxis orientation="left" :scale="yScale" />
             <ChartSeries :data="seriesPoints" type="line" color="var(--tiger-primary)" />
-            <ChartTooltip content="月度转化趋势" :visible="false" />
+            <ChartTooltip content="月度转化趋势" :open="false" />
           </ChartCanvas>
         </div>
         <ChartLegend :items="legendItems" class="mt-2" />

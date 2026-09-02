@@ -175,7 +175,6 @@ watch(
       :mask="true"
       :mask-closable="true"
       :destroy-on-close="true"
-      :destroy-on-close-after-leave="true"
       :fullscreen-on-mobile="false"
       width="240px"
       :panel-style="{
@@ -185,7 +184,7 @@ watch(
       body-class-name="!p-0 h-full"
       @update:open="handleDrawerOpenChange"
       @close="handleSidebarClose"
-      @after-leave="focusSidebarToggle"
+      @after-close="focusSidebarToggle"
     >
       <div id="main-sidebar" class="h-full">
         <MainSidebar 

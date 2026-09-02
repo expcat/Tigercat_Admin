@@ -26,6 +26,7 @@ import type {
   DescriptionsItem,
   TimelineItem,
   ListItem,
+  TimePickerRangeTuple,
 } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { MutedPanel } from '../components/PageFragments';
@@ -146,7 +147,7 @@ function ProfilePage() {
   const [themeColor, setThemeColor] = useState('#3b82f6');
   const [fontSize, setFontSize] = useState(14);
   const [birthday, setBirthday] = useState<Date | null>(null);
-  const [quietHours, setQuietHours] = useState<[string | null, string | null]>(['22:00', '07:00']);
+  const [quietHours, setQuietHours] = useState<TimePickerRangeTuple | null>(['22:00', '07:00']);
   const [bio, setBio] = useState('负责 Tigercat 后台平台的整体架构与组件治理。');
   const [emailDigest, setEmailDigest] = useState(true);
 
@@ -405,7 +406,7 @@ function ProfilePage() {
                   <Badge content={devices.length} variant="primary" standalone />
                 </div>
               }>
-              <List dataSource={devices} bordered="bordered" />
+              <List dataSource={devices} bordered />
             </Card>
 
             <Card title="登录历史">

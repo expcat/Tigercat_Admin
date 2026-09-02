@@ -18,7 +18,7 @@ import type {
   TreeNode,
   TreeSelectValue,
   CascaderOption,
-  CascaderValue,
+  CascaderModelValue,
   MentionOption,
 } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
@@ -107,7 +107,7 @@ const codeValue = ref(DEFAULT_CODE)
 
 const title = ref('组件库 v1.6 发布说明')
 const category = ref<TreeSelectValue>('frontend')
-const column = ref<CascaderValue>(['docs', 'guide'])
+const column = ref<CascaderModelValue>(['docs', 'guide'])
 const tags = ref<string[]>(['发布', '组件库'])
 const collaborators = ref('@Alice 请补充前端改动；@Bob 复核设计稿。')
 const publishNow = ref(true)
@@ -204,7 +204,7 @@ onMounted(() => {
 })
 
 const currentColumnText = computed(() => {
-  if (!column.value.length) return '未选择'
+  if (!column.value?.length) return '未选择'
   const labels: string[] = []
   let level = COLUMN_OPTIONS
   for (const v of column.value) {
@@ -282,19 +282,19 @@ const currentColumnText = computed(() => {
             <div class="rounded-lg border border-(--tiger-border,#e5e7eb) p-1">
               <RichTextEditor
                 v-if="editorType === 'rich'"
-                v-model:value="richValue"
+                v-model="richValue"
                 :height="320"
                 placeholder="输入富文本内容…"
               />
               <MarkdownEditor
                 v-else-if="editorType === 'markdown'"
-                v-model:value="markdownValue"
+                v-model="markdownValue"
                 :height="320"
                 default-mode="split"
               />
               <CodeEditor
                 v-else
-                v-model:value="codeValue"
+                v-model="codeValue"
                 language="typescript"
                 :min-lines="14"
                 :max-lines="18"
@@ -318,7 +318,7 @@ const currentColumnText = computed(() => {
                 v-model="category"
                 :tree-data="CATEGORY_TREE"
                 placeholder="选择内容分类"
-                show-search
+                searchable
                 default-expand-all
               />
             </div>

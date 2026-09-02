@@ -2,8 +2,8 @@
 import { computed, ref, watch, provide, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ConfigProvider, Message } from '@expcat/tigercat-vue'
-import { LoadingBarContainer } from '@expcat/tigercat-vue/LoadingBar'
-import { appText } from './utils/tigercatText'
+import { LoadingBarContainer } from '@expcat/tigercat-vue/LoadingBarContainer'
+import { appLocale } from './utils/tigercatText'
 import {
   SESSION_KEY,
   safeParse,
@@ -206,7 +206,7 @@ provide('updateTheme', updateTheme)
 </script>
 
 <template>
-  <ConfigProvider :locale="appText">
+  <ConfigProvider :locale="appLocale">
     <div id="tiger-loading-bar-container-root"></div>
     <div id="tiger-message-container-root"></div>
     <RouterView v-slot="{ Component }">

@@ -589,9 +589,9 @@ function RolesPage() {
     loadRoles();
   };
 
-  const handlePageSizeChange = (_current: number, nextPageSize: number) => {
-    persistQuery({ pageSize: nextPageSize, page: 1 });
-    setPageSize(nextPageSize);
+  const handlePageSizeChange = (page: { current: number; pageSize: number }) => {
+    persistQuery({ pageSize: page.pageSize, page: 1 });
+    setPageSize(page.pageSize);
     setCurrentPage(1);
     loadRoles();
   };
@@ -623,13 +623,16 @@ function RolesPage() {
 
   const tableToolbar = useMemo(
     () => ({
+      searchMode: 'remote' as const,
       searchValue: keyword,
       searchPlaceholder: '搜索角色名称或描述...',
+      onSearchChange: handleSearch,
+      onSearch: handleSearch,
       selectedKeys: selectedRowKeys,
       selectedCount: selectedRowKeys.length,
       showColumnSettings: true,
     }),
-    [keyword, selectedRowKeys],
+    [handleSearch, keyword, selectedRowKeys],
   );
 
   const serverPaginationHint = useMemo(() => {
@@ -694,11 +697,7 @@ function RolesPage() {
         cardLayout={ROLE_CARD_LAYOUT}
         emptyText="暂无角色数据"
         toolbar={tableToolbar}
-        onSearchChange={handleSearch}
-        onSearch={handleSearch}
-        onPageChange={(current, nextPageSize) =>
-          handlePageChange({ current, pageSize: nextPageSize })
-        }
+        onPageChange={handlePageChange}
         onPageSizeChange={handlePageSizeChange}
         onSelectionChange={handleSelectionChange}
         onSortChange={handleSortChange}

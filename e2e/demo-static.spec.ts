@@ -131,7 +131,7 @@ test.describe('阶段 1 — 个人中心与数据分析', () => {
     await expect(page.getByText('数据分析').first()).toBeVisible();
     // Skeleton 结束后，图表与明细渲染成功（任一卡片崩溃都会导致整页空白）。
     await expect(page.getByText('直接访问').first()).toBeVisible();
-    await expect(page.getByText('渠道明细')).toBeVisible();
+    await expect(page.getByText('渠道明细', { exact: true })).toBeVisible();
 
     // Segmented 切换时间范围后仍停留在分析页且内容可见。
     await page.getByText('近 7 天').click();
@@ -324,7 +324,7 @@ test.describe('阶段 5 — 帮助与报表', () => {
     await expect(page.getByText('渠道明细', { exact: true })).toBeVisible();
     await expect(page.getByText('自然搜索', { exact: true })).toBeVisible();
     await expect(page.getByText('报表生成完成').first()).toBeVisible();
-    await expect(page.getByRole('button', { name: '打印' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '打印', exact: true })).toBeVisible();
 
     // 切换到销售周报，统计区间随之更新。
     await page.getByText('销售周报').first().click();

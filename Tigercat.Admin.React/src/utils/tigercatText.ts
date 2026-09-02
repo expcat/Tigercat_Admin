@@ -1,10 +1,9 @@
-import { defineText } from '@expcat/tigercat-core';
+import { defineText, mergeTigerLocale } from '@expcat/tigercat-core';
+import { zhCN } from '@expcat/tigercat-core/locales/zh-CN';
 
 /**
- * 应用级自定义文案（中文），替代 Tigercat 内置 i18n 语言包。
- *
- * 这是单语言应用的推荐方式：使用 `defineText` 直接提供组件文案，
- * 无需引入语言包文件，打包体积更小。文案内容与原 `zh-CN` 语言包保持一致。
+ * 应用级文案 overlay。v2.1.3 起 `defineText` 只返回传入的键，缺省回落 en-US。
+ * ConfigProvider 请使用 `appLocale`（官方 zh-CN 包 + 本 overlay），不要把 overlay 当完整语言包。
  * 如需覆盖单个组件实例的文案，可在该组件上传入 `labels` 属性。
  */
 export const appText = defineText({
@@ -156,3 +155,5 @@ export const appText = defineText({
     clear: '清除格式',
   },
 });
+
+export const appLocale = mergeTigerLocale(zhCN, appText) ?? zhCN;

@@ -49,9 +49,10 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 - 外层：`Layout` 横向布局，左侧 `MainSidebar`，右侧 `MainHeader + TagsView + Content`。
 - 桌面侧栏：宽 `240px`，折叠宽 `64px`，使用 `Sidebar`、`Menu`、`SubMenu`、`MenuItem`。
 - 桌面侧栏主菜单保持 `mode="inline"`；折叠态继续传 `collapsed` 并开启 `popupPortal`，由上游在收缩时自动退化为 popup 子菜单，不再手动切换 `vertical`。
-- 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭；Esc 关闭为 Drawer 内置行为（经 `onClose/@close` 回调），不要再手动监听 keydown。依赖 `destroyOnClose + destroyOnCloseAfterLeave + onAfterLeave/@after-leave` 完成离场后卸载与焦点恢复。
+- 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭；Esc 关闭为 Drawer 内置行为（经 `onClose/@close` 回调），不要再手动监听 keydown。`destroyOnClose` 会等关场过渡后再卸载；焦点恢复用 `onAfterClose` / `@after-close`。不要再传已删除的 `destroyOnCloseAfterLeave` / `onAfterLeave` / `@after-leave`。
 - Header：使用 `Header`、`Breadcrumb`、`Button`、`Dropdown`、`Avatar`、`Tag`，包含侧栏开关、面包屑、主题配置抽屉入口、主题切换、修改密码、锁定屏幕和退出。
-- 路由进度：受保护路由切换时用 `LoadingBar.start()` / `LoadingBar.finish()` 驱动顶部进度条（失败或 `next(false)` 也要 `finish`）；根节点挂载 `#tiger-loading-bar-container-root`，由 `LoadingBar` 把 `LoadingBarContainer` 挂进去。游客页与独立异常页不显示。
+- 路由进度：受保护路由切换时用 `LoadingBar.start()` / `LoadingBar.finish()` 驱动顶部进度条（失败或 `next(false)` 也要 `finish`）；根节点挂载 `#tiger-loading-bar-container-root`，由 `LoadingBar` 把 `LoadingBarContainer` 挂进去（子路径 `/LoadingBar` 与 `/LoadingBarContainer` 分开）。游客页与独立异常页不显示。
+- 命令面板：`Spotlight` 默认 `hotkey` 已绑定 ⌘K / Ctrl+K，不要再在 App 里叠一层 keydown 开关，否则受控 `open` 会被两次 toggle 抵消。
 - 多标签（tags-view）：受保护 Shell 在 Header 与 Content 之间显示标签条（`TagsView`）。打开受保护路由即生成标签；标题复用 `getShellPageTitle`，路由映射复用 `SHELL_MENU_ROUTES` / `resolveShellPageKey`（先精确查 `SHELL_ROUTE_TO_MENU`，再按前缀映射，使 `/projects/:id` 与 Vue `projects-detail` 仍高亮列表菜单 `projects`）。仪表盘（`home`）固定在最前且不可关闭；关闭当前时跳到相邻标签，关尽后回到仪表盘。刷新后从 `sessionStorage` 键 `tigercat-admin:tags-view` 恢复（损坏/缺失 JSON 时回退为仅仪表盘）。游客页与 `/403` `/404` `/500` 不套 `MainLayout`，因此不显示标签条。面包屑仍由 `MainHeader` + `getShellBreadcrumbItems` 负责，不要在标签条重复实现。
 - 锁屏：头像下拉「锁定屏幕」打开全屏遮罩（`LockScreen`），覆盖侧栏、标签条与内容；含当前用户 `Avatar`、`Statistic` 实时时钟、`NumberKeyboard` PIN 输入。演示 PIN 固定 `123456`（与登录 OTP 相同）。正确 PIN 关闭遮罩并留在当前路由；错误 PIN 提示后清空输入；Esc / ⌘K 不能绕过 PIN。锁定标记写入 `sessionStorage` 键 `tigercat-admin:lock-screen`。不进左侧菜单。
 - 全局水印：`/settings` 的 `theme.watermark` 开关控制是否在 Header 下方内容区（多标签条 + 页面出口）叠一层 Tigercat `Watermark`。水印文案为两行数组：当前用户名、当天日期 `YYYY-MM-DD`（如 `admin` / `2026-08-23`）。开关立即生效，写入 `localStorage` 键 `tigercat-admin:watermark`（无新 API 端点）。关闭时不渲染 Shell `Watermark`；内容编辑页 / 报表页的页内水印演示保持独立。覆盖层外框是 `absolute inset-0` 且 `pointer-events: none`；`Watermark` 本身保持 `relative h-full w-full`（组件总会加上 `relative`，不要把 `absolute` 写在 Watermark 上，否则与组件 class 冲突后高度为 0）。锁屏遮罩仍覆盖水印层。
@@ -126,11 +127,11 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 | 定时任务 | `CronEditor`、`Stepper`、`InputGroup`/`InputGroupAddon`、`NumberKeyboard`、`Gantt`、`Switch`、`Progress`、`Steps`/`StepsItem`、`Badge`、`Tag`、`Drawer`、原生 `Table` | 调度表达式编辑、并发数步进、超时数值+单位、批量条数数字键盘、执行时间轴、启停切换、执行进度、运行阶段、新建/编辑任务；列表 / 启停 / 新建编辑接 `/api/jobs`，Gantt 使用返回的 `start` / `end` / `progress` / `color` |
 | 数据导入 | `FormWizard`、`Transfer`、`Upload`、`Cascader`、`Slider`、`RadioGroup`/`Radio`、`Progress`、`Result`、`Descriptions` | 分步向导、字段映射穿梭框、文件上传、目标表级联、批量大小滑块、导入模式/冲突策略、导入进度、确认摘要、完成结果页；前三步仍本地，完成时 `POST /api/import-jobs` 并轮询 `GET` 直到完成，最近任务 ID 写入 `sessionStorage` 键 `tigercat-admin:last-import-job` 以便刷新恢复 Result |
 | 大数据演示 | `VirtualList`、`VirtualTable`、`useDrag`、`Kanban`、`Tabs`/`TabPane`、`Tag`、`Card` | 万级日志流虚拟滚动、万行多列表格（stickyHeader + 固定行高）、`useDrag` 自由排序（无 `/Drag` 子路径组件）、低层看板（区别于任务面板 `TaskBoard`）；数据页面内生成 |
-| 帮助中心 | `Anchor`/`AnchorLink`、`ScrollSpy`、`Affix`、`Collapse`/`CollapsePanel`、`Code`、`Kbd`、`Link`、`List`、`InfiniteScroll`、`ScrollArea`、`Highlight`、`Card`、`BackTop`（全局） | 长文档章节锚点导航（`getContainer` 指向 `#main-content-scroll`）、横向滚动高亮、侧栏吸顶、FAQ 手风琴、可复制代码块、快捷键 `Kbd`、内联链接、关键字高亮（「权限」「令牌」）、`ScrollArea` 只包 FAQ 答案与更多文章列表（限高 240 / 320，不包整篇以免抢走主内容滚动）、更多文章无限加载、回到顶部 |
+| 帮助中心 | `Anchor`/`AnchorLink`、`ScrollSpy`、`Affix`、`Collapse`/`CollapsePanel`、`Code`、`Kbd`、`Link`、`List`、`InfiniteScroll`、`ScrollArea`、`Highlight`、`Card`、`BackTop`（全局） | 长文档章节锚点导航（`getContainer` 指向 `#main-content-scroll`）、横向滚动高亮、侧栏吸顶、FAQ 手风琴、可复制代码块、快捷键 `Kbd`、内联链接、关键字高亮（「权限」「令牌」）、`ScrollArea` 只包 FAQ 答案与更多文章列表（`maxHeight` 240 / 320 写在视口上，根 class 用 `className` / `viewportClassName` 区分，不包整篇以免抢走主内容滚动）、更多文章无限加载、回到顶部 |
 | 报表打印 | `PrintLayout`/`PrintPageBreak`、`Watermark`、`Descriptions`、`Statistic`、`QRCode`、`Result`、`Segmented`、`Divider`、原生 `Table`、`DataExport`、`CheckboxGroup` | A4 打印布局、草稿水印、报表元信息、KPI 汇总、渠道明细、分页分隔、二维码校验、报表类型切换、`window.print()` 输出、打印旁 `DataExport` 导出 csv/json/xlsx（`CheckboxGroup` 勾选 KPI/渠道字段，`GET /api/export/reports` Blob） |
 | 异常页 | `Result`、`Countdown`、`Button`、`Empty` | 403/404/500 独立居中布局、返回首页/上一页、404 倒计时自动回首页、无历史记录时 Empty 提示、无权限路由重定向 `/403` |
 | 登录流程增强 | `Steps`、`Input`、`MaskInput`、`InputOTP`、`Countdown`、`Alert`、`Result`、`Button` | 忘记密码三步重置（邮箱 `Input` / 手机 `MaskInput` → `InputOTP` 验证码 → 新密码 → 完成）、账号两步验证 `InputOTP`（验证通过才写会话、60s 重发倒计时）、注册成功结果页与倒计时回登录 |
-| 关于 | `Alert`、`Card`、`Text`、`Tag`、`NavigationMenu`/`NavigationMenuContent`/`NavigationMenuItem`/`NavigationMenuLink`/`NavigationMenuTrigger` | 技术栈和版本信息、页内分区跳转（服务信息 / 特性 / 技术栈，点击滚动到已有锚点） |
+| 关于 | `Alert`、`Card`、`Text`、`Tag`、`NavigationMenu`/`NavigationMenuList`/`NavigationMenuContent`/`NavigationMenuItem`/`NavigationMenuLink`/`NavigationMenuTrigger` | 技术栈和版本信息、页内分区跳转（服务信息 / 特性 / 技术栈）。默认点击 / Enter / Space / ArrowDown 才开层面板，不要依赖悬停；根菜单自行命名（`aria-label="关于分区"`），不要假设默认 `Main`。 |
 
 重组件使用子路径导入，减少页面 chunk 压力：
 
@@ -147,7 +148,8 @@ import { VirtualList } from '@expcat/tigercat-react/VirtualList';
 import { VirtualTable } from '@expcat/tigercat-react/VirtualTable';
 import { Kanban } from '@expcat/tigercat-react/Kanban';
 import { useDrag } from '@expcat/tigercat-react';
-import { LoadingBar, LoadingBarContainer } from '@expcat/tigercat-react/LoadingBar';
+import { LoadingBar } from '@expcat/tigercat-react/LoadingBar';
+import { LoadingBarContainer } from '@expcat/tigercat-react/LoadingBarContainer';
 import { ContextMenu, ContextMenuItem, ContextMenuMenu, ContextMenuSub } from '@expcat/tigercat-react/ContextMenu';
 import { SplitButton } from '@expcat/tigercat-react/SplitButton';
 import { NavigationMenu } from '@expcat/tigercat-react/NavigationMenu';
@@ -172,17 +174,18 @@ Vue 端将包名替换为 `@expcat/tigercat-vue/...`。`useDrag` 从包入口导
 
 - **窄屏卡片模式**：用户/角色页的 `DataTableWithToolbar` 启用 `responsiveMode="card"` + `cardBreakpoint="md"`（Vue 为 `responsive-mode="card"` + `card-breakpoint="md"`），与 Shell 左侧菜单隐藏断点 `(max-width: 767px)` 对齐；低于 `md` 时表格渲染为堆叠卡片。列级配置：`id` → `hideInCard: true`（卡片省略）、`username`/`name` → `cardTitle: true`（卡片标题），其余列保持原顺序（可用 `cardPriority` 调整权重）。卡片模式下行选择、列 `render`、分页均可用，`fixed` 固定列配置自动失效。`v1.2.39` 起卡片增强为上游内置，无需页面适配：展开/收起、全选、排序文案走 locale；存在 `sortable` 列时卡片列表上方自动渲染排序 `Select`；行选择为主题 `Checkbox`/`Radio` 并带「全选」控件；空状态走 `Empty` 组件渲染 `emptyText`。需要深度定制时可用 `cardClassName` / `renderCard`（本项目暂未使用）。
 - **卡片排列**：`v1.2.44` 起 Card 模式支持网格排列。常规数据工作台先用默认顺序 + `hideInCard` / `cardTitle` / `cardPriority`；需要二维排布时优先在列配置里使用 `cardGrid`；需要跨页面复用或集中覆盖时使用表级 `cardLayout`（React prop 为 `cardLayout`，Vue 为 `:card-layout`）。`cardGrid` 与 `cardLayout` 都支持 `colSpan`（1-12）、`rowSpan`（1-6）、`hideLabel`、`labelPosition: 'left' | 'top'`；列级 `cardGrid` 双端都写在 `columns` 内，表级 `cardLayout` 通过 `key` 指向目标列。用户/角色页已用表级 `cardLayout` 在窄屏卡片中启用紧凑信息行：字段全宽、标签和值左右排列，操作区整行展示并隐藏字段标签。
-- **表格文案**：Table / DataTableWithToolbar 文案统一走 ConfigProvider locale 的 `table` 分节（见双端 `src/utils/tigercatText.ts` 的 `appText.table`，覆盖空状态、展开/收起、全选、排序、搜索按钮、列设置、已选择等 key）。卡片排序 Select 的占位与空列表走 `appText.select.placeholder` / `emptyText`（「请选择」/「暂无选项」），不要在 Users / Tasks 页硬编码覆盖。页面级覆盖业务文案用 `emptyText`（如「暂无用户数据」）或 `labels` prop；不要再在 toolbar 上硬编码 `searchButtonText` / `bulkActionsLabel` 通用文案，业务化的 `searchPlaceholder`（如「搜索用户名或显示名...」）保留在页面。
+- **表格文案**：Table / DataTableWithToolbar 文案统一走 ConfigProvider locale 的 `table` 分节。双端 `src/utils/tigercatText.ts` 导出 `appLocale`（官方 `zhCN` + `appText` overlay），根节点 `ConfigProvider locale={appLocale}`。不要把 `defineText` overlay 单独当完整语言包（v2.1.3 缺键回落 en-US）。卡片排序 Select 的占位与空列表走 locale `select.placeholder` / `emptyText`（「请选择」/「暂无选项」），不要在 Users / Tasks 页硬编码覆盖。页面级覆盖业务文案用 `emptyText`（如「暂无用户数据」）或 `labels` prop；不要再在 toolbar 上硬编码 `searchButtonText` / `bulkActionsLabel` 通用文案，业务化的 `searchPlaceholder`（如「搜索用户名或显示名...」）保留在页面。
 - **锁定列背景**：上游锁定列背景读组件 Token 链 `--tiger-table-bg → --tiger-component-table-bg → --tiger-surface`（stripe/hover/header 同理），`v1.2.43+` 已对 `striped + fixed` 单元格使用不透明 `color-mix(...)` 背景，避免横向滚动时透出下层内容。本项目在双端全局 CSS 的 `.dark` 块中将 `--tiger-component-table-bg/stripe-bg/hover-bg/header-bg` 映射到 `--tiger-bg-card`/`--tiger-bg-page`/`--tiger-bg-hover`，不再使用 `[style*="position: sticky"]` 全局覆盖。需要进一步定制时使用列级 `fixedClassName` / `fixedHeaderClassName`。
 - **列显隐面板**：用户/角色页在 `DataTableWithToolbar` 的 `toolbar` 中启用 `showColumnSettings: true`，并使用 Table 受控隐藏列能力保存状态：React 传 `hiddenColumnKeys` + `onHiddenColumnKeysChange`，Vue 传 `:hidden-column-keys` + `@hidden-column-keys-change`。不要再自建 `Popover + Checkbox` 列显隐面板，也不要在页面侧过滤 `columns`；隐藏列由上游 Table 统一处理，sessionStorage 仍保存 `hiddenColumnKeys`。
+- **搜索/筛选/分页（v2.1.3）**：搜索、筛选、批量动作回调写在 `toolbar` 上（React `toolbar.onSearchChange` / `onSearch` / `onFiltersChange` / `onBulkAction`；Vue 仍可用 `@search-change` / `@search` / `@filters-change` / `@bulk-action`）。用户/角色页是服务端分页，必须 `toolbar.searchMode: 'remote'`，不要用默认 `local` 去筛当前页。`onPageChange` / `onPageSizeChange` 与 Table 同签名：`({ current, pageSize })`；改页尺寸只发 `onPageSizeChange`。
 
 ## React / Vue 映射
 
 | 语义 | React | Vue |
 | ---- | ----- | --- |
 | 样式属性 | `className` | `class` 或组件要求的 `class-name` |
-| 受控值 | `value` + `onChange` | `:model-value` + `@update:model-value` 或 `v-model` |
-| 弹层开关 | `open` + `onOpenChange` / `onClose` | `:open` + `@update:open` / `@close` |
+| 受控值 | `value` + `onChange` | `:model-value` + `@update:model-value` 或 `v-model`（Switch / RadioGroup / 编辑器族走默认 `v-model`，不要 `v-model:checked` / `v-model:value`） |
+| 弹层开关 | `open` + `onOpenChange` / `onClose` | `:open` + `@update:open` / `@close`（不要 `visible` / `onVisibleChange`） |
 | 事件命名 | camelCase props | kebab-case emits |
 | 权限包装 | `PermissionGuard` / `usePermission` | `v-permission` / `usePermission` |
 | 路由跳转 | `useNavigate()` | `useRouter().push()` |
@@ -213,7 +216,7 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 ## 已对齐的上游能力
 
-本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）：
+本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `^2.1.3`：
 
 | 组件 | 平台 | 上游现状 | 本项目保留的布局 glue |
 | ---- | ---- | -------- | --------------------- |
@@ -227,4 +230,9 @@ LLM 生成新页面或复刻页面时，至少满足：
 | `FloatButton` | React / Vue | `v2.1.2` 起独立按钮可选 `floating` + `placement` + `offset`；`FloatButtonGroup` 同步支持 `placement` / `offset`。 | `ChatDock` 用 `floating` 贴右下角，未读 `Badge` 叠在按钮内；快捷组用 `offset.y: '6.5rem'` 上移，不再自包 `fixed` 容器或写 `style.bottom`。 |
 | `ColorPicker` | React / Vue | `v2.1.2` 起支持 `labels`（`trigger` / `panelTitle` / `clear` 等）与 ConfigProvider `colorPicker` 分节。 | 中文站点在 `tigercatText.ts` 的 `appText.colorPicker` 提供文案；Settings 页不另造触发器文案层。 |
 | `Select` | React / Vue | `v2.1.2` 起 `TigerLocaleSelect` 增加 `placeholder` / `emptyText`，并随 zh 语言包给出中文默认值。 | 卡片排序等未传 `placeholder` 的 Select 读 `appText.select`（「请选择」/「暂无选项」）；业务 Select 仍可在页面上传入具体 `placeholder`。 |
-| `RichTextEditor` / `MarkdownEditor` | React / Vue | `v2.1.2` 起内置工具条读 ConfigProvider `richTextEditor` / `markdownEditor` 分节，也可用组件 `labels` 覆盖。 | 在 `tigercatText.ts` 提供加粗、斜体、标题、列表等中文；Content 页不另包自定义工具条。 |
+| `RichTextEditor` / `MarkdownEditor` | React / Vue | `v2.1.2` 起内置工具条读 ConfigProvider `richTextEditor` / `markdownEditor` 分节，也可用组件 `labels` 覆盖。`v2.1.3` 起 Vue 三个编辑器走默认 `v-model`（`modelValue` / `update:modelValue`）。 | 在 `tigercatText.ts` 提供加粗、斜体、标题、列表等中文；Content 页不另包自定义工具条，Vue 不要再写 `v-model:value`。 |
+| `Drawer` / overlay | React / Vue | `v2.1.3` 删除 `deferDestroyOnClose` / `destroyOnCloseAfterLeave`；`destroyOnClose` 自己等关场。焦点恢复用 `onAfterClose` / `@after-close`。Alert / Tag / ChartTooltip 可见性是 `open`，不是 `visible`。 | 移动侧栏 Drawer 只传 `destroyOnClose` + `onAfterClose`；图表基元 `ChartTooltip` 用 `open={false}`。 |
+| `DataTableWithToolbar` | React / Vue | `v2.1.3` 搜索/筛选默认写进当前表（`searchMode: 'local'`）；`onPageChange` 与 Table 同为对象签名。 | 用户/角色页 `toolbar.searchMode: 'remote'`，分页回调吃 `{ current, pageSize }`。 |
+| `NavigationMenu` | React / Vue | `v2.1.3` 默认点击才开层；`NavigationMenuList` 进根入口；不再默认 `aria-label="Main"`。 | About 页包 `NavigationMenuList` 并自行命名。 |
+| `Transfer` / `TreeSelect` | React / Vue | 搜索开关统一 `searchable`，旧 `showSearch` 已删。 | 导入穿梭框与内容分类树用 `searchable`。 |
+| `List` | React / Vue | `bordered` 是外框布尔，不再接受 `'bordered' \| 'divided' \| 'none'`。 | 个人中心设备列表写 `bordered`。 |

@@ -12,12 +12,6 @@ import { usePermission } from '../utils/permission'
 import { ApiError } from '../utils/request'
 import { clearWorkbenchSelection, loadWorkbenchState, saveWorkbenchState } from '../utils/workbench'
 import type { DuplicateMediaResult, MediaDetail, MediaItem, MediaReference } from '../utils/types'
-import { appText } from '../utils/tigercatText'
-
-// FileManager 的搜索框占位符走 common.searchPlaceholder，而 appText 未覆盖该字段（回退英文 "Search"）。
-// 用 v1.5.0 新增的逐组件 locale 覆盖补齐为中文（在 ConfigProvider locale 之上合并）。
-const fileManagerLocale = { common: { ...appText.common, searchPlaceholder: '搜索' } }
-
 const FILE_UPLOAD_ACCEPT = 'image/*,.pdf,.txt,.csv,.json,.xlsx,.xls'
 const FILE_UPLOAD_MAX_SIZE = 10 * 1024 * 1024
 
@@ -373,7 +367,6 @@ onMounted(loadMedia)
             :loading="loading"
             :selected-keys="selectedKeys"
             :search-text="searchText"
-            :locale="fileManagerLocale"
             empty-text="暂无媒体资源"
             @update:selected-keys="handleSelectedKeysChange"
             @update:search-text="handleSearchTextChange"
@@ -433,7 +426,7 @@ onMounted(loadMedia)
           </ul>
         </div>
         <label v-if="deleteReferences.length > 0" class="p2-checkbox-row text-sm">
-          <Checkbox :checked="forceDelete" @update:checked="handleForceDeleteChange" />
+          <Checkbox :model-value="forceDelete" @update:model-value="handleForceDeleteChange" />
           <span class="p2-checkbox-label">强制删除并清理已知 Logo / 头像引用</span>
         </label>
         <Button
