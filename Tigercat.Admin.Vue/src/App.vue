@@ -121,15 +121,15 @@ const clearAuthenticatedState = () => {
 
 const handleLogout = () => {
   clearAuthenticatedState()
-  window.location.assign(router.resolve({ name: 'login' }).href)
+  router.push({ name: 'login' })
 }
 
 function handleStorage(event: StorageEvent) {
   if (event.key !== SESSION_KEY || event.newValue !== null) return
   clearAuthenticatedState()
-  if (route.name === 'login') return
-  // 跨标签页退出时整页进入登录，避免懒加载布局切换留下空白 RouterView。
-  window.location.assign(router.resolve({ name: 'login' }).href)
+  if (route.name !== 'login') {
+    router.replace({ name: 'login' })
+  }
 }
 
 function handleSessionExpired() {
@@ -209,21 +209,10 @@ provide('updateTheme', updateTheme)
   <ConfigProvider :locale="appLocale">
     <div id="tiger-loading-bar-container-root"></div>
     <div id="tiger-message-container-root"></div>
-    <RouterView v-slot="{ Component }">
-      <Suspense>
-        <template #default>
-          <component
-            :is="Component"
-            :key="route.matched[0]?.path ?? route.fullPath"
-            @success="onLoginSuccess"
-          />
-        </template>
-        <template #fallback>
-          <div class="flex min-h-screen items-center justify-center">
-            <div class="p2-text-secondary">加载中...</div>
-          </div>
-        </template>
-      </Suspense>
-    </RouterView>
+    <div class="min-h-screen">
+      <RouterView v-slot="{ Component }">
+        <component :is="Component" @success="onLoginSuccess" />
+      </RouterView>
+    </div>
   </ConfigProvider>
 </template>

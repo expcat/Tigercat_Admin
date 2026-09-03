@@ -46,7 +46,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 
 受保护页面统一使用后台 shell：
 
-- 外层：`Layout` 横向布局，左侧 `MainSidebar`，右侧 `MainHeader + TagsView + Content`。
+- 外层：`Layout` 横向布局，左侧 `MainSidebar`，右侧 `MainHeader + TagsView + Content`。Vue 根 `RouterView` 必须包在真实 DOM 节点里（不要直接作为 `ConfigProvider` `contents` 根的兄弟被 overlay-host 插入），否则离开 Shell 进 403/404 时 Vue `insertBefore` 会把页面卸空。
 - 桌面侧栏：宽 `240px`，折叠宽 `64px`，使用 `Sidebar`、`Menu`、`SubMenu`、`MenuItem`。
 - 桌面侧栏主菜单保持 `mode="inline"`；折叠态继续传 `collapsed` 并开启 `popupPortal`，由上游在收缩时自动退化为 popup 子菜单，不再手动切换 `vertical`。
 - 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭；Esc 关闭为 Drawer 内置行为（经 `onClose/@close` 回调），不要再手动监听 keydown。`destroyOnClose` 会等关场过渡后再卸载；焦点恢复用 `onAfterClose` / `@after-close`。不要再传已删除的 `destroyOnCloseAfterLeave` / `onAfterLeave` / `@after-leave`。
@@ -216,7 +216,7 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 ## 已对齐的上游能力
 
-本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `^2.1.3`：
+本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `^2.1.4`：
 
 | 组件 | 平台 | 上游现状 | 本项目保留的布局 glue |
 | ---- | ---- | -------- | --------------------- |
@@ -236,3 +236,5 @@ LLM 生成新页面或复刻页面时，至少满足：
 | `NavigationMenu` | React / Vue | `v2.1.3` 默认点击才开层；`NavigationMenuList` 进根入口；不再默认 `aria-label="Main"`。 | About 页包 `NavigationMenuList` 并自行命名。 |
 | `Transfer` / `TreeSelect` | React / Vue | 搜索开关统一 `searchable`，旧 `showSearch` 已删。 | 导入穿梭框与内容分类树用 `searchable`。 |
 | `List` | React / Vue | `bordered` 是外框布尔，不再接受 `'bordered' \| 'divided' \| 'none'`。 | 个人中心设备列表写 `bordered`。 |
+| `ImageCropper` / `CropUpload` | React / Vue | `v2.1.4` 起 ResizeObserver 只量父级宽度，拟合尺寸写内层 stage，裁剪画布不再越缩越小。无新必填 prop。 | Gallery 裁剪抽屉和 Users 头像 CropUpload 不另加高度 workaround。 |
+| `SplitButton` | React / Vue | `v2.1.4` 主按钮与 chevron 同高。 | Files 页上传继续用 SplitButton。 |

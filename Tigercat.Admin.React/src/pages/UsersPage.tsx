@@ -201,7 +201,6 @@ function UsersPage() {
   // ---- Permission checks ----
   const canEdit = hasPerm('user:edit');
   const canDelete = hasPerm('user:delete');
-  const canCreate = hasPerm('user:create');
   const [contextUser, setContextUser] = useState<UserItem | null>(null);
   const [contextDeleteOpen, setContextDeleteOpen] = useState(false);
 

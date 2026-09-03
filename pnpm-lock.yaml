@@ -17,11 +17,11 @@ importers:
   Tigercat.Admin.React:
     dependencies:
       '@expcat/tigercat-core':
-        specifier: ^2.1.3
-        version: 2.1.3(tailwindcss@4.3.0)
+        specifier: ^2.1.4
+        version: 2.1.4(tailwindcss@4.3.0)
       '@expcat/tigercat-react':
-        specifier: ^2.1.3
-        version: 2.1.3(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss@4.3.0)
+        specifier: ^2.1.4
+        version: 2.1.4(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss@4.3.0)
       '@tigercat-admin/mock-api':
         specifier: workspace:*
         version: link:../Tigercat.Admin.MockApi
@@ -84,11 +84,11 @@ importers:
   Tigercat.Admin.Vue:
     dependencies:
       '@expcat/tigercat-core':
-        specifier: ^2.1.3
-        version: 2.1.3(tailwindcss@4.3.0)
+        specifier: ^2.1.4
+        version: 2.1.4(tailwindcss@4.3.0)
       '@expcat/tigercat-vue':
-        specifier: ^2.1.3
-        version: 2.1.3(tailwindcss@4.3.0)(vue@3.5.35(typescript@5.9.3))
+        specifier: ^2.1.4
+        version: 2.1.4(tailwindcss@4.3.0)(vue@3.5.35(typescript@5.9.3))
       '@tigercat-admin/mock-api':
         specifier: workspace:*
         version: link:../Tigercat.Admin.MockApi
@@ -428,22 +428,22 @@ packages:
     resolution: {integrity: sha512-rZAP3aVgB9ds9KOeUSL+zZ21hPmo8dh6fnIFwRQj5EAZl9gzR7wxYbYXYysAM8CTqGmUGyp2S4kUdV17MnGuWQ==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@expcat/tigercat-core@2.1.3':
-    resolution: {integrity: sha512-Ykh5CXsmPnx61mFlidznFefjd5r+8RMkJge0F+zyMPq4ClKzxzkQ2WaECstQvPnI8P7IDXcrCyuPQi759U2jWg==}
+  '@expcat/tigercat-core@2.1.4':
+    resolution: {integrity: sha512-iw8wN7fRk+VY84ZrduQ7LjpRv0pWmR3sSPCnMvkFcgBeBMmLLPtsTj69taHUZqe5LWX5mL6Oj6oec4Yiq+GK9g==}
     peerDependencies:
       tailwindcss: ^4.0.0
     peerDependenciesMeta:
       tailwindcss:
         optional: true
 
-  '@expcat/tigercat-react@2.1.3':
-    resolution: {integrity: sha512-69WmYIuYOH9DG/MYkHdrAC/FkOwQm/mLDeyICIgy8ucAhgDmoXAUa6wgLnLDHRO/idIn1bKe5bKdKvX/MOxrdA==}
+  '@expcat/tigercat-react@2.1.4':
+    resolution: {integrity: sha512-Zniyfm+zIgM4lAWtfjGb0EKCjuRJg0zNWGKbzuVSwBKydnYaZsbP/Qt+kQJ+/RBr+U85J1DqefaOGmNGh7vJYg==}
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
 
-  '@expcat/tigercat-vue@2.1.3':
-    resolution: {integrity: sha512-V/9tF2oQvp9dWFLA+d2jpc4U0+TKEORJxrC7il2HHBLVq6J2Qnncsw6jixu+5G5tLvlcZ2G4d1SAgcrq92QzlA==}
+  '@expcat/tigercat-vue@2.1.4':
+    resolution: {integrity: sha512-FPdP0QgUAaBUpJ2bJ+vbZDsAfNi0ZAdraQxs8zM4wrKZC6NEm9tTo1bhKF0+v9GMq7qUBm+XZAHmXASOd+YeCg==}
     peerDependencies:
       vue: ^3.0.0
 
@@ -1790,23 +1790,23 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@expcat/tigercat-core@2.1.3(tailwindcss@4.3.0)':
+  '@expcat/tigercat-core@2.1.4(tailwindcss@4.3.0)':
     dependencies:
       '@floating-ui/dom': 1.7.6
     optionalDependencies:
       tailwindcss: 4.3.0
 
-  '@expcat/tigercat-react@2.1.3(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss@4.3.0)':
+  '@expcat/tigercat-react@2.1.4(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss@4.3.0)':
     dependencies:
-      '@expcat/tigercat-core': 2.1.3(tailwindcss@4.3.0)
+      '@expcat/tigercat-core': 2.1.4(tailwindcss@4.3.0)
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
     transitivePeerDependencies:
       - tailwindcss
 
-  '@expcat/tigercat-vue@2.1.3(tailwindcss@4.3.0)(vue@3.5.35(typescript@5.9.3))':
+  '@expcat/tigercat-vue@2.1.4(tailwindcss@4.3.0)(vue@3.5.35(typescript@5.9.3))':
     dependencies:
-      '@expcat/tigercat-core': 2.1.3(tailwindcss@4.3.0)
+      '@expcat/tigercat-core': 2.1.4(tailwindcss@4.3.0)
       vue: 3.5.35(typescript@5.9.3)
     transitivePeerDependencies:
       - tailwindcss

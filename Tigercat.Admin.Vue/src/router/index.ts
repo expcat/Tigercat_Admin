@@ -11,6 +11,7 @@ import {
   createPermissionContext,
   type Session,
 } from '../utils';
+import ExceptionPage from '../pages/ExceptionPage.vue';
 
 function isProtectedRoute(route: RouteLocationNormalized) {
   return route.matched.some((record) => record.meta.requiresAuth);
@@ -205,19 +206,19 @@ const router = createRouter({
     {
       path: '/403',
       name: 'exception403',
-      component: () => import('../pages/ExceptionPage.vue'),
+      component: ExceptionPage,
       props: { status: 403 },
     },
     {
       path: '/404',
       name: 'exception404',
-      component: () => import('../pages/ExceptionPage.vue'),
+      component: ExceptionPage,
       props: { status: 404 },
     },
     {
       path: '/500',
       name: 'exception500',
-      component: () => import('../pages/ExceptionPage.vue'),
+      component: ExceptionPage,
       props: { status: 500 },
     },
     {
