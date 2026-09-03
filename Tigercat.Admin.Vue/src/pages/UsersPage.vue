@@ -2,7 +2,6 @@
 import { ref, computed, inject, onMounted, h } from 'vue'
 import { Avatar, DataTableWithToolbar, Button, Dropdown, DropdownMenu, DropdownItem, Input, Modal, Form, FormItem, Popconfirm, Select, Tag, Tooltip, Message, Checkbox } from '@expcat/tigercat-vue'
 import { ContextMenu, ContextMenuItem, ContextMenuMenu, ContextMenuSub } from '@expcat/tigercat-vue/ContextMenu'
-import { SplitButton } from '@expcat/tigercat-vue/SplitButton'
 import { CropUpload } from '@expcat/tigercat-vue/CropUpload'
 import type { TableColumn, TableCardLayoutItem, SortState, TableToolbarFilterValue, TableToolbarAction } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
@@ -514,6 +513,7 @@ const columns = computed<TableColumn[]>(() => {
               cancelText: '取消',
               okType: 'danger',
               placement: 'left',
+              asChild: true,
               onConfirm: () => handleDelete(user),
             }, {
               default: () =>
@@ -636,6 +636,8 @@ const tableToolbar = computed(() => ({
   searchMode: 'remote' as const,
   searchValue: keyword.value,
   searchPlaceholder: '搜索用户名或显示名...',
+  onSearchChange: handleSearch,
+  onSearch: handleSearch,
   filters: [
     {
       key: 'status',
@@ -763,7 +765,6 @@ onMounted(() => {
 
     <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
       <Button
-        v-if="!canCreate"
         v-permission="'user:view'"
         variant="outline"
         @click="openExportModal"
@@ -773,19 +774,15 @@ onMounted(() => {
           导出
         </span>
       </Button>
-      <SplitButton
+      <Button
         v-if="canCreate"
-        trigger-aria-label="更多操作"
         @click="openCreateModal"
       >
         <span class="flex items-center gap-1">
           <Icon name="userPlus" :size="16" />
           新增用户
         </span>
-        <template #menu>
-          <DropdownItem @click="openExportModal">导出</DropdownItem>
-        </template>
-      </SplitButton>
+      </Button>
     </div>
 
     <div class="p2-muted-panel px-4 py-3 text-sm">
@@ -929,6 +926,7 @@ onMounted(() => {
             v-model="formData.roleIds"
             :options="roleOptions"
             placeholder="请选择角色（可多选）"
+            aria-label="请选择角色（可多选）"
             multiple
           />
         </FormItem>

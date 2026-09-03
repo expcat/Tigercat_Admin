@@ -103,7 +103,8 @@ const bottomMenuItems = computed(() => toMenuItems(filteredBottomMenuItems.value
         <Menu
           :selected-keys="[activeMenu]"
           :open-keys="expandedKeys"
-          :collapsed="false"
+          :collapsed="displayCollapsed"
+          popup-portal
           mode="inline"
           :items="mainMenuItems"
           class="!min-w-0"
@@ -117,7 +118,8 @@ const bottomMenuItems = computed(() => toMenuItems(filteredBottomMenuItems.value
       <div class="shrink-0 border-t border-(--tiger-border,#e2e8f0) py-2">
         <Menu
           :selected-keys="[activeMenu]"
-          :collapsed="false"
+          :collapsed="displayCollapsed"
+          popup-portal
           mode="inline"
           :items="bottomMenuItems"
           class="!min-w-0"

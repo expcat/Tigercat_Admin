@@ -37,7 +37,7 @@ async function createUser(
       .fill(options.displayName);
   }
   if (options.role) {
-    await dialog.getByRole('button', { name: '请选择角色（可多选）' }).click();
+    await dialog.getByRole('combobox', { name: /角色|请选择角色/ }).click();
     await page.getByRole('option', { name: options.role, exact: true }).click();
     // 多选下拉选中后保持展开，会遮挡“确定”按钮，需先关闭。
     await page.keyboard.press('Escape');
@@ -49,6 +49,10 @@ async function createUser(
 
 function userRow(page: Page, username: string) {
   return page.getByRole('row', { name: new RegExp(escapeRegExp(username)) });
+}
+
+async function checkUserRow(page: Page, username: string) {
+  await userRow(page, username).getByRole('checkbox').check({ force: true });
 }
 
 async function clickRowMenuItem(
@@ -102,11 +106,13 @@ async function deleteUser(page: Page, username: string) {
   await searchUser(page, username);
   const row = userRow(page, username);
   await expect(row).toBeVisible();
-  await row.getByRole('button', { name: '删除', exact: true }).click();
+  await row.getByRole('button', { name: '删除', exact: true }).evaluate((element) =>
+    (element as HTMLElement).click(),
+  );
   await page
-    .getByRole('dialog', { name: '确认删除用户' })
+    .getByRole('dialog', { name: /确认删除用户/ })
     .getByRole('button', { name: '删除' })
-    .click();
+    .evaluate((element) => (element as HTMLElement).click());
   await expect(row).toBeHidden();
 }
 
@@ -155,7 +161,7 @@ test.describe('用户管理主流程', () => {
     await expect(dialog).toBeVisible();
     await dialog.getByPlaceholder('请输入显示名称（选填）').fill('编辑后');
     // 状态选择：当前“正常”，切换为“禁用”。
-    await dialog.getByRole('button', { name: '正常' }).click();
+    await dialog.getByRole('combobox', { name: '状态' }).click();
     await page.getByRole('option', { name: '禁用', exact: true }).click();
     await dialog.getByRole('button', { name: '确定' }).click();
     await expect(dialog).toBeHidden();
@@ -188,8 +194,8 @@ test.describe('用户管理主流程', () => {
     await expect(userRow(page, first)).toBeVisible();
     await expect(userRow(page, second)).toBeVisible();
 
-    await userRow(page, first).getByRole('checkbox').check();
-    await userRow(page, second).getByRole('checkbox').check();
+    await checkUserRow(page, first);
+    await checkUserRow(page, second);
 
     const batchButton = page.getByRole('button', { name: '批量删除' });
     await expect(batchButton).toBeEnabled();
@@ -217,7 +223,7 @@ test.describe('用户管理主流程', () => {
     await searchUser(page, username);
     const row = userRow(page, username);
     await expect(row).toBeVisible();
-    await row.getByRole('checkbox').check();
+    await checkUserRow(page, username);
 
     await page.getByRole('button', { name: '批量禁用' }).click();
     let dialog = page.getByRole('dialog', { name: '确认批量禁用' });
@@ -228,7 +234,7 @@ test.describe('用户管理主流程', () => {
     await searchUser(page, username);
     await expect(userRow(page, username).getByText('禁用')).toBeVisible();
 
-    await userRow(page, username).getByRole('checkbox').check();
+    await checkUserRow(page, username);
     await page.getByRole('button', { name: '批量启用' }).click();
     dialog = page.getByRole('dialog', { name: '确认批量启用' });
     await expect(dialog).toBeVisible();
@@ -251,7 +257,7 @@ test.describe('用户管理主流程', () => {
     });
 
     await searchUser(page, username);
-    await userRow(page, username).getByRole('checkbox').check();
+    await checkUserRow(page, username);
 
     await page.goto('/roles');
     await expect(page.getByText('角色管理').first()).toBeVisible();

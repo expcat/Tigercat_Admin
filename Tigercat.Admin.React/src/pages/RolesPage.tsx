@@ -545,6 +545,7 @@ function RolesPage() {
                 cancelText="取消"
                 okType="danger"
                 placement="left"
+                asChild
                 onConfirm={() => handleDelete(record)}>
                 <Button size="sm" variant="ghost" danger>
                   删除

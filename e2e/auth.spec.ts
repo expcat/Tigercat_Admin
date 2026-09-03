@@ -103,8 +103,8 @@ test.describe('认证与受保护路由烟测', () => {
 
     await logout();
 
-    await expect(secondPage).toHaveURL(/\/login$/);
-    await expect(secondPage.getByRole('heading', { name: '欢迎回来' })).toBeVisible();
+    await expect(secondPage).toHaveURL(/\/login(?:\?.*)?$/);
+    await expect(secondPage.getByText('欢迎回来').first()).toBeVisible();
 
     await secondPage.close();
   });

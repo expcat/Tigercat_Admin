@@ -310,7 +310,7 @@ onMounted(async () => {
               :formats="DATA_EXPORT_TRIGGER_FORMATS"
               file-name="audit-logs"
               :labels="{
-                xlsxText: EXPORT_FORMAT_LABELS[format],
+                xlsxText: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
                 exportingText: '导出中...',
                 triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
               }"

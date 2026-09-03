@@ -377,6 +377,7 @@ const columns = computed<TableColumn[]>(() => {
               cancelText: '取消',
               okType: 'danger',
               placement: 'left',
+              asChild: true,
               onConfirm: () => handleDelete(role),
             }, {
               default: () =>
@@ -460,6 +461,8 @@ const tableToolbar = computed(() => ({
   searchMode: 'remote' as const,
   searchValue: keyword.value,
   searchPlaceholder: '搜索角色名称或描述...',
+  onSearchChange: handleSearch,
+  onSearch: handleSearch,
   selectedKeys: selectedRowKeys.value,
   selectedCount: selectedRowKeys.value.length,
   showColumnSettings: true,

@@ -60,7 +60,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 - 消息铃铛 toast：点击 Popover 内单条通知时用 `notification.*({ title, description, actions, onClick })`。`actions` 渲染「查看」按钮（`closeOnClick: true`），整条 `onClick` 仍跳转 `/notifications`；不要只靠整条点击、也不要自绘 toast 按钮。
 - 回到顶部：`BackTop` 的 `target` 指向 `#main-content-scroll`（页面滚在 `Content` 而非 `window`）。容器滚动时显式传 `position="fixed"`、`placement="bottom-left"`、`offset={24}`（Vue `:offset="24"`），不要再用 `!fixed !bottom-*` 覆盖内置 sticky 类。
 - 右下悬浮：独立客服 `FloatButton` 传 `floating` + `placement="bottom-right"` + `offset={24}`，未读 `Badge` 用 `standalone` 绝对定位叠在按钮内，不要再包一层 `fixed` 容器。`FloatButtonGroup` 用同一套 `placement` / `offset`（本项目 `offset.y: '6.5rem'`）避开客服坞，不要写 `style.bottom`。
-- Content：`min-h-0 overflow-auto p-3 sm:p-4 md:p-6`，内部最大宽度 `max-w-7xl`。
+- Content：`min-h-0 overflow-auto p-3 sm:p-4 md:p-6`，底部再留 `pb-24` / `md:pb-28`，避免表格操作列被右下角客服与快捷按钮挡住；内部最大宽度 `max-w-7xl`。
 - 访客页：登录、注册、忘记密码与注册成功使用居中 Guest shell，不进入后台布局；表单卡片用 `Card variant="transparent"`（v1.2.39+），不再用 `className` 手写透明/无边框/无阴影样式。由于 transparent 变体仍保留组件 size 内边距，Guest 页继续保留 `className="p-0"` / `class="p-0"`。
 
 路由与菜单（下表为本仓库示例；新项目按 [guide/new-project.md](guide/new-project.md) 复制结构、替换条目）：
@@ -108,7 +108,7 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 | Shell 全局挂件 | `Spotlight`、`Tour`、`FloatButton`/`FloatButtonGroup`、`BackTop`、`Badge`、`Popover`、`Drawer`、`ChatWindow`、`Notification` | 命令面板 ⌘K、首登引导、右下快捷动作/回到顶部、消息铃铛（toast 用 `actions` 渲染「查看」并保留整条 `onClick` 兜底）、在线客服坞（`ChatDock` 接 `/api/chat/messages`，请求-响应，无 WebSocket） |
 | 登录/注册 | `Card`、`Form`、`FormItem`、`Input`、`Button`、`Message` | 表单校验、成功跳转、错误提示 |
 | 仪表盘 | `Alert`、`Card`、`Text`、`Tag`、`Select`、`Statistic`、`Loading`、`Empty`、`LineChart`、`BarChart`、`PieChart`、`Marquee`、`DataExport` | 概览指标、图表空状态、快捷跳转、统计区上方运维公告跑马灯（文档流，不遮挡指标卡片）、概览区按 `trendDays` 导出当前统计与趋势（`GET /api/export/overview` Blob，不用页面 JSON.stringify） |
-| 用户管理 | `DataTableWithToolbar`、`Avatar`、`Button`、`SplitButton`、`ContextMenu`、`Input`、`Modal`、`Form`、`Select`、`Tag`、`Tooltip`、`Checkbox`、`CropUpload` | 分页搜索、排序、列显隐、批量状态、头像裁剪、角色选择、窄屏卡片模式、行右键菜单（编辑 / 启停 / 删除，权限不足隐藏或禁用）、工具栏 `SplitButton`（主按钮新增、菜单导出） |
+| 用户管理 | `DataTableWithToolbar`、`Avatar`、`Button`、`ContextMenu`、`Input`、`Modal`、`Form`、`Select`、`Tag`、`Tooltip`、`Checkbox`、`CropUpload` | 分页搜索、排序、列显隐、批量状态、头像裁剪、角色选择、窄屏卡片模式、行右键菜单（编辑 / 启停 / 删除，权限不足隐藏或禁用）、工具栏独立 `导出` / `新增用户` 按钮 |
 | 角色管理 | `DataTableWithToolbar`、`Tree`、`Checkbox`、`Modal`、`Popconfirm`、`Select`、`Tag` | 权限树、角色用户配置、导出字段、删除确认、窄屏卡片模式 |
 | 系统设置 | `Card`、`Input`、`InputNumber`、`ColorPicker`、`Segmented`、`Switch`、`Upload`、`Modal` | 分组设置、Logo 上传、保存确认、恢复默认值、全局内容水印开关（`theme.watermark`，本机立即生效）。ColorPicker 触发器/面板文案走 `appText.colorPicker`（「选择颜色」等），不要包一层假文案 |
 | 文件管理 | `FileManager`、`SplitButton`、`ContextMenu`、`Button`、`Select`、`Tag`、`Modal`、`Message` | 上传（`SplitButton` 主按钮上传、菜单选择文件）、类型筛选、选择、普通删除、强制删除、文件行右键菜单（预览 / 打开 / 删除，删除仍走确认与 `media:delete`） |

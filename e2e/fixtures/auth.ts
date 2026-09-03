@@ -1,6 +1,18 @@
-import { expect, test as base } from '@playwright/test';
+import { expect, test as base, type Page } from '@playwright/test';
 
 export const SESSION_KEY = 'tigercat.admin.session';
+const TOUR_DONE_KEY = 'tigercat-admin:onboarding-tour:done';
+
+/** 抑制首次登录新手引导，避免 Tour 遮罩拦截后续点击。 */
+export async function suppressOnboardingTour(page: Page): Promise<void> {
+  await page.addInitScript((key) => {
+    try {
+      localStorage.setItem(key, '1');
+    } catch {
+      /* ignore storage errors */
+    }
+  }, TOUR_DONE_KEY);
+}
 
 /** 生成 e2e 测试数据使用的唯一后缀，避免并发或重复运行时冲突。 */
 export function uniqueSuffix(): string {
@@ -19,6 +31,10 @@ type AuthFixtures = {
 };
 
 export const test = base.extend<AuthFixtures>({
+  page: async ({ page }, use) => {
+    await suppressOnboardingTour(page);
+    await use(page);
+  },
   loginAsAdmin: async ({ page }, use) => {
     await use(async () => {
       await page.goto('/login');
@@ -35,7 +51,7 @@ export const test = base.extend<AuthFixtures>({
   },
   logout: async ({ page }, use) => {
     await use(async () => {
-      await page.getByRole('button', { name: 'admin' }).click();
+      await page.getByRole('banner').getByRole('button', { name: 'admin', exact: true }).click();
       await page.getByText('退出登录').click();
       await expect(page).toHaveURL(/\/login$/);
     });

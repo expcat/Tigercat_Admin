@@ -325,6 +325,7 @@ function FilesPage() {
               value={contentType}
               options={TYPE_OPTIONS}
               placeholder="筛选类型"
+              aria-label="筛选类型"
               clearable={false}
               onChange={handleContentTypeChange}
             />

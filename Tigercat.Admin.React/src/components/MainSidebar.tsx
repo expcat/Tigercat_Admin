@@ -80,7 +80,8 @@ export function MainSidebar({
           <Menu
             selectedKeys={[activeMenu]}
             openKeys={expandedKeys}
-            collapsed={false}
+            collapsed={displayCollapsed}
+            popupPortal
             mode="inline"
             items={filteredMenuItems as MenuItem[]}
             className={`!min-w-0 ${displayCollapsed ? 'menu-collapsed' : ''}`}
@@ -93,7 +94,8 @@ export function MainSidebar({
         <div className="shrink-0 border-t border-(--tiger-border,#e2e8f0) py-2">
           <Menu
             selectedKeys={[activeMenu]}
-            collapsed={false}
+            collapsed={displayCollapsed}
+            popupPortal
             mode="inline"
             items={filteredBottomMenuItems as MenuItem[]}
             className={`!min-w-0 ${displayCollapsed ? 'menu-collapsed' : ''}`}

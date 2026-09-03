@@ -259,6 +259,14 @@ router.beforeEach(async (to, _from, next) => {
       await permission.load(session.token);
     }
     if (!permission.loaded.value) {
+      const stillAuthed = Boolean(
+        safeParse<Session>(localStorage.getItem(SESSION_KEY))?.token,
+      );
+      // 401 会清会话并派发 session-expired；不要再跳到仪表盘，否则登录回跳丢失原目标页。
+      if (!stillAuthed) {
+        next({ name: 'login', query: { redirect: to.fullPath } });
+        return;
+      }
       // 权限接口失败时不要取消首次导航（会留下空白页）；
       // 已有来源页则留在原地，直开受限路由则退回首页。
       if (_from.matched.length === 0) {

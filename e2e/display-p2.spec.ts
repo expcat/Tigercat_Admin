@@ -144,7 +144,7 @@ async function deleteTestMedia(page: Page, id: number) {
 }
 
 async function openFirstRowMenu(page: Page, itemName: string) {
-  const trigger = page.getByRole('button', { name: '操作' }).last();
+  const trigger = page.getByRole('button', { name: '操作', exact: true }).last();
 
   await expect(trigger).toBeVisible();
   await trigger.scrollIntoViewIfNeeded();
@@ -218,7 +218,9 @@ async function expectMobileDrawerHasTransition(drawerPanel: Locator) {
     };
   });
 
-  expect(transition.property).toContain('transform');
+  expect(
+    transition.property === 'all' || transition.property.includes('transform'),
+  ).toBe(true);
   expect(transition.duration).not.toBe('0s');
 }
 
@@ -227,8 +229,15 @@ async function expectMobileDrawerClosed(page: Page) {
   await expect(page.locator('#main-sidebar')).toHaveCount(0);
 }
 
+function getSidebarMenuItem(page: Page, name: string): Locator {
+  const sidebar = page.locator('#main-sidebar');
+  return sidebar
+    .getByRole('menuitem', { name })
+    .or(sidebar.getByRole('button', { name }));
+}
+
 function getCollapsedSystemMenuTrigger(page: Page): Locator {
-  return page.locator('#main-sidebar').getByRole('menuitem').nth(1);
+  return getSidebarMenuItem(page, '系统管理');
 }
 
 test.describe('P4 可访问性与响应式门禁', () => {
@@ -308,20 +317,14 @@ test.describe('P4 可访问性与响应式门禁', () => {
     await expectFocused(toggle);
 
     await toggle.click();
-    await page
-      .locator('#main-sidebar')
-      .getByRole('menuitem', { name: '系统管理' })
-      .click();
-    await page
-      .locator('#main-sidebar')
-      .getByRole('menuitem', { name: '用户管理' })
-      .click();
+    await getSidebarMenuItem(page, '系统管理').click();
+    await getSidebarMenuItem(page, '用户管理').click();
     await expect(page).toHaveURL(/\/users$/);
     await expect(page.getByRole('button', { name: '打开导航菜单' })).toBeVisible();
     await expect(page.getByText('用户管理').first()).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
 
-    const accountTrigger = page.getByRole('button', { name: 'admin' });
+    const accountTrigger = page.getByRole('banner').getByRole('button', { name: 'admin', exact: true });
     await accountTrigger.click();
     const themeMenuItem = page.getByRole('menuitem', { name: /主题模式/ });
     await expect(themeMenuItem).toBeVisible();
@@ -363,7 +366,7 @@ test.describe('P4 可访问性与响应式门禁', () => {
     await expect(userDialog).toBeVisible();
     await expectDialogFooterReachable(userDialog, '确定');
 
-    const roleSelect = userDialog.getByRole('button', { name: '请选择角色（可多选）' });
+    const roleSelect = userDialog.getByRole('combobox', { name: /角色|请选择角色/ });
     await roleSelect.click();
     const roleListbox = page.getByRole('listbox').last();
     await expect(roleListbox.getByRole('option').first()).toBeVisible();
@@ -417,7 +420,7 @@ test.describe('P4 可访问性与响应式门禁', () => {
       await page.goto('/files');
       await expect(page.getByText('文件管理').first()).toBeVisible();
 
-      const typeFilter = page.getByRole('button', { name: '筛选类型' });
+      const typeFilter = page.getByRole('combobox').filter({ hasText: /筛选类型|全部类型/ }).first();
       await typeFilter.click();
       const listbox = page
         .getByRole('listbox')

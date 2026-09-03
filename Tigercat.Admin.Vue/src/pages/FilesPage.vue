@@ -308,6 +308,7 @@ onMounted(loadMedia)
             :model-value="contentType"
             :options="typeOptions"
             placeholder="筛选类型"
+            aria-label="筛选类型"
             :clearable="false"
             @update:model-value="handleContentTypeChange"
           />

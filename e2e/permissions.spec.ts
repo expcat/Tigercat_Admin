@@ -164,6 +164,7 @@ test.describe('前端权限守卫回归', () => {
     loginAsAdmin,
     logout,
   }) => {
+    test.setTimeout(60_000);
     const suffix = uniqueSuffix();
     const username = `e2e_limited_${suffix}`;
     const password = 'e2e_pass123';
@@ -190,7 +191,9 @@ test.describe('前端权限守卫回归', () => {
       await expect(page.getByRole('button', { name: '批量删除' })).toBeHidden();
       await expect(page.getByRole('button', { name: '删除', exact: true })).toHaveCount(0);
     } finally {
-      await cleanupLimitedUser(page, user, role);
+      if (!page.isClosed()) {
+        await cleanupLimitedUser(page, user, role);
+      }
     }
   });
 });

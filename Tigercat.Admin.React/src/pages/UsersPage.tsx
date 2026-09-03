@@ -30,7 +30,6 @@ import {
   ContextMenuMenu,
   ContextMenuSub,
 } from '@expcat/tigercat-react/ContextMenu';
-import { SplitButton } from '@expcat/tigercat-react/SplitButton';
 import { CropUpload } from '@expcat/tigercat-react/CropUpload';
 import type {
   TableColumn,
@@ -743,6 +742,7 @@ function UsersPage() {
                 cancelText="取消"
                 okType="danger"
                 placement="left"
+                asChild
                 onConfirm={() => handleDelete(record)}>
                 <Button size="sm" variant="ghost" danger>
                   删除
@@ -928,28 +928,21 @@ function UsersPage() {
       />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-        {!canCreate && (
-          <PermissionGuard code="user:view">
-            <Button variant="outline" onClick={openExportModal}>
-              <span className="flex items-center gap-1">
-                <DownloadIcon size={16} />
-                导出
-              </span>
-            </Button>
-          </PermissionGuard>
-        )}
+        <PermissionGuard code="user:view">
+          <Button variant="outline" onClick={openExportModal}>
+            <span className="flex items-center gap-1">
+              <DownloadIcon size={16} />
+              导出
+            </span>
+          </Button>
+        </PermissionGuard>
         <PermissionGuard code="user:create">
-          <SplitButton
-            triggerAriaLabel="更多操作"
-            onClick={openCreateModal}>
+          <Button onClick={openCreateModal}>
             <span className="flex items-center gap-1">
               <UserPlusIcon size={16} />
               新增用户
             </span>
-            <DropdownMenu>
-              <DropdownItem onClick={openExportModal}>导出</DropdownItem>
-            </DropdownMenu>
-          </SplitButton>
+          </Button>
         </PermissionGuard>
       </div>
 
@@ -1102,6 +1095,7 @@ function UsersPage() {
               value={formData.roleIds}
               options={roleOptions}
               placeholder="请选择角色（可多选）"
+              aria-label="请选择角色（可多选）"
               multiple
               onChange={(val) => setField('roleIds', (val as number[]) ?? [])}
             />

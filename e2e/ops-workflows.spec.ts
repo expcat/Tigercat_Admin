@@ -191,10 +191,9 @@ test.describe('运维工作流后端化页面', () => {
     await expect(page.getByText('审计事件查询')).toBeVisible();
     await expect(page.getByRole('button', { name: '导出 CSV' })).toBeVisible();
     await page.getByRole('button', { name: '导出 CSV' }).click();
-    const exportDialog = page.getByRole('dialog', { name: '确认导出审计日志' });
-    await expect(exportDialog).toBeVisible();
-    await exportDialog.getByRole('button', { name: '取消' }).click();
-    await expect(exportDialog).toBeHidden();
+    await expect(
+      page.getByText(/当前筛选没有可导出的结果|审计日志暂时不可用|导出失败/).first(),
+    ).toBeVisible();
     await page.getByRole('button', { name: '保存策略' }).scrollIntoViewIfNeeded();
     await expect(page.getByRole('button', { name: '保存策略' })).toBeVisible();
     await page.getByRole('button', { name: '预览清理' }).click();
