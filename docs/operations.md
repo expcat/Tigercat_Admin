@@ -64,7 +64,27 @@ pnpm run check:links
 
 dotnet build Tigercat.Admin.sln
 dotnet test Tigercat.Admin.sln
+dotnet list Tigercat.Admin.Api/Tigercat.Admin.Api.csproj package --vulnerable --include-transitive
+dotnet list Tigercat.Admin.Api.Tests/Tigercat.Admin.Api.Tests.csproj package --vulnerable --include-transitive
+dotnet list Tigercat.Aspire/Tigercat.Aspire.csproj package --vulnerable --include-transitive
+dotnet list Tigercat.ServiceDefaults/Tigercat.ServiceDefaults.csproj package --vulnerable --include-transitive
 ```
+
+## NuGet 依赖审计
+
+`dotnet restore` / `dotnet build` 默认开启 NuGet 漏洞审计（NU1901–NU1904）。**不要**用 `NuGetAudit=false`、降低 `NuGetAuditLevel` 或 `NuGetAuditSuppress` 消警告。
+
+当前直接依赖仍会拉入带 advisory 的传递包时，在引入该传递包的项目上加直接 `PackageReference`，钉到无 advisory 的版本（不引入 Central Package Management，不关掉审计）：
+
+| 传递包 | 引入项目 | 钉在 |
+| ------ | -------- | ---- |
+| `Microsoft.OpenApi`（`Microsoft.AspNetCore.OpenApi` 10.0.8 → 2.0.0，NU1903 [GHSA-v5pm-xwqc-g5wc](https://github.com/advisories/GHSA-v5pm-xwqc-g5wc)） | `Tigercat.Admin.Api` | 2.x 补丁线（不要升 3.x，与 `Microsoft.AspNetCore.OpenApi` 10 不兼容） |
+| `SQLitePCLRaw.lib.e_sqlite3`（EF Core Sqlite → bundle 2.1.11，NU1903 [GHSA-2m69-gcr7-jv3q](https://github.com/advisories/GHSA-2m69-gcr7-jv3q)） | `Tigercat.Admin.Api` | 抬 `SQLitePCLRaw.bundle_e_sqlite3` 到 advisory 范围（`<= 2.1.11`）之外的 2.1 线 |
+| `MessagePack`（Aspire → `StreamJsonRpc` 2.22.23 → 2.5.192，NU1903/NU1902） | `Tigercat.Aspire` | 2.5 安全合并版（不要升 3.x） |
+
+具体版本以对应 `.csproj` 的 `PackageReference` 为准。`Tigercat.Admin.Api.Tests` 通过项目引用继承 API 的钉版本；`Tigercat.ServiceDefaults` 当前无 advisory。
+
+发布前对 Admin.Api、Admin.Api.Tests、Aspire、ServiceDefaults 跑 `dotnet list package --vulnerable --include-transitive`。只允许留下已记录、且无法升级的传递包。
 
 ## 数据库
 
