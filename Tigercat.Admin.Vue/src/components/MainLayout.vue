@@ -92,6 +92,15 @@ const {
 } = useTagsView(activeMenu, navigateToPage)
 
 const { locked, lock, unlock } = useLockScreen()
+
+watch(locked, (isLocked, wasLocked) => {
+  if (wasLocked && !isLocked) {
+    nextTick(() => {
+      document.querySelector<HTMLButtonElement>('.p2-header-user-btn')?.focus()
+    })
+  }
+})
+
 const { watermarkEnabled } = useWatermarkEnabled()
 const watermarkContent = computed(() => getWatermarkContent(props.session?.username))
 

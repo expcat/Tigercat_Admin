@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { SpotlightItem } from '@expcat/tigercat-core'
 import { Spotlight } from '@expcat/tigercat-vue/Spotlight'
@@ -23,6 +23,40 @@ const permission = usePermission()
 
 const open = ref(false)
 const query = ref('')
+let lastFocus: HTMLElement | null = null
+
+function onSpotlightHotkey(event: KeyboardEvent) {
+  if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') {
+    return
+  }
+  const active = document.activeElement
+  if (active instanceof HTMLElement) {
+    lastFocus = active
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onSpotlightHotkey, true)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onSpotlightHotkey, true)
+})
+
+watch(open, (isOpen, wasOpen) => {
+  if (isOpen) {
+    if (!lastFocus) {
+      const active = document.activeElement
+      lastFocus = active instanceof HTMLElement ? active : null
+    }
+    return
+  }
+  if (wasOpen && lastFocus) {
+    const target = lastFocus
+    lastFocus = null
+    nextTick(() => target.focus())
+  }
+})
 
 type CommandData =
   | { kind: 'route'; value: string }

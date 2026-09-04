@@ -180,6 +180,7 @@ const router = createRouter({
           path: 'files',
           name: 'files',
           component: () => import('../pages/FilesPage.vue'),
+          meta: { requiresPermission: 'media:view' },
         },
         {
           path: 'notifications',

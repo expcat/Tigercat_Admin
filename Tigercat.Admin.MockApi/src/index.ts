@@ -339,13 +339,12 @@ const allPermissionIds = permissions.map((item) => item.id);
 
 /**
  * Permissions granted to the read-only `demo` account: it can browse
- * view-only pages but lacks user/role management, so hitting /users or
- * /roles redirects to /403 (stage 6 exception-page demo).
+ * view-only pages but lacks user/role/media management, so hitting /users,
+ * /roles or /files redirects to /403 (stage 6 exception-page demo).
  */
 const DEMO_ACCOUNT_PERMISSIONS = [
   'dashboard:view',
   'setting:view',
-  'media:view',
   'audit:view',
   'notification:view',
   'task:view',

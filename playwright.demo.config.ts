@@ -1,4 +1,5 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig } from '@playwright/test';
+import { shellProjects } from './e2e/playwright-projects';
 
 const host = '127.0.0.1';
 const reactPort = 55174;
@@ -6,7 +7,7 @@ const vuePort = 55173;
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: /demo-static\.spec\.ts|exception-routes\.spec\.ts|auth-flows\.spec\.ts|tags-view\.spec\.ts|lock-screen\.spec\.ts|shell-watermark-theme\.spec\.ts/,
+  testMatch: /demo-static\.spec\.ts|exception-routes\.spec\.ts|auth-flows\.spec\.ts|tags-view\.spec\.ts|lock-screen\.spec\.ts|shell-watermark-theme\.spec\.ts|viewport-a11y\.spec\.ts|overlay-focus\.spec\.ts/,
   fullyParallel: false,
   workers: 1,
   timeout: 30_000,
@@ -32,20 +33,10 @@ export default defineConfig({
       timeout: 120_000,
     },
   ],
-  projects: [
-    {
-      name: 'react-demo',
-      use: {
-        ...devices['Desktop Chrome'],
-        baseURL: `http://${host}:${reactPort}`,
-      },
-    },
-    {
-      name: 'vue-demo',
-      use: {
-        ...devices['Desktop Chrome'],
-        baseURL: `http://${host}:${vuePort}`,
-      },
-    },
-  ],
+  projects: shellProjects({
+    reactName: 'react-demo',
+    vueName: 'vue-demo',
+    reactBaseURL: `http://${host}:${reactPort}`,
+    vueBaseURL: `http://${host}:${vuePort}`,
+  }),
 });

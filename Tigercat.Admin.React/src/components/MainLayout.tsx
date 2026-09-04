@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Layout, Content, Drawer } from '@expcat/tigercat-react';
 import { Watermark } from '@expcat/tigercat-react/Watermark';
 import { MainHeader } from './MainHeader';
@@ -68,6 +68,16 @@ export function MainLayout({
     : 'home';
   const tagsView = useTagsView(currentPageKey, onNavigate);
   const { locked, lock, unlock } = useLockScreen();
+  const wasLockedRef = useRef(locked);
+
+  useEffect(() => {
+    if (wasLockedRef.current && !locked) {
+      requestAnimationFrame(() => {
+        document.querySelector<HTMLButtonElement>('.p2-header-user-btn')?.focus();
+      });
+    }
+    wasLockedRef.current = locked;
+  }, [locked]);
   const { watermarkEnabled } = useWatermarkEnabled();
   const watermarkContent = getWatermarkContent(user?.username);
 

@@ -36,6 +36,12 @@ function handleOpenChange(value: boolean) {
     emit('close')
   }
 }
+
+function focusTrigger() {
+  document
+    .querySelector<HTMLButtonElement>('[data-testid="shell-theme-config-trigger"]')
+    ?.focus()
+}
 </script>
 
 <template>
@@ -48,6 +54,7 @@ function handleOpenChange(value: boolean) {
     :mask-closable="true"
     @update:open="handleOpenChange"
     @close="emit('close')"
+    @after-close="focusTrigger"
   >
     <div data-testid="shell-theme-config-drawer" class="space-y-6">
       <div>

@@ -1,4 +1,5 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig } from '@playwright/test';
+import { shellProjects } from './e2e/playwright-projects';
 
 const host = '127.0.0.1';
 const apiPort = 55137;
@@ -22,20 +23,10 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
-  projects: [
-    {
-      name: 'react',
-      use: {
-        ...devices['Desktop Chrome'],
-        baseURL: `http://${host}:${reactPort}`,
-      },
-    },
-    {
-      name: 'vue',
-      use: {
-        ...devices['Desktop Chrome'],
-        baseURL: `http://${host}:${vuePort}`,
-      },
-    },
-  ],
+  projects: shellProjects({
+    reactName: 'react',
+    vueName: 'vue',
+    reactBaseURL: `http://${host}:${reactPort}`,
+    vueBaseURL: `http://${host}:${vuePort}`,
+  }),
 });

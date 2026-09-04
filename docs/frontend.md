@@ -46,7 +46,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 
 受保护页面统一使用后台 shell：
 
-- 外层：`Layout` 横向布局，左侧 `MainSidebar`，右侧 `MainHeader + TagsView + Content`。Vue 根 `RouterView` 必须包在真实 DOM 节点里（不要直接作为 `ConfigProvider` `contents` 根的兄弟被 overlay-host 插入），否则离开 Shell 进 403/404 时 Vue `insertBefore` 会把页面卸空。
+- 外层：`Layout` 横向布局，左侧 `MainSidebar`，右侧 `MainHeader + TagsView + Content`。Vue 根 `RouterView` 必须包在真实 DOM 节点里（不要直接作为 `ConfigProvider` `contents` 根的兄弟被 overlay-host 插入），否则离开 Shell 进 403/404 时 Vue `insertBefore` 会把页面卸空。回归见 [e2e/overlay-focus.spec.ts](../e2e/overlay-focus.spec.ts)：登录 → `/users` → `/404` → `/403` → 再回 `/users` → 退出，断言应用根不是空 ConfigProvider。
 - 桌面侧栏：宽 `240px`，折叠宽 `64px`，使用 `Sidebar`、`Menu`、`SubMenu`、`MenuItem`。
 - 桌面侧栏主菜单保持 `mode="inline"`；折叠态继续传 `collapsed` 并开启 `popupPortal`，由上游在收缩时自动退化为 popup 子菜单，不再手动切换 `vertical`。
 - 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭；Esc 关闭为 Drawer 内置行为（经 `onClose/@close` 回调），不要再手动监听 keydown。`destroyOnClose` 会等关场过渡后再卸载；焦点恢复用 `onAfterClose` / `@after-close`。不要再传已删除的 `destroyOnCloseAfterLeave` / `onAfterLeave` / `@after-leave`。
@@ -85,7 +85,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 | — | `/403` `/404` `/500` | 异常页（公共独立布局，不进菜单） | 无（独立兜底页） |
 | — | `/login` `/register` `/forgot-password` `/register-success` | 游客认证页（Guest shell，不进菜单） | 无（游客路由） |
 
-React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-router-dom` 管路由；Vue 通过 `vue-router`、`ProtectedShell`、`GuestShell` 与路由 meta `requiresPermission` 守卫管理。未知路径统一重定向 `/404`；已登录但缺少入口权限（`/users` 需 `user:view`、`/roles` 需 `role:view`）重定向 `/403`，权限加载完成前守卫保持加载态避免误判。刷新后都从 `SESSION_KEY` 读取会话并加载权限；MockApi 演示账号 `demo` 为只读权限（无 `user:view`/`role:view`），用于演示 403 场景。项目详情是本仓库首个动态参数路由：双端参数名均为 `id`（React `useParams().id`，Vue `useRoute().params.id`）；未知 id 渲染页内空态，不跳出 Shell。
+React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-router-dom` 管路由；Vue 通过 `vue-router`、`ProtectedShell`、`GuestShell` 与路由 meta `requiresPermission` 守卫管理。未知路径统一重定向 `/404`；已登录但缺少入口权限（`/users` 需 `user:view`、`/roles` 需 `role:view`、`/files` 需 `media:view`）重定向 `/403`，权限加载完成前守卫保持加载态避免误判。刷新后都从 `SESSION_KEY` 读取会话并加载权限；MockApi 演示账号 `demo` 为只读权限（无 `user:view`/`role:view`/`media:view`），用于演示 403 场景。项目详情是本仓库首个动态参数路由：双端参数名均为 `id`（React `useParams().id`，Vue `useRoute().params.id`）；未知 id 渲染页内空态，不跳出 Shell。
 
 ## 视觉与布局规则
 

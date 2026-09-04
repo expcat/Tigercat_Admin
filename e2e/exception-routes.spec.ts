@@ -52,11 +52,16 @@ test.describe('异常页与路由健壮性', () => {
     await page.goto('/#/users');
     await expect(page).toHaveURL(/#\/403$/);
     await expect(page.getByText('无权访问')).toBeVisible();
+    await expect(page.locator('#app, #root').first()).not.toBeEmpty();
 
     await page.getByRole('button', { name: '返回首页' }).click();
     await expect(page).toHaveURL(/#\/dashboard$/);
 
     await page.goto('/#/roles');
+    await expect(page).toHaveURL(/#\/403$/);
+    await expect(page.getByText('无权访问')).toBeVisible();
+
+    await page.goto('/#/files');
     await expect(page).toHaveURL(/#\/403$/);
     await expect(page.getByText('无权访问')).toBeVisible();
   });

@@ -588,7 +588,9 @@ function App() {
             <Route path="/roles" element={<RolesPage />} />
           </Route>
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/files" element={<FilesPage />} />
+          <Route element={<PermissionRoute code="media:view" />}>
+            <Route path="/files" element={<FilesPage />} />
+          </Route>
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/audit-logs" element={<AuditLogsPage />} />

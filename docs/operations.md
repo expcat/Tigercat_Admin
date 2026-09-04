@@ -59,6 +59,10 @@ pnpm build:pages
 pnpm e2e:react
 pnpm e2e:vue
 pnpm e2e:demo
+pnpm e2e:mobile
+pnpm e2e:dark
+pnpm e2e:demo:mobile
+pnpm e2e:demo:dark
 pnpm db:script:postgres
 pnpm run check:links
 
@@ -69,6 +73,8 @@ dotnet list Tigercat.Admin.Api.Tests/Tigercat.Admin.Api.Tests.csproj package --v
 dotnet list Tigercat.Aspire/Tigercat.Aspire.csproj package --vulnerable --include-transitive
 dotnet list Tigercat.ServiceDefaults/Tigercat.ServiceDefaults.csproj package --vulnerable --include-transitive
 ```
+
+Playwright 默认 Desktop 项目会 `grepInvert` `@mobile` / `@dark`，避免把同一批用例再跑一遍。375 视口与 `colorScheme: dark` 是独立 project，只跑带对应 tag 的用例（`e2e/viewport-a11y.spec.ts`）。焦点恢复与 Vue overlay 回归在 `e2e/overlay-focus.spec.ts`，走 Desktop。只跑标注用例用 `pnpm e2e:mobile` / `pnpm e2e:dark`（demo 配置对应 `e2e:demo:mobile` / `e2e:demo:dark`）。
 
 ## NuGet 依赖审计
 

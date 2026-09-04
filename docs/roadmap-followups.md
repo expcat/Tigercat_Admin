@@ -12,9 +12,9 @@
 
 ### 人工核验（自动化 e2e 未覆盖）
 
-- [ ] **移动端 375px**：命令面板、消息铃铛 Popover、在线客服 Drawer、悬浮按钮组、BackTop、Tour 在窄屏下不溢出、不互相遮挡；确认 Tour 在移动端已跳过依赖侧栏可见的步骤（已用 `skipWhen`，需目测确认）。
-- [ ] **暗色模式（`.dark`）**：以上挂件 token 生效、文本可读、浮层背景不透出底层内容。
-- [ ] **弹层焦点与键盘路径**：Spotlight / Popover / Drawer / Tour 的 Esc 与外部点击关闭、关闭后焦点恢复到触发器；`⌘/Ctrl+K` 打开后焦点进入搜索框。（demo e2e 已覆盖打开/关闭与跳转，焦点恢复尚未断言。）
+- [x] **移动端 375px**：命令面板、消息铃铛 Popover、在线客服 Drawer 在窄屏不溢出视口（`e2e/viewport-a11y.spec.ts` `@mobile`）。Tour 仍用 `skipWhen` 跳过依赖侧栏的步骤；BackTop 仅滚动后出现，未做重叠像素断言。
+- [x] **暗色模式（`.dark`）**：Playwright `colorScheme: dark` 项目覆盖 Shell 挂件打开路径（同上 spec `@dark`）。浮层不透出底层的像素对比仍可目测。
+- [x] **弹层焦点与键盘路径**：Spotlight / 通知 Popover / 主题 Drawer / 锁屏 PIN 关闭后焦点回到触发器（`e2e/overlay-focus.spec.ts`）。`⌘/Ctrl+K` 打开后焦点进入搜索框。Tour 未另加焦点断言。
 
 ### workaround 待清理（依赖上游，见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)）
 
@@ -24,7 +24,7 @@
 
 ### 可选增强
 
-- [ ] demo e2e 目前仅在 Desktop Chrome 运行；如需，补移动视口 / 暗色 `colorScheme` 的 Playwright 断言（覆盖上述人工核验项）。
+- [x] Playwright 已为 API 与 demo 配置增加 375 视口 / `colorScheme: dark` project；`@mobile` / `@dark` 标注用例不进入 Desktop 套件（`e2e/playwright-projects.ts`）。
 
 ---
 
@@ -47,8 +47,8 @@
 
 ### 人工核验（自动化 e2e 未覆盖）
 
-- [ ] **移动端 375px**：`/tickets` 主从分栏在窄屏切换为上下 `Splitter`（`vertical`），列表/详情、`Resizable` 对话面板、`ChatWindow`、`CommentThread`、`Mentions` 不溢出、不横向滚动溢出视口；`/calendar` 月视图 `Calendar`、倒计时卡、当日日程列表与“新建事件” `Drawer` 在窄屏不溢出。
-- [ ] **暗色模式（`.dark`）**：两页 `Splitter`/`Resizable` 分隔条、`Steps` 连接线、`CommentThread` 分隔线、`Calendar` 单元格与今日高亮、`Badge` 圆点、`Popover` 浮层背景在暗色下可读、不透出底层内容。
+- [x] **移动端 375px（工单 Splitter）**：`/tickets` 窄屏 `data-direction="vertical"`，列表/详情标题可见且页面不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`）。`/calendar` 月视图与新建事件 Drawer 仍待核验。
+- [x] **暗色模式（工单）**：`/tickets` 在 `colorScheme: dark` 下标题与生命周期可见（同上 spec `@dark`）。Calendar 单元格与评论分隔线像素对比仍可目测。
 - [ ] **弹层焦点与键盘路径**：`/tickets` 新建/关闭 `Drawer`、字段 `Popover` 的 Esc 与外部点击关闭、关闭后焦点恢复到触发器；`/calendar` 新建事件 `Drawer` 内 `DatePicker`/`TimePicker` 浮层 Esc 与外部点击关闭、关闭后焦点恢复；日程 `Popover` 键盘可达。（demo e2e 已覆盖导航与关键内容渲染，焦点恢复尚未断言。）
 
 ### workaround / 点到为止待回访
@@ -115,13 +115,13 @@
 
 ### 人工核验（自动化 e2e 未覆盖）
 
-- [ ] **移动端 375px**：`/403` `/404` `/500` 独立居中布局在窄屏不溢出，`Result` 图标、标题、副标题、404 倒计时与操作按钮堆叠可读、不横向滚动。
-- [ ] **暗色模式（`.dark`）**：三页背景 `--tiger-bg-page` token、`Result` 状态图标配色、`Empty` 插画、`Countdown` 数字在暗色下可读、对比度足够。
+- [x] **移动端 375px**：`/403` `/404` `/500` 独立居中布局在窄屏标题与返回按钮可见、页面不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`）。
+- [x] **暗色模式（`.dark`）**：三页在 `colorScheme: dark` 下标题可见（同上 spec `@dark`）。图标/插画像素对比仍可目测。
 - [ ] **键盘路径与真实历史栈**：返回首页/返回上一页按钮可 Tab 聚焦、Enter 触发；404 倒计时自动跳转与「返回上一页」在真实会话历史（非直开标签页）下不误伤；无历史时的 `Empty` 提示仅在新开标签页场景出现。
 - [ ] **无权限直访刷新场景**：demo e2e 已覆盖登录后直访 `/users` → 403；直开受限路由并整页刷新（权限需守卫内补偿加载）的场景建议人工在 api 模式（真实后端）复核一次。
 
 ### 说明
-- **MockApi `demo` 账号权限收窄**：静态演示模式下 `demo`/`demo` 现返回只读权限集（无 `user:view`/`role:view`），用于演示 403；`admin`/`admin123` 与真实 .NET 端行为不变。
+- **MockApi `demo` 账号权限收窄**：静态演示模式下 `demo`/`demo` 现返回只读权限集（无 `user:view`/`role:view`/`media:view`），用于演示 403；`admin`/`admin123` 与真实 .NET 端行为不变。
 - **`/500` 为演示入口**：按 Roadmap 定义仅提供直访演示，未接入全局错误边界/请求失败自动跳转；后续如需真实兜底，在两端 request 层或错误边界统一处理。
 
 ### 阶段内已处理（审查修复）
@@ -131,7 +131,7 @@
 - **返回上一页不再依赖 `window.history.length`**：React 用 `useNavigationType() === 'PUSH'`，Vue 用 `history.state.back`；直开标签页才显示 Empty。
 - **返回上一页与 catch-all replace 对齐**：React 改为读 `history.state.idx > 0`（未知路径 `Navigate replace` 的 navigationType 是 REPLACE，但上一页仍在栈里）；Vue 继续用 `history.state.back`。
 - **权限加载失败**：Vue 直开受限路由且权限接口失败时改回首页，避免 `next(false)` 取消首次导航留下空白页。
-- **`/files`（`media:view`）未做路由级 403**：Roadmap 阶段 6 示例只要求 `/users`/`roles`；菜单仍按权限隐藏，直访仍进页面。如需全菜单入口权限都走 403，放到后续阶段统一铺开。
+- **`/files`（`media:view`）路由级 403**：已与 `/users` / `/roles` 同一权限守卫（React `PermissionRoute`，Vue `requiresPermission`）。MockApi `demo` 账号无 `media:view`；直访 `/files` 进 `/403`。未把其余无入口权限的菜单页全部铺开。
 
 ---
 
@@ -139,8 +139,8 @@
 
 ### 人工核验（自动化 e2e 未覆盖）
 
-- [ ] **移动端 375px**：两步验证 OTP 数字格与 `NumberKeyboard` 按键区、忘记密码三步表单（含 `InputGroup` 验证码 + 获取按钮 60s 倒计时）、注册成功 `Result` 在窄屏堆叠不溢出、不横向滚动。
-- [ ] **暗色模式（`.dark`）**：OTP 数字格边框/背景、`Alert` 提示条、`Countdown` 数字、`Steps` 连接线、`Result` 状态图标配色在暗色下可读、对比度足够。
+- [x] **移动端 375px（登录 OTP）**：两步验证 OTP 数字格在窄屏可见、不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`，仅 demo）。忘记密码三步与注册成功仍待核验。
+- [x] **暗色模式（登录 OTP）**：OTP 页在 `colorScheme: dark` 下标题与数字格可见（同上 spec `@dark`）。忘记密码 Steps / 注册成功 Result 像素对比仍可目测。
 - [ ] **键盘路径**：`NumberKeyboard` 按键 Tab 可达、Enter 触发；OTP 长度校验与 60s 重发按钮恢复；忘记密码 Steps 上一步/下一步键盘可达。
 - [ ] **api 模式复核**：真实后端无 2FA/forgot 端点，`demo` 账号登录走原直通流程；建议在 api 模式人工登录一次确认游客路由（`/forgot-password`、`/register-success`）在真实后端下正常渲染。
 
@@ -162,11 +162,11 @@
 
 - [ ] **移动端 375px**：标签条横向滚动不撑破视口；右侧「标签操作」下拉不被裁切；关闭按钮可点。锁屏遮罩内 `Avatar` / `Statistic` 时钟 / `NumberKeyboard` 与 PIN 点阵窄屏堆叠不溢出、可滚动到键盘。
 - [ ] **暗色模式（`.dark`）**：活动/非活动 `Tag` 对比可读，标签条边框走 token。锁屏遮罩、时钟与数字键盘 token 可读。
-- [ ] **键盘路径**：标签条 Tab / Enter 切换；关闭按钮可达；「标签操作」下拉 Esc 关闭并恢复焦点。锁屏 Esc / ⌘K 不可绕过 PIN；解锁后焦点回到 Shell（demo e2e 已覆盖锁定、错误 PIN、正确 PIN 与路由保持，焦点恢复尚未断言）。主题抽屉 Esc 关闭后焦点回到 Header 调色板触发器（开关路径已覆盖，焦点恢复尚未断言）。
+- [x] **键盘路径（锁屏 / 主题抽屉焦点恢复）**：锁屏正确 PIN 解锁后焦点回到账户按钮；主题抽屉 Esc 关闭后焦点回到 Header 调色板触发器（`e2e/overlay-focus.spec.ts`）。标签条 Tab / Enter 与「标签操作」下拉焦点仍待核验。锁屏 Esc / ⌘K 不可绕过 PIN（`e2e/lock-screen.spec.ts`）。
 
 ### 说明
 
-- 多标签、锁屏、全局水印开关和主题配置抽屉均已落地。水印与主题抽屉的自动化覆盖见 [e2e/shell-watermark-theme.spec.ts](../e2e/shell-watermark-theme.spec.ts)（设置页开关、刷新保留、不挡住多标签与锁屏；Header 打开主题抽屉并切换外观）。375px / `.dark` / 焦点恢复仍待核验自动化，不当新功能重做。
+- 多标签、锁屏、全局水印开关和主题配置抽屉均已落地。水印与主题抽屉的自动化覆盖见 [e2e/shell-watermark-theme.spec.ts](../e2e/shell-watermark-theme.spec.ts)（设置页开关、刷新保留、不挡住多标签与锁屏；Header 打开主题抽屉并切换外观）。375px / `.dark` / 焦点恢复见 [e2e/viewport-a11y.spec.ts](../e2e/viewport-a11y.spec.ts) 与 [e2e/overlay-focus.spec.ts](../e2e/overlay-focus.spec.ts)，不当新功能重做。
 
 ---
 

@@ -44,7 +44,12 @@ export function ThemeConfigDrawer({
       width="360px"
       mask
       maskClosable
-      onClose={onClose}>
+      onClose={onClose}
+      onAfterClose={() => {
+        document
+          .querySelector<HTMLButtonElement>('[data-testid="shell-theme-config-trigger"]')
+          ?.focus();
+      }}>
       <div data-testid="shell-theme-config-drawer" className="space-y-6">
         <div>
           <Text weight="medium" className="mb-2 block">

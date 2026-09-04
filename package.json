@@ -19,7 +19,11 @@
     "e2e": "playwright test",
     "e2e:react": "playwright test --project=react",
     "e2e:vue": "playwright test --project=vue",
+    "e2e:mobile": "playwright test --grep @mobile",
+    "e2e:dark": "playwright test --grep @dark",
     "e2e:demo": "pnpm build:demo && playwright test --config=playwright.demo.config.ts",
+    "e2e:demo:mobile": "pnpm build:demo && playwright test --config=playwright.demo.config.ts --grep @mobile",
+    "e2e:demo:dark": "pnpm build:demo && playwright test --config=playwright.demo.config.ts --grep @dark",
     "e2e:install": "playwright install chromium",
     "db:script:postgres": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/generate-postgres-sql.ps1",
     "check:links": "pnpm dlx markdown-link-check README.md AGENT.md docs/llm.md docs/api.md docs/frontend.md docs/operations.md docs/guide/new-project.md docs/guide/backend.md docs/api/auth.md docs/api/users.md docs/api/roles.md docs/api/dashboard-export.md docs/api/audit.md docs/api/notifications.md docs/api/monitor.md docs/api/tasks.md docs/api/tickets.md docs/api/chat.md docs/api/comments.md docs/api/projects.md docs/api/calendar.md docs/api/content.md docs/api/jobs.md docs/api/import.md docs/api/settings.md docs/api/media.md Tigercat.Admin.Api/README.md"

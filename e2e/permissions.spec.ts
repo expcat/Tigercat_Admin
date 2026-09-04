@@ -190,6 +190,10 @@ test.describe('前端权限守卫回归', () => {
       await expect(page.getByRole('button', { name: '批量禁用' })).toBeHidden();
       await expect(page.getByRole('button', { name: '批量删除' })).toBeHidden();
       await expect(page.getByRole('button', { name: '删除', exact: true })).toHaveCount(0);
+
+      await page.goto('/files');
+      await expect(page).toHaveURL(/\/403$/);
+      await expect(page.getByText('无权访问')).toBeVisible();
     } finally {
       if (!page.isClosed()) {
         await cleanupLimitedUser(page, user, role);

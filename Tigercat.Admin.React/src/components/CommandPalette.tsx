@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { SpotlightItem } from '@expcat/tigercat-core';
 import { Spotlight } from '@expcat/tigercat-react/Spotlight';
@@ -46,6 +46,36 @@ export function CommandPalette({
 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const lastFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') {
+        return;
+      }
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) {
+        lastFocusRef.current = active;
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, []);
+
+  const handleOpenChange = (next: boolean) => {
+    if (next && !lastFocusRef.current) {
+      const active = document.activeElement;
+      lastFocusRef.current = active instanceof HTMLElement ? active : null;
+    }
+    setOpen(next);
+    if (!next) {
+      const target = lastFocusRef.current;
+      lastFocusRef.current = null;
+      if (target) {
+        requestAnimationFrame(() => target.focus());
+      }
+    }
+  };
 
   const items = useMemo<SpotlightItem[]>(() => {
     const permitted = filterShellMenuItems(
@@ -116,7 +146,7 @@ export function CommandPalette({
   }, [hasPerm]);
 
   const handleSelect = (item: SpotlightItem) => {
-    setOpen(false);
+    handleOpenChange(false);
     const data = item.data as CommandData | undefined;
     if (!data) {
       return;
@@ -155,7 +185,7 @@ export function CommandPalette({
       placeholder="搜索页面或操作，按回车执行"
       emptyText="未找到匹配项"
       closeOnSelect
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
       onQueryChange={setQuery}
       onSelect={handleSelect}
     />
