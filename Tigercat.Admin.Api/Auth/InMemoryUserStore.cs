@@ -17,10 +17,19 @@ public class InMemoryUserStore : IUserStore
         return Task.FromResult(_users.TryAdd(username, record));
     }
 
-    public Task<bool> ValidateUserAsync(string username, string passwordHash, CancellationToken ct = default)
+    public Task<bool> ValidateUserAsync(string username, string password, CancellationToken ct = default)
     {
-        var result = _users.TryGetValue(username, out var record) && record.PasswordHash == passwordHash;
-        return Task.FromResult(result);
+        if (!_users.TryGetValue(username, out var record))
+        {
+            return Task.FromResult(false);
+        }
+
+        return Task.FromResult(PasswordHasher.Matches(record.PasswordHash, password));
+    }
+
+    public Task<string?> GetPasswordHashAsync(string username, CancellationToken ct = default)
+    {
+        return Task.FromResult(_users.TryGetValue(username, out var record) ? record.PasswordHash : null);
     }
 
     public Task<bool> UpdatePasswordAsync(string username, string newPasswordHash, CancellationToken ct = default)

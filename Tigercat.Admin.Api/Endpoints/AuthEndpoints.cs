@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Cache;
@@ -20,12 +21,15 @@ public class AuthEndpoints : IEndpointDefinition
             .WithTags("Auth");
 
         group.MapPost("/register", Register)
+            .RequireRateLimiting(AuthRateLimitOptions.PolicyName)
             .WithName("Register");
 
         group.MapPost("/login", Login)
+            .RequireRateLimiting(AuthRateLimitOptions.PolicyName)
             .WithName("Login");
 
         group.MapPost("/two-factor/verify", VerifyTwoFactor)
+            .RequireRateLimiting(AuthRateLimitOptions.PolicyName)
             .WithName("VerifyTwoFactor");
 
         group.MapGet("/two-factor", GetTwoFactor)
@@ -37,9 +41,11 @@ public class AuthEndpoints : IEndpointDefinition
             .WithName("UpdateTwoFactor");
 
         group.MapPost("/forgot-password/code", SendForgotPasswordCode)
+            .RequireRateLimiting(AuthRateLimitOptions.PolicyName)
             .WithName("SendForgotPasswordCode");
 
         group.MapPost("/forgot-password", ResetForgotPassword)
+            .RequireRateLimiting(AuthRateLimitOptions.PolicyName)
             .WithName("ResetForgotPassword");
 
         group.MapPost("/change-password", ChangePassword)
@@ -142,8 +148,8 @@ public class AuthEndpoints : IEndpointDefinition
                 statusCode: 429);
         }
 
-        var passwordHash = PasswordHasher.Hash(request.Password);
-        if (!await userStore.ValidateUserAsync(username, passwordHash, ct))
+        var storedHash = await userStore.GetPasswordHashAsync(username, ct);
+        if (storedHash is null || !PasswordHasher.Verify(storedHash, request.Password, out var needsRehash))
         {
             RecordLoginFailure(attemptKey);
             AdminMetrics.RecordAuthEvent("login", false);
@@ -154,6 +160,11 @@ public class AuthEndpoints : IEndpointDefinition
         }
 
         ClearLoginFailures(attemptKey);
+
+        if (needsRehash)
+        {
+            await userStore.UpdatePasswordAsync(username, PasswordHasher.Hash(request.Password), ct);
+        }
 
         if (await userStore.GetTwoFactorEnabledAsync(username, ct))
         {
@@ -391,8 +402,7 @@ public class AuthEndpoints : IEndpointDefinition
                 statusCode: 401);
         }
 
-        var oldHash = PasswordHasher.Hash(request.OldPassword);
-        if (!await userStore.ValidateUserAsync(username, oldHash, ct))
+        if (!await userStore.ValidateUserAsync(username, request.OldPassword, ct))
         {
             return Results.Json(
                 ApiResult.Fail<MessageResponse>("旧密码错误", 401),

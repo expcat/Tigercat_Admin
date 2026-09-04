@@ -1,4 +1,6 @@
+using System.Threading.RateLimiting;
 using FreeRedis;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
@@ -117,7 +119,42 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer(new OpenApiAuthDocumentTransformer());
+});
+
+builder.Services.Configure<AuthRateLimitOptions>(
+    builder.Configuration.GetSection(AuthRateLimitOptions.SectionName));
+builder.Services.AddRateLimiter(options =>
+{
+    var limitOptions = builder.Configuration
+        .GetSection(AuthRateLimitOptions.SectionName)
+        .Get<AuthRateLimitOptions>() ?? new AuthRateLimitOptions();
+    var permitLimit = Math.Max(1, limitOptions.PermitLimit);
+    var window = TimeSpan.FromSeconds(Math.Max(1, limitOptions.WindowSeconds));
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            ApiResult.Fail("请求过于频繁，请稍后再试", 429),
+            AppJsonContext.Default.ApiResponseObject,
+            cancellationToken: token);
+    };
+
+    options.AddPolicy(AuthRateLimitOptions.PolicyName, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = permitLimit,
+                QueueLimit = 0,
+                Window = window
+            }));
+});
 
 builder.Services.AddCors(options =>
 {
@@ -152,13 +189,22 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+var openApiEnabled = app.Environment.IsDevelopment()
+    || app.Configuration.GetValue("OpenApi:Enabled", false);
+
+if (openApiEnabled)
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference();
+    var openApi = app.MapOpenApi();
+    var scalar = app.MapScalarApiReference();
+    if (!app.Environment.IsDevelopment())
+    {
+        openApi.AddEndpointFilter(new LoginFilter());
+        scalar.AddEndpointFilter(new LoginFilter());
+    }
 }
 
 app.UseCors();
+app.UseRateLimiter();
 app.MapDefaultEndpoints();
 
 // Seed database with default roles, permissions, and admin user
@@ -167,6 +213,15 @@ try
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
     await DbInitializer.InitializeAsync(dbContext, app.Configuration);
+
+    var passwordHashes = await dbContext.Users.Select(u => u.PasswordHash).ToListAsync();
+    var legacyCount = passwordHashes.Count(PasswordHasher.IsLegacySha256);
+    if (legacyCount > 0)
+    {
+        app.Logger.LogWarning(
+            "{LegacyCount} user password hash(es) are still SHA256 hex and will be upgraded on the next successful login.",
+            legacyCount);
+    }
 }
 catch (Exception ex)
 {
@@ -403,13 +458,12 @@ static async Task<HealthDependencyStatus> CheckSecurityAsync(
         issues.Add("AllowedHosts should be restricted in Production.");
     }
 
-    var defaultAdminHash = PasswordHasher.Hash("admin123");
     var adminHash = await dbContext.Users
         .Where(u => u.Username == "admin")
         .Select(u => u.PasswordHash)
         .FirstOrDefaultAsync(ct);
 
-    if (string.Equals(adminHash, defaultAdminHash, StringComparison.Ordinal))
+    if (PasswordHasher.IsDefaultAdminPassword(adminHash))
     {
         issues.Add("Default admin password must be rotated.");
     }

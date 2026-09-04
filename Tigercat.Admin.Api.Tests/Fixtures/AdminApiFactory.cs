@@ -41,7 +41,10 @@ public abstract class AdminApiFactory : WebApplicationFactory<Program>
 
         builder.ConfigureAppConfiguration((_, config) =>
         {
-            config.AddInMemoryCollection(ConfigurationOverrides);
+            var overrides = new Dictionary<string, string?>(ConfigurationOverrides);
+            overrides.TryAdd("AuthRateLimit:PermitLimit", "1000");
+            overrides.TryAdd("AuthRateLimit:WindowSeconds", "60");
+            config.AddInMemoryCollection(overrides);
         });
 
         builder.ConfigureServices(services =>
@@ -143,6 +146,61 @@ public class SqliteApiFactory : AdminApiFactory
 public class ProductionSecurityApiFactory : InMemoryApiFactory
 {
     protected override string EnvironmentName => Environments.Production;
+}
+
+/// <summary>
+/// Production host with OpenAPI explicitly enabled so tests can assert
+/// that the document is login-gated.
+/// </summary>
+public class ProductionOpenApiApiFactory : InMemoryApiFactory
+{
+    protected override string EnvironmentName => Environments.Production;
+
+    protected override Dictionary<string, string?> ConfigurationOverrides
+    {
+        get
+        {
+            var map = base.ConfigurationOverrides;
+            map["OpenApi:Enabled"] = "true";
+            return map;
+        }
+    }
+}
+
+/// <summary>
+/// Tight IP limiter so auth-endpoint 429 tests do not share quota with
+/// the default 1000-permit test host.
+/// </summary>
+public class StrictAuthRateLimitApiFactory : InMemoryApiFactory
+{
+    protected override Dictionary<string, string?> ConfigurationOverrides
+    {
+        get
+        {
+            var map = base.ConfigurationOverrides;
+            map["AuthRateLimit:PermitLimit"] = "5";
+            map["AuthRateLimit:WindowSeconds"] = "60";
+            return map;
+        }
+    }
+}
+
+/// <summary>
+/// Permit window large enough for account lockout to fire first, then
+/// the IP limiter.
+/// </summary>
+public class LockoutAndLimiterApiFactory : InMemoryApiFactory
+{
+    protected override Dictionary<string, string?> ConfigurationOverrides
+    {
+        get
+        {
+            var map = base.ConfigurationOverrides;
+            map["AuthRateLimit:PermitLimit"] = "8";
+            map["AuthRateLimit:WindowSeconds"] = "60";
+            return map;
+        }
+    }
 }
 
 /// <summary>

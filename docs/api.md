@@ -40,6 +40,8 @@ JSON API 默认返回 `ApiResponse<T>`：
 - OpenAPI JSON：`/openapi/v1.json`
 - Scalar UI：`/scalar`
 
+文档包含会话 token 安全方案：`Authorization: Bearer` 与 `X-Token`。生产默认不映射这两条路由；仅当 `OpenApi:Enabled=true` 时打开，并要求已登录（`LoginFilter`），避免无鉴权暴露内部模型。详见 [operations.md](operations.md)。
+
 ## 通用错误
 
 | 状态码 | 常见含义 |
@@ -49,7 +51,7 @@ JSON API 默认返回 `ApiResponse<T>`：
 | `403` | 登录用户缺少所需权限 |
 | `404` | 资源不存在 |
 | `409` | 唯一冲突、重复资源或被引用资源不能删除 |
-| `429` | 登录失败次数过多，进入锁定窗口 |
+| `429` | 登录失败次数过多进入账号锁定窗口，或同一 IP 触发认证接口限流 |
 | `503` | Redis、审计日志或依赖暂不可用 |
 
 典型错误：

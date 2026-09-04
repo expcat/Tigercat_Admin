@@ -42,10 +42,18 @@ public class EfUserStore : IUserStore
         }
     }
 
-    public async Task<bool> ValidateUserAsync(string username, string passwordHash, CancellationToken ct = default)
+    public async Task<bool> ValidateUserAsync(string username, string password, CancellationToken ct = default)
     {
-        return await _context.Users.AnyAsync(
-            u => u.Username == username && u.PasswordHash == passwordHash, ct);
+        var storedHash = await GetPasswordHashAsync(username, ct);
+        return storedHash is not null && PasswordHasher.Matches(storedHash, password);
+    }
+
+    public async Task<string?> GetPasswordHashAsync(string username, CancellationToken ct = default)
+    {
+        return await _context.Users
+            .Where(u => u.Username == username)
+            .Select(u => u.PasswordHash)
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<bool> UpdatePasswordAsync(string username, string newPasswordHash, CancellationToken ct = default)

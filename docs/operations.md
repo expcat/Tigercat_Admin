@@ -138,6 +138,9 @@ export ConnectionStrings__Redis="redis.example.internal:6379,password=<secret>,s
 export Cors__AllowedOrigins__0="https://admin.example.com"
 export AllowedHosts="admin-api.example.com"
 export BootstrapAdmin__Password="<secret>"
+export AuthRateLimit__PermitLimit=30
+export AuthRateLimit__WindowSeconds=60
+export OpenApi__Enabled=false
 export Media__Provider=Local
 export Media__LocalRoot=/var/lib/tigercat-admin/media
 export Media__PublicBaseUrl=https://admin-api.example.com
@@ -163,6 +166,14 @@ pnpm build:pages
 
 前端业务入口仍是 `/api`；独立部署时建议由反向代理把 `/api` 转发到 API 服务。
 
+### 认证与请求面
+
+- 密码存储使用 ASP.NET Identity `PasswordHasher<T>`（PBKDF2）。**不要**引入 Cookie Identity UI 或 JwtBearer；会话仍是 `X-Token` / `Authorization: Bearer` + `ISessionStore`。
+- 升级前写入的 SHA256 hex 哈希在成功登录后透明重哈希。启动时若仍有旧哈希，日志会给出条数，不会在启动时批量改写（没有明文）。
+- 生产健康检查用 hasher **校验** `admin123`，同时识别 Identity 哈希和未升级的 SHA256 hex。默认管理员密码必须轮换。
+- `POST /api/auth/login`、`/api/auth/two-factor/verify`、`/api/auth/forgot-password*`、`/api/auth/register` 启用按 IP 的 ASP.NET `RateLimiter`（配置节 `AuthRateLimit`：`PermitLimit`、`WindowSeconds`）。开发默认 120 次/60 秒；生产样例 30 次/60 秒。账号锁定（`auth.maxAttempts`）仍然独立生效。限流拒绝返回 `ApiResponse` `429`，message 为「请求过于频繁，请稍后再试」。
+- 开发环境暴露 `/openapi/v1.json` 与 `/scalar`，文档含 Bearer / `X-Token` 安全方案。生产默认关闭。若必须打开：设置 `OpenApi:Enabled=true`，这两条路由会走登录过滤器，禁止无鉴权读取内部模型。
+
 ## 媒体、Redis 与事件
 
 - 当前媒体 provider 为 `Local`，`Media:LocalRoot` 必须指向持久化卷。
@@ -179,7 +190,7 @@ pnpm build:pages
 - `/api/health`：数据库、Redis、事件通道、媒体存储、配置和安全检查。
 - `/api/health/redis`：Redis ping。
 
-生产 readiness probe 至少接入 `/api/health`。生产环境会严格检查 PostgreSQL TLS、Redis TLS、CORS 白名单、`AllowedHosts`、默认管理员密码轮换、`BootstrapAdmin:Password` 和安全策略默认值。
+生产 readiness probe 至少接入 `/api/health`。生产环境会严格检查 PostgreSQL TLS、Redis TLS、CORS 白名单、`AllowedHosts`、默认管理员密码轮换（Identity 或遗留 SHA256 哈希均按 `admin123` 校验）、`BootstrapAdmin:Password` 和安全策略默认值。
 
 OpenTelemetry 注册 `Tigercat.Admin.Api` meter；配置 `OTEL_EXPORTER_OTLP_ENDPOINT` 后输出 logs、metrics 和 traces。
 
