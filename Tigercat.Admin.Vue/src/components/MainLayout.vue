@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Layout, Content, Drawer } from '@expcat/tigercat-vue'
+import { Content } from '@expcat/tigercat-vue/Content'
+import { Drawer } from '@expcat/tigercat-vue/Drawer'
+import { Layout } from '@expcat/tigercat-vue/Layout'
 import { Watermark } from '@expcat/tigercat-vue/Watermark'
 import MainHeader from './MainHeader.vue'
 import MainSidebar from './MainSidebar.vue'

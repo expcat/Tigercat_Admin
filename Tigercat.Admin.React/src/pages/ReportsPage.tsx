@@ -1,5 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Card, Text, Button, Statistic, Message } from '@expcat/tigercat-react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Statistic } from '@expcat/tigercat-react/Statistic';
+import { Text } from '@expcat/tigercat-react/Text';
 import { Segmented } from '@expcat/tigercat-react/Segmented';
 import { PrintLayout, PrintPageBreak } from '@expcat/tigercat-react/PrintLayout';
 import { Descriptions } from '@expcat/tigercat-react/Descriptions';

@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, Card, Form, FormItem, Input, Message } from '@expcat/tigercat-vue'
+import { Button } from '@expcat/tigercat-vue/Button'
+import { Card } from '@expcat/tigercat-vue/Card'
+import { Form } from '@expcat/tigercat-vue/Form'
+import { FormItem } from '@expcat/tigercat-vue/FormItem'
+import { Input } from '@expcat/tigercat-vue/Input'
+import { Message } from '@expcat/tigercat-vue/Message'
 import { debounce, useAuthForm, apiRequest } from '../utils'
 import AppLogo from '../components/AppLogo.vue'
 

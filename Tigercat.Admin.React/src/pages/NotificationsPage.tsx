@@ -1,18 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { NotificationItem } from '@expcat/tigercat-core';
-import {
-  Button,
-  Card,
-  Form,
-  FormItem,
-  Input,
-  Message,
-  Modal,
-  Select,
-  Text,
-  notification,
-} from '@expcat/tigercat-react';
+import { notification } from '@expcat/tigercat-react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Form } from '@expcat/tigercat-react/Form';
+import { FormItem } from '@expcat/tigercat-react/FormItem';
+import { Input } from '@expcat/tigercat-react/Input';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Modal } from '@expcat/tigercat-react/Modal';
+import { Select } from '@expcat/tigercat-react/Select';
+import { Text } from '@expcat/tigercat-react/Text';
 import { NotificationCenter } from '@expcat/tigercat-react/NotificationCenter';
 import { Textarea } from '@expcat/tigercat-react/Textarea';
 import { PageHeader } from '../components/PageHeader';

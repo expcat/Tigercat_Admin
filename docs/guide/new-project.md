@@ -51,7 +51,7 @@ pnpm add -D @tailwindcss/postcss
 
 - `server.port`：改为自己的端口。
 - `server.proxy['/api'].target`：改为自己的后端地址（见 [backend.md](backend.md)）。
-- `manualChunks` 中 `vendor-ui`（`@expcat/tigercat-*` 单独分包）建议保留，减小页面 chunk。
+- `manualChunks` 中 `vendor-ui` 只收静态可达的 `@expcat/tigercat-*`（Shell / 公共组件），不要把全部 UI 包打进一个 chunk，否则路由和交互懒加载无法拆出图表、编辑器、裁剪和 Gantt。`vendor-framework`（React/Vue + router）建议保留。
 - `VITE_TIGERCAT_*` 环境变量分支（base path、router mode、demo）：不需要 demo/Pages 部署时可删。
 
 ### CSS 入口
@@ -90,7 +90,7 @@ pnpm add -D @tailwindcss/postcss
 | `src/components/PageHeader.tsx` + `PageFragments.tsx`（Vue：`PageHeader.vue`、`MetricCard.vue`、`MetricGrid.vue`、`MutedPanel.vue`、`PageActionPanel.vue`、`ChartEmptyState.vue`） | 页面级片段组件 | 原样 |
 | `src/components/ProtectedRoute.tsx` + `GuestRoute.tsx`（Vue：`ProtectedShell.vue` + `GuestShell.vue` + `src/router/index.ts`） | 路由守卫与路由表 | 路由表替换为自己的页面 |
 | `src/components/PermissionGuard.tsx`（Vue：`src/directives/permission.ts` + `directives/index.ts`） | 权限控件 / 指令 | 原样 |
-| `src/utils/`：`theme.ts`、`request.ts`、`auth.ts`、`permission.tsx`（Vue：`permission.ts`）、`permission-helpers.ts`、`types.ts`、`constants.ts`、`common.ts`、`hooks.ts`（Vue：`composables.ts`）、`shell-navigation.tsx`（Vue：`shell-navigation.ts`）、`tags-view.ts`、`lock-screen.ts`、`watermark.ts`、`tigercatText.ts`、`validation.ts` | 主题 / 请求 / 会话 / 权限 / 导航 / 多标签 / 锁屏 / 水印 / 文案 | `types.ts` 裁剪为自己的业务类型；`shell-navigation` 替换菜单表；`constants.ts` 检查 API 前缀 |
+| `src/utils/`：`theme.ts`、`request.ts`、`auth.ts`、`permission.tsx`（Vue：`permission.ts`）、`permission-helpers.ts`、`types.ts`、`constants.ts`、`common.ts`、`hooks.ts`（Vue：`composables.ts`）、`shell-navigation.tsx`（Vue：`shell-navigation.ts`）、`tags-view.ts`、`lock-screen.ts`、`watermark.ts`、`tigercatText.ts`、`lazyTigercat.tsx`（Vue：`lazyTigercat.ts`）、`validation.ts` | 主题 / 请求 / 会话 / 权限 / 导航 / 多标签 / 锁屏 / 水印 / 文案 / 重组件懒加载 | `types.ts` 裁剪为自己的业务类型；`shell-navigation` 替换菜单表；`constants.ts` 检查 API 前缀；无图表/编辑器/裁剪/Gantt 页时可删 `lazyTigercat` |
 | `src/main.tsx` + `App.tsx`（Vue：`src/main.ts` + `App.vue`） | 应用入口（ConfigProvider locale、Router 模式） | **删除 `@tigercat-admin/mock-api` 的 import、`isTigercatDemoEnabled` 与 `installTigercatMockApi(...)` 调用**（除非选 backend.md 方案 C）；不需要 hash 路由时可删 `VITE_TIGERCAT_ROUTER_MODE` 分支 |
 
 蓝本中 `src/utils/` 其余文件（`notifications.ts`、`monitor.ts`、`task-board.ts`、`settings.ts`、`media.ts`、`export.ts`、`workbench.ts`）是具体业务页面的 API 包装，按你实际要做的页面选择性复制。

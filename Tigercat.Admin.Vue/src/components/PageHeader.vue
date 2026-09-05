@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Text, Tag } from '@expcat/tigercat-vue'
+import { Tag } from '@expcat/tigercat-vue/Tag'
+import { Text } from '@expcat/tigercat-vue/Text'
 import { PageHeader as TigerPageHeader } from '@expcat/tigercat-vue/PageHeader'
 import type { TagVariant } from '@expcat/tigercat-core'
 import Icon from './Icon.vue'

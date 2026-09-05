@@ -7,16 +7,14 @@ import type {
   TaskBoardColumn,
   TaskBoardColumnMoveEvent,
 } from '@expcat/tigercat-core';
-import {
-  Button,
-  Card,
-  Input,
-  Modal,
-  Select,
-  Tag,
-  Text,
-  notification,
-} from '@expcat/tigercat-react';
+import { notification } from '@expcat/tigercat-react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Input } from '@expcat/tigercat-react/Input';
+import { Modal } from '@expcat/tigercat-react/Modal';
+import { Select } from '@expcat/tigercat-react/Select';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Text } from '@expcat/tigercat-react/Text';
 import { TaskBoard } from '@expcat/tigercat-react/TaskBoard';
 import { PageHeader } from '../components/PageHeader';
 import { ClipboardIcon, ClockIcon, ZapIcon } from '../components/Icons';

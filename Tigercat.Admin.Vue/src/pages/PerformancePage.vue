@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Button, Card, Tag, Text, useDrag } from '@expcat/tigercat-vue'
+import { Button } from '@expcat/tigercat-vue/Button'
+import { Card } from '@expcat/tigercat-vue/Card'
+import { Tag } from '@expcat/tigercat-vue/Tag'
+import { Text } from '@expcat/tigercat-vue/Text'
+import { useDrag } from '@expcat/tigercat-vue/useDrag'
 import { Tabs } from '@expcat/tigercat-vue/Tabs'
 import { TabPane } from '@expcat/tigercat-vue/TabPane'
 import { VirtualList } from '@expcat/tigercat-vue/VirtualList'

@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Card, Text, Tag, Button, Input, Message } from '@expcat/tigercat-react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Input } from '@expcat/tigercat-react/Input';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Text } from '@expcat/tigercat-react/Text';
 import { Splitter } from '@expcat/tigercat-react/Splitter';
 import { Resizable } from '@expcat/tigercat-react/Resizable';
 import { Steps, StepsItem } from '@expcat/tigercat-react/Steps';

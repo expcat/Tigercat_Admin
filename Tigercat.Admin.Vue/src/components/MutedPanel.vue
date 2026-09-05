@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Text } from '@expcat/tigercat-vue'
+import { Text } from '@expcat/tigercat-vue/Text'
 
 withDefaults(defineProps<{
   title?: string

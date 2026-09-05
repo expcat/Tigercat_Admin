@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { Card, Text, Tag, Button, Message } from '@expcat/tigercat-vue'
+import { Button } from '@expcat/tigercat-vue/Button'
+import { Card } from '@expcat/tigercat-vue/Card'
+import { Message } from '@expcat/tigercat-vue/Message'
+import { Tag } from '@expcat/tigercat-vue/Tag'
+import { Text } from '@expcat/tigercat-vue/Text'
 import { Calendar } from '@expcat/tigercat-vue/Calendar'
 import { Countdown } from '@expcat/tigercat-vue/Countdown'
 import { Statistic } from '@expcat/tigercat-vue/Statistic'
@@ -12,7 +16,7 @@ import { DatePicker } from '@expcat/tigercat-vue/DatePicker'
 import { TimePicker } from '@expcat/tigercat-vue/TimePicker'
 import { RadioGroup } from '@expcat/tigercat-vue/RadioGroup'
 import { Radio } from '@expcat/tigercat-vue/Radio'
-import { Input } from '@expcat/tigercat-vue'
+import { Input } from '@expcat/tigercat-vue/Input'
 import type {
   ListItem,
   DatePickerModelValue,

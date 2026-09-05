@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button } from '@expcat/tigercat-vue'
+import { Button } from '@expcat/tigercat-vue/Button'
 import { Result } from '@expcat/tigercat-vue/Result'
 import { Countdown } from '@expcat/tigercat-vue/Countdown'
 import { Empty } from '@expcat/tigercat-vue/Empty'

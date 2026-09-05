@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Button, Card, Tag, Text, useDrag } from '@expcat/tigercat-react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Text } from '@expcat/tigercat-react/Text';
+import { useDrag } from '@expcat/tigercat-react/useDrag';
 import { Tabs } from '@expcat/tigercat-react/Tabs';
 import { TabPane } from '@expcat/tigercat-react/TabPane';
 import { VirtualList } from '@expcat/tigercat-react/VirtualList';

@@ -1,10 +1,10 @@
+import { Button } from '@expcat/tigercat-react/Button';
 import {
-  Button,
   Dropdown,
   DropdownItem,
   DropdownMenu,
-  Tag,
-} from '@expcat/tigercat-react';
+} from '@expcat/tigercat-react/Dropdown';
+import { Tag } from '@expcat/tigercat-react/Tag';
 import { MoreHorizontalIcon } from './Icons';
 import {
   getShellPageTitle,

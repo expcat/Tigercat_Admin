@@ -1,19 +1,17 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import {
-  Card,
-  Button,
-  Input,
-  InputNumber,
-  Modal,
-  Popconfirm,
-  Select,
-  Segmented,
-  Switch,
-  Message,
-  Text,
-  Tag,
-} from '@expcat/tigercat-react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Input } from '@expcat/tigercat-react/Input';
+import { InputNumber } from '@expcat/tigercat-react/InputNumber';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Modal } from '@expcat/tigercat-react/Modal';
+import { Popconfirm } from '@expcat/tigercat-react/Popconfirm';
+import { Segmented } from '@expcat/tigercat-react/Segmented';
+import { Select } from '@expcat/tigercat-react/Select';
+import { Switch } from '@expcat/tigercat-react/Switch';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Text } from '@expcat/tigercat-react/Text';
 import { ColorPicker } from '@expcat/tigercat-react/ColorPicker';
 import { Upload } from '@expcat/tigercat-react/Upload';
 import type { UploadRequestOptions } from '@expcat/tigercat-core';

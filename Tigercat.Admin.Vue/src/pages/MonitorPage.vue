@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
-import { Button, Card, Tag, Text, Message } from '@expcat/tigercat-vue'
+import { Button } from '@expcat/tigercat-vue/Button'
+import { Card } from '@expcat/tigercat-vue/Card'
+import { Message } from '@expcat/tigercat-vue/Message'
+import { Tag } from '@expcat/tigercat-vue/Tag'
+import { Text } from '@expcat/tigercat-vue/Text'
 import { Statistic } from '@expcat/tigercat-vue/Statistic'
 import { Progress } from '@expcat/tigercat-vue/Progress'
 import { Segmented } from '@expcat/tigercat-vue/Segmented'
 import { Badge } from '@expcat/tigercat-vue/Badge'
-import { GaugeChart } from '@expcat/tigercat-vue/GaugeChart'
-import { AreaChart } from '@expcat/tigercat-vue/AreaChart'
-import { LineChart } from '@expcat/tigercat-vue/LineChart'
+import { GaugeChart, AreaChart, LineChart } from '../utils/lazyTigercat'
 import { ActivityFeed } from '@expcat/tigercat-vue/ActivityFeed'
 import type {
   ActivityItem,

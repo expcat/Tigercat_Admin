@@ -1,16 +1,12 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import {
-  Alert,
-  Card,
-  Text,
-  Tag,
-  Select,
-  Loading,
-  Message,
-} from '@expcat/tigercat-react';
-import { LineChart } from '@expcat/tigercat-react/LineChart';
-import { BarChart } from '@expcat/tigercat-react/BarChart';
-import { PieChart } from '@expcat/tigercat-react/PieChart';
+import { Alert } from '@expcat/tigercat-react/Alert';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Loading } from '@expcat/tigercat-react/Loading';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Select } from '@expcat/tigercat-react/Select';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Text } from '@expcat/tigercat-react/Text';
+import { LineChart, BarChart, PieChart } from '../utils/lazyTigercat';
 import { Marquee } from '@expcat/tigercat-react/Marquee';
 import { DataExport } from '@expcat/tigercat-react/DataExport';
 import { useOutletContext, useNavigate } from 'react-router-dom';

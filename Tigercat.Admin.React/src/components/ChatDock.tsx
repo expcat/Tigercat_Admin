@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { ChatMessage } from '@expcat/tigercat-core';
-import { Badge, Drawer, Message } from '@expcat/tigercat-react';
+import { Badge } from '@expcat/tigercat-react/Badge';
+import { Drawer } from '@expcat/tigercat-react/Drawer';
+import { Message } from '@expcat/tigercat-react/Message';
 import { FloatButton } from '@expcat/tigercat-react/FloatButton';
 import { ChatWindow } from '@expcat/tigercat-react/ChatWindow';
 import { fetchChatMessages, sendChatMessage } from '../utils/chat';

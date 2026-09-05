@@ -1,5 +1,8 @@
 import { useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { Alert, Card, Text, Tag } from '@expcat/tigercat-react';
+import { Alert } from '@expcat/tigercat-react/Alert';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Text } from '@expcat/tigercat-react/Text';
 import {
   NavigationMenu,
   NavigationMenuContent,

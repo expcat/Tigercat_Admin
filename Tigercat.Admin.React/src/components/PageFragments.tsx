@@ -1,12 +1,10 @@
 import type { ReactNode } from 'react';
-import {
-  Badge,
-  Card,
-  Empty,
-  Loading,
-  Statistic,
-  Text,
-} from '@expcat/tigercat-react';
+import { Badge } from '@expcat/tigercat-react/Badge';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Empty } from '@expcat/tigercat-react/Empty';
+import { Loading } from '@expcat/tigercat-react/Loading';
+import { Statistic } from '@expcat/tigercat-react/Statistic';
+import { Text } from '@expcat/tigercat-react/Text';
 
 interface MetricCardProps {
   title: string;

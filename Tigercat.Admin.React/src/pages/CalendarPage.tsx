@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Card, Text, Tag, Button, Input, Message } from '@expcat/tigercat-react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Input } from '@expcat/tigercat-react/Input';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Text } from '@expcat/tigercat-react/Text';
 import { Calendar } from '@expcat/tigercat-react/Calendar';
 import { Countdown } from '@expcat/tigercat-react/Countdown';
 import { Statistic } from '@expcat/tigercat-react/Statistic';

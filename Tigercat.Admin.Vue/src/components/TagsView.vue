@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import { Button } from '@expcat/tigercat-vue/Button'
 import {
-  Button,
   Dropdown,
   DropdownItem,
   DropdownMenu,
-  Tag,
-} from '@expcat/tigercat-vue'
+} from '@expcat/tigercat-vue/Dropdown'
+import { Tag } from '@expcat/tigercat-vue/Tag'
 import Icon from './Icon.vue'
 import {
   getShellPageTitle,

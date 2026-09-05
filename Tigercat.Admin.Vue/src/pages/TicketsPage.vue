@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
-import { Card, Text, Tag, Button, Input, Message } from '@expcat/tigercat-vue'
+import { Button } from '@expcat/tigercat-vue/Button'
+import { Card } from '@expcat/tigercat-vue/Card'
+import { Input } from '@expcat/tigercat-vue/Input'
+import { Message } from '@expcat/tigercat-vue/Message'
+import { Tag } from '@expcat/tigercat-vue/Tag'
+import { Text } from '@expcat/tigercat-vue/Text'
 import { Splitter } from '@expcat/tigercat-vue/Splitter'
 import { Resizable } from '@expcat/tigercat-vue/Resizable'
 import { Steps, StepsItem } from '@expcat/tigercat-vue/Steps'

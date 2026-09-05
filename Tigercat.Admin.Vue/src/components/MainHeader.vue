@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { Avatar } from '@expcat/tigercat-vue/Avatar'
 import {
-  Text,
-  Avatar,
-  Header,
   Breadcrumb,
   BreadcrumbItem,
+} from '@expcat/tigercat-vue/Breadcrumb'
+import { Button } from '@expcat/tigercat-vue/Button'
+import {
   Dropdown,
   DropdownMenu,
   DropdownItem,
-  Button,
-  Tag,
-} from '@expcat/tigercat-vue'
+} from '@expcat/tigercat-vue/Dropdown'
+import { Header } from '@expcat/tigercat-vue/Header'
+import { Tag } from '@expcat/tigercat-vue/Tag'
+import { Text } from '@expcat/tigercat-vue/Text'
 import Icon from './Icon.vue'
 import NotificationBell from './NotificationBell.vue'
 import ThemeConfigDrawer from './ThemeConfigDrawer.vue'

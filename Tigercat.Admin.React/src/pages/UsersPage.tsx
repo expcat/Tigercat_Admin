@@ -6,31 +6,31 @@ import {
   useRef,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
+import { Avatar } from '@expcat/tigercat-react/Avatar';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Checkbox } from '@expcat/tigercat-react/Checkbox';
+import { DataTableWithToolbar } from '@expcat/tigercat-react/DataTableWithToolbar';
 import {
-  Avatar,
-  DataTableWithToolbar,
-  Button,
   Dropdown,
   DropdownMenu,
   DropdownItem,
-  Input,
-  Modal,
-  Form,
-  FormItem,
-  Popconfirm,
-  Select,
-  Tag,
-  Tooltip,
-  Message,
-  Checkbox,
-} from '@expcat/tigercat-react';
+} from '@expcat/tigercat-react/Dropdown';
+import { Form } from '@expcat/tigercat-react/Form';
+import { FormItem } from '@expcat/tigercat-react/FormItem';
+import { Input } from '@expcat/tigercat-react/Input';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Modal } from '@expcat/tigercat-react/Modal';
+import { Popconfirm } from '@expcat/tigercat-react/Popconfirm';
+import { Select } from '@expcat/tigercat-react/Select';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Tooltip } from '@expcat/tigercat-react/Tooltip';
 import {
   ContextMenu,
   ContextMenuItem,
   ContextMenuMenu,
   ContextMenuSub,
 } from '@expcat/tigercat-react/ContextMenu';
-import { CropUpload } from '@expcat/tigercat-react/CropUpload';
+import { CropUpload } from '../utils/lazyTigercat';
 import type {
   TableColumn,
   TableCardLayoutItem,

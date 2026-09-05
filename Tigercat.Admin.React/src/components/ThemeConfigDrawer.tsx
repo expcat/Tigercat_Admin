@@ -1,9 +1,7 @@
-import {
-  Drawer,
-  Segmented,
-  Switch,
-  Text,
-} from '@expcat/tigercat-react';
+import { Drawer } from '@expcat/tigercat-react/Drawer';
+import { Segmented } from '@expcat/tigercat-react/Segmented';
+import { Switch } from '@expcat/tigercat-react/Switch';
+import { Text } from '@expcat/tigercat-react/Text';
 import { ColorSwatch } from '@expcat/tigercat-react/ColorSwatch';
 import { COLOR_PRESETS } from '../utils/constants';
 import type { ThemeMode, ThemePreferences } from '../utils/types';

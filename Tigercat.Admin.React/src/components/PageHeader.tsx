@@ -1,4 +1,5 @@
-import { Tag, Text } from '@expcat/tigercat-react';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Text } from '@expcat/tigercat-react/Text';
 import { PageHeader as TigerPageHeader } from '@expcat/tigercat-react/PageHeader';
 import type { TagVariant } from '@expcat/tigercat-core';
 import type { ReactNode } from 'react';

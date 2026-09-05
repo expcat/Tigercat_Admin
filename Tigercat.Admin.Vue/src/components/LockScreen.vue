@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Alert, Avatar, Text } from '@expcat/tigercat-vue'
+import { Alert } from '@expcat/tigercat-vue/Alert'
+import { Avatar } from '@expcat/tigercat-vue/Avatar'
+import { Text } from '@expcat/tigercat-vue/Text'
 import { NumberKeyboard } from '@expcat/tigercat-vue/NumberKeyboard'
 import { InputOTP } from '@expcat/tigercat-vue/InputOTP'
 import { Statistic } from '@expcat/tigercat-vue/Statistic'

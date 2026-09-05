@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Card, Button, Message, Text } from '@expcat/tigercat-vue'
+import { Button } from '@expcat/tigercat-vue/Button'
+import { Card } from '@expcat/tigercat-vue/Card'
+import { Message } from '@expcat/tigercat-vue/Message'
+import { Text } from '@expcat/tigercat-vue/Text'
 import { Statistic } from '@expcat/tigercat-vue/Statistic'
 import { Progress } from '@expcat/tigercat-vue/Progress'
 import { Segmented } from '@expcat/tigercat-vue/Segmented'
@@ -9,22 +12,24 @@ import { Pagination } from '@expcat/tigercat-vue/Pagination'
 import { Table } from '@expcat/tigercat-vue/Table'
 import { Skeleton } from '@expcat/tigercat-vue/Skeleton'
 import { DatePicker } from '@expcat/tigercat-vue/DatePicker'
-import { AreaChart } from '@expcat/tigercat-vue/AreaChart'
-import { DonutChart } from '@expcat/tigercat-vue/DonutChart'
-import { FunnelChart } from '@expcat/tigercat-vue/FunnelChart'
-import { GaugeChart } from '@expcat/tigercat-vue/GaugeChart'
-import { HeatmapChart } from '@expcat/tigercat-vue/HeatmapChart'
-import { RadarChart } from '@expcat/tigercat-vue/RadarChart'
-import { ScatterChart } from '@expcat/tigercat-vue/ScatterChart'
-import { TreeMapChart } from '@expcat/tigercat-vue/TreeMapChart'
-import { SunburstChart } from '@expcat/tigercat-vue/SunburstChart'
-import { OrgChart } from '@expcat/tigercat-vue/OrgChart'
-import { ChartCanvas } from '@expcat/tigercat-vue/ChartCanvas'
-import { ChartAxis } from '@expcat/tigercat-vue/ChartAxis'
-import { ChartGrid } from '@expcat/tigercat-vue/ChartGrid'
-import { ChartSeries } from '@expcat/tigercat-vue/ChartSeries'
-import { ChartLegend } from '@expcat/tigercat-vue/ChartLegend'
-import { ChartTooltip } from '@expcat/tigercat-vue/ChartTooltip'
+import {
+  AreaChart,
+  DonutChart,
+  FunnelChart,
+  GaugeChart,
+  HeatmapChart,
+  RadarChart,
+  ScatterChart,
+  TreeMapChart,
+  SunburstChart,
+  OrgChart,
+  ChartCanvas,
+  ChartAxis,
+  ChartGrid,
+  ChartSeries,
+  ChartLegend,
+  ChartTooltip,
+} from '../utils/lazyTigercat'
 import { createLinearScale, createBandScale } from '@expcat/tigercat-core'
 import type {
   SegmentedOption,

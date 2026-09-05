@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Card, Tag, Text, Message } from '@expcat/tigercat-react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Text } from '@expcat/tigercat-react/Text';
 import { Statistic } from '@expcat/tigercat-react/Statistic';
 import { Progress } from '@expcat/tigercat-react/Progress';
 import { Segmented } from '@expcat/tigercat-react/Segmented';
 import { Badge } from '@expcat/tigercat-react/Badge';
-import { GaugeChart } from '@expcat/tigercat-react/GaugeChart';
-import { AreaChart } from '@expcat/tigercat-react/AreaChart';
-import { LineChart } from '@expcat/tigercat-react/LineChart';
+import { GaugeChart, AreaChart, LineChart } from '../utils/lazyTigercat';
 import { ActivityFeed } from '@expcat/tigercat-react/ActivityFeed';
 import type {
   ActivityItem,

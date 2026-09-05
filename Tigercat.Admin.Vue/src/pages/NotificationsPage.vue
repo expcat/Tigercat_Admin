@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import type { NotificationItem } from '@expcat/tigercat-core'
-import {
-  Button,
-  Card,
-  Form,
-  FormItem,
-  Input,
-  Message,
-  Modal,
-  Select,
-  Text,
-  notification
-} from '@expcat/tigercat-vue'
+import { notification } from '@expcat/tigercat-vue'
+
+import { Button } from '@expcat/tigercat-vue/Button'
+import { Card } from '@expcat/tigercat-vue/Card'
+import { Form } from '@expcat/tigercat-vue/Form'
+import { FormItem } from '@expcat/tigercat-vue/FormItem'
+import { Input } from '@expcat/tigercat-vue/Input'
+import { Message } from '@expcat/tigercat-vue/Message'
+import { Modal } from '@expcat/tigercat-vue/Modal'
+import { Select } from '@expcat/tigercat-vue/Select'
+import { Text } from '@expcat/tigercat-vue/Text'
 import { NotificationCenter } from '@expcat/tigercat-vue/NotificationCenter'
 import { Textarea } from '@expcat/tigercat-vue/Textarea'
 import { computed, onMounted, ref } from 'vue'

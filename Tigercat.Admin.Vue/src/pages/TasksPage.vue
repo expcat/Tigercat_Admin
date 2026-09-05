@@ -5,16 +5,15 @@ import type {
   TaskBoardColumn,
   TaskBoardColumnMoveEvent
 } from '@expcat/tigercat-core'
-import {
-  Button,
-  Card,
-  Input,
-  Modal,
-  Select,
-  Tag,
-  Text,
-  notification
-} from '@expcat/tigercat-vue'
+import { notification } from '@expcat/tigercat-vue'
+
+import { Button } from '@expcat/tigercat-vue/Button'
+import { Card } from '@expcat/tigercat-vue/Card'
+import { Input } from '@expcat/tigercat-vue/Input'
+import { Modal } from '@expcat/tigercat-vue/Modal'
+import { Select } from '@expcat/tigercat-vue/Select'
+import { Tag } from '@expcat/tigercat-vue/Tag'
+import { Text } from '@expcat/tigercat-vue/Text'
 import { TaskBoard } from '@expcat/tigercat-vue/TaskBoard'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'

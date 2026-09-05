@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Button, Text, notification } from '@expcat/tigercat-vue'
+import { notification } from '@expcat/tigercat-vue'
+
+import { Badge } from '@expcat/tigercat-vue/Badge'
+import { Button } from '@expcat/tigercat-vue/Button'
+import { Text } from '@expcat/tigercat-vue/Text'
 import { Popover } from '@expcat/tigercat-vue/Popover'
 import Icon from './Icon.vue'
 import { apiRequest, getAuthHeaders } from '../utils'

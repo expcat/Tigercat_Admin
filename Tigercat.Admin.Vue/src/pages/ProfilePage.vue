@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { reactive, ref, inject, computed, onMounted } from 'vue'
-import { Card, Text, Tag, Button, Avatar, Switch, Message } from '@expcat/tigercat-vue'
+import { Avatar } from '@expcat/tigercat-vue/Avatar'
+import { Button } from '@expcat/tigercat-vue/Button'
+import { Card } from '@expcat/tigercat-vue/Card'
+import { Message } from '@expcat/tigercat-vue/Message'
+import { Switch } from '@expcat/tigercat-vue/Switch'
+import { Tag } from '@expcat/tigercat-vue/Tag'
+import { Text } from '@expcat/tigercat-vue/Text'
 import { Tabs } from '@expcat/tigercat-vue/Tabs'
 import { TabPane } from '@expcat/tigercat-vue/TabPane'
 import { Descriptions } from '@expcat/tigercat-vue/Descriptions'

@@ -1,7 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, HashRouter } from 'react-router-dom';
-import { ConfigProvider, MessageContainer } from '@expcat/tigercat-react';
+import { ConfigProvider } from '@expcat/tigercat-react/ConfigProvider';
+import { MessageContainer } from '@expcat/tigercat-react/MessageContainer';
 import { appLocale } from './utils/tigercatText';
 import {
   installTigercatMockApi,

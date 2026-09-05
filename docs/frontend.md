@@ -133,9 +133,12 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 | 登录流程增强 | `Steps`、`Input`、`MaskInput`、`InputOTP`、`Countdown`、`Alert`、`Result`、`Button` | 忘记密码三步重置（邮箱 `Input` / 手机 `MaskInput` → `InputOTP` 验证码 → 新密码 → 完成）、账号两步验证 `InputOTP`（验证通过才写会话、60s 重发倒计时）、注册成功结果页与倒计时回登录 |
 | 关于 | `Alert`、`Card`、`Text`、`Tag`、`NavigationMenu`/`NavigationMenuList`/`NavigationMenuContent`/`NavigationMenuItem`/`NavigationMenuLink`/`NavigationMenuTrigger` | 技术栈和版本信息、页内分区跳转（服务信息 / 特性 / 技术栈）。默认点击 / Enter / Space / ArrowDown 才开层面板，不要依赖悬停；根菜单自行命名（`aria-label="关于分区"`），不要假设默认 `Main`。 |
 
-重组件使用子路径导入，减少页面 chunk 压力：
+组件一律使用 PascalCase 子路径导入，不要从包根 barrel 拉组件（会拖进 `vendor-ui`）：
 
 ```ts
+import { Button } from '@expcat/tigercat-react/Button';
+import { Layout } from '@expcat/tigercat-react/Layout';
+import { Content } from '@expcat/tigercat-react/Content';
 import { TaskBoard } from '@expcat/tigercat-react/TaskBoard';
 import { NotificationCenter } from '@expcat/tigercat-react/NotificationCenter';
 import { FileManager } from '@expcat/tigercat-react/FileManager';
@@ -147,7 +150,8 @@ import { ColorPicker } from '@expcat/tigercat-react/ColorPicker';
 import { VirtualList } from '@expcat/tigercat-react/VirtualList';
 import { VirtualTable } from '@expcat/tigercat-react/VirtualTable';
 import { Kanban } from '@expcat/tigercat-react/Kanban';
-import { useDrag } from '@expcat/tigercat-react';
+import { useDrag } from '@expcat/tigercat-react/useDrag';
+import { Message } from '@expcat/tigercat-react/Message';
 import { LoadingBar } from '@expcat/tigercat-react/LoadingBar';
 import { LoadingBarContainer } from '@expcat/tigercat-react/LoadingBarContainer';
 import { ContextMenu, ContextMenuItem, ContextMenuMenu, ContextMenuSub } from '@expcat/tigercat-react/ContextMenu';
@@ -166,7 +170,13 @@ import { CheckboxGroup } from '@expcat/tigercat-react/CheckboxGroup';
 import { Checkbox } from '@expcat/tigercat-react/Checkbox';
 ```
 
-Vue 端将包名替换为 `@expcat/tigercat-vue/...`。`useDrag` 从包入口导入（v1.5.0 没有 `/Drag` 子路径组件）；React 用 `getDragItemProps`，Vue 用 `getDragItemAttrs`。
+Vue 端将包名替换为 `@expcat/tigercat-vue/...`。没有 `/Drag` 组件，拖拽走 hook 子路径 `/useDrag`；React 用 `getDragItemProps`，Vue 用 `getDragItemAttrs`。命令式 `notification` 没有公开子路径，允许从包根导入。`Message` 用 `/Message`。
+
+同文件族可从父路径一起导入（`Dropdown`/`DropdownMenu`/`DropdownItem`、`Menu`/`MenuItem`/`SubMenu`、`Tabs`/`TabPane`、`Steps`/`StepsItem`、`ContextMenu*`、`NavigationMenu*`）。`FormItem`、`AvatarGroup`、`RadioGroup` 是独立入口，不要从 `Form`/`Avatar`/`Radio` 再导出。
+
+页面已按路由 `lazy` / `() => import(...)` 拆包。图表、编辑器、裁剪/标注、Gantt 再按交互边界懒加载：双端从 `src/utils/lazyTigercat` 引入（React `lazy` + `Suspense`，Vue `defineAsyncComponent`）。仪表盘 / 监控 / 数据分析懒加载图表；内容页只加载当前编辑器；图库裁剪/标注在抽屉打开后加载；用户头像 `CropUpload` 在编辑弹层出现后加载；定时任务 `Gantt` 随页面异步加载。不要把这些重入口静态写进 Shell。Vite `manualChunks` 只把**静态可达**的 `@expcat/tigercat-*` 放进 `vendor-ui`，避免把懒加载模块打回同一 chunk。
+
+文案只加载 `zhCN`：`import { zhCN } from '@expcat/tigercat-core/locales/zh-CN'`，再与 `appText` overlay 合成 `appLocale`。不要 import `@expcat/tigercat-core/datepicker-locales/registry`（会带上全部 DatePicker 语言包）。
 
 `DataExport` 2.1.1 官方格式只有 `xlsx` / `markdown`，组件会先在客户端序列化再触发 `onExport`。报表 / 审计 / 仪表盘用它做 csv/json/xlsx 触发按钮（`labels.xlsxText`），`cellFormatter` 跳过客户端文件，实际字节来自导出 API Blob。字段勾选走 `CheckboxGroup`。用户 / 角色页现有导出弹层不改。
 

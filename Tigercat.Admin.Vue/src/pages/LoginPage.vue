@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Alert, Button, Card, Form, FormItem, Input, Message } from '@expcat/tigercat-vue'
+import { Alert } from '@expcat/tigercat-vue/Alert'
+import { Button } from '@expcat/tigercat-vue/Button'
+import { Card } from '@expcat/tigercat-vue/Card'
+import { Form } from '@expcat/tigercat-vue/Form'
+import { FormItem } from '@expcat/tigercat-vue/FormItem'
+import { Input } from '@expcat/tigercat-vue/Input'
+import { Message } from '@expcat/tigercat-vue/Message'
 import { InputOTP } from '@expcat/tigercat-vue/InputOTP'
 import { Countdown } from '@expcat/tigercat-vue/Countdown'
 import {

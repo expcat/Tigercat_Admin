@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import type { ChatMessage } from '@expcat/tigercat-core'
-import { Badge, Drawer, Message } from '@expcat/tigercat-vue'
+import { Badge } from '@expcat/tigercat-vue/Badge'
+import { Drawer } from '@expcat/tigercat-vue/Drawer'
+import { Message } from '@expcat/tigercat-vue/Message'
 import { FloatButton } from '@expcat/tigercat-vue/FloatButton'
 import { ChatWindow } from '@expcat/tigercat-vue/ChatWindow'
 import { fetchChatMessages, sendChatMessage } from '../utils/chat'

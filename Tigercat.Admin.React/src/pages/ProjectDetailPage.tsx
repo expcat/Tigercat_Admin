@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Avatar, AvatarGroup, Button, Card, Message, Tag, Text } from '@expcat/tigercat-react';
+import { Avatar } from '@expcat/tigercat-react/Avatar';
+import { AvatarGroup } from '@expcat/tigercat-react/AvatarGroup';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Text } from '@expcat/tigercat-react/Text';
 import { Descriptions } from '@expcat/tigercat-react/Descriptions';
 import { Progress } from '@expcat/tigercat-react/Progress';
 import { Steps, StepsItem } from '@expcat/tigercat-react/Steps';

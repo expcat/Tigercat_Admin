@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { Drawer, Segmented, Switch, Text } from '@expcat/tigercat-vue'
+import { Drawer } from '@expcat/tigercat-vue/Drawer'
+import { Segmented } from '@expcat/tigercat-vue/Segmented'
+import { Switch } from '@expcat/tigercat-vue/Switch'
+import { Text } from '@expcat/tigercat-vue/Text'
 import { ColorSwatch } from '@expcat/tigercat-vue/ColorSwatch'
 import { COLOR_PRESETS } from '../utils/constants'
 import type { ThemeMode, ThemePreferences } from '../utils/types'

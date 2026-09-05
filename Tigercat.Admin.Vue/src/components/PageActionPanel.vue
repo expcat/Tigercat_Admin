@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Card, Text } from '@expcat/tigercat-vue'
+import { Card } from '@expcat/tigercat-vue/Card'
+import { Text } from '@expcat/tigercat-vue/Text'
 
 defineProps<{
   title: string

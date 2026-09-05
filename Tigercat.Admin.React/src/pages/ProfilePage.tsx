@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Card, Text, Tag, Button, Avatar, Switch, Message } from '@expcat/tigercat-react';
+import { Avatar } from '@expcat/tigercat-react/Avatar';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Switch } from '@expcat/tigercat-react/Switch';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Text } from '@expcat/tigercat-react/Text';
 import { Tabs } from '@expcat/tigercat-react/Tabs';
 import { TabPane } from '@expcat/tigercat-react/TabPane';
 import { Descriptions } from '@expcat/tigercat-react/Descriptions';

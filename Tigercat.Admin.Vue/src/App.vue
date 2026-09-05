@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch, provide, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ConfigProvider, Message } from '@expcat/tigercat-vue'
+import { ConfigProvider } from '@expcat/tigercat-vue/ConfigProvider'
+import { Message } from '@expcat/tigercat-vue/Message'
 import { LoadingBarContainer } from '@expcat/tigercat-vue/LoadingBarContainer'
 import { appLocale } from './utils/tigercatText'
 import {

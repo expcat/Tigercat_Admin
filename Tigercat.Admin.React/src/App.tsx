@@ -19,14 +19,12 @@ import {
   useLocation,
   Outlet,
 } from 'react-router-dom';
-import {
-  Container,
-  Modal,
-  Form,
-  FormItem,
-  Input,
-  Message,
-} from '@expcat/tigercat-react';
+import { Container } from '@expcat/tigercat-react/Container';
+import { Form } from '@expcat/tigercat-react/Form';
+import { FormItem } from '@expcat/tigercat-react/FormItem';
+import { Input } from '@expcat/tigercat-react/Input';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Modal } from '@expcat/tigercat-react/Modal';
 import { LoadingBar } from '@expcat/tigercat-react/LoadingBar';
 import { LoadingBarContainer } from '@expcat/tigercat-react/LoadingBarContainer';
 import { MainLayout } from './components/MainLayout';

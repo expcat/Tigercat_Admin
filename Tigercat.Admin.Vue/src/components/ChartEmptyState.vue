@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Empty } from '@expcat/tigercat-vue'
+import { Empty } from '@expcat/tigercat-vue/Empty'
 
 withDefaults(defineProps<{
   description: string

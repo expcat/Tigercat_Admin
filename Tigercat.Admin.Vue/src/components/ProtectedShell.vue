@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { inject } from 'vue'
-import { Form, FormItem, Input, Modal } from '@expcat/tigercat-vue'
+import { Form } from '@expcat/tigercat-vue/Form'
+import { FormItem } from '@expcat/tigercat-vue/FormItem'
+import { Input } from '@expcat/tigercat-vue/Input'
+import { Modal } from '@expcat/tigercat-vue/Modal'
 import MainLayout from './MainLayout.vue'
 import type { Session, ThemePreferences } from '../utils'
 

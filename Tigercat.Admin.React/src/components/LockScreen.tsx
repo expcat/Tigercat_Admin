@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Avatar, Text } from '@expcat/tigercat-react';
+import { Avatar } from '@expcat/tigercat-react/Avatar';
+import { Text } from '@expcat/tigercat-react/Text';
 import { Alert } from '@expcat/tigercat-react/Alert';
 import { NumberKeyboard } from '@expcat/tigercat-react/NumberKeyboard';
 import { InputOTP } from '@expcat/tigercat-react/InputOTP';

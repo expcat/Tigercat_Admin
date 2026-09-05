@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Layout, Content, Drawer } from '@expcat/tigercat-react';
+import { Content } from '@expcat/tigercat-react/Content';
+import { Drawer } from '@expcat/tigercat-react/Drawer';
+import { Layout } from '@expcat/tigercat-react/Layout';
 import { Watermark } from '@expcat/tigercat-react/Watermark';
 import { MainHeader } from './MainHeader';
 import { MainSidebar } from './MainSidebar';

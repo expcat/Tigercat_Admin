@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Sidebar, Menu } from '@expcat/tigercat-react';
+import { Menu } from '@expcat/tigercat-react/Menu';
+import { Sidebar } from '@expcat/tigercat-react/Sidebar';
 import type { MenuItem } from '@expcat/tigercat-core';
 import { LogoIcon, ChevronRightIcon, ChevronLeftIcon } from './Icons';
 import { usePermission } from '../utils/permission';

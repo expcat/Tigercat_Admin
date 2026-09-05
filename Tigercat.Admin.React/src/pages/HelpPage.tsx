@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Card, Text, Message } from '@expcat/tigercat-react';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Text } from '@expcat/tigercat-react/Text';
 import { Kbd } from '@expcat/tigercat-react/Kbd';
 import { Anchor, AnchorLink } from '@expcat/tigercat-react/Anchor';
 import { ScrollSpy } from '@expcat/tigercat-react/ScrollSpy';

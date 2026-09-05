@@ -7,18 +7,18 @@ import {
   type ChangeEvent,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Checkbox } from '@expcat/tigercat-react/Checkbox';
 import {
-  Button,
-  Card,
-  Checkbox,
   DropdownItem,
   DropdownMenu,
-  Message,
-  Modal,
-  Select,
-  Tag,
-  Text,
-} from '@expcat/tigercat-react';
+} from '@expcat/tigercat-react/Dropdown';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Modal } from '@expcat/tigercat-react/Modal';
+import { Select } from '@expcat/tigercat-react/Select';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Text } from '@expcat/tigercat-react/Text';
 import { FileManager } from '@expcat/tigercat-react/FileManager';
 import {
   ContextMenu,

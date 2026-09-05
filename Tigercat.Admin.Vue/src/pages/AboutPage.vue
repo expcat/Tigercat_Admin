@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Alert, Card, Text, Tag } from '@expcat/tigercat-vue'
+import { Alert } from '@expcat/tigercat-vue/Alert'
+import { Card } from '@expcat/tigercat-vue/Card'
+import { Tag } from '@expcat/tigercat-vue/Tag'
+import { Text } from '@expcat/tigercat-vue/Text'
 import {
   NavigationMenu,
   NavigationMenuContent,

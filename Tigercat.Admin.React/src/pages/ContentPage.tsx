@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Card, Text, Tag, Button, Input, Message } from '@expcat/tigercat-react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Input } from '@expcat/tigercat-react/Input';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Text } from '@expcat/tigercat-react/Text';
 import { Segmented } from '@expcat/tigercat-react/Segmented';
 import { Switch } from '@expcat/tigercat-react/Switch';
 import { Space } from '@expcat/tigercat-react/Space';
-import { RichTextEditor } from '@expcat/tigercat-react/RichTextEditor';
-import { MarkdownEditor } from '@expcat/tigercat-react/MarkdownEditor';
-import { CodeEditor } from '@expcat/tigercat-react/CodeEditor';
+import {
+  RichTextEditor,
+  MarkdownEditor,
+  CodeEditor,
+} from '../utils/lazyTigercat';
 import { TreeSelect } from '@expcat/tigercat-react/TreeSelect';
 import { Cascader } from '@expcat/tigercat-react/Cascader';
 import { TagsInput } from '@expcat/tigercat-react/TagsInput';

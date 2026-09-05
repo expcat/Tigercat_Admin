@@ -4,6 +4,8 @@ import { zhCN } from '@expcat/tigercat-core/locales/zh-CN'
 /**
  * 应用级文案 overlay。v2.1.3 起 `defineText` 只返回传入的键，缺省回落 en-US。
  * ConfigProvider 请使用 `appLocale`（官方 zh-CN 包 + 本 overlay），不要把 overlay 当完整语言包。
+ * 单语言应用只 import `@expcat/tigercat-core/locales/zh-CN`，不要 import
+ * `datepicker-locales/registry`（会带上全部 DatePicker 语言包）。
  * 如需覆盖单个组件实例的文案，可在该组件上传入 `labels` 属性。
  */
 export const appText = defineText({

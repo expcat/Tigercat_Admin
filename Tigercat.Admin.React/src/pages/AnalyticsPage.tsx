@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Message, Text } from '@expcat/tigercat-react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Text } from '@expcat/tigercat-react/Text';
 import { Statistic } from '@expcat/tigercat-react/Statistic';
 import { Progress } from '@expcat/tigercat-react/Progress';
 import { Segmented } from '@expcat/tigercat-react/Segmented';
@@ -8,22 +11,24 @@ import { Pagination } from '@expcat/tigercat-react/Pagination';
 import { Table } from '@expcat/tigercat-react/Table';
 import { Skeleton } from '@expcat/tigercat-react/Skeleton';
 import { DatePicker } from '@expcat/tigercat-react/DatePicker';
-import { AreaChart } from '@expcat/tigercat-react/AreaChart';
-import { DonutChart } from '@expcat/tigercat-react/DonutChart';
-import { FunnelChart } from '@expcat/tigercat-react/FunnelChart';
-import { GaugeChart } from '@expcat/tigercat-react/GaugeChart';
-import { HeatmapChart } from '@expcat/tigercat-react/HeatmapChart';
-import { RadarChart } from '@expcat/tigercat-react/RadarChart';
-import { ScatterChart } from '@expcat/tigercat-react/ScatterChart';
-import { TreeMapChart } from '@expcat/tigercat-react/TreeMapChart';
-import { SunburstChart } from '@expcat/tigercat-react/SunburstChart';
-import { OrgChart } from '@expcat/tigercat-react/OrgChart';
-import { ChartCanvas } from '@expcat/tigercat-react/ChartCanvas';
-import { ChartAxis } from '@expcat/tigercat-react/ChartAxis';
-import { ChartGrid } from '@expcat/tigercat-react/ChartGrid';
-import { ChartSeries } from '@expcat/tigercat-react/ChartSeries';
-import { ChartLegend } from '@expcat/tigercat-react/ChartLegend';
-import { ChartTooltip } from '@expcat/tigercat-react/ChartTooltip';
+import {
+  AreaChart,
+  DonutChart,
+  FunnelChart,
+  GaugeChart,
+  HeatmapChart,
+  RadarChart,
+  ScatterChart,
+  TreeMapChart,
+  SunburstChart,
+  OrgChart,
+  ChartCanvas,
+  ChartAxis,
+  ChartGrid,
+  ChartSeries,
+  ChartLegend,
+  ChartTooltip,
+} from '../utils/lazyTigercat';
 import { createLinearScale, createBandScale } from '@expcat/tigercat-core';
 import type {
   SegmentedOption,

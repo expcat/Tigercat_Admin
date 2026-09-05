@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Card, Text, Button, Message } from '@expcat/tigercat-react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Text } from '@expcat/tigercat-react/Text';
 import { FormWizard } from '@expcat/tigercat-react/FormWizard';
 import { Transfer } from '@expcat/tigercat-react/Transfer';
 import { Upload } from '@expcat/tigercat-react/Upload';

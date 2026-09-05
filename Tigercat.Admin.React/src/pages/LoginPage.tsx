@@ -1,13 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Button,
-  Card,
-  Form,
-  FormItem,
-  Input,
-  Message,
-} from '@expcat/tigercat-react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Form } from '@expcat/tigercat-react/Form';
+import { FormItem } from '@expcat/tigercat-react/FormItem';
+import { Input } from '@expcat/tigercat-react/Input';
+import { Message } from '@expcat/tigercat-react/Message';
 import { Alert } from '@expcat/tigercat-react/Alert';
 import { Countdown } from '@expcat/tigercat-react/Countdown';
 import { InputOTP } from '@expcat/tigercat-react/InputOTP';

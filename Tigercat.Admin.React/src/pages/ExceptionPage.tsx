@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@expcat/tigercat-react';
+import { Button } from '@expcat/tigercat-react/Button';
 import { Result } from '@expcat/tigercat-react/Result';
 import { Countdown } from '@expcat/tigercat-react/Countdown';
 import { Empty } from '@expcat/tigercat-react/Empty';

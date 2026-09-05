@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { Badge, Card, Loading, Statistic, Text } from '@expcat/tigercat-vue'
+import { Badge } from '@expcat/tigercat-vue/Badge'
+import { Card } from '@expcat/tigercat-vue/Card'
+import { Loading } from '@expcat/tigercat-vue/Loading'
+import { Statistic } from '@expcat/tigercat-vue/Statistic'
+import { Text } from '@expcat/tigercat-vue/Text'
 
 withDefaults(
   defineProps<{

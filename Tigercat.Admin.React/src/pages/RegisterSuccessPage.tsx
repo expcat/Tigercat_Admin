@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card } from '@expcat/tigercat-react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
 import { Result } from '@expcat/tigercat-react/Result';
 import { Countdown } from '@expcat/tigercat-react/Countdown';
 import { LogoIcon } from '../components/Icons';

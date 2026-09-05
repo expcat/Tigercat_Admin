@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Card, Text, Message } from '@expcat/tigercat-vue'
+import { Card } from '@expcat/tigercat-vue/Card'
+import { Message } from '@expcat/tigercat-vue/Message'
+import { Text } from '@expcat/tigercat-vue/Text'
 import { Kbd } from '@expcat/tigercat-vue/Kbd'
 import { Anchor, AnchorLink } from '@expcat/tigercat-vue/Anchor'
 import { ScrollSpy } from '@expcat/tigercat-vue/ScrollSpy'

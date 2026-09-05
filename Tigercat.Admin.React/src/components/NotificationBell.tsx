@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Badge, Button, Text, notification } from '@expcat/tigercat-react';
+import { notification } from '@expcat/tigercat-react';
+import { Badge } from '@expcat/tigercat-react/Badge';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Text } from '@expcat/tigercat-react/Text';
 import { Popover } from '@expcat/tigercat-react/Popover';
 import { BellIcon } from './Icons';
 import { apiRequest, getAuthHeaders } from '../utils';

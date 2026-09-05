@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, h, watch } from 'vue'
-import { Sidebar, Menu } from '@expcat/tigercat-vue'
+import { Menu } from '@expcat/tigercat-vue/Menu'
+import { Sidebar } from '@expcat/tigercat-vue/Sidebar'
 import type { MenuItem } from '@expcat/tigercat-core'
 import Icon from './Icon.vue'
 import AppLogo from './AppLogo.vue'

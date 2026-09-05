@@ -1,12 +1,19 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Card, Text, Tag, Button, Input, Message } from '@expcat/tigercat-vue'
+import { Button } from '@expcat/tigercat-vue/Button'
+import { Card } from '@expcat/tigercat-vue/Card'
+import { Input } from '@expcat/tigercat-vue/Input'
+import { Message } from '@expcat/tigercat-vue/Message'
+import { Tag } from '@expcat/tigercat-vue/Tag'
+import { Text } from '@expcat/tigercat-vue/Text'
 import { Segmented } from '@expcat/tigercat-vue/Segmented'
 import { Switch } from '@expcat/tigercat-vue/Switch'
 import { Space } from '@expcat/tigercat-vue/Space'
-import { RichTextEditor } from '@expcat/tigercat-vue/RichTextEditor'
-import { MarkdownEditor } from '@expcat/tigercat-vue/MarkdownEditor'
-import { CodeEditor } from '@expcat/tigercat-vue/CodeEditor'
+import {
+  RichTextEditor,
+  MarkdownEditor,
+  CodeEditor,
+} from '../utils/lazyTigercat'
 import { TreeSelect } from '@expcat/tigercat-vue/TreeSelect'
 import { Cascader } from '@expcat/tigercat-vue/Cascader'
 import { TagsInput } from '@expcat/tigercat-vue/TagsInput'

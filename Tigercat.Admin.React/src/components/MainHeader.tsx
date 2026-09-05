@@ -1,16 +1,18 @@
 import { useState } from 'react';
+import { Avatar } from '@expcat/tigercat-react/Avatar';
 import {
-  Text,
-  Avatar,
-  Header,
   Breadcrumb,
   BreadcrumbItem,
+} from '@expcat/tigercat-react/Breadcrumb';
+import { Button } from '@expcat/tigercat-react/Button';
+import {
   Dropdown,
   DropdownMenu,
   DropdownItem,
-  Button,
-  Tag,
-} from '@expcat/tigercat-react';
+} from '@expcat/tigercat-react/Dropdown';
+import { Header } from '@expcat/tigercat-react/Header';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Text } from '@expcat/tigercat-react/Text';
 import {
   LockIcon,
   LogOutIcon,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useAttrs } from 'vue'
-import { Container } from '@expcat/tigercat-vue'
+import { Container } from '@expcat/tigercat-vue/Container'
 
 const attrs = useAttrs()
 </script>

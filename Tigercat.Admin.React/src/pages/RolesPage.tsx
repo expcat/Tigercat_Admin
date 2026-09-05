@@ -1,22 +1,22 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Checkbox } from '@expcat/tigercat-react/Checkbox';
+import { DataTableWithToolbar } from '@expcat/tigercat-react/DataTableWithToolbar';
 import {
-  DataTableWithToolbar,
-  Button,
   Dropdown,
   DropdownMenu,
   DropdownItem,
-  Input,
-  Modal,
-  Form,
-  FormItem,
-  Popconfirm,
-  Select,
-  Checkbox,
-  Tag,
-  Tree,
-  Tooltip,
-  Message,
-} from '@expcat/tigercat-react';
+} from '@expcat/tigercat-react/Dropdown';
+import { Form } from '@expcat/tigercat-react/Form';
+import { FormItem } from '@expcat/tigercat-react/FormItem';
+import { Input } from '@expcat/tigercat-react/Input';
+import { Message } from '@expcat/tigercat-react/Message';
+import { Modal } from '@expcat/tigercat-react/Modal';
+import { Popconfirm } from '@expcat/tigercat-react/Popconfirm';
+import { Select } from '@expcat/tigercat-react/Select';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Tooltip } from '@expcat/tigercat-react/Tooltip';
+import { Tree } from '@expcat/tigercat-react/Tree';
 import type {
   TableColumn,
   TableCardLayoutItem,

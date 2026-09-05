@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useLocation } from 'react-router-dom';
-import {
-  Alert,
-  Button,
-  Card,
-  Empty,
-  Input,
-  Loading,
-  Modal,
-  Select,
-  Tag,
-  Text,
-} from '@expcat/tigercat-react';
+import { Alert } from '@expcat/tigercat-react/Alert';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Card } from '@expcat/tigercat-react/Card';
+import { Empty } from '@expcat/tigercat-react/Empty';
+import { Input } from '@expcat/tigercat-react/Input';
+import { Loading } from '@expcat/tigercat-react/Loading';
+import { Modal } from '@expcat/tigercat-react/Modal';
+import { Select } from '@expcat/tigercat-react/Select';
+import { Tag } from '@expcat/tigercat-react/Tag';
+import { Text } from '@expcat/tigercat-react/Text';
 import { ActivityFeed } from '@expcat/tigercat-react/ActivityFeed';
 import { Timeline } from '@expcat/tigercat-react/Timeline';
 import { DataExport } from '@expcat/tigercat-react/DataExport';
