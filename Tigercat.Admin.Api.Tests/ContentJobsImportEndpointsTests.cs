@@ -119,7 +119,7 @@ public abstract class ContentJobsImportEndpointsTests<TFixture> : IClassFixture<
 
         ImportJobResponse? latest = created.Data;
         var lastProgress = -1;
-        for (var i = 0; i < 8; i++)
+        for (var i = 0; i < 40; i++)
         {
             var getResponse = await _client.SendAsync(
                 AuthRequest(HttpMethod.Get, $"/api/import-jobs/{created.Data.Id}", token));
@@ -133,6 +133,8 @@ public abstract class ContentJobsImportEndpointsTests<TFixture> : IClassFixture<
             {
                 break;
             }
+
+            await Task.Delay(50);
         }
 
         Assert.NotNull(latest);
@@ -143,6 +145,42 @@ public abstract class ContentJobsImportEndpointsTests<TFixture> : IClassFixture<
         Assert.Equal(1, latest.Result.Skipped);
         Assert.Contains("追加", latest.Result.Message);
         Assert.Contains("3 个字段", latest.Result.Message);
+    }
+
+    [Fact]
+    public async Task GetImportJob_ConcurrentGets_DoNotDoubleStep()
+    {
+        var token = await LoginAsAdminAsync();
+        var create = AuthRequest(HttpMethod.Post, "/api/import-jobs", token);
+        create.Content = JsonContent.Create(new
+        {
+            source = "concurrent.csv",
+            target = new[] { "hr", "employees" },
+            mappings = new[] { "name" },
+            mode = "append",
+            conflict = "skip"
+        });
+
+        var createResponse = await _client.SendAsync(create);
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.ReadApiResponseAsync<ImportJobResponse>();
+        Assert.NotNull(created?.Data);
+
+        var gets = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ =>
+            _client.SendAsync(AuthRequest(HttpMethod.Get, $"/api/import-jobs/{created.Data.Id}", token))));
+
+        var progresses = new List<int>();
+        foreach (var getResponse in gets)
+        {
+            getResponse.EnsureSuccessStatusCode();
+            var body = await getResponse.ReadApiResponseAsync<ImportJobResponse>();
+            Assert.NotNull(body?.Data);
+            progresses.Add(body.Data.Progress);
+        }
+
+        Assert.True(progresses.Max() - progresses.Min() <= 25,
+            $"Concurrent GET must not double-step progress: [{string.Join(", ", progresses)}]");
+        Assert.DoesNotContain(progresses, value => value > 100);
     }
 
     private async Task<string> LoginAsAdminAsync()

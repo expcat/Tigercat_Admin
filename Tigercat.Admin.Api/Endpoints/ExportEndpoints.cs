@@ -95,7 +95,7 @@ public class ExportEndpoints : IEndpointDefinition
 
         var selectedFields = ParseFields(fields, ValidUserFields);
 
-        IQueryable<UserEntity> query = db.Users;
+        IQueryable<UserEntity> query = db.Users.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
@@ -173,7 +173,7 @@ public class ExportEndpoints : IEndpointDefinition
 
         var selectedFields = ParseFields(fields, ValidRoleFields);
 
-        IQueryable<RoleEntity> query = db.Roles;
+        IQueryable<RoleEntity> query = db.Roles.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {

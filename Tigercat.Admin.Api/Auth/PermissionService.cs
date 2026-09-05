@@ -25,6 +25,7 @@ public class PermissionService(AdminDbContext db, ICacheService cacheService) : 
             async token =>
             {
                 return await db.Users
+                    .AsNoTracking()
                     .Where(u => u.Username == username)
                     .SelectMany(u => u.UserRoles)
                     .SelectMany(ur => ur.Role.RolePermissions)

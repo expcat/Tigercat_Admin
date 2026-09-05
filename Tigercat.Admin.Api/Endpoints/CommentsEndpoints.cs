@@ -50,6 +50,7 @@ public class CommentsEndpoints : IEndpointDefinition
 
         var type = targetType!.Trim().ToLowerInvariant();
         var items = await db.Comments
+            .AsNoTracking()
             .Where(c => c.TargetType == type && c.TargetId == id)
             .OrderBy(c => c.CreatedAt)
             .ThenBy(c => c.Id)

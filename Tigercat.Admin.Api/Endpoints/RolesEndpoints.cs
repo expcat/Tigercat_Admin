@@ -58,6 +58,7 @@ public class RolesEndpoints : IEndpointDefinition
         CancellationToken ct)
     {
         var permissions = await db.Permissions
+            .AsNoTracking()
             .OrderBy(p => p.Id)
             .Select(p => new PermissionInfoResponse(p.Id, p.Code, p.Description))
             .ToListAsync(ct);
@@ -80,7 +81,7 @@ public class RolesEndpoints : IEndpointDefinition
         var p = Math.Max(page ?? 1, 1);
         var ps = Math.Clamp(pageSize ?? 10, 1, 100);
 
-        IQueryable<RoleEntity> query = db.Roles;
+        IQueryable<RoleEntity> query = db.Roles.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {

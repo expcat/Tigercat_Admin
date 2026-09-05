@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Tigercat.Admin.Api.Auth;
+using Tigercat.Admin.Api.Cache;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.EventBus;
@@ -49,14 +50,12 @@ public class SettingsEndpoints : IEndpointDefinition
     /// </summary>
     private static async Task<IResult> GetSettings(
         AdminDbContext db,
+        ICacheService cache,
         CancellationToken ct)
     {
-        var settings = await db.SystemSettings
-            .OrderBy(s => s.Key)
-            .ToArrayAsync(ct);
-
+        var settings = await LoadAllSettingsAsync(db, cache, ct);
         return Results.Json(
-            ApiResult.Ok(settings.Select(ToSettingItemResponse).ToArray()),
+            ApiResult.Ok(settings),
             AppJsonContext.Default.ApiResponseSettingItemResponseArray);
     }
 
@@ -66,9 +65,12 @@ public class SettingsEndpoints : IEndpointDefinition
     private static async Task<IResult> GetSettingByKey(
         string key,
         AdminDbContext db,
+        ICacheService cache,
         CancellationToken ct)
     {
-        var setting = await db.SystemSettings.FirstOrDefaultAsync(s => s.Key == key, ct);
+        var settings = await LoadAllSettingsAsync(db, cache, ct);
+        var setting = settings.FirstOrDefault(item =>
+            string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase));
 
         if (setting is null)
         {
@@ -79,8 +81,29 @@ public class SettingsEndpoints : IEndpointDefinition
         }
 
         return Results.Json(
-            ApiResult.Ok(ToSettingItemResponse(setting)),
+            ApiResult.Ok(setting),
             AppJsonContext.Default.ApiResponseSettingItemResponse);
+    }
+
+    private static async Task<SettingItemResponse[]> LoadAllSettingsAsync(
+        AdminDbContext db,
+        ICacheService cache,
+        CancellationToken ct)
+    {
+        var settings = await cache.GetOrSetAsync(
+            CacheKeys.SettingsAll,
+            async token =>
+            {
+                var items = await db.SystemSettings
+                    .AsNoTracking()
+                    .OrderBy(s => s.Key)
+                    .ToArrayAsync(token);
+                return items.Select(ToSettingItemResponse).ToArray();
+            },
+            SettingsCache.Ttl,
+            ct);
+
+        return settings ?? [];
     }
 
     private const int MaxValueLength = 2000;
@@ -91,6 +114,7 @@ public class SettingsEndpoints : IEndpointDefinition
     private static async Task<IResult> UpdateSettings(
         UpdateSettingsRequest request,
         AdminDbContext db,
+        ICacheService cache,
         IMediaReferenceService mediaReferenceService,
         IEventPublisher eventPublisher,
         HttpContext httpContext,
@@ -197,6 +221,7 @@ public class SettingsEndpoints : IEndpointDefinition
         }
 
         await db.SaveChangesAsync(ct);
+        await SettingsCache.InvalidateAsync(cache, keys, ct);
 
         if (logoEntry is not null)
         {

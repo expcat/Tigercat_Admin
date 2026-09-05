@@ -58,4 +58,17 @@ public static class CacheKeys
 
         return $"cache:auth:forgot:{Uri.EscapeDataString(channel)}:{Uri.EscapeDataString(target)}";
     }
+
+    public const string SettingsAll = "cache:settings:all";
+
+    public static string Setting(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            throw new ArgumentException("Setting key is required.", nameof(key));
+        }
+
+        return $"cache:settings:item:{Uri.EscapeDataString(key)}";
+    }
 }
+

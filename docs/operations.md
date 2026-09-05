@@ -182,6 +182,8 @@ pnpm build:pages
 - Logo 或头像引用中的媒体普通删除会失败并发布 `admin.media.delete.failed`；强制删除会清理已知引用并发布 `admin.media.delete.forced`。
 - `POST /api/media/orphans/cleanup` 支持预览或清理本地孤儿文件。
 - Redis Streams 用于把任务、设置、审计清理、媒体删除失败和用户治理事件转化为通知中心消息。
+- 缓存走 `ICacheService` + HybridCache：`Infrastructure:UseInMemory=true` 时只有进程内 L1；Redis 在线时 L2 复用现有 `IConnectionMultiplexer`（`IDistributedCache`）。权限列表和 `GET /api/settings` 用 `GetOrSet` 防 stampede。2FA / 忘记密码验证码仍走同一 `ICacheService` 的 Get/Set/Remove。**不要**加全局 `OutputCache`：业务 GET 几乎都要登录，Stats 若缓存必须按用户/权限 `VaryBy`，Monitor snapshot 是步进演示，缓存会破坏「每次不同」。
+- 导入任务进度由 `ImportJobProgressService`（`BackgroundService`）推进，`GET /api/import-jobs/{id}` 只读。间隔 `ImportJobs:ProgressIntervalMilliseconds`（默认 250）。这不是真实文件解析器，也不是 cron 产品。
 
 ## 健康检查与观测
 

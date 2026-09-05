@@ -28,6 +28,7 @@ public class ChatEndpoints : IEndpointDefinition
     private static async Task<IResult> GetMessages(AdminDbContext db, CancellationToken ct)
     {
         var items = await db.ChatMessages
+            .AsNoTracking()
             .OrderBy(m => m.CreatedAt)
             .ThenBy(m => m.Id)
             .ToArrayAsync(ct);
@@ -77,6 +78,7 @@ public class ChatEndpoints : IEndpointDefinition
         await db.SaveChangesAsync(ct);
 
         var items = await db.ChatMessages
+            .AsNoTracking()
             .OrderBy(m => m.CreatedAt)
             .ThenBy(m => m.Id)
             .ToArrayAsync(ct);

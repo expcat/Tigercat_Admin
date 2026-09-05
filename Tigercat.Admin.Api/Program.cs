@@ -2,6 +2,7 @@ using System.Threading.RateLimiting;
 using FreeRedis;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
@@ -11,6 +12,7 @@ using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Endpoints;
 using Tigercat.Admin.Api.EventBus;
+using Tigercat.Admin.Api.Import;
 using Tigercat.Admin.Api.Media;
 using Tigercat.Admin.Api.Notifications;
 using Tigercat.Admin.Api.Serialization;
@@ -23,8 +25,6 @@ var useInMemoryInfrastructure = builder.Configuration.GetValue<bool>("Infrastruc
 
 if (useInMemoryInfrastructure)
 {
-    builder.Services.AddMemoryCache();
-    builder.Services.AddSingleton<ICacheService, InMemoryCacheService>();
     builder.Services.AddSingleton<IEventPublisher, NullEventPublisher>();
     builder.Services.AddSingleton<IIdempotencyService, InMemoryIdempotencyService>();
 }
@@ -42,11 +42,23 @@ else
     });
 
     builder.Services.AddSingleton<IRedisClient>(_ => new RedisClient(redisConnectionString));
-    builder.Services.AddSingleton<ICacheService, RedisCacheService>();
+    builder.Services.AddStackExchangeRedisCache(_ => { });
+    builder.Services.AddOptions<RedisCacheOptions>()
+        .Configure<IConnectionMultiplexer>((options, multiplexer) =>
+        {
+            options.ConnectionMultiplexerFactory = () => Task.FromResult(multiplexer);
+        });
     builder.Services.AddSingleton<IEventPublisher, RedisStreamPublisher>();
     builder.Services.AddSingleton<IIdempotencyService, RedisIdempotencyService>();
     builder.Services.AddHostedService<RedisStreamConsumer>();
 }
+
+// HybridCache is L1-only when Infrastructure:UseInMemory=true. With Redis, L2 uses the
+// existing multiplexer via IDistributedCache. Do not add OutputCache: authenticated GETs
+// would need VaryBy user/permission, and Monitor snapshots must stay uncached.
+builder.Services.AddHybridCache();
+builder.Services.AddSingleton<ICacheService, HybridCacheService>();
+builder.Services.AddHostedService<ImportJobProgressService>();
 
 // Database provider selection is explicit via Database:Provider when configured.
 // If omitted, the app keeps backward-compatible behavior: SQLite when a

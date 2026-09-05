@@ -20,8 +20,8 @@
 
 | 方法与路径 | 权限 | 参数 / 请求体 | `data` | 错误 / 事件 |
 | ---------- | ---- | ------------- | ------ | ----------- |
-| `GET /api/settings` | `setting:view` | 无 | 设置项数组，按 `key` 升序 | - |
-| `GET /api/settings/{key}` | `setting:view` | Path：`key` | 设置项对象 | `404` 设置项不存在 |
+| `GET /api/settings` | `setting:view` | 无 | 设置项数组，按 `key` 升序；读路径走 HybridCache `GetOrSet`（TTL 5 分钟），写入后失效 | - |
+| `GET /api/settings/{key}` | `setting:view` | Path：`key` | 设置项对象（与列表共用同一缓存条目） | `404` 设置项不存在 |
 | `PUT /api/settings` | `setting:edit` | Body：`settings[]` 必填，至少一项；元素为 `key`、`value`；`value` 不能为 `null` 且最长 2000 | 更新后的设置项数组，按 `key` 升序 | `400` 空数组、Key 空白、Value 为 null、Value 超长、安全策略值非法、Logo 媒体不存在或非图片；`404` Key 不存在；事件 `admin.setting.updated` |
 
 更新规则：

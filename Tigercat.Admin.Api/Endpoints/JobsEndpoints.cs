@@ -43,6 +43,7 @@ public class JobsEndpoints : IEndpointDefinition
     private static async Task<IResult> GetJobs(AdminDbContext db, CancellationToken ct)
     {
         var items = await db.Jobs
+            .AsNoTracking()
             .OrderBy(item => item.PublicId)
             .ThenBy(item => item.Id)
             .ToArrayAsync(ct);

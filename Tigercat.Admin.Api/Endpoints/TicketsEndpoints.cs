@@ -56,7 +56,7 @@ public class TicketsEndpoints : IEndpointDefinition
         var p = Math.Max(page ?? 1, 1);
         var ps = Math.Clamp(pageSize ?? DefaultPageSize, 1, MaxPageSize);
 
-        IQueryable<TicketEntity> query = db.Tickets;
+        IQueryable<TicketEntity> query = db.Tickets.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -98,7 +98,7 @@ public class TicketsEndpoints : IEndpointDefinition
 
     private static async Task<IResult> GetTicket(string id, AdminDbContext db, CancellationToken ct)
     {
-        var ticket = await FindTicketAsync(db, id, ct);
+        var ticket = await FindTicketAsync(db, id, ct, track: false);
         if (ticket is null)
         {
             return TicketNotFound();
@@ -150,7 +150,7 @@ public class TicketsEndpoints : IEndpointDefinition
         AdminDbContext db,
         CancellationToken ct)
     {
-        var ticket = await FindTicketAsync(db, id, ct);
+        var ticket = await FindTicketAsync(db, id, ct, track: true);
         if (ticket is null)
         {
             return TicketNotFound();
@@ -245,7 +245,7 @@ public class TicketsEndpoints : IEndpointDefinition
                 statusCode: 400);
         }
 
-        var ticket = await FindTicketAsync(db, id, ct);
+        var ticket = await FindTicketAsync(db, id, ct, track: true);
         if (ticket is null)
         {
             return TicketNotFound();
@@ -324,11 +324,19 @@ public class TicketsEndpoints : IEndpointDefinition
         return null;
     }
 
-    private static async Task<TicketEntity?> FindTicketAsync(AdminDbContext db, string id, CancellationToken ct)
+    private static async Task<TicketEntity?> FindTicketAsync(
+        AdminDbContext db,
+        string id,
+        CancellationToken ct,
+        bool track)
     {
-        return await db.Tickets
-            .Include(t => t.Messages)
-            .FirstOrDefaultAsync(t => t.PublicId == id, ct);
+        IQueryable<TicketEntity> query = db.Tickets.Include(t => t.Messages);
+        if (!track)
+        {
+            query = query.AsNoTracking();
+        }
+
+        return await query.FirstOrDefaultAsync(t => t.PublicId == id, ct);
     }
 
     private static IResult TicketNotFound()

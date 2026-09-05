@@ -56,7 +56,7 @@ public class CalendarEndpoints : IEndpointDefinition
             return RangeError("开始日期不能晚于结束日期");
         }
 
-        IQueryable<CalendarEventEntity> query = db.CalendarEvents;
+        IQueryable<CalendarEventEntity> query = db.CalendarEvents.AsNoTracking();
         if (fromValue is not null)
         {
             query = query.Where(item => item.Date.CompareTo(fromValue) >= 0);

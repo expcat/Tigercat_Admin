@@ -62,6 +62,7 @@ public class MediaEndpoints : IEndpointDefinition
         var ps = Math.Clamp(pageSize ?? 20, 1, 100);
 
         IQueryable<MediaResourceEntity> query = db.MediaResources
+            .AsNoTracking()
             .Where(m => m.DeletedAt == null);
 
         if (!string.IsNullOrWhiteSpace(keyword))
@@ -127,6 +128,7 @@ public class MediaEndpoints : IEndpointDefinition
         CancellationToken ct)
     {
         var media = await db.MediaResources
+            .AsNoTracking()
             .Where(m => m.Id == id && m.DeletedAt == null)
             .Select(m => new MediaDetailResponse(
                 m.Id,

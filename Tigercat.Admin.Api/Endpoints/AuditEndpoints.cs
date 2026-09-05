@@ -4,6 +4,7 @@ using FreeRedis;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 using Tigercat.Admin.Api.Auth;
+using Tigercat.Admin.Api.Cache;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Data.Entities;
@@ -159,6 +160,7 @@ public class AuditEndpoints : IEndpointDefinition
     private static async Task<IResult> UpdateRetentionPolicy(
         UpdateAuditRetentionPolicyRequest request,
         AdminDbContext db,
+        ICacheService cache,
         IEventPublisher eventPublisher,
         HttpContext httpContext,
         CancellationToken ct)
@@ -190,6 +192,7 @@ public class AuditEndpoints : IEndpointDefinition
         }
 
         await db.SaveChangesAsync(ct);
+        await SettingsCache.InvalidateAsync(cache, [RetentionSettingKey], ct);
 
         await eventPublisher.PublishAsync(
             EventEnvelope.Create(
@@ -542,6 +545,7 @@ public class AuditEndpoints : IEndpointDefinition
     private static async Task<int> GetRetentionDaysAsync(AdminDbContext db, CancellationToken ct)
     {
         var value = await db.SystemSettings
+            .AsNoTracking()
             .Where(s => s.Key == RetentionSettingKey)
             .Select(s => s.Value)
             .FirstOrDefaultAsync(ct);

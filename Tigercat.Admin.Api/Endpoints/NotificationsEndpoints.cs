@@ -48,7 +48,7 @@ public class NotificationsEndpoints : IEndpointDefinition
         var p = Math.Max(page ?? 1, 1);
         var ps = Math.Clamp(pageSize ?? DefaultPageSize, 1, MaxPageSize);
 
-        IQueryable<AdminNotificationEntity> query = db.AdminNotifications;
+        IQueryable<AdminNotificationEntity> query = db.AdminNotifications.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(groupKey))
         {

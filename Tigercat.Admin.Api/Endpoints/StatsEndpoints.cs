@@ -34,11 +34,11 @@ public class StatsEndpoints : IEndpointDefinition
         AdminDbContext db,
         CancellationToken ct)
     {
-        var totalUsers = await db.Users.CountAsync(ct);
-        var activeUsers = await db.Users.CountAsync(u => u.Status == UserStatus.Active, ct);
+        var totalUsers = await db.Users.AsNoTracking().CountAsync(ct);
+        var activeUsers = await db.Users.AsNoTracking().CountAsync(u => u.Status == UserStatus.Active, ct);
         var disabledUsers = totalUsers - activeUsers;
-        var totalRoles = await db.Roles.CountAsync(ct);
-        var totalPermissions = await db.Permissions.CountAsync(ct);
+        var totalRoles = await db.Roles.AsNoTracking().CountAsync(ct);
+        var totalPermissions = await db.Permissions.AsNoTracking().CountAsync(ct);
 
         var data = new StatsOverviewResponse(
             totalUsers,
@@ -64,6 +64,7 @@ public class StatsEndpoints : IEndpointDefinition
 
         // Aggregate in the database and restrict to the requested date range
         var grouped = await db.Users
+            .AsNoTracking()
             .Where(u => u.CreatedAt >= startDate && u.CreatedAt < endDateExclusive)
             .GroupBy(u => u.CreatedAt.Date)
             .Select(g => new { Date = g.Key, Count = g.Count() })

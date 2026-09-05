@@ -3,10 +3,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using StackExchange.Redis;
-using Tigercat.Admin.Api.Cache;
 using Tigercat.Admin.Api.EventBus;
 using Tigercat.Admin.Api.Tests.Stubs;
 
@@ -44,6 +44,7 @@ public abstract class AdminApiFactory : WebApplicationFactory<Program>
             var overrides = new Dictionary<string, string?>(ConfigurationOverrides);
             overrides.TryAdd("AuthRateLimit:PermitLimit", "1000");
             overrides.TryAdd("AuthRateLimit:WindowSeconds", "60");
+            overrides.TryAdd("ImportJobs:ProgressIntervalMilliseconds", "50");
             config.AddInMemoryCollection(overrides);
         });
 
@@ -60,9 +61,9 @@ public abstract class AdminApiFactory : WebApplicationFactory<Program>
             services.AddSingleton<IRedisClient>(_ =>
                 throw new NotSupportedException("Redis is not available during tests."));
 
-            // Replace infrastructure services with stubs
-            services.RemoveAll<ICacheService>();
-            services.AddSingleton<ICacheService, StubCacheService>();
+            // HybridCache is L1-only in tests. Drop Redis IDistributedCache so HybridCache
+            // does not construct RedisCache against the throwing multiplexer stub.
+            services.RemoveAll<IDistributedCache>();
 
             services.RemoveAll<IEventPublisher>();
             services.AddSingleton<IEventPublisher, StubEventPublisher>();

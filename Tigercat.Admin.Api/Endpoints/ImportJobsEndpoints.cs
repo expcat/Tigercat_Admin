@@ -117,18 +117,15 @@ public class ImportJobsEndpoints : IEndpointDefinition
 
     private static async Task<IResult> GetImportJob(string id, AdminDbContext db, CancellationToken ct)
     {
-        var job = await db.ImportJobs.FirstOrDefaultAsync(item => item.PublicId == id, ct);
+        var job = await db.ImportJobs
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.PublicId == id, ct);
         if (job is null)
         {
             return Results.Json(
                 ApiResult.Fail<ImportJobResponse>("导入任务不存在", 404),
                 AppJsonContext.Default.ApiResponseImportJobResponse,
                 statusCode: 404);
-        }
-
-        if (AdvanceProgress(job))
-        {
-            await db.SaveChangesAsync(ct);
         }
 
         return Results.Json(
@@ -177,7 +174,7 @@ public class ImportJobsEndpoints : IEndpointDefinition
 
     private static async Task<string> NextImportJobIdAsync(AdminDbContext db, CancellationToken ct)
     {
-        var ids = await db.ImportJobs.Select(item => item.PublicId).ToArrayAsync(ct);
+        var ids = await db.ImportJobs.AsNoTracking().Select(item => item.PublicId).ToArrayAsync(ct);
         var max = 1000;
         foreach (var publicId in ids)
         {

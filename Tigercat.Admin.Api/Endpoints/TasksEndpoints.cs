@@ -65,7 +65,7 @@ public class TasksEndpoints : IEndpointDefinition
         var p = Math.Max(page ?? 1, 1);
         var ps = Math.Clamp(pageSize ?? DefaultPageSize, 1, MaxPageSize);
 
-        IQueryable<AdminTaskEntity> query = db.AdminTasks;
+        IQueryable<AdminTaskEntity> query = db.AdminTasks.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -131,6 +131,7 @@ public class TasksEndpoints : IEndpointDefinition
     private static async Task<IResult> GetTask(string id, AdminDbContext db, CancellationToken ct)
     {
         var task = await db.AdminTasks
+            .AsNoTracking()
             .Where(t => t.PublicId == id)
             .Select(t => ToResponse(t))
             .FirstOrDefaultAsync(ct);

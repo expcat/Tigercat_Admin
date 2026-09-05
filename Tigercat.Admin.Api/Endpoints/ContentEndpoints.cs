@@ -39,6 +39,7 @@ public class ContentEndpoints : IEndpointDefinition
     private static async Task<IResult> GetArticles(AdminDbContext db, CancellationToken ct)
     {
         var items = await db.ContentArticles
+            .AsNoTracking()
             .OrderBy(item => item.PublicId)
             .ThenBy(item => item.Id)
             .ToArrayAsync(ct);
@@ -50,7 +51,7 @@ public class ContentEndpoints : IEndpointDefinition
 
     private static async Task<IResult> GetArticle(string id, AdminDbContext db, CancellationToken ct)
     {
-        var article = await FindArticleAsync(db, id, ct);
+        var article = await FindArticleAsync(db, id, ct, track: false);
         if (article is null)
         {
             return ArticleNotFound();
@@ -67,7 +68,7 @@ public class ContentEndpoints : IEndpointDefinition
         AdminDbContext db,
         CancellationToken ct)
     {
-        var article = await FindArticleAsync(db, id, ct);
+        var article = await FindArticleAsync(db, id, ct, track: true);
         if (article is null)
         {
             return ArticleNotFound();
@@ -140,9 +141,16 @@ public class ContentEndpoints : IEndpointDefinition
     private static async Task<ContentArticleEntity?> FindArticleAsync(
         AdminDbContext db,
         string id,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool track)
     {
-        return await db.ContentArticles.FirstOrDefaultAsync(item => item.PublicId == id, ct);
+        IQueryable<ContentArticleEntity> query = db.ContentArticles;
+        if (!track)
+        {
+            query = query.AsNoTracking();
+        }
+
+        return await query.FirstOrDefaultAsync(item => item.PublicId == id, ct);
     }
 
     private static IResult ArticleNotFound() =>

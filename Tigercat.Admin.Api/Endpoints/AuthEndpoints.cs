@@ -493,6 +493,7 @@ public class AuthEndpoints : IEndpointDefinition
         // Load full permission details by the resolved codes
         var permissions = cachedCodes is { Length: > 0 }
             ? await db.Permissions
+                .AsNoTracking()
                 .Where(p => cachedCodes.Contains(p.Code))
                 .OrderBy(p => p.Id)
                 .Select(p => new PermissionInfoResponse(p.Id, p.Code, p.Description))

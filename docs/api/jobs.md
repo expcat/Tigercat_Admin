@@ -28,6 +28,8 @@
 
 状态机：`enabled=true` 时变为 `running`（若当前已是 `failed` 且并非从停用重新启用，则保持 `failed`）；`enabled=false` 时变为 `paused`，`nextRun` 为 `—`。新建任务的 Gantt 窗口默认为短演示区间 `2026-07-01`–`2026-07-02`。
 
+`cron` / `nextRun` 是展示字段。本仓库**没有**真实 cron 执行器或按表达式触发的托管调度；不要把 Jobs 当成产品级任务队列。
+
 ## 端点
 
 | 方法与路径 | 权限 | 参数 / 请求体 | `data` | 错误 |

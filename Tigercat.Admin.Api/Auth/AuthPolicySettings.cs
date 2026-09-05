@@ -33,6 +33,7 @@ public sealed record AuthPolicySettings(
     public static async Task<AuthPolicySettings> LoadAsync(AdminDbContext db, CancellationToken ct)
     {
         var values = await db.SystemSettings
+            .AsNoTracking()
             .Where(s =>
                 s.Key == SessionTimeoutKey ||
                 s.Key == MaxAttemptsKey ||

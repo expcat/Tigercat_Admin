@@ -38,7 +38,7 @@ public class ProjectsEndpoints : IEndpointDefinition
         var p = Math.Max(page ?? 1, 1);
         var ps = Math.Clamp(pageSize ?? DefaultPageSize, 1, MaxPageSize);
 
-        IQueryable<ProjectEntity> query = db.Projects;
+        IQueryable<ProjectEntity> query = db.Projects.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -82,6 +82,7 @@ public class ProjectsEndpoints : IEndpointDefinition
     private static async Task<IResult> GetProject(string id, AdminDbContext db, CancellationToken ct)
     {
         var project = await db.Projects
+            .AsNoTracking()
             .Include(item => item.Members)
             .Include(item => item.Activities)
             .FirstOrDefaultAsync(item => item.PublicId == id, ct);

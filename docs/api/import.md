@@ -29,11 +29,11 @@
 | `skipped` | number | 跳过条数（`conflict=skip` 时为 1） |
 | `message` | string | 足够填入 Result 副标题的摘要 |
 
-服务端在每次 `GET` 时推进 `progress`（每次 +25 即可）。到 100 时 `status=completed` 并写入 `result`。MockApi 可用 `setTimeout` 辅助推进，但 `GET` 仍必须能观察到进展。
+服务端由 `BackgroundService`（`ImportJobProgressService`）按固定步长推进 `progress`（每次 +25），间隔由 `ImportJobs:ProgressIntervalMilliseconds` 控制（默认 250ms）。`GET` **只读**，不推进进度。到 100 时 `status=completed` 并写入 `result`。并发 `GET` 不会加倍步进。MockApi 可用 `setTimeout` 辅助推进，但 `GET` 仍必须能观察到进展。
 
 ## 端点
 
 | 方法与路径 | 权限 | 参数 / 请求体 | `data` | 错误 |
 | ---------- | ---- | ------------- | ------ | ---- |
 | `POST /api/import-jobs` | 登录 | Body：`source`、`target`、`mappings`、`mode`、`conflict`；`batchSize` 可选 | 新建导入任务（`progress` 从 0 起） | `400` 目标/映射为空或枚举非法 |
-| `GET /api/import-jobs/{id}` | 登录 | Path：任务 ID | 当前任务（可能已推进进度） | `404` 导入任务不存在 |
+| `GET /api/import-jobs/{id}` | 登录 | Path：任务 ID | 当前任务（后台作业可能已推进进度） | `404` 导入任务不存在 |

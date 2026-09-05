@@ -64,7 +64,7 @@ public class UsersEndpoints : IEndpointDefinition
         var p = Math.Max(page ?? 1, 1);
         var ps = Math.Clamp(pageSize ?? 10, 1, 100);
 
-        IQueryable<UserEntity> query = db.Users;
+        IQueryable<UserEntity> query = db.Users.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
@@ -719,6 +719,7 @@ public class UsersEndpoints : IEndpointDefinition
     private static Task<UserItemResponse?> ProjectUser(AdminDbContext db, int userId, CancellationToken ct)
     {
         return db.Users
+            .AsNoTracking()
             .Where(u => u.Id == userId)
             .Select(u => new UserItemResponse(
                 u.Id,
