@@ -105,7 +105,7 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 | 页面/区域 | 主要 Tigercat 组件 | 关键交互 |
 | --------- | ------------------ | -------- |
 | Shell | `Layout`、`Content`、`Header`、`Sidebar`、`Drawer`、`Menu`、`Breadcrumb`、`Dropdown`、`Avatar`、`Tag`、`Statistic`、`NumberKeyboard`、`Watermark`、`ColorSwatch`、`Segmented`、`Switch`、`LoadingBar`、`LoadingBarContainer` | 折叠菜单、移动抽屉、主题切换、账号菜单、多标签条（打开/关闭当前·其他·全部、sessionStorage 恢复）、锁屏全屏遮罩（头像下拉锁定，demo PIN 解锁）、全局内容水印（`/settings` 开关，用户名 + 日期）、主题配置抽屉（外观 / 主色 / 紧凑密度，接 `utils/theme.ts`）、受保护路由切换顶部 LoadingBar（落地或失败后消失） |
-| Shell 全局挂件 | `Spotlight`、`Tour`、`FloatButton`/`FloatButtonGroup`、`BackTop`、`Badge`、`Popover`、`Drawer`、`ChatWindow`、`Notification` | 命令面板 ⌘K、首登引导、右下快捷动作/回到顶部、消息铃铛（toast 用 `actions` 渲染「查看」并保留整条 `onClick` 兜底）、在线客服坞（`ChatDock` 接 `/api/chat/messages`，请求-响应，无 WebSocket） |
+| Shell 全局挂件 | `Spotlight`、`Tour`、`FloatButton`/`FloatButtonGroup`、`BackTop`、`Badge`、`Popover`、`Drawer`、`ChatWindow`、`Notification` | 命令面板 ⌘K、首登引导、右下快捷动作/回到顶部、消息铃铛（toast 用 `actions` 渲染「查看」并保留整条 `onClick` 兜底）、在线客服坞（`ChatDock` 发送仍走 `POST /api/chat/messages`，已登录时连 `/hubs/chat` 收完整列表 fan-out；Mock/无 WS 时只 REST。不要把 hub 事件当成 `Message` toast） |
 | 登录/注册 | `Card`、`Form`、`FormItem`、`Input`、`Button`、`Message` | 表单校验、成功跳转、错误提示 |
 | 仪表盘 | `Alert`、`Card`、`Text`、`Tag`、`Select`、`Statistic`、`Loading`、`Empty`、`LineChart`、`BarChart`、`PieChart`、`Marquee`、`DataExport` | 概览指标、图表空状态、快捷跳转、统计区上方运维公告跑马灯（文档流，不遮挡指标卡片）、概览区按 `trendDays` 导出当前统计与趋势（`GET /api/export/overview` Blob，不用页面 JSON.stringify） |
 | 用户管理 | `DataTableWithToolbar`、`Avatar`、`Button`、`ContextMenu`、`Input`、`Modal`、`Form`、`Select`、`Tag`、`Tooltip`、`Checkbox`、`CropUpload` | 分页搜索、排序、列显隐、批量状态、头像裁剪、角色选择、窄屏卡片模式、行右键菜单（编辑 / 启停 / 删除，权限不足隐藏或禁用）、工具栏独立 `导出` / `新增用户` 按钮 |
@@ -117,7 +117,7 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 | 审计日志 | `ActivityFeed`、`Timeline`、`Input`、`Select`、`Statistic`、`Empty`、`Modal`、`DataExport`、`CheckboxGroup` | 筛选、详情、JSON 预览、`DataExport` 导出 csv/json/xlsx（带当前筛选与字段勾选，`GET /api/audit-logs/export` Blob，权限 `audit:export`）、保留清理 |
 | 个人中心 | `Tabs`/`TabPane`、`Descriptions`、`Avatar`、`Badge`、`Statistic`、`Rate`、`QRCode`、`Signature`、`InputOTP`、`MaskInput`、`ColorSwatch`、`Radio`/`RadioGroup`、`Slider`、`DatePicker`、`TimePicker`、`Textarea`、`Switch`、`Divider`、`Space`、`Timeline`、`List` | 选项卡分区、资料只读视图、两步验证开关对接 enable/disable、`InputOTP` 绑定确认、手机号掩码演示、电子签名、偏好设置、登录设备与历史 |
 | 数据分析 | `Segmented`、`DatePicker`、`ButtonGroup`、`Statistic`、`Progress`、`Skeleton`、`AreaChart`、`DonutChart`、`FunnelChart`、`GaugeChart`、`HeatmapChart`、`RadarChart`、`ScatterChart`、`TreeMapChart`、`SunburstChart`、`OrgChart`、`ChartCanvas`/`ChartAxis`/`ChartGrid`/`ChartSeries`/`ChartLegend`/`ChartTooltip`、`Table`、`Pagination` | 时间范围切换、KPI 进度、多类型图表、组织分布、图表基元自定义、明细分页 |
-| 实时监控 | `Segmented`、`Statistic`、`GaugeChart`、`AreaChart`、`LineChart`、`ActivityFeed`、`Progress`、`Tag`、`Badge` | 轮询 `GET /api/monitor/snapshot`（2s / 3s / 5s，默认 3s）；暂停后停止请求；CPU/内存/磁盘水位、QPS/延迟滚动窗口、节点状态、事件流封顶 |
+| 实时监控 | `Segmented`、`Statistic`、`GaugeChart`、`AreaChart`、`LineChart`、`ActivityFeed`、`Progress`、`Tag`、`Badge` | 优先 SignalR `/hubs/monitor` 按 2s / 3s / 5s（默认 3s）推送同一份 snapshot JSON；暂停后停止推送；连接失败或 Mock 演示回退轮询 `GET /api/monitor/snapshot`；CPU/内存/磁盘水位、QPS/延迟滚动窗口、节点状态、事件流封顶 |
 | 项目列表 | `Card`、`Statistic`、`Tag`、`Avatar`/`AvatarGroup`、`Progress`、`Input`、`Segmented`、`Pagination`、`Empty` | 卡片网格、名称/负责人/编号搜索、状态分段筛选（规划中/进行中/已暂停/已完成）、分页、点击卡片或「查看详情」进入 `/projects/:id`；列表筛选/分页接 `GET /api/projects` |
 | 项目详情 | `Descriptions`、`Steps`/`StepsItem`、`Tabs`/`TabPane`、`Anchor`/`AnchorLink`、`Timeline`、`CommentThread`、`Empty`、`Progress`、`Avatar`/`AvatarGroup` | 动态路由 `:id`、概览/成员/动态、页内锚点切 Tab、未知 id 空态仍保持列表菜单高亮；详情接 `GET /api/projects/{id}`，讨论接 `GET /api/comments?targetType=project` |
 | 工单中心 | `Splitter`、`Resizable`、`Steps`/`StepsItem`、`ChatWindow`、`CommentThread`、`Mentions`、`Descriptions`、`Rate`、`Badge`、`Tag`、`Popover`、`Drawer`、`Upload`、`Textarea`、`RadioGroup`/`Radio`、`Input`、`Divider` | 主从分栏（宽屏左右 / 窄屏上下）、工单生命周期、对话、内部 @ 协作、附件、关闭确认、新建工单；列表/详情/关闭/对话接 `/api/tickets`，内部备注接 `/api/comments?targetType=ticket` |
@@ -205,7 +205,7 @@ Vue 端将包名替换为 `@expcat/tigercat-vue/...`。没有 `/Drag` 组件，�
 ## 数据、权限与状态
 
 - API 调用统一走双端 `src/utils/request.ts` 的 `apiRequest`。
-- 会话存在 `SESSION_KEY`，认证头由 `getAuthHeaders()` 或等价工具生成。
+- 会话存在 `SESSION_KEY`，认证头由 `getAuthHeaders()` 或等价工具生成。Monitor / Chat 实时连接用 `utils/realtime.ts`（`@microsoft/signalr` 动态导入），token 走 `getSessionToken()`；演示模式（`VITE_TIGERCAT_DEMO`）不连 hub。
 - API 返回结构使用 `ApiResponse<T>`；分页列表使用 `PagedResult<T>`。
 - 权限列表从 `/api/auth/permissions` 加载，菜单和按钮按权限隐藏。
 - 用户、角色、文件、审计等数据工作台使用 sessionStorage 保留查询、排序、选中行、隐藏列和导出状态。

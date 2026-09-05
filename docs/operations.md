@@ -45,7 +45,7 @@ cd Tigercat.Admin.Vue && pnpm dev
 | Vue | 5173 |
 | Aspire Dashboard | 动态 |
 
-前端通过 `/api` 访问后端。Aspire 会注入 `VITE_API_URL`，单独开发时由 Vite 代理到 API。
+前端通过 `/api` 访问后端。Aspire 会注入 `VITE_API_URL`，单独开发时由 Vite 代理 `/api` 与 `/hubs`（WebSocket）到 API。
 
 ## 常用命令
 
@@ -165,7 +165,7 @@ pnpm build:pages
 - `--base=/admin/`：静态资源 base path。
 - `--target=all|react|vue`：选择构建目标。
 
-前端业务入口仍是 `/api`；独立部署时建议由反向代理把 `/api` 转发到 API 服务。
+前端业务入口仍是 `/api`；Monitor / Chat 实时连接走同源 `/hubs/monitor` 与 `/hubs/chat`。独立部署时建议由反向代理把 `/api` 和 `/hubs` 转发到 API 服务，`/hubs` 必须支持 WebSocket 升级。无 WebSocket 时前端回退 REST，不要为此关掉 REST 快照或聊天 POST。
 
 ### 认证与请求面
 

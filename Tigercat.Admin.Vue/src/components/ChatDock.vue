@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import type { ChatMessage } from '@expcat/tigercat-core'
 import { Badge } from '@expcat/tigercat-vue/Badge'
 import { Drawer } from '@expcat/tigercat-vue/Drawer'
 import { Message } from '@expcat/tigercat-vue/Message'
 import { FloatButton } from '@expcat/tigercat-vue/FloatButton'
 import { ChatWindow } from '@expcat/tigercat-vue/ChatWindow'
-import { fetchChatMessages, sendChatMessage } from '../utils/chat'
+import { fetchChatMessages, sendChatMessage, subscribeChatMessages } from '../utils/chat'
 import { formatDisplayDateTime } from '../utils/common'
 import Icon from './Icon.vue'
 
@@ -27,6 +27,7 @@ const messages = ref<ChatMessage[]>([])
 const draft = ref('')
 const unread = ref(1)
 const loading = ref(false)
+let stopChatLive: (() => void) | null = null
 
 const readErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback
@@ -88,6 +89,17 @@ watch(
 
 onMounted(() => {
   void loadMessages()
+  stopChatLive = subscribeChatMessages((items) => {
+    messages.value = mapChatMessages(items as ChatMessage[] | undefined)
+    if (!props.open) {
+      unread.value += 1
+    }
+  })
+})
+
+onUnmounted(() => {
+  stopChatLive?.()
+  stopChatLive = null
 })
 </script>
 

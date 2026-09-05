@@ -31,6 +31,8 @@ JSON API 默认返回 `ApiResponse<T>`：
 - `X-Token: <TOKEN>`
 - `Authorization: Bearer <TOKEN>`
 
+Monitor / Chat SignalR（`/hubs/monitor`、`/hubs/chat`）使用同一套会话 token；浏览器 WebSocket 无法自定义头时用查询参数 `access_token`。
+
 未登录通常返回 `401`，权限不足返回 `403`。权限码和入口权限见各专题。
 
 ## OpenAPI
@@ -75,10 +77,10 @@ JSON API 默认返回 `ApiResponse<T>`：
 | 仪表盘统计、导出 | [api/dashboard-export.md](api/dashboard-export.md) | `/api/stats/*`、`/api/export/*`（users / roles / reports / overview） |
 | 审计日志 | [api/audit.md](api/audit.md) | `/api/audit-logs`、导出、保留策略、清理 |
 | 通知中心 | [api/notifications.md](api/notifications.md) | `/api/notifications`、创建广播、已读、批量已读 |
-| 实时监控 | [api/monitor.md](api/monitor.md) | `/api/monitor/snapshot` |
+| 实时监控 | [api/monitor.md](api/monitor.md) | `/api/monitor/snapshot`，SignalR `/hubs/monitor`（REST 保留） |
 | 任务面板 | [api/tasks.md](api/tasks.md) | `/api/tasks`、流转、完成 |
 | 工单 | [api/tickets.md](api/tickets.md) | `/api/tickets`、状态流转、工单消息 |
-| 聊天坞 | [api/chat.md](api/chat.md) | `/api/chat/messages` |
+| 聊天坞 | [api/chat.md](api/chat.md) | `/api/chat/messages`，SignalR `/hubs/chat`（发送仍走 POST） |
 | 评论 | [api/comments.md](api/comments.md) | `/api/comments`（`targetType=ticket\|project`） |
 | 项目 | [api/projects.md](api/projects.md) | `/api/projects`、`/api/projects/{id}` |
 | 日历 | [api/calendar.md](api/calendar.md) | `/api/calendar/events` |

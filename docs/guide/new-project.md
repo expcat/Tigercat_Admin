@@ -27,7 +27,7 @@ pnpm create vite my-admin --template vue-ts     # Vue
 | 样式 | `tailwindcss` + `@tailwindcss/postcss` + `postcss` + `autoprefixer` | 同左 | Tailwind 必须 v4 |
 | 路由 | `react-router-dom ^7` | `vue-router ^5` | |
 | 框架 | `react` / `react-dom ^19` | `vue ^3.5` | |
-| 可选 | `cross-env` | 同左 | 仅在需要 demo/mock 构建脚本时 |
+| 可选 | `cross-env`、`@microsoft/signalr` | 同左 | `cross-env` 仅 demo/mock 构建脚本；SignalR 仅复制 Monitor / Chat 实时面时 |
 
 ```bash
 # React
@@ -50,7 +50,7 @@ pnpm add -D @tailwindcss/postcss
 复制 [Tigercat.Admin.React/vite.config.js](../../Tigercat.Admin.React/vite.config.js)（Vue 端同名文件，插件换 `@vitejs/plugin-vue`）。修改点：
 
 - `server.port`：改为自己的端口。
-- `server.proxy['/api'].target`：改为自己的后端地址（见 [backend.md](backend.md)）。
+- `server.proxy['/api'].target` 与 `server.proxy['/hubs']`：改为自己的后端地址（见 [backend.md](backend.md)）。复制 Monitor / Chat 实时面时保留 `/hubs` 的 `ws: true`。
 - `manualChunks` 中 `vendor-ui` 只收静态可达的 `@expcat/tigercat-*`（Shell / 公共组件），不要把全部 UI 包打进一个 chunk，否则路由和交互懒加载无法拆出图表、编辑器、裁剪和 Gantt。`vendor-framework`（React/Vue + router）建议保留。
 - `VITE_TIGERCAT_*` 环境变量分支（base path、router mode、demo）：不需要 demo/Pages 部署时可删。
 
@@ -93,7 +93,7 @@ pnpm add -D @tailwindcss/postcss
 | `src/utils/`：`theme.ts`、`request.ts`、`auth.ts`、`permission.tsx`（Vue：`permission.ts`）、`permission-helpers.ts`、`types.ts`、`constants.ts`、`common.ts`、`hooks.ts`（Vue：`composables.ts`）、`shell-navigation.tsx`（Vue：`shell-navigation.ts`）、`tags-view.ts`、`lock-screen.ts`、`watermark.ts`、`tigercatText.ts`、`lazyTigercat.tsx`（Vue：`lazyTigercat.ts`）、`validation.ts` | 主题 / 请求 / 会话 / 权限 / 导航 / 多标签 / 锁屏 / 水印 / 文案 / 重组件懒加载 | `types.ts` 裁剪为自己的业务类型；`shell-navigation` 替换菜单表；`constants.ts` 检查 API 前缀；无图表/编辑器/裁剪/Gantt 页时可删 `lazyTigercat` |
 | `src/main.tsx` + `App.tsx`（Vue：`src/main.ts` + `App.vue`） | 应用入口（ConfigProvider locale、Router 模式） | **删除 `@tigercat-admin/mock-api` 的 import、`isTigercatDemoEnabled` 与 `installTigercatMockApi(...)` 调用**（除非选 backend.md 方案 C）；不需要 hash 路由时可删 `VITE_TIGERCAT_ROUTER_MODE` 分支 |
 
-蓝本中 `src/utils/` 其余文件（`notifications.ts`、`monitor.ts`、`task-board.ts`、`settings.ts`、`media.ts`、`export.ts`、`workbench.ts`）是具体业务页面的 API 包装，按你实际要做的页面选择性复制。
+蓝本中 `src/utils/` 其余文件（`notifications.ts`、`monitor.ts`、`chat.ts`、`realtime.ts`、`task-board.ts`、`settings.ts`、`media.ts`、`export.ts`、`workbench.ts`）是具体业务页面的 API 包装，按你实际要做的页面选择性复制。复制 Monitor / Chat 实时面时同时复制 `realtime.ts` 并安装 `@microsoft/signalr`。
 
 路由、菜单与权限：
 

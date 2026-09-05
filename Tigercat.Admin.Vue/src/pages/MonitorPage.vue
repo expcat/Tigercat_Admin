@@ -27,6 +27,7 @@ import ChartEmptyState from '../components/ChartEmptyState.vue'
 import Icon from '../components/Icon.vue'
 import {
   fetchMonitorSnapshot,
+  startMonitorLive,
   type MonitorNode,
   type MonitorNodeStatus,
   type MonitorSnapshot,
@@ -210,13 +211,11 @@ const loading = ref(false)
 const errorMessage = ref('')
 const initialized = ref(false)
 
-let timer = 0
+let stopLive: (() => void) | null = null
 
-function clearTimer() {
-  if (timer) {
-    window.clearInterval(timer)
-    timer = 0
-  }
+function stopLiveTransport() {
+  stopLive?.()
+  stopLive = null
 }
 
 async function loadSnapshot() {
@@ -237,28 +236,37 @@ async function loadSnapshot() {
   }
 }
 
-function startTimer() {
-  clearTimer()
-  timer = window.setInterval(() => {
-    void loadSnapshot()
-  }, Number(intervalSec.value) * 1000)
-}
-
 watch(
   [paused, intervalSec],
   () => {
+    stopLiveTransport()
     if (paused.value) {
-      clearTimer()
       return
     }
-    void loadSnapshot()
-    startTimer()
+    if (!initialized.value) {
+      loading.value = true
+    }
+    stopLive = startMonitorLive(
+      Number(intervalSec.value),
+      (data) => {
+        snapshot.value = applyRemoteSnapshot(snapshot.value, data)
+        errorMessage.value = ''
+        initialized.value = true
+        loading.value = false
+      },
+      (error) => {
+        const message = readErrorMessage(error, '监控快照加载失败，请稍后重试。')
+        errorMessage.value = message
+        Message.error({ content: message, duration: 3000 })
+        loading.value = false
+      },
+    )
   },
   { immediate: true },
 )
 
 onUnmounted(() => {
-  clearTimer()
+  stopLiveTransport()
 })
 
 function handleIntervalChange(value: string | number) {
@@ -312,7 +320,7 @@ function formatTickLabel(value: string | number) {
     <PageHeader
       icon="monitor"
       title="实时监控"
-      subtitle="轮询监控快照，展示资源水位、吞吐延迟与节点事件"
+      subtitle="推送监控快照，展示资源水位、吞吐延迟与节点事件"
       :tags="[
         { label: '实时快照', variant: 'success' },
         { label: '登录可见', variant: 'info' },
@@ -321,7 +329,7 @@ function formatTickLabel(value: string | number) {
 
     <PageActionPanel
       title="刷新控制"
-      description="按 2 / 3 / 5 秒轮询 GET /api/monitor/snapshot，默认 3 秒；暂停后停止请求，卸载时清除定时器。"
+      description="优先经 SignalR /hubs/monitor 按 2 / 3 / 5 秒推送，默认 3 秒；连接失败时回退轮询 GET /api/monitor/snapshot。暂停后停止推送与请求，卸载时断开。"
     >
       <template #actions>
         <Segmented
@@ -473,7 +481,7 @@ function formatTickLabel(value: string | number) {
 
     <MutedPanel
       title="演示说明"
-      description="本页轮询 GET /api/monitor/snapshot。服务端用内存步进生成指标，不读取真实主机。QPS 与延迟在前端拼接最近 20 点；事件流按接口返回封顶。暂停后不再发请求。"
+      description="本页优先使用 SignalR 推送监控快照，WebSocket 不可用时轮询 GET /api/monitor/snapshot。服务端用内存步进生成指标，不读取真实主机。QPS 与延迟在前端拼接最近 20 点；事件流按接口返回封顶。暂停后不再推送或请求。"
     />
   </div>
 </template>

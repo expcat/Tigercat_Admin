@@ -14,6 +14,7 @@ using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Endpoints;
 using Tigercat.Admin.Api.EventBus;
 using Tigercat.Admin.Api.Health;
+using Tigercat.Admin.Api.Hubs;
 using Tigercat.Admin.Api.Import;
 using Tigercat.Admin.Api.Media;
 using Tigercat.Admin.Api.Notifications;
@@ -62,6 +63,11 @@ else
 builder.Services.AddHybridCache();
 builder.Services.AddSingleton<ICacheService, HybridCacheService>();
 builder.Services.AddHostedService<ImportJobProgressService>();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<MonitorSnapshotSource>();
+builder.Services.AddSingleton<MonitorPushRegistry>();
+builder.Services.AddSingleton<ChatRealtimeNotifier>();
+builder.Services.AddHostedService<MonitorPushService>();
 
 // Database provider selection is explicit via Database:Provider when configured.
 // If omitted, the app keeps backward-compatible behavior: SQLite when a
@@ -220,6 +226,7 @@ if (openApiEnabled)
 
 app.UseCors();
 app.UseRateLimiter();
+app.UseMiddleware<HubAuthMiddleware>();
 app.MapDefaultEndpoints();
 
 // Seed database with default roles, permissions, and admin user
@@ -265,6 +272,8 @@ app.MapEndpoint<ContentEndpoints>();
 app.MapEndpoint<JobsEndpoints>();
 app.MapEndpoint<ImportJobsEndpoints>();
 app.MapEndpoint<MonitorEndpoints>();
+app.MapHub<MonitorHub>(RealtimeHubs.MonitorPath);
+app.MapHub<ChatHub>(RealtimeHubs.ChatPath);
 
 app.MapGet("/api/health", GetHealth)
     .WithName("HealthCheck");

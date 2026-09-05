@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChatMessage } from '@expcat/tigercat-core';
 import { Badge } from '@expcat/tigercat-react/Badge';
 import { Drawer } from '@expcat/tigercat-react/Drawer';
 import { Message } from '@expcat/tigercat-react/Message';
 import { FloatButton } from '@expcat/tigercat-react/FloatButton';
 import { ChatWindow } from '@expcat/tigercat-react/ChatWindow';
-import { fetchChatMessages, sendChatMessage } from '../utils/chat';
+import { fetchChatMessages, sendChatMessage, subscribeChatMessages } from '../utils/chat';
 import { formatDisplayDateTime } from '../utils/common';
 import { MessageIcon, XIcon } from './Icons';
 
@@ -30,6 +30,8 @@ export function ChatDock({ open, onOpenChange }: ChatDockProps) {
   const [draft, setDraft] = useState('');
   const [unread, setUnread] = useState(1);
   const [loading, setLoading] = useState(false);
+  const openRef = useRef(open);
+  openRef.current = open;
 
   useEffect(() => {
     if (open) {
@@ -50,6 +52,12 @@ export function ChatDock({ open, onOpenChange }: ChatDockProps) {
       }
     };
     void loadMessages();
+    return subscribeChatMessages((items) => {
+      setMessages(mapChatMessages(items as ChatMessage[] | undefined));
+      if (!openRef.current) {
+        setUnread((prev) => prev + 1);
+      }
+    });
   }, []);
 
   const handleSend = async (value: string) => {

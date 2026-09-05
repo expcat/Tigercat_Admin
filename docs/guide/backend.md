@@ -17,7 +17,7 @@
 1. 后端按上述契约实现端点；或保持后端原样，在前端 `utils/request.ts` 的 `apiRequest` 中做一层包络适配（把自有响应结构转成 `ApiResponse<T>`）。
 2. 登录成功后把 token 写入 `SESSION_KEY` 会话（沿用蓝本 `utils/auth.ts`）。
 3. 提供权限列表端点，或在前端登录响应中直接返回权限码数组并调整 `permission` 工具的加载逻辑。
-4. 开发期把 vite `/api` 代理指向自有后端；部署期由反向代理转发 `/api`。
+4. 开发期把 vite `/api`（以及若使用 Monitor/Chat 实时面的 `/hubs`，`ws: true`）代理指向自有后端；部署期由反向代理转发 `/api` 与 `/hubs`。
 
 ## 方案 B：复用本仓库 .NET API
 
@@ -29,7 +29,7 @@
    cd Tigercat.Admin.Api && dotnet run
    ```
 
-2. 新项目 vite 代理 `/api` 指向 `http://127.0.0.1:5137`。
+2. 新项目 vite 代理 `/api` 与 `/hubs`（`ws: true`）指向 `http://127.0.0.1:5137`。
 3. 数据库选择（SQLite / PostgreSQL / InMemory）与连接串配置见 [operations.md「数据库」](../operations.md#数据库)。
 4. 跨域与生产部署（`Cors__AllowedOrigins`、`AllowedHosts`、`BootstrapAdmin__Password` 等）见 [operations.md「生产配置」](../operations.md#生产配置)。
 5. 各端点契约按需读取 [api.md](../api.md) 与 [docs/api](../api) 专题。

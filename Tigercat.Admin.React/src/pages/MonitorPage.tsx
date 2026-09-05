@@ -34,6 +34,7 @@ import {
 } from '../components/Icons';
 import {
   fetchMonitorSnapshot,
+  startMonitorLive,
   type MonitorNode,
   type MonitorNodeStatus,
   type MonitorSnapshot,
@@ -250,13 +251,29 @@ function MonitorPage() {
       return;
     }
 
-    void loadSnapshot();
-    const timer = window.setInterval(() => {
-      void loadSnapshot();
-    }, Number(intervalSec) * 1000);
+    if (!initializedRef.current) {
+      setLoading(true);
+    }
 
-    return () => window.clearInterval(timer);
-  }, [paused, intervalSec, loadSnapshot]);
+    const stop = startMonitorLive(
+      Number(intervalSec),
+      (data) => {
+        setSnapshot((prev) => applyRemoteSnapshot(prev, data));
+        setErrorMessage('');
+        initializedRef.current = true;
+        setInitialized(true);
+        setLoading(false);
+      },
+      (error) => {
+        const message = readErrorMessage(error, '监控快照加载失败，请稍后重试。');
+        setErrorMessage(message);
+        Message.error({ content: message, duration: 3000 });
+        setLoading(false);
+      },
+    );
+
+    return stop;
+  }, [paused, intervalSec]);
 
   const handleIntervalChange = (value: string | number) => {
     const next = String(value);
@@ -285,7 +302,7 @@ function MonitorPage() {
       <PageHeader
         icon={<MonitorIcon size={24} />}
         title="实时监控"
-        subtitle="轮询监控快照，展示资源水位、吞吐延迟与节点事件"
+        subtitle="推送监控快照，展示资源水位、吞吐延迟与节点事件"
         tags={[
           { label: '实时快照', variant: 'success' },
           { label: '登录可见', variant: 'info' },
@@ -294,7 +311,7 @@ function MonitorPage() {
 
       <PageActionPanel
         title="刷新控制"
-        description="按 2 / 3 / 5 秒轮询 GET /api/monitor/snapshot，默认 3 秒；暂停后停止请求，卸载时清除定时器。"
+        description="优先经 SignalR /hubs/monitor 按 2 / 3 / 5 秒推送，默认 3 秒；连接失败时回退轮询 GET /api/monitor/snapshot。暂停后停止推送与请求，卸载时断开。"
         actions={
           <>
             <Segmented
@@ -469,7 +486,7 @@ function MonitorPage() {
 
       <MutedPanel
         title="演示说明"
-        description="本页轮询 GET /api/monitor/snapshot。服务端用内存步进生成指标，不读取真实主机。QPS 与延迟在前端拼接最近 20 点；事件流按接口返回封顶。暂停后不再发请求。"
+        description="本页优先使用 SignalR 推送监控快照，WebSocket 不可用时轮询 GET /api/monitor/snapshot。服务端用内存步进生成指标，不读取真实主机。QPS 与延迟在前端拼接最近 20 点；事件流按接口返回封顶。暂停后不再推送或请求。"
       />
     </div>
   );

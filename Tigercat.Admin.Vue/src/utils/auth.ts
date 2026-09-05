@@ -11,10 +11,15 @@ export const safeParse = <T = any>(value: string | null): T | null => {
   }
 };
 
-export function getAuthHeaders(): HeadersInit {
+export function getSessionToken(): string | null {
   const session = safeParse<Session>(localStorage.getItem(SESSION_KEY));
-  if (!session?.token) return {};
-  return { Authorization: `Bearer ${session.token}` };
+  return session?.token ?? null;
+}
+
+export function getAuthHeaders(): HeadersInit {
+  const token = getSessionToken();
+  if (!token) return {};
+  return { Authorization: `Bearer ${token}` };
 }
 
 export function detectForgotChannel(target: string): ForgotChannel {

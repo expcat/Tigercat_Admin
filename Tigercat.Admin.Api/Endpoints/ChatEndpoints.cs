@@ -3,6 +3,7 @@ using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Data.Entities;
+using Tigercat.Admin.Api.Hubs;
 using Tigercat.Admin.Api.Serialization;
 
 namespace Tigercat.Admin.Api.Endpoints;
@@ -41,6 +42,7 @@ public class ChatEndpoints : IEndpointDefinition
     private static async Task<IResult> CreateMessage(
         CreateChatMessageRequest request,
         AdminDbContext db,
+        ChatRealtimeNotifier realtime,
         CancellationToken ct)
     {
         var content = TicketsEndpoints.NormalizeOptional(request.Content);
@@ -83,8 +85,11 @@ public class ChatEndpoints : IEndpointDefinition
             .ThenBy(m => m.Id)
             .ToArrayAsync(ct);
 
+        var payload = items.Select(ToResponse).ToArray();
+        await realtime.PublishAsync(payload, ct);
+
         return Results.Json(
-            ApiResult.Ok(items.Select(ToResponse).ToArray()),
+            ApiResult.Ok(payload),
             AppJsonContext.Default.ApiResponseChatMessageResponseArray);
     }
 
