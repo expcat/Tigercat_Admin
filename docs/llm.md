@@ -16,6 +16,7 @@
 | 前端页面、布局、Tigercat UI | [docs/frontend.md](frontend.md) | [docs/api.md](api.md)、[上游建议](frontend-upstream-suggestions.md)、双端同名页面 |
 | API 对接或后端端点 | [docs/api.md](api.md) | 对应 [docs/api](api) 专题、`Tigercat.Admin.Api/Endpoints/*` |
 | 数据库、Redis、媒体、部署、CI | [docs/operations.md](operations.md) | API 或前端专题 |
+| Native AOT / `PublishAot` / JSON source-gen | [docs/operations.md Native AOT 评估](operations.md#native-aot) | csproj 与 `AppJsonContext`（不要打开 `PublishAot`，不要把 AOT 加进 CI） |
 | 新增跨领域能力 | 本文件 + 受影响专题 | 必要时新增专题文档 |
 
 ## Skill 路由

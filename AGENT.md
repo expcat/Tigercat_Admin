@@ -12,7 +12,7 @@
 | [README.md](README.md) | 项目入口、快速开始、文档地图 |
 | [docs/frontend.md](docs/frontend.md) | 前端架构、Tigercat UI 用法、LLM 生成指南、组件缺口 |
 | [docs/api.md](docs/api.md) | API 契约索引；细节分布在 [docs/api](docs/api) |
-| [docs/operations.md](docs/operations.md) | 本地开发、数据库、部署、健康检查和 CI |
+| [docs/operations.md](docs/operations.md) | 本地开发、数据库、部署、健康检查、CI；Native AOT 评估（不启用） |
 | [docs/guide/new-project.md](docs/guide/new-project.md) | 创建新项目线：bootstrap 指南（维护本仓库时也需保持其同步） |
 | [docs/guide/backend.md](docs/guide/backend.md) | 创建新项目线：后端抽象契约与三种方案 |
 

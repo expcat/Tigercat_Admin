@@ -1,6 +1,6 @@
 # 开发、部署与运维指南
 
-本文合并本地开发、数据库、部署、健康检查、CI 和发布 smoke，属「维护本仓库」文档线。前端界面规范见 [frontend.md](frontend.md)，API 契约见 [api.md](api.md)。新项目复用本仓库后端时只需读「数据库」和「生产配置」两节（由 [guide/backend.md](guide/backend.md) 引用）。
+本文合并本地开发、数据库、部署、健康检查、CI 和发布 smoke，属「维护本仓库」文档线。前端界面规范见 [frontend.md](frontend.md)，API 契约见 [api.md](api.md)。新项目复用本仓库后端时只需读「数据库」和「生产配置」两节（由 [guide/backend.md](guide/backend.md) 引用）。Native AOT 只做评估、默认不启用，见 [Native AOT 评估](#native-aot)。
 
 ## 环境与安装
 
@@ -217,7 +217,7 @@ docker build -f Tigercat.Admin.React/Dockerfile -t tigercat-admin-react .
 docker build -f Tigercat.Admin.Vue/Dockerfile -t tigercat-admin-vue .
 ```
 
-- API 镜像监听 `8080`，健康检查为 `/api/health`。
+- API 镜像监听 `8080`，健康检查为 `/api/health`。入口是 `dotnet Tigercat.Admin.Api.dll`（`mcr.microsoft.com/dotnet/aspnet:10.0` 框架依赖运行时）。不要改成 Native AOT 可执行文件；原因见 [Native AOT 评估](#native-aot)。
 - React / Vue 镜像使用 Nginx 承载静态资源，`/healthz` 返回容器健康状态，history 路由 fallback 到 `index.html`。
 
 ## CI 与发布门禁
@@ -229,7 +229,7 @@ docker build -f Tigercat.Admin.Vue/Dockerfile -t tigercat-admin-vue .
 - `backend`：`dotnet test Tigercat.Admin.sln`
 - `frontend`：`pnpm typecheck` 与 `pnpm build`（并构建 Pages 演示产物）
 
-E2E 仍是单 worker（Playwright `workers: 1`），在矩阵通过后跑 demo E2E、双端 E2E、链接检查和 PostgreSQL SQL 生成。
+E2E 仍是单 worker（Playwright `workers: 1`），在矩阵通过后跑 demo E2E、双端 E2E、链接检查和 PostgreSQL SQL 生成。**不要**把 `PublishAot` 或 native ILC publish 加进 CI。
 
 发布前建议执行：
 
@@ -279,3 +279,121 @@ dotnet clean
 dotnet restore
 dotnet build Tigercat.Admin.sln
 ```
+
+<a id="native-aot"></a>
+
+## Native AOT 评估（不启用）
+
+**结论：** 保持现有 JIT + `aspnet` 运行时发布。不要打开 `Tigercat.Admin.Api.csproj` 里已注释的 `PublishAot`，不要把 AOT publish 加进 CI。完整 Native AOT 会被 EF Core、动态 `Database:Provider`、Scalar/OpenAPI、Redis 客户端、MiniExcel、SignalR 和若干反射 JSON 路径挡住。本附录只记录挡点和 JSON source-gen 覆盖面，便于以后复核。
+
+### 现状（已铺垫，开关仍关）
+
+| 项 | 位置 | 状态 |
+| -- | ---- | ---- |
+| `PublishAot` | [Tigercat.Admin.Api.csproj](../Tigercat.Admin.Api/Tigercat.Admin.Api.csproj) | 注释掉，**保持注释** |
+| `InvariantGlobalization` | 同上 | `true`（AOT 友好，但不是 AOT 本身） |
+| `AppJsonContext` | [Serialization/AppJsonContext.cs](../Tigercat.Admin.Api/Serialization/AppJsonContext.cs) | STJ source-gen，覆盖 HTTP 契约包络 |
+| `ConfigureHttpJsonOptions` | [Program.cs](../Tigercat.Admin.Api/Program.cs) | `TypeInfoResolverChain` 插入 `AppJsonContext.Default` |
+| 端点注册 | `Program.cs` `MapEndpoint<T>()` | 显式 `new TEndpoint()`，不做程序集扫描（注释写「AOT compatible」） |
+| Docker | [Tigercat.Admin.Api/Dockerfile](../Tigercat.Admin.Api/Dockerfile) | `ENTRYPOINT ["dotnet", "Tigercat.Admin.Api.dll"]`，`aspnet:10.0` |
+| CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | `dotnet test` / 前端 / e2e，无 AOT |
+
+官方兼容性：ASP.NET Core 10 的 Minimal API 与 SignalR 都是**部分**支持 Native AOT；MVC 不支持。见 [ASP.NET Core Native AOT](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/native-aot)。EF Core 10 的 NativeAOT / 预编译查询仍标 **experimental, not production**，运行时模型构建会走 `NativeAotNoCompiledModel`。见 [EF NativeAOT and precompiled queries](https://learn.microsoft.com/en-us/ef/core/performance/nativeaot-and-precompiled-queries)。
+
+本机评估（2026-09-05，.NET SDK 10.0.400）：
+
+```bash
+dotnet build Tigercat.Admin.Api/Tigercat.Admin.Api.csproj -c Release \
+  -p:IsAotCompatible=true -p:PublishAot=false --no-incremental
+```
+
+- 228 条 IL2026 / IL3050 / IL2090 警告，0 error。这是分析器，**不是** native publish。
+- 其中约 166 条来自 `MapGet` / `MapPost` / `MapPut` / `MapDelete`（未开 RequestDelegateGenerator 时的固定噪声）。
+- 其余主要是无 `JsonTypeInfo` 的 `JsonSerializer`、`ConfigurationBinder.Get<T>`、`Configure<TOptions>`、EF `DbContext` 构造 / `MigrateAsync` / `EnsureCreatedAsync`，以及导出路径的 `GetProperties`。
+- 分析器只扫本项目源码，**不会**把 MiniExcel、Scalar、FreeRedis、StackExchange.Redis 的内部 trim 警告算进来；那些要等 `PublishAot=true` 的 ILC 全图。本环境没有 `clang`，未跑 ILC，也不应为此改 CI。
+
+### 包级挡点
+
+直接依赖以 [Tigercat.Admin.Api.csproj](../Tigercat.Admin.Api/Tigercat.Admin.Api.csproj) 和 [Tigercat.ServiceDefaults.csproj](../Tigercat.ServiceDefaults/Tigercat.ServiceDefaults.csproj) 为准。
+
+| 包 | 当前角色 | 为何挡完整 AOT |
+| -- | -------- | -------------- |
+| `Microsoft.EntityFrameworkCore.Sqlite` 10.0.8、`Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.2、`Microsoft.EntityFrameworkCore.InMemory` 10.0.8 | 运行时三选一 | NativeAOT 需要编译模型 + 预编译查询（EF 10 仍实验）。`OnModelCreating` 运行时建模型在 AOT 下会失败。三个 provider 都编进同一个程序集。 |
+| `SQLitePCLRaw.bundle_e_sqlite3` 2.1.13 | SQLite native | 原生互操作；AOT 还要处理 native 库打包，且与动态 provider 叠加。 |
+| `Scalar.AspNetCore` 2.14.14、`Microsoft.AspNetCore.OpenApi` 10.0.8 | Development Scalar；生产默认关 | OpenAPI 文档生成走反射。包被引用就会进 trim 图。生产即使不映射 `/scalar`，AOT 发布仍要处理该依赖。 |
+| `StackExchange.Redis` 2.13.17、`Microsoft.Extensions.Caching.StackExchangeRedis` 10.0.8 | 缓存 L2、`IConnectionMultiplexer` | 库已改善 AOT，但未作为本仓库的 AOT 门禁；Lua/`ScriptEvaluate` 一类 API 仍可能 trim 警告。 |
+| `FreeRedis` 1.5.5 | Redis Streams 发布/消费 | 未标 `IsAotCompatible`；阻塞命令与动态调用不适合 AOT。 |
+| `MiniExcel` 1.44.1 | `GET /api/export/*` 的 xlsx | `SaveAs` 对 `List<Dictionary<string, object?>>` 做反射映射。 |
+| `Microsoft.Extensions.Caching.Hybrid` 10.0.0 | `ICacheService` | 包本身可 AOT，但默认 JSON 在 AOT 下必须 `WithJsonSerializerOptions` 接到 source-gen；当前是裸 `AddHybridCache()`。 |
+| `Microsoft.AspNetCore.SignalR`（共享框架） | `/hubs/monitor`、`/hubs/chat` | ASP.NET Core 10 对 SignalR 仅部分支持。默认 JSON hub protocol 不用 `AppJsonContext`。 |
+| OpenTelemetry 1.15.x（含 `Instrumentation.EntityFrameworkCore` 1.15.1-beta.1） | ServiceDefaults | instrumentation 大量 DiagnosticSource / 反射；beta EF 探测不是 AOT 目标。 |
+
+`Microsoft.EntityFrameworkCore.Design` 是 `PrivateAssets=all`，不进发布输出，不是运行时挡点。
+
+### 应用代码挡点
+
+这些是本仓库自己的形状，不是「换包版本」能消掉的。
+
+1. **动态 `Database:Provider`。** [DatabaseProviderResolver](../Tigercat.Admin.Api/Data/DatabaseProviderResolver.cs) 在解析 `IServiceProvider` 时在 Sqlite / PostgreSQL / InMemory 之间切换。AOT 编译模型按 provider 生成；一个二进制三种 provider 要么三种模型全编进去，要么发布时钉死一种。当前设计就是运行时选择。
+2. **EF 运行时模型与迁移。** `AdminDbContext.OnModelCreating` 手写 Fluent 配置；启动走 `DbInitializer` 的 `EnsureCreatedAsync` / `MigrateAsync`。没有 `Microsoft.EntityFrameworkCore.Tasks` 编译模型。
+3. **RequestDelegateGenerator 未开。** 每个 `MapGet`/`MapPost` 都会 IL2026/IL3050。AOT 模板靠 source-gen 拦截器消这些警告。
+4. **`WebApplication.CreateBuilder`。** 不是硬挡，但 AOT 模板用 `CreateSlimBuilder` 才能把 IIS / HTTPS / 多余 logging 裁掉。
+5. **配置绑定。** `Configure<MediaOptions>`、`Configure<AuthRateLimitOptions>`、`Get<AuthRateLimitOptions>`、`Get<string[]>`（CORS）、多处 `GetValue<bool>`。AOT 需要配置 source-gen 或把选项改成手动读标量。
+6. **导出反射。** `ExportEndpoints.PropertyAccessorCache<T>` 对 `GetProperties` + `Expression.Compile`（动态代码），JSON 导出再 `SerializeToUtf8Bytes` 一份 `List<Dictionary<string, object?>>`。xlsx 交给 MiniExcel。
+7. **SignalR 载荷。** `MonitorHub` 推 `MonitorSnapshotResponse`，聊天 fan-out `ChatMessageResponse[]`。这两种类型已在 `AppJsonContext`，但 hub 不走 `ConfigureHttpJsonOptions`。
+8. **HybridCache 泛型。** L2 序列化的类型：`string`（2FA / 忘记密码）、`string[]`（权限）、`SettingItemResponse[]`（设置）。后两个已在 source-gen 里，但 `AddHybridCache()` 没有接 `AppJsonContext`。
+9. **媒体 provider 解析。** 目前只有 `Local`，`ActivatorUtilities.CreateInstance<LocalMediaStorageProvider>` 类型已知，不是主挡点。
+10. **Docker / CI。** 原生可执行文件不能再 `dotnet *.dll`；CI 也没有 clang / native RID 矩阵。两者都不改。
+
+RateLimiter、CORS、HealthChecks、Identity **仅** `PasswordHasher<T>`、显式 `MapEndpoint<T>` 与 `InvariantGlobalization` 不构成挡点。
+
+### JSON source-gen 覆盖
+
+`AppJsonContext`（`JsonSourceGenerationOptions`：camelCase）已注册 HTTP 请求/响应包络，并在 `ConfigureHttpJsonOptions` 与 Redis Stream / 审计日志的 `JsonSerializerOptions.TypeInfoResolverChain` 里插入。端点成功/失败路径普遍写 `Results.Json(..., AppJsonContext.Default.ApiResponse…)`，而不是反射 overload。
+
+已覆盖的域（`[JsonSerializable]`，约 170 条，含 `ApiResponse<T>` / `PagedResponse<T>` 包装）：
+
+| 域 | 代表类型 |
+| -- | -------- |
+| 包络 | `ApiResponse<object>`、`ApiResponse<string>`、`ApiContracts` |
+| 认证 | `LoginRequest` / `LoginResponse`、`RegisterRequest`、改密、2FA、忘记密码、`UserPermissionsResponse` |
+| 用户 / 角色 | CRUD 请求、`UserItemResponse`、`RoleDetailResponse`、`PermissionInfoResponse` 及分页 |
+| 统计 / 导出行 | `StatsOverviewResponse`、`StatsTrendResponse`、`ExportUserRow`、`ExportRoleRow` |
+| 设置 / 媒体 | `SettingItemResponse[]`、`UpdateSettingsRequest`、媒体列表/详情/引用/孤儿清理 |
+| 通知 / 监控 / 任务 | `NotificationItemResponse`、`MonitorSnapshotResponse`、`AdminTaskResponse` 及对应请求 |
+| 工单 / 聊天 / 评论 | `TicketResponse`、`ChatMessageResponse[]`、`CommentResponse` |
+| 项目 / 日历 | `ProjectResponse`、`CalendarEventResponse`、`CreateCalendarEventRequest` |
+| 内容 / 作业 / 导入 | `ArticleResponse`、`JobResponse`、`ImportJobResponse` 及创建/更新请求 |
+| 健康 / 信息 | `HealthResponse`、`HealthDependencyStatus`、`InfoResponse` |
+| 事件 | `EventEnvelope` |
+| 字典 / 数组 | `Dictionary<string, string>`、`Dictionary<string, string?>`、`Dictionary<string, HealthDependencyStatus>`、`string[]` |
+
+HTTP JSON 体（Minimal API 绑定 + `Results.Json`）对已注册类型来说，source-gen **覆盖了 API 包络**。缺口在「注册了但调用没带 `JsonTypeInfo`」以及「类型本身无法静态化」：
+
+| 缺口 | 位置 | 说明 |
+| ---- | ---- | ---- |
+| `JsonSerializer.Serialize/Deserialize` 不传 `JsonTypeInfo` | `ContentEndpoints.EncodeStringArray` / `DecodeStringArray` | 类型 `string[]` 已注册，调用仍走反射 overload（IL2026/IL3050） |
+| 同上 | `NotificationsEndpoints` 元数据、`AdminNotificationService.SerializeMetadata` | `Dictionary<string, string>` 已注册，调用未传对应 `JsonTypeInfo` |
+| 同上 | `DbInitializer` 种子 `TagsJson` / `ColumnJson` | 启动时反射序列化 |
+| `EventEnvelope.Data` 为 `Dictionary<string, object?>` | 信封定义、审计 `FormatDataValue`、Redis Stream 发布/消费 | `object?` 运行时类型无法 source-gen。审计/Stream 虽把 `AppJsonContext` 放进 `TypeInfoResolverChain`，调用仍是泛型 reflection overload，多态 payload 在 AOT 下会失败 |
+| 导出 JSON | `ExportEndpoints.BuildJsonResult` | `List<Dictionary<string, object?>>` + 新的 `JsonSerializerOptions`（无 source-gen） |
+| HybridCache L2 | `AddHybridCache()` | 未 `WithJsonSerializerOptions`；AOT 下 L2 JSON 需要 context |
+| SignalR JSON protocol | `AddSignalR()`、`MonitorHub`、`ChatRealtimeNotifier` | 不使用 `AppJsonContext` |
+| 配置 POCO | `MediaOptions`、`AuthRateLimitOptions` | 不是 STJ 问题，是 `ConfigurationBinder` |
+
+`ApiResponse<object>` 只能稳住失败包络（`data` 为 null）。不要把它当成任意成功载荷的 AOT 逃逸口。
+
+### 以后若再评估（现在不做）
+
+按顺序才有意义，且**仍然默认不做**：
+
+1. EF NativeAOT 达到生产声明；本仓库生成编译模型，并在发布时钉死单一 `Database:Provider`。
+2. 打开 RequestDelegateGenerator；JSON 反射调用全部改成 `AppJsonContext` 的 `JsonTypeInfo`；`EventEnvelope.Data` 改为 `JsonElement` 或封闭标量字典。
+3. HybridCache 接到同一 context；SignalR 使用带 source-gen 的 JSON hub protocol。
+4. 替换或删除 MiniExcel；导出字段改为显式选择器，而不是 `GetProperties`。
+5. Scalar/OpenAPI 从 AOT 发布图里拿掉（继续仅 Development / 可选登录后打开）。
+6. 证实或替换 FreeRedis / StackExchange.Redis / OTEL instrumentation。
+7. Docker 改为 native RID + `runtime-deps`，入口不再是 `dotnet *.dll`。
+8. 只有 ILC publish **零 trim/AOT 警告** 且核心契约测试在原生二进制上通过，才考虑把 `PublishAot` 写进 csproj。即便那时，也先不要加进 CI。
+
+在此之前，发布模型保持：`dotnet publish`（非 AOT）→ `aspnet:10.0` 镜像 → `/api/health` 探针。
