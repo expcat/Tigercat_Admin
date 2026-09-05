@@ -6,7 +6,7 @@
 
 | 方法与路径 | 认证 | 权限 | 参数 / 请求体 | `data` | 错误 / 事件 |
 | ---------- | ---- | ---- | ------------- | ------ | ----------- |
-| `GET /api/health` | 否 | 无 | 无 | `status`、`timestamp`、`details`；`details` 含 `database`、`redis`、`eventChannel`、`mediaStorage`、`configuration`、`security` | 任一依赖或关键配置不可用时返回 `503`；生产 `security` 检查 PostgreSQL TLS、Redis TLS、CORS、`AllowedHosts`、默认管理员密码（Identity 哈希或未升级的 SHA256 hex 均按 `admin123` 校验）和安全策略 |
+| `GET /api/health` | 否 | 无 | 无 | `status`、`timestamp`、`details`；`details` 含 `database`、`redis`、`eventChannel`、`mediaStorage`、`configuration`、`security` | 包络不变。内部委托 `IHealthCheck`（tag `ready`）。任一依赖或关键配置不可用时返回 `503`；`Infrastructure:UseInMemory=true` 时 Redis / 事件通道为 in-memory。生产 `security` 检查 PostgreSQL TLS、Redis TLS、CORS、`AllowedHosts`、默认管理员密码（Identity 哈希或未升级的 SHA256 hex 均按 `admin123` 校验）和安全策略。Aspire `/health` 与 `/alive` 仅 Development，不是本契约 |
 | `GET /api/health/redis` | 否 | 无 | 无 | `status`、`timestamp` | Redis 不可用返回 `503` |
 | `GET /api/info` | 否 | 无 | 无 | `name`、`version`、`description` | - |
 | `POST /api/auth/register` | 否 | 无 | `username`、`password` 必填 | `username` | `400` 用户名/密码为空或密码策略不满足；`409` 用户已存在；同一 IP 触发认证限流时 `429`（`ApiResponse`，message「请求过于频繁」）；事件 `auth.user.registered` 到 `stream:auth` |

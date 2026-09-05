@@ -3,6 +3,7 @@ using FreeRedis;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
@@ -12,6 +13,7 @@ using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Endpoints;
 using Tigercat.Admin.Api.EventBus;
+using Tigercat.Admin.Api.Health;
 using Tigercat.Admin.Api.Import;
 using Tigercat.Admin.Api.Media;
 using Tigercat.Admin.Api.Notifications;
@@ -20,6 +22,7 @@ using Tigercat.Admin.Api.Serialization;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+builder.Services.AddHealthChecks().AddAdminHealthChecks();
 
 var useInMemoryInfrastructure = builder.Configuration.GetValue<bool>("Infrastructure:UseInMemory");
 
@@ -277,24 +280,17 @@ if (!useInMemoryInfrastructure)
 
 await app.RunAsync();
 
-static async Task<IResult> GetHealth(
-    AdminDbContext dbContext,
-    IConfiguration configuration,
-    IWebHostEnvironment environment,
-    IServiceProvider services,
-    CancellationToken ct)
+static async Task<IResult> GetHealth(HealthCheckService healthChecks, CancellationToken ct)
 {
-    ct.ThrowIfCancellationRequested();
+    var report = await healthChecks.CheckHealthAsync(
+        registration => registration.Tags.Contains(HealthCheckHelpers.ReadyTag),
+        ct);
 
-    var details = new Dictionary<string, HealthDependencyStatus>(StringComparer.OrdinalIgnoreCase)
+    var details = new Dictionary<string, HealthDependencyStatus>(StringComparer.OrdinalIgnoreCase);
+    foreach (var (name, entry) in report.Entries)
     {
-        ["database"] = await CheckDatabaseAsync(dbContext, configuration, ct),
-        ["redis"] = await CheckRedisAsync(configuration, services, ct),
-        ["eventChannel"] = CheckEventChannel(configuration, services),
-        ["mediaStorage"] = CheckMediaStorage(configuration),
-        ["configuration"] = CheckConfiguration(configuration, environment),
-        ["security"] = await CheckSecurityAsync(dbContext, configuration, environment, ct),
-    };
+        details[name] = HealthCheckHelpers.ToDependencyStatus(entry);
+    }
 
     var status = details.Values.Any(item => item.Status == "unhealthy")
         ? "unhealthy"
@@ -350,276 +346,6 @@ static Task<IResult> GetInfo(CancellationToken ct)
         AppJsonContext.Default.ApiResponseInfoResponse));
 }
 
-static async Task<HealthDependencyStatus> CheckDatabaseAsync(
-    AdminDbContext dbContext,
-    IConfiguration configuration,
-    CancellationToken ct)
-{
-    try
-    {
-        var databaseOptions = DatabaseProviderResolver.Resolve(configuration);
-        var reachable = databaseOptions.Provider == AdminDatabaseProvider.InMemory
-            || await dbContext.Database.CanConnectAsync(ct);
-
-        return reachable
-            ? HealthDependencyStatus.Healthy(databaseOptions.Provider.ToString())
-            : HealthDependencyStatus.Unhealthy(databaseOptions.Provider.ToString(), "Database connection failed.");
-    }
-    catch (Exception ex)
-    {
-        return HealthDependencyStatus.Unhealthy("unknown", ex.Message);
-    }
-}
-
-static async Task<HealthDependencyStatus> CheckRedisAsync(
-    IConfiguration configuration,
-    IServiceProvider services,
-    CancellationToken ct)
-{
-    if (configuration.GetValue<bool>("Infrastructure:UseInMemory"))
-    {
-        return HealthDependencyStatus.Healthy("in-memory");
-    }
-
-    var connectionString = configuration.GetConnectionString("Redis");
-    if (string.IsNullOrWhiteSpace(connectionString))
-    {
-        return HealthDependencyStatus.Unhealthy("redis", "ConnectionStrings:Redis is not configured.");
-    }
-
-    var multiplexer = services.GetService<IConnectionMultiplexer>();
-    if (multiplexer is null)
-    {
-        return HealthDependencyStatus.Unhealthy("redis", "Redis multiplexer is not registered.");
-    }
-
-    try
-    {
-        await multiplexer.GetDatabase().PingAsync().WaitAsync(ct);
-        return HealthDependencyStatus.Healthy("redis");
-    }
-    catch (Exception ex) when (ex is RedisConnectionException or RedisTimeoutException or ObjectDisposedException or NotSupportedException)
-    {
-        return HealthDependencyStatus.Unhealthy("redis", "Redis unavailable.");
-    }
-}
-
-static HealthDependencyStatus CheckEventChannel(IConfiguration configuration, IServiceProvider services)
-{
-    if (configuration.GetValue<bool>("Infrastructure:UseInMemory"))
-    {
-        return HealthDependencyStatus.Healthy("in-memory");
-    }
-
-    if (services.GetService<IEventPublisher>() is null)
-    {
-        return HealthDependencyStatus.Unhealthy("redis-stream", "Event publisher is not registered.");
-    }
-
-    var connectionString = configuration.GetConnectionString("Redis");
-    return string.IsNullOrWhiteSpace(connectionString)
-        ? HealthDependencyStatus.Unhealthy("redis-stream", "ConnectionStrings:Redis is required for Redis Stream events.")
-        : HealthDependencyStatus.Healthy($"streams:{string.Join(",", EventBusConstants.Streams)}");
-}
-
-static async Task<HealthDependencyStatus> CheckSecurityAsync(
-    AdminDbContext dbContext,
-    IConfiguration configuration,
-    IWebHostEnvironment environment,
-    CancellationToken ct)
-{
-    if (!environment.IsProduction())
-    {
-        return HealthDependencyStatus.Healthy(environment.EnvironmentName);
-    }
-
-    var issues = new List<string>();
-
-    try
-    {
-        var databaseOptions = DatabaseProviderResolver.Resolve(configuration);
-        if (databaseOptions.Provider == AdminDatabaseProvider.PostgreSql &&
-            !HasPostgreSqlTls(databaseOptions.ConnectionString))
-        {
-            issues.Add("PostgreSQL connection should require TLS.");
-        }
-    }
-    catch (Exception ex)
-    {
-        issues.Add(ex.Message);
-    }
-
-    if (!configuration.GetValue<bool>("Infrastructure:UseInMemory") &&
-        !HasRedisTls(configuration.GetConnectionString("Redis")))
-    {
-        issues.Add("Redis connection should enable TLS.");
-    }
-
-    var allowedOrigins = configuration
-        .GetSection("Cors:AllowedOrigins")
-        .Get<string[]>() ?? [];
-
-    if (allowedOrigins.Length == 0)
-    {
-        issues.Add("Cors:AllowedOrigins must be configured.");
-    }
-
-    var allowedHosts = configuration["AllowedHosts"];
-    if (string.IsNullOrWhiteSpace(allowedHosts) || allowedHosts.Trim() == "*")
-    {
-        issues.Add("AllowedHosts should be restricted in Production.");
-    }
-
-    var adminHash = await dbContext.Users
-        .Where(u => u.Username == "admin")
-        .Select(u => u.PasswordHash)
-        .FirstOrDefaultAsync(ct);
-
-    if (PasswordHasher.IsDefaultAdminPassword(adminHash))
-    {
-        issues.Add("Default admin password must be rotated.");
-    }
-
-    if (string.IsNullOrWhiteSpace(configuration["BootstrapAdmin:Password"]))
-    {
-        issues.Add("BootstrapAdmin:Password should be injected before first production startup.");
-    }
-
-    try
-    {
-        var policy = await AuthPolicySettings.LoadAsync(dbContext, ct);
-        if (policy.SessionTtl == TimeSpan.FromMinutes(AuthPolicySettings.DefaultSessionTimeoutMinutes))
-        {
-            issues.Add("auth.sessionTimeout is still at the default value.");
-        }
-
-        if (policy.MaxLoginAttempts == AuthPolicySettings.DefaultMaxAttempts)
-        {
-            issues.Add("auth.maxAttempts is still at the default value.");
-        }
-
-        if (policy.LoginLockout == TimeSpan.FromMinutes(AuthPolicySettings.DefaultLoginLockoutMinutes))
-        {
-            issues.Add("auth.loginLockoutMinutes is still at the default value.");
-        }
-
-        if (policy.PasswordMinLength == AuthPolicySettings.DefaultPasswordMinLength)
-        {
-            issues.Add("auth.passwordMinLength is still at the default value.");
-        }
-
-        if (!policy.RequireComplexPassword)
-        {
-            issues.Add("auth.requireComplexPassword should be enabled in Production.");
-        }
-    }
-    catch (Exception ex)
-    {
-        issues.Add($"Auth policy check failed: {ex.Message}");
-    }
-
-    return issues.Count == 0
-        ? HealthDependencyStatus.Healthy("production")
-        : HealthDependencyStatus.Unhealthy("production", string.Join(" ", issues));
-}
-
-static HealthDependencyStatus CheckConfiguration(IConfiguration configuration, IWebHostEnvironment environment)
-{
-    var issues = new List<string>();
-
-    try
-    {
-        _ = DatabaseProviderResolver.Resolve(configuration);
-    }
-    catch (Exception ex)
-    {
-        issues.Add(ex.Message);
-    }
-
-    if (!configuration.GetValue<bool>("Infrastructure:UseInMemory") &&
-        string.IsNullOrWhiteSpace(configuration.GetConnectionString("Redis")))
-    {
-        issues.Add("ConnectionStrings:Redis is required unless Infrastructure:UseInMemory=true.");
-    }
-
-    var allowedOrigins = configuration
-        .GetSection("Cors:AllowedOrigins")
-        .Get<string[]>() ?? [];
-
-    if (!environment.IsDevelopment() && allowedOrigins.Length == 0)
-    {
-        issues.Add("Cors:AllowedOrigins should be configured explicitly outside Development.");
-    }
-
-    return issues.Count == 0
-        ? HealthDependencyStatus.Healthy(environment.EnvironmentName)
-        : HealthDependencyStatus.Unhealthy(environment.EnvironmentName, string.Join(" ", issues));
-}
-
-static HealthDependencyStatus CheckMediaStorage(IConfiguration configuration)
-{
-    try
-    {
-        var options = configuration.GetSection("Media").Get<MediaOptions>() ?? new MediaOptions();
-        var provider = MediaStorageProviderResolver.Resolve(options);
-        return HealthDependencyStatus.Healthy(provider);
-    }
-    catch (Exception ex)
-    {
-        return HealthDependencyStatus.Unhealthy("media", ex.Message);
-    }
-}
-
-static bool HasPostgreSqlTls(string? connectionString)
-{
-    var values = ParseConnectionString(connectionString, ';');
-    return values.TryGetValue("SSL Mode", out var sslMode) &&
-        (sslMode.Equals("Require", StringComparison.OrdinalIgnoreCase) ||
-         sslMode.Equals("VerifyCA", StringComparison.OrdinalIgnoreCase) ||
-         sslMode.Equals("VerifyFull", StringComparison.OrdinalIgnoreCase));
-}
-
-static bool HasRedisTls(string? connectionString)
-{
-    var values = ParseConnectionString(connectionString, ',');
-    return values.TryGetValue("ssl", out var ssl) &&
-        bool.TryParse(ssl, out var enabled) &&
-        enabled;
-}
-
-static Dictionary<string, string> ParseConnectionString(string? connectionString, char separator)
-{
-    var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-    if (string.IsNullOrWhiteSpace(connectionString))
-    {
-        return values;
-    }
-
-    foreach (var part in connectionString.Split(separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-    {
-        var index = part.IndexOf('=');
-        if (index <= 0 || index == part.Length - 1)
-        {
-            continue;
-        }
-
-        values[part[..index].Trim()] = part[(index + 1)..].Trim();
-    }
-
-    return values;
-}
-
-public record HealthDependencyStatus(string Status, string Target, string? Message)
-{
-    public static HealthDependencyStatus Healthy(string target) => new("healthy", target, null);
-
-    public static HealthDependencyStatus Unhealthy(string target, string message) => new("unhealthy", target, message);
-}
-
-public record HealthResponse(
-    string Status,
-    DateTime Timestamp,
-    Dictionary<string, HealthDependencyStatus>? Details = null);
 public record InfoResponse(string Name, string Version, string Description);
 
 // Make the implicit Program class accessible to the integration test project.

@@ -19,16 +19,16 @@ api.WithUrlForEndpoint("https", url =>
     url.DisplayText = url.Url;
 });
 
-var vue = builder.AddPnpmApp("tigercat-admin-vue", "../Tigercat.Admin.Vue")
-    .WithHttpEndpoint(env: "PORT")
+var vue = builder.AddViteApp("tigercat-admin-vue", "../Tigercat.Admin.Vue")
+    .WithPnpm()
     .WithExternalHttpEndpoints()
     .WithEnvironment("VITE_API_URL", api.GetEndpoint("http"))
     .WithReference(api)
     .WaitFor(api)
     .PublishAsDockerFile();
 
-var react = builder.AddPnpmApp("tigercat-admin-react", "../Tigercat.Admin.React")
-    .WithHttpEndpoint(env: "PORT")
+var react = builder.AddViteApp("tigercat-admin-react", "../Tigercat.Admin.React")
+    .WithPnpm()
     .WithExternalHttpEndpoints()
     .WithEnvironment("VITE_API_URL", api.GetEndpoint("http"))
     .WithReference(api)

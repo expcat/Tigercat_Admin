@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Endpoints;
+using Tigercat.Admin.Api.Observability;
 
 namespace Tigercat.Admin.Api.Import;
 
@@ -58,6 +59,7 @@ public sealed class ImportJobProgressService(
             if (ImportJobsEndpoints.AdvanceProgress(job))
             {
                 changed = true;
+                AdminMetrics.RecordImportJob(job.Status == "completed" ? "completed" : "progress");
             }
         }
 

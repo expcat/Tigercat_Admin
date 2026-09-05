@@ -1,6 +1,7 @@
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Endpoints;
+using Tigercat.Admin.Api.Health;
 
 namespace Tigercat.Admin.Api.Serialization;
 

@@ -5,9 +5,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.NodeJs" Version="9.5.2" />
+    <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.3.5" />
     <PackageReference Include="Aspire.Hosting.Redis" Version="13.3.5" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.NodeJS.Extensions" Version="9.9.0" />
     <!-- Override StreamJsonRpc 2.22.23's MessagePack 2.5.192 (NU1903/NU1902, GHSA-hv8m-jj95-wg3x and related). 2.5.302 is the 2.x security merge; 3.x is breaking. -->
     <PackageReference Include="MessagePack" Version="2.5.302" />
   </ItemGroup>

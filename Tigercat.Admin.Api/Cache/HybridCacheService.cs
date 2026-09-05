@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Caching.Hybrid;
+using Tigercat.Admin.Api.Observability;
 
 namespace Tigercat.Admin.Api.Cache;
 
@@ -17,11 +18,18 @@ public sealed class HybridCacheService(HybridCache cache) : ICacheService
     public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        return await cache.GetOrCreateAsync(
+        var miss = false;
+        var value = await cache.GetOrCreateAsync(
             key,
-            static _ => new ValueTask<T>(default(T)!),
+            _ =>
+            {
+                miss = true;
+                return new ValueTask<T>(default(T)!);
+            },
             ReadOptions,
             cancellationToken: ct);
+        AdminMetrics.RecordCacheEvent(miss ? "miss" : "hit");
+        return value;
     }
 
     public async Task SetAsync<T>(string key, T value, TimeSpan? ttl = null, CancellationToken ct = default)
@@ -49,11 +57,18 @@ public sealed class HybridCacheService(HybridCache cache) : ICacheService
         CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        return await cache.GetOrCreateAsync(
+        var miss = false;
+        var value = await cache.GetOrCreateAsync(
             key,
-            token => new ValueTask<T>(factory(token)!),
+            token =>
+            {
+                miss = true;
+                return new ValueTask<T>(factory(token)!);
+            },
             ToOptions(ttl),
             cancellationToken: ct);
+        AdminMetrics.RecordCacheEvent(miss ? "miss" : "hit");
+        return value;
     }
 
     private static HybridCacheEntryOptions? ToOptions(TimeSpan? ttl)

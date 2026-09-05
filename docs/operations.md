@@ -26,7 +26,7 @@ cd Tigercat.Aspire
 dotnet run
 ```
 
-Aspire 会编排 API、React、Vue 和 Redis，并提供 Dashboard。
+Aspire 会编排 API、React、Vue 和 Redis，并提供 Dashboard。前端资源用 `Aspire.Hosting.JavaScript` 的 `AddViteApp` + `WithPnpm`（与 AppHost SDK 同主版本）；不要再引用已更名的 `Aspire.Hosting.NodeJs` 9.x。
 
 单独运行：
 
@@ -53,6 +53,7 @@ cd Tigercat.Admin.Vue && pnpm dev
 pnpm dev:react
 pnpm dev:vue
 pnpm dev:demo:all
+pnpm typecheck
 pnpm build:frontend
 pnpm build:demo
 pnpm build:pages
@@ -172,7 +173,7 @@ pnpm build:pages
 - 升级前写入的 SHA256 hex 哈希在成功登录后透明重哈希。启动时若仍有旧哈希，日志会给出条数，不会在启动时批量改写（没有明文）。
 - 生产健康检查用 hasher **校验** `admin123`，同时识别 Identity 哈希和未升级的 SHA256 hex。默认管理员密码必须轮换。
 - `POST /api/auth/login`、`/api/auth/two-factor/verify`、`/api/auth/forgot-password*`、`/api/auth/register` 启用按 IP 的 ASP.NET `RateLimiter`（配置节 `AuthRateLimit`：`PermitLimit`、`WindowSeconds`）。开发默认 120 次/60 秒；生产样例 30 次/60 秒。账号锁定（`auth.maxAttempts`）仍然独立生效。限流拒绝返回 `ApiResponse` `429`，message 为「请求过于频繁，请稍后再试」。
-- 开发环境暴露 `/openapi/v1.json` 与 `/scalar`，文档含 Bearer / `X-Token` 安全方案。生产默认关闭。若必须打开：设置 `OpenApi:Enabled=true`，这两条路由会走登录过滤器，禁止无鉴权读取内部模型。
+- 开发环境暴露 `/openapi/v1.json` 与 `/scalar`，文档含 Bearer / `X-Token` 安全方案，方便对照契约。生产**默认关闭**：OpenAPI 会列出内部模型、字段和错误形状，匿名读取等于把 API 面公开。不要为了「方便调试」在公网打开。若必须打开：设置 `OpenApi:Enabled=true`，这两条路由会走登录过滤器，禁止无鉴权读取内部模型。
 
 ## 媒体、Redis 与事件
 
@@ -187,14 +188,26 @@ pnpm build:pages
 
 ## 健康检查与观测
 
-无需认证的健康入口：
+无需认证的生产探针：
 
-- `/api/health`：数据库、Redis、事件通道、媒体存储、配置和安全检查。
-- `/api/health/redis`：Redis ping。
+- `/api/health`：返回现有 `ApiResponse` 包络（`status` / `timestamp` / `details`）。`details` 含 `database`、`redis`、`eventChannel`、`mediaStorage`、`configuration`、`security`。内部委托 ASP.NET `IHealthCheck`（`HealthCheckService`，tag `ready`）；契约字段和 503 语义不变。测试 host 设 `Infrastructure:UseInMemory=true` 时 Redis / 事件通道走 in-memory 分支，不碰真实 Redis。
+- `/api/health/redis`：仅在未启用 in-memory 基础设施时映射，直接 ping Redis。
 
-生产 readiness probe 至少接入 `/api/health`。生产环境会严格检查 PostgreSQL TLS、Redis TLS、CORS 白名单、`AllowedHosts`、默认管理员密码轮换（Identity 或遗留 SHA256 哈希均按 `admin123` 校验）、`BootstrapAdmin:Password` 和安全策略默认值。
+Aspire ServiceDefaults 另有 `/health`（全部检查）和 `/alive`（仅 `live` tag）。这两条**只在 Development 映射**，生产不暴露，避免把依赖细节放到未鉴权路径上。生产 readiness 用 `/api/health`（Docker `HEALTHCHECK` 也打这条）。不要把 Aspire `/health` 当生产探针，除非单独加鉴权或网络隔离。
 
-OpenTelemetry 注册 `Tigercat.Admin.Api` meter；配置 `OTEL_EXPORTER_OTLP_ENDPOINT` 后输出 logs、metrics 和 traces。
+生产环境会严格检查 PostgreSQL TLS、Redis TLS、CORS 白名单、`AllowedHosts`、默认管理员密码轮换（Identity 或遗留 SHA256 哈希均按 `admin123` 校验）、`BootstrapAdmin:Password` 和安全策略默认值。
+
+OpenTelemetry 在配置 `OTEL_EXPORTER_OTLP_ENDPOINT` 后导出 logs、metrics 和 traces。Meter 名 `Tigercat.Admin.Api`：
+
+| 指标 | 含义 |
+| ---- | ---- |
+| `tigercat.auth.events` | 登录 / 2FA / 改密 / 退出 |
+| `tigercat.redis_stream.events` | Redis Stream 发布与消费 |
+| `tigercat.cache.events` | HybridCache `hit` / `miss`（`Get` 与 `GetOrSet`） |
+| `tigercat.import_jobs` | 导入任务 `created` / `progress` / `completed` |
+| `tigercat.jobs` | 定时任务 `created` / `updated`（仍无真实 cron 执行器） |
+
+Tracing 含 ASP.NET、HttpClient、Runtime，以及 EF Core instrumentation（`OpenTelemetry.Instrumentation.EntityFrameworkCore`，当前为 1.15.x beta）。`/health`、`/alive`、`/api/health*` 不进 traces。
 
 ## Docker
 
@@ -209,7 +222,14 @@ docker build -f Tigercat.Admin.Vue/Dockerfile -t tigercat-admin-vue .
 
 ## CI 与发布门禁
 
-[.github/workflows/ci.yml](../.github/workflows/ci.yml) 覆盖后端测试、前端构建、Pages 演示构建、demo E2E、双端 E2E、链接检查和 PostgreSQL SQL 生成。
+[.github/workflows/ci.yml](../.github/workflows/ci.yml) 在 `push` / `pull_request` 到 `main` 以及 `workflow_dispatch` 时运行。Node 固定 20（与 README 一致），不要为 MCP engines `>=22.13` 强升 Admin。
+
+始终跑的矩阵：
+
+- `backend`：`dotnet test Tigercat.Admin.sln`
+- `frontend`：`pnpm typecheck` 与 `pnpm build`（并构建 Pages 演示产物）
+
+E2E 仍是单 worker（Playwright `workers: 1`），在矩阵通过后跑 demo E2E、双端 E2E、链接检查和 PostgreSQL SQL 生成。
 
 发布前建议执行：
 

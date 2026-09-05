@@ -9,6 +9,7 @@ using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Data.Entities;
 using Tigercat.Admin.Api.Endpoints;
 using Tigercat.Admin.Api.EventBus;
+using Tigercat.Admin.Api.Health;
 using Tigercat.Admin.Api.Notifications;
 using Tigercat.Admin.Api.Tests.Fixtures;
 using Tigercat.Admin.Api.Tests.Stubs;
@@ -1239,8 +1240,10 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         Assert.Equal("healthy", body.Data.Details["database"].Status);
         Assert.Equal("healthy", body.Data.Details["redis"].Status);
         Assert.Equal("healthy", body.Data.Details["eventChannel"].Status);
+        Assert.Equal("healthy", body.Data.Details["mediaStorage"].Status);
         Assert.Equal("healthy", body.Data.Details["configuration"].Status);
         Assert.Equal("healthy", body.Data.Details["security"].Status);
+        Assert.Equal("in-memory", body.Data.Details["redis"].Target);
     }
 
     [Fact]

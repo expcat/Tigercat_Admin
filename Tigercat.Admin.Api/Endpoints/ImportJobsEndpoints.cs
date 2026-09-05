@@ -3,6 +3,7 @@ using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Data.Entities;
+using Tigercat.Admin.Api.Observability;
 using Tigercat.Admin.Api.Serialization;
 
 namespace Tigercat.Admin.Api.Endpoints;
@@ -109,6 +110,7 @@ public class ImportJobsEndpoints : IEndpointDefinition
 
         db.ImportJobs.Add(entity);
         await db.SaveChangesAsync(ct);
+        AdminMetrics.RecordImportJob("created");
 
         return Results.Json(
             ApiResult.Ok(ToResponse(entity)),

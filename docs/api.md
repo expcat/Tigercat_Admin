@@ -35,12 +35,12 @@ JSON API 默认返回 `ApiResponse<T>`：
 
 ## OpenAPI
 
-开发环境提供：
+开发环境提供 Scalar 与 OpenAPI JSON，用来对照本文件和 [docs/api](api) 专题，不是第二份契约：
 
 - OpenAPI JSON：`/openapi/v1.json`
 - Scalar UI：`/scalar`
 
-文档包含会话 token 安全方案：`Authorization: Bearer` 与 `X-Token`。生产默认不映射这两条路由；仅当 `OpenApi:Enabled=true` 时打开，并要求已登录（`LoginFilter`），避免无鉴权暴露内部模型。详见 [operations.md](operations.md)。
+文档包含会话 token 安全方案：`Authorization: Bearer` 与 `X-Token`。生产默认不映射这两条路由：文档会列出内部模型、字段和错误形状，匿名读取等于公开 API 面。仅当 `OpenApi:Enabled=true` 时打开，并要求已登录（`LoginFilter`）。权威字段仍以本文件与专题为准。详见 [operations.md](operations.md)。
 
 ## 通用错误
 

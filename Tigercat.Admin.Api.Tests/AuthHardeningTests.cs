@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
+using Tigercat.Admin.Api.Health;
 using Tigercat.Admin.Api.Tests.Fixtures;
 using Xunit;
 
