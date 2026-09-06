@@ -234,7 +234,15 @@ async function confirmClose() {
 const drawerOpen = ref(false)
 const form = ref({ title: '', category: '缺陷', priority: 'medium' as TicketPriority, description: '' })
 const formFiles = ref<UploadFile[]>([])
+let drawerTrigger: HTMLElement | null = null
+function captureDrawerTrigger() {
+  drawerTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
+}
+function focusDrawerTrigger() {
+  drawerTrigger?.focus()
+}
 function openDrawer() {
+  captureDrawerTrigger()
   form.value = { title: '', category: '缺陷', priority: 'medium', description: '' }
   formFiles.value = []
   drawerOpen.value = true
@@ -505,6 +513,7 @@ const openCount = computed(
       :mask-closable="true"
       @update:open="(v: boolean) => (drawerOpen = v)"
       @close="drawerOpen = false"
+      @after-close="focusDrawerTrigger"
     >
       <div class="space-y-4">
         <div>

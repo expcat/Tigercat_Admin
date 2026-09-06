@@ -99,7 +99,12 @@ const form = ref({
   type: 'meeting' as CalendarEventType,
   location: '',
 })
+let drawerTrigger: HTMLElement | null = null
+function focusDrawerTrigger() {
+  drawerTrigger?.focus()
+}
 function openDrawer() {
+  drawerTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
   form.value = {
     title: '',
     date: selectedDate.value,
@@ -290,6 +295,7 @@ onMounted(() => {
       :mask-closable="true"
       @update:open="(v: boolean) => (drawerOpen = v)"
       @close="drawerOpen = false"
+      @after-close="focusDrawerTrigger"
     >
       <div class="space-y-4">
         <div>

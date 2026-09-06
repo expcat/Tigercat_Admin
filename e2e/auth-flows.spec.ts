@@ -59,9 +59,13 @@ test.describe('登录流程增强（忘记密码 / 两步验证 / 注册成功�
     await page.getByPlaceholder('请输入邮箱或手机号').fill('');
 
     await page.getByPlaceholder('请输入邮箱或手机号').fill('demo@tigercat.local');
-    await page.getByRole('button', { name: '获取验证码' }).click();
+    const sendCode = page.getByRole('button', { name: '获取验证码' });
+    await sendCode.focus();
+    await page.keyboard.press('Enter');
     await fillOtp(page, '123456');
-    await page.getByRole('button', { name: '下一步' }).click();
+    const nextStep = page.getByRole('button', { name: '下一步' });
+    await nextStep.focus();
+    await page.keyboard.press('Enter');
 
     await page.getByPlaceholder('请输入新密码').fill('demo-new-123');
     await page.getByPlaceholder('请再次输入新密码').fill('demo-new-123');

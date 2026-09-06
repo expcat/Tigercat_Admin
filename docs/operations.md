@@ -141,6 +141,7 @@ export AllowedHosts="admin-api.example.com"
 export BootstrapAdmin__Password="<secret>"
 export AuthRateLimit__PermitLimit=30
 export AuthRateLimit__WindowSeconds=60
+export ForwardedHeaders__Enabled=false
 export OpenApi__Enabled=false
 export Media__Provider=Local
 export Media__LocalRoot=/var/lib/tigercat-admin/media
@@ -172,7 +173,14 @@ pnpm build:pages
 - 密码存储使用 ASP.NET Identity `PasswordHasher<T>`（PBKDF2）。**不要**引入 Cookie Identity UI 或 JwtBearer；会话仍是 `X-Token` / `Authorization: Bearer` + `ISessionStore`。
 - 升级前写入的 SHA256 hex 哈希在成功登录后透明重哈希。启动时若仍有旧哈希，日志会给出条数，不会在启动时批量改写（没有明文）。
 - 生产健康检查用 hasher **校验** `admin123`，同时识别 Identity 哈希和未升级的 SHA256 hex。默认管理员密码必须轮换。
-- `POST /api/auth/login`、`/api/auth/two-factor/verify`、`/api/auth/forgot-password*`、`/api/auth/register` 启用按 IP 的 ASP.NET `RateLimiter`（配置节 `AuthRateLimit`：`PermitLimit`、`WindowSeconds`）。开发默认 120 次/60 秒；生产样例 30 次/60 秒。账号锁定（`auth.maxAttempts`）仍然独立生效。限流拒绝返回 `ApiResponse` `429`，message 为「请求过于频繁，请稍后再试」。
+- `POST /api/auth/login`、`/api/auth/two-factor/verify`、`/api/auth/forgot-password*`、`/api/auth/register` 启用按 IP 的 ASP.NET `RateLimiter`（配置节 `AuthRateLimit`：`PermitLimit`、`WindowSeconds`）。开发默认 `AuthRateLimitOptions.DefaultPermitLimit`（120 次/60 秒）。显式 `AuthRateLimit:PermitLimit` 始终生效；生产未配置该键时回落到 `ProductionPermitLimit`（30）。生产样例写 30。账号锁定（`auth.maxAttempts`）仍然独立生效。限流拒绝返回 `ApiResponse` `429`，message 为「请求过于频繁，请稍后再试」。
+- 限流分区键是 `Connection.RemoteIpAddress`。API 若在反向代理后面，必须配置 `ForwardedHeaders` 才会按客户端 IP 分区，否则所有用户挤在代理地址上。默认 **关闭**。只有 `ForwardedHeaders:Enabled=true` **并且** `KnownProxies` 或 `KnownNetworks` 至少有一条有效 CIDR/地址时才调用 `UseForwardedHeaders`（在 `UseRateLimiter` 之前）。不要清空 allow-list 去信任任意 `X-Forwarded-For`，那会让客户端伪造 IP 绕过限流。生产示例：
+
+```bash
+export ForwardedHeaders__Enabled=true
+export ForwardedHeaders__KnownProxies__0="10.0.0.1"
+export ForwardedHeaders__KnownNetworks__0="10.0.0.0/8"
+```
 - 开发环境暴露 `/openapi/v1.json` 与 `/scalar`，文档含 Bearer / `X-Token` 安全方案，方便对照契约。生产**默认关闭**：OpenAPI 会列出内部模型、字段和错误形状，匿名读取等于把 API 面公开。不要为了「方便调试」在公网打开。若必须打开：设置 `OpenApi:Enabled=true`，这两条路由会走登录过滤器，禁止无鉴权读取内部模型。
 
 ## 媒体、Redis 与事件
@@ -203,7 +211,7 @@ OpenTelemetry 在配置 `OTEL_EXPORTER_OTLP_ENDPOINT` 后导出 logs、metrics �
 | ---- | ---- |
 | `tigercat.auth.events` | 登录 / 2FA / 改密 / 退出 |
 | `tigercat.redis_stream.events` | Redis Stream 发布与消费 |
-| `tigercat.cache.events` | HybridCache `hit` / `miss`（`Get` 与 `GetOrSet`） |
+| `tigercat.cache.events` | HybridCache `hit` / `miss`（`Get` 与 `GetOrSet`）。`Get` 用 `DisableUnderlyingData` 做 try-get，缺省值记 `miss`，命中记 `hit`。 |
 | `tigercat.import_jobs` | 导入任务 `created` / `progress` / `completed` |
 | `tigercat.jobs` | 定时任务 `created` / `updated`（仍无真实 cron 执行器） |
 
@@ -222,7 +230,7 @@ docker build -f Tigercat.Admin.Vue/Dockerfile -t tigercat-admin-vue .
 
 ## CI 与发布门禁
 
-[.github/workflows/ci.yml](../.github/workflows/ci.yml) 在 `push` / `pull_request` 到 `main` 以及 `workflow_dispatch` 时运行。Node 固定 20（与 README 一致），不要为 MCP engines `>=22.13` 强升 Admin。
+[.github/workflows/ci.yml](../.github/workflows/ci.yml) **仅** `workflow_dispatch` 手动触发（不再在 `push` / `pull_request` 时自动跑）。需要门禁时在 GitHub Actions 里手动 Run workflow。Node 固定 20（与 README 一致），不要为 MCP engines `>=22.13` 强升 Admin。
 
 始终跑的矩阵：
 
@@ -338,7 +346,7 @@ dotnet build Tigercat.Admin.Api/Tigercat.Admin.Api.csproj -c Release \
 2. **EF 运行时模型与迁移。** `AdminDbContext.OnModelCreating` 手写 Fluent 配置；启动走 `DbInitializer` 的 `EnsureCreatedAsync` / `MigrateAsync`。没有 `Microsoft.EntityFrameworkCore.Tasks` 编译模型。
 3. **RequestDelegateGenerator 未开。** 每个 `MapGet`/`MapPost` 都会 IL2026/IL3050。AOT 模板靠 source-gen 拦截器消这些警告。
 4. **`WebApplication.CreateBuilder`。** 不是硬挡，但 AOT 模板用 `CreateSlimBuilder` 才能把 IIS / HTTPS / 多余 logging 裁掉。
-5. **配置绑定。** `Configure<MediaOptions>`、`Configure<AuthRateLimitOptions>`、`Get<AuthRateLimitOptions>`、`Get<string[]>`（CORS）、多处 `GetValue<bool>`。AOT 需要配置 source-gen 或把选项改成手动读标量。
+5. **配置绑定。** `Configure<MediaOptions>`、`Configure<AuthRateLimitOptions>`、`Configure<ForwardedHeadersSettings>`、`Get<AuthRateLimitOptions>`、`Get<ForwardedHeadersSettings>`、`Get<string[]>`（CORS）、多处 `GetValue<bool>`。AOT 需要配置 source-gen 或把选项改成手动读标量。
 6. **导出反射。** `ExportEndpoints.PropertyAccessorCache<T>` 对 `GetProperties` + `Expression.Compile`（动态代码），JSON 导出再 `SerializeToUtf8Bytes` 一份 `List<Dictionary<string, object?>>`。xlsx 交给 MiniExcel。
 7. **SignalR 载荷。** `MonitorHub` 推 `MonitorSnapshotResponse`，聊天 fan-out `ChatMessageResponse[]`。这两种类型已在 `AppJsonContext`，但 hub 不走 `ConfigureHttpJsonOptions`。
 8. **HybridCache 泛型。** L2 序列化的类型：`string`（2FA / 忘记密码）、`string[]`（权限）、`SettingItemResponse[]`（设置）。后两个已在 source-gen 里，但 `AddHybridCache()` 没有接 `AppJsonContext`。
@@ -379,7 +387,7 @@ HTTP JSON 体（Minimal API 绑定 + `Results.Json`）对已注册类型来说�
 | 导出 JSON | `ExportEndpoints.BuildJsonResult` | `List<Dictionary<string, object?>>` + 新的 `JsonSerializerOptions`（无 source-gen） |
 | HybridCache L2 | `AddHybridCache()` | 未 `WithJsonSerializerOptions`；AOT 下 L2 JSON 需要 context |
 | SignalR JSON protocol | `AddSignalR()`、`MonitorHub`、`ChatRealtimeNotifier` | 不使用 `AppJsonContext` |
-| 配置 POCO | `MediaOptions`、`AuthRateLimitOptions` | 不是 STJ 问题，是 `ConfigurationBinder` |
+| 配置 POCO | `MediaOptions`、`AuthRateLimitOptions`、`ForwardedHeadersSettings` | 不是 STJ 问题，是 `ConfigurationBinder` |
 
 `ApiResponse<object>` 只能稳住失败包络（`data` 为 null）。不要把它当成任意成功载荷的 AOT 逃逸口。
 

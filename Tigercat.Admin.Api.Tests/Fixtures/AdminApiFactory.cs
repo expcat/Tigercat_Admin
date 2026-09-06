@@ -205,6 +205,25 @@ public class LockoutAndLimiterApiFactory : InMemoryApiFactory
 }
 
 /// <summary>
+/// Tight IP limiter plus forwarded-header trust for proxy IP partition tests.
+/// KnownNetworks covers TestServer's unspecified/loopback remote address.
+/// </summary>
+public class ForwardedHeadersRateLimitApiFactory : StrictAuthRateLimitApiFactory
+{
+    protected override Dictionary<string, string?> ConfigurationOverrides
+    {
+        get
+        {
+            var map = base.ConfigurationOverrides;
+            map["ForwardedHeaders:Enabled"] = "true";
+            map["ForwardedHeaders:KnownProxies:0"] = "127.0.0.1";
+            map["ForwardedHeaders:KnownNetworks:0"] = "127.0.0.0/8";
+            return map;
+        }
+    }
+}
+
+/// <summary>
 /// In-memory factory that replaces the throwing Redis client with an empty-stream stub
 /// so audit export can return 200 in tests.
 /// </summary>

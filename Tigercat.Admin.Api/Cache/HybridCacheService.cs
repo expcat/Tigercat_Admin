@@ -18,17 +18,21 @@ public sealed class HybridCacheService(HybridCache cache) : ICacheService
     public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        var miss = false;
+        // DisableUnderlyingData is a try-get: the factory is skipped on miss and
+        // GetOrCreateAsync returns default(T) without writing. SetAsync never stores
+        // null, so a default value is a miss for the payloads this cache holds.
         var value = await cache.GetOrCreateAsync(
             key,
-            _ =>
-            {
-                miss = true;
-                return new ValueTask<T>(default(T)!);
-            },
+            static _ => new ValueTask<T>(default(T)!),
             ReadOptions,
             cancellationToken: ct);
-        AdminMetrics.RecordCacheEvent(miss ? "miss" : "hit");
+        if (IsAbsent(value))
+        {
+            AdminMetrics.RecordCacheEvent("miss");
+            return default;
+        }
+
+        AdminMetrics.RecordCacheEvent("hit");
         return value;
     }
 
@@ -69,6 +73,11 @@ public sealed class HybridCacheService(HybridCache cache) : ICacheService
             cancellationToken: ct);
         AdminMetrics.RecordCacheEvent(miss ? "miss" : "hit");
         return value;
+    }
+
+    private static bool IsAbsent<T>(T? value)
+    {
+        return value is null || EqualityComparer<T>.Default.Equals(value, default);
     }
 
     private static HybridCacheEntryOptions? ToOptions(TimeSpan? ttl)

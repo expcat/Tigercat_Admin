@@ -1,3 +1,4 @@
+using System.Net;
 using System.Threading.RateLimiting;
 using FreeRedis;
 using Microsoft.AspNetCore.RateLimiting;
@@ -14,6 +15,7 @@ using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Endpoints;
 using Tigercat.Admin.Api.EventBus;
 using Tigercat.Admin.Api.Health;
+using Tigercat.Admin.Api.Hosting;
 using Tigercat.Admin.Api.Hubs;
 using Tigercat.Admin.Api.Import;
 using Tigercat.Admin.Api.Media;
@@ -147,12 +149,19 @@ builder.Services.AddOpenApi(options =>
 
 builder.Services.Configure<AuthRateLimitOptions>(
     builder.Configuration.GetSection(AuthRateLimitOptions.SectionName));
+builder.Services.Configure<ForwardedHeadersSettings>(
+    builder.Configuration.GetSection(ForwardedHeadersSettings.SectionName));
+builder.Services.ConfigureOptions<ConfigureForwardedHeadersOptions>();
+
 builder.Services.AddRateLimiter(options =>
 {
-    var limitOptions = builder.Configuration
-        .GetSection(AuthRateLimitOptions.SectionName)
-        .Get<AuthRateLimitOptions>() ?? new AuthRateLimitOptions();
-    var permitLimit = Math.Max(1, limitOptions.PermitLimit);
+    var limitSection = builder.Configuration.GetSection(AuthRateLimitOptions.SectionName);
+    var limitOptions = limitSection.Get<AuthRateLimitOptions>() ?? new AuthRateLimitOptions();
+    var permitLimitConfigured = !string.IsNullOrWhiteSpace(limitSection["PermitLimit"]);
+    var permitLimit = AuthRateLimitOptions.ResolvePermitLimit(
+        limitOptions.PermitLimit,
+        builder.Environment.IsProduction(),
+        permitLimitConfigured);
     var window = TimeSpan.FromSeconds(Math.Max(1, limitOptions.WindowSeconds));
 
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -223,6 +232,20 @@ if (openApiEnabled)
         scalar.AddEndpointFilter(new LoginFilter());
     }
 }
+
+app.Use(async (context, next) =>
+{
+    var forwarded = context.RequestServices.GetRequiredService<IOptions<ForwardedHeadersOptions>>().Value;
+    if (ConfigureForwardedHeadersOptions.IsEnabled(forwarded))
+    {
+        // TestServer (and some hosts) leave RemoteIpAddress null. ForwardedHeadersMiddleware
+        // only rewrites when the immediate peer is known; treat a missing peer as loopback.
+        context.Connection.RemoteIpAddress ??= IPAddress.Loopback;
+    }
+
+    await next();
+});
+app.UseForwardedHeaders();
 
 app.UseCors();
 app.UseRateLimiter();

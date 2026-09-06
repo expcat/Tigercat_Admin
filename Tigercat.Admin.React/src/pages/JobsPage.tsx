@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Input } from '@expcat/tigercat-react/Input';
@@ -112,13 +112,21 @@ function JobsPage() {
     }
   };
 
+  const drawerTriggerRef = useRef<HTMLElement | null>(null);
+  const captureDrawerTrigger = () => {
+    drawerTriggerRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  };
+
   const openCreate = () => {
+    captureDrawerTrigger();
     setEditingId(null);
     setForm({ ...EMPTY_FORM });
     setDrawerOpen(true);
   };
 
   const openEdit = (job: Job) => {
+    captureDrawerTrigger();
     setEditingId(job.id);
     setForm({
       name: job.name,
@@ -339,7 +347,8 @@ function JobsPage() {
         width="460px"
         mask
         maskClosable
-        onClose={() => setDrawerOpen(false)}>
+        onClose={() => setDrawerOpen(false)}
+        onAfterClose={() => drawerTriggerRef.current?.focus()}>
         <div className="space-y-4">
           <div>
             <Text weight="medium" className="mb-1 block">

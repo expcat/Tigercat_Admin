@@ -73,6 +73,24 @@ test.describe('多标签页导航（tags-view）', () => {
     await expect(page.getByTestId('shell-tag-profile')).toHaveAttribute('data-active', 'true');
   });
 
+  test('标签条 Enter 切换，标签操作菜单可打开', async ({ page }) => {
+    await login(page);
+
+    await page.goto('/#/settings');
+    await expect(page.getByTestId('shell-tag-settings')).toHaveAttribute('data-active', 'true');
+
+    const homeTag = page.getByTestId('shell-tag-home');
+    await homeTag.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/#\/dashboard$/);
+    await expect(page.getByTestId('shell-tag-home')).toHaveAttribute('data-active', 'true');
+
+    await page.getByTestId('shell-tags-view-actions').click();
+    await expect(page.getByText('关闭其他', { exact: true })).toBeVisible();
+    await expect(page.getByText('关闭全部', { exact: true })).toBeVisible();
+    await page.keyboard.press('Escape');
+  });
+
   test('游客页与异常页不显示标签条', async ({ page }) => {
     await page.goto('/#/login');
     await expect(page.getByTestId('shell-tags-view')).toHaveCount(0);

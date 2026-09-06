@@ -15,4 +15,18 @@ public sealed class AuthRateLimitOptions
 
     public int PermitLimit { get; set; } = DefaultPermitLimit;
     public int WindowSeconds { get; set; } = DefaultWindowSeconds;
+
+    /// <summary>
+    /// Explicit <c>AuthRateLimit:PermitLimit</c> always wins. Production without that
+    /// key uses <see cref="ProductionPermitLimit"/> instead of the development default.
+    /// </summary>
+    public static int ResolvePermitLimit(int permitLimit, bool isProduction, bool permitLimitConfigured)
+    {
+        if (permitLimitConfigured)
+        {
+            return Math.Max(1, permitLimit);
+        }
+
+        return isProduction ? ProductionPermitLimit : Math.Max(1, permitLimit);
+    }
 }

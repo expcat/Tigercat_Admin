@@ -75,6 +75,89 @@ test.describe('弹层焦点恢复', () => {
   });
 });
 
+async function expectCreateDrawerEscRestoresFocus(
+  page: import('@playwright/test').Page,
+  testInfo: import('@playwright/test').TestInfo,
+  path: string,
+  triggerName: string,
+  fieldPlaceholder: string,
+) {
+  await page.goto(appPath(testInfo, path));
+  const trigger = page.getByRole('button', { name: triggerName });
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+  const field = page.getByPlaceholder(fieldPlaceholder);
+  await expect(field).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(field).toBeHidden();
+  await expectFocused(trigger);
+}
+
+test.describe('页面 Drawer 焦点恢复', () => {
+  test('工单 / 日历 / 任务新建 Drawer Esc 后焦点回到触发器', async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(60_000);
+    await loginAsAdmin(page, testInfo);
+    await expectCreateDrawerEscRestoresFocus(
+      page,
+      testInfo,
+      '/tickets',
+      '新建工单',
+      '简要描述问题或需求',
+    );
+    await expectCreateDrawerEscRestoresFocus(
+      page,
+      testInfo,
+      '/calendar',
+      '新建事件',
+      '例如：迭代评审会',
+    );
+    await expectCreateDrawerEscRestoresFocus(
+      page,
+      testInfo,
+      '/jobs',
+      '新建任务',
+      '例如：每日对账批处理',
+    );
+  });
+
+  test('帮助 FAQ Collapse 可键盘展开，报表 Segmented 可切换', async ({
+    page,
+  }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+
+    await page.goto(appPath(testInfo, '/help'));
+    await expect(page.getByText('帮助中心').first()).toBeVisible();
+    const permissionFaq = page.getByRole('button', {
+      name: '为什么某些菜单看不到？',
+    });
+    await permissionFaq.scrollIntoViewIfNeeded();
+    await permissionFaq.focus();
+    await expectFocused(permissionFaq);
+    await page.keyboard.press('Enter');
+    await expect(
+      page.getByText('左侧菜单会根据角色权限码过滤'),
+    ).toBeVisible();
+
+    await page.goto(appPath(testInfo, '/reports'));
+    await expect(page.getByText('报表打印').first()).toBeVisible();
+    await page.getByText('销售周报', { exact: true }).click();
+    await expect(page.getByText('Tigercat 后台 · 销售周报').first()).toBeVisible();
+  });
+
+  test('大数据页「恢复顺序」按钮可键盘聚焦', async ({ page }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+    await page.goto(appPath(testInfo, '/performance'));
+    await expect(page.getByText('大数据演示').first()).toBeVisible();
+    await page.getByText('自由拖拽', { exact: true }).click();
+    const restore = page.getByRole('button', { name: '恢复顺序' });
+    await expect(restore).toBeVisible();
+    await restore.focus();
+    await expectFocused(restore);
+  });
+});
+
 test.describe('Vue overlay 与异常页回归', () => {
   test('登录后 404 / 403 再回用户页再退出，应用根不是空 ConfigProvider', async ({
     page,

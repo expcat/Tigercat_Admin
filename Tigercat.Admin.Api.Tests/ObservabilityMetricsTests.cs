@@ -36,6 +36,21 @@ public class ObservabilityMetricsTests : IClassFixture<InMemoryApiFactory>
     }
 
     [Fact]
+    public async Task CacheGetAsync_RecordsMissThenHit()
+    {
+        using var listener = new MeterCounterListener(AdminMetrics.MeterName, AdminMetrics.CacheEventsName);
+        var cache = _factory.Services.GetRequiredService<ICacheService>();
+        var key = $"cache:metrics:get:{Guid.NewGuid():N}";
+
+        Assert.Null(await cache.GetAsync<string>(key));
+        await cache.SetAsync(key, "hello", TimeSpan.FromMinutes(1));
+        Assert.Equal("hello", await cache.GetAsync<string>(key));
+
+        Assert.True(listener.Count("result", "miss") >= 1);
+        Assert.True(listener.Count("result", "hit") >= 1);
+    }
+
+    [Fact]
     public async Task CreateJob_RecordsJobCreated()
     {
         using var listener = new MeterCounterListener(AdminMetrics.MeterName, AdminMetrics.JobsName);

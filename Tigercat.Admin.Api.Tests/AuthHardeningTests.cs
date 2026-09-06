@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Tigercat.Admin.Api.Auth;
@@ -138,6 +139,118 @@ public class AuthRateLimitTests
         Assert.NotNull(limitedBody);
         Assert.Equal(429, limitedBody.Code);
         Assert.Contains("请求过于频繁", limitedBody.Message);
+    }
+
+    [Fact]
+    public void ResolvePermitLimit_UsesProductionConstantWhenUnconfigured()
+    {
+        Assert.Equal(30, AuthRateLimitOptions.ProductionPermitLimit);
+        Assert.Equal(
+            AuthRateLimitOptions.ProductionPermitLimit,
+            AuthRateLimitOptions.ResolvePermitLimit(
+                AuthRateLimitOptions.DefaultPermitLimit,
+                isProduction: true,
+                permitLimitConfigured: false));
+        Assert.Equal(
+            AuthRateLimitOptions.DefaultPermitLimit,
+            AuthRateLimitOptions.ResolvePermitLimit(
+                AuthRateLimitOptions.DefaultPermitLimit,
+                isProduction: false,
+                permitLimitConfigured: false));
+        Assert.Equal(
+            120,
+            AuthRateLimitOptions.ResolvePermitLimit(120, isProduction: true, permitLimitConfigured: true));
+        Assert.Equal(
+            5,
+            AuthRateLimitOptions.ResolvePermitLimit(5, isProduction: true, permitLimitConfigured: true));
+    }
+
+    [Fact]
+    public void ProductionSample_PermitLimit_MatchesConstant()
+    {
+        var samplePath = FindRepoFile(Path.Combine("Tigercat.Admin.Api", "appsettings.Production.sample.json"));
+        using var json = JsonDocument.Parse(File.ReadAllText(samplePath));
+        var permitLimit = json.RootElement.GetProperty("AuthRateLimit").GetProperty("PermitLimit").GetInt32();
+        Assert.Equal(AuthRateLimitOptions.ProductionPermitLimit, permitLimit);
+    }
+
+    [Fact]
+    public async Task ForwardedHeaders_PartitionsAuthLimiterByClientIp()
+    {
+        await using var factory = new ForwardedHeadersRateLimitApiFactory();
+        var client = factory.CreateClient();
+
+        for (var i = 0; i < 5; i++)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/login")
+            {
+                Content = JsonContent.Create(new LoginRequest($"fwd-a-{i}-{Guid.NewGuid():N}"[..20], "wrong-password"))
+            };
+            request.Headers.TryAddWithoutValidation("X-Forwarded-For", "203.0.113.10");
+            var failed = await client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, failed.StatusCode);
+        }
+
+        using (var limitedRequest = new HttpRequestMessage(HttpMethod.Post, "/api/auth/login")
+        {
+            Content = JsonContent.Create(new LoginRequest($"fwd-a-x-{Guid.NewGuid():N}"[..20], "wrong-password"))
+        })
+        {
+            limitedRequest.Headers.TryAddWithoutValidation("X-Forwarded-For", "203.0.113.10");
+            var limited = await client.SendAsync(limitedRequest);
+            Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+        }
+
+        using var otherClient = new HttpRequestMessage(HttpMethod.Post, "/api/auth/login")
+        {
+            Content = JsonContent.Create(new LoginRequest($"fwd-b-{Guid.NewGuid():N}"[..20], "wrong-password"))
+        };
+        otherClient.Headers.TryAddWithoutValidation("X-Forwarded-For", "203.0.113.20");
+        var other = await client.SendAsync(otherClient);
+        Assert.Equal(HttpStatusCode.Unauthorized, other.StatusCode);
+    }
+
+    [Fact]
+    public async Task ForwardedHeadersDisabled_IgnoresSpoofedClientIp()
+    {
+        await using var factory = new StrictAuthRateLimitApiFactory();
+        var client = factory.CreateClient();
+
+        for (var i = 0; i < 5; i++)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/login")
+            {
+                Content = JsonContent.Create(new LoginRequest($"spoof-{i}-{Guid.NewGuid():N}"[..20], "wrong-password"))
+            };
+            request.Headers.TryAddWithoutValidation("X-Forwarded-For", $"198.51.100.{i + 1}");
+            var failed = await client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, failed.StatusCode);
+        }
+
+        using var limitedRequest = new HttpRequestMessage(HttpMethod.Post, "/api/auth/login")
+        {
+            Content = JsonContent.Create(new LoginRequest($"spoof-x-{Guid.NewGuid():N}"[..20], "wrong-password"))
+        };
+        limitedRequest.Headers.TryAddWithoutValidation("X-Forwarded-For", "198.51.100.99");
+        var limited = await client.SendAsync(limitedRequest);
+        Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+    }
+
+    private static string FindRepoFile(string relativePath)
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            var candidate = Path.Combine(dir.FullName, relativePath);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            dir = dir.Parent;
+        }
+
+        throw new FileNotFoundException(relativePath);
     }
 }
 

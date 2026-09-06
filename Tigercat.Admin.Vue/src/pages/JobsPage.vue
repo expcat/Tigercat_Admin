@@ -103,12 +103,21 @@ const form = ref({
 
 const drawerTitle = computed(() => (editingId.value ? '编辑任务' : '新建任务'))
 
+let drawerTrigger: HTMLElement | null = null
+function captureDrawerTrigger() {
+  drawerTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
+}
+function focusDrawerTrigger() {
+  drawerTrigger?.focus()
+}
 function openCreate() {
+  captureDrawerTrigger()
   editingId.value = null
   form.value = { name: '', cron: '0 2 * * *', concurrency: 2, timeout: '60', batchSize: '500', enabled: true }
   drawerOpen.value = true
 }
 function openEdit(job: Job) {
+  captureDrawerTrigger()
   editingId.value = job.id
   form.value = {
     name: job.name,
@@ -323,6 +332,7 @@ onMounted(() => {
       :mask-closable="true"
       @update:open="(v: boolean) => (drawerOpen = v)"
       @close="drawerOpen = false"
+      @after-close="focusDrawerTrigger"
     >
       <div class="space-y-4">
         <div>

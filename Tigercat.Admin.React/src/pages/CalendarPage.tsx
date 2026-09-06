@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Input } from '@expcat/tigercat-react/Input';
@@ -136,7 +136,11 @@ function CalendarPage() {
     [upcoming],
   );
 
+  const drawerTriggerRef = useRef<HTMLElement | null>(null);
+
   const openDrawer = () => {
+    drawerTriggerRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setForm({
       title: '',
       date: selectedDate,
@@ -309,7 +313,8 @@ function CalendarPage() {
         width="420px"
         mask
         maskClosable
-        onClose={() => setDrawerOpen(false)}>
+        onClose={() => setDrawerOpen(false)}
+        onAfterClose={() => drawerTriggerRef.current?.focus()}>
         <div className="space-y-4">
           <div>
             <Text weight="medium" className="mb-1 block">

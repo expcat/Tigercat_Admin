@@ -66,6 +66,29 @@ test.describe('异常页与路由健壮性', () => {
     await expect(page.getByText('无权访问')).toBeVisible();
   });
 
+  test('404 返回首页按钮可键盘触发，有历史时返回上一页', async ({ page }) => {
+    await login(page, 'admin');
+    await page.goto('/#/settings');
+    await expect(page).toHaveURL(/#\/settings$/);
+
+    await page.goto('/#/not-an-existing-route');
+    await expect(page).toHaveURL(/#\/404$/);
+    await expect(page.getByRole('heading', { name: '页面不存在' })).toBeVisible();
+    await expect(page.getByText('没有可返回的历史记录')).toHaveCount(0);
+
+    const back = page.getByRole('button', { name: '返回上一页' });
+    await back.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/#\/settings$/);
+
+    await page.goto('/#/not-an-existing-route');
+    await expect(page).toHaveURL(/#\/404$/);
+    const home = page.getByRole('button', { name: '返回首页' });
+    await home.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/#\/dashboard$/);
+  });
+
   test('403 与 500 异常页可独立访问', async ({ page }) => {
     await page.goto('/#/403');
     await expect(page.getByText('无权访问')).toBeVisible();

@@ -85,6 +85,86 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
     }
   });
 
+  test('Analytics / Profile 窄屏不溢出', async ({ page }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+
+    await page.goto(appPath(testInfo, '/analytics'));
+    await expect(page.getByText('数据分析').first()).toBeVisible();
+    await expectNoPageHorizontalOverflow(page);
+
+    await page.goto(appPath(testInfo, '/profile'));
+    await expect(page.getByText('个人中心').first()).toBeVisible();
+    await expectNoPageHorizontalOverflow(page);
+  });
+
+  test('Calendar 月视图窄屏不溢出', async ({ page }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+    await page.goto(appPath(testInfo, '/calendar'));
+    await expect(page.getByText('团队日历').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: '新建事件' })).toBeVisible();
+    await expectNoPageHorizontalOverflow(page);
+  });
+
+  test('Content / Gallery 窄屏不溢出', async ({ page }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+
+    await page.goto(appPath(testInfo, '/content'));
+    await expect(page.getByText('内容编辑').first()).toBeVisible();
+    await expectNoPageHorizontalOverflow(page);
+
+    await page.goto(appPath(testInfo, '/gallery'));
+    await expect(page.getByText('媒体图库').first()).toBeVisible();
+    await expectNoPageHorizontalOverflow(page);
+  });
+
+  test('Jobs / Import 窄屏不溢出', async ({ page }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+
+    await page.goto(appPath(testInfo, '/jobs'));
+    await expect(page.getByText('任务列表').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: '新建任务' })).toBeVisible();
+    await expectNoPageHorizontalOverflow(page);
+
+    await page.goto(appPath(testInfo, '/import'));
+    await expect(page.getByText('数据导入').first()).toBeVisible();
+    await expectNoPageHorizontalOverflow(page);
+  });
+
+  test('Help / Reports 窄屏不溢出', async ({ page }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+
+    await page.goto(appPath(testInfo, '/help'));
+    await expect(page.getByText('帮助中心').first()).toBeVisible();
+    await expectNoPageHorizontalOverflow(page);
+
+    await page.goto(appPath(testInfo, '/reports'));
+    await expect(page.getByText('报表打印').first()).toBeVisible();
+    await expectNoPageHorizontalOverflow(page);
+  });
+
+  test('Performance 窄屏不溢出', async ({ page }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+    await page.goto(appPath(testInfo, '/performance'));
+    await expect(page.getByText('大数据演示').first()).toBeVisible();
+    await expect(page.getByTestId('performance-virtual-list')).toBeVisible();
+    await expectNoPageHorizontalOverflow(page);
+  });
+
+  test('多标签与锁屏窄屏不溢出', async ({ page }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+    await page.goto(appPath(testInfo, '/settings'));
+    await expect(page.getByTestId('shell-tags-view')).toBeVisible();
+    await expect(page.getByTestId('shell-tag-settings')).toBeVisible();
+    await expectNoPageHorizontalOverflow(page);
+
+    await page.locator('.p2-header-user-btn').click();
+    await page.getByText('锁定屏幕', { exact: true }).click();
+    const overlay = page.getByTestId('shell-lock-screen');
+    await expect(overlay).toBeVisible();
+    await expect(overlay.getByText('已锁定 · 输入 PIN 解锁')).toBeVisible();
+    await expectNoPageHorizontalOverflow(page);
+  });
+
   test('Auth OTP 窄屏数字格不溢出', async ({ page }, testInfo) => {
     test.skip(!isDemoProject(testInfo), '两步验证 OTP 仅 MockApi 演示账号');
 
@@ -102,6 +182,9 @@ test.describe('dark colorScheme coverage', { tag: '@dark' }, () => {
     await loginAsAdmin(page, testInfo);
     await expectDarkSchemeApplied(page);
     await expectAppNotEmptyShell(page);
+
+    await expect(page.getByTestId('shell-tags-view')).toBeVisible();
+    await expect(page.getByTestId('shell-tag-home')).toBeVisible();
 
     await page.locator('[data-tour="notification-bell"]').click();
     await expect(page.getByRole('button', { name: '查看全部通知' })).toBeVisible();
@@ -132,6 +215,47 @@ test.describe('dark colorScheme coverage', { tag: '@dark' }, () => {
     await page.goto(appPath(testInfo, '/tickets'));
     await expect(page.getByText('工单中心').first()).toBeVisible();
     await expect(page.getByText('工单生命周期', { exact: true })).toBeVisible();
+    await expectNoPageHorizontalOverflow(page);
+  });
+
+  test('Analytics / Profile / Calendar / Content 在暗色下可见', async ({
+    page,
+  }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+    await expectDarkSchemeApplied(page);
+
+    await page.goto(appPath(testInfo, '/analytics'));
+    await expect(page.getByText('数据分析').first()).toBeVisible();
+
+    await page.goto(appPath(testInfo, '/profile'));
+    await expect(page.getByText('个人中心').first()).toBeVisible();
+
+    await page.goto(appPath(testInfo, '/calendar'));
+    await expect(page.getByText('团队日历').first()).toBeVisible();
+
+    await page.goto(appPath(testInfo, '/content'));
+    await expect(page.getByText('内容编辑').first()).toBeVisible();
+    await expectNoPageHorizontalOverflow(page);
+  });
+
+  test('Gallery / Jobs / Import / Help / Reports / Performance 在暗色下可见', async ({
+    page,
+  }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+    await expectDarkSchemeApplied(page);
+
+    for (const [path, title] of [
+      ['/gallery', '媒体图库'],
+      ['/jobs', '任务列表'],
+      ['/import', '数据导入'],
+      ['/help', '帮助中心'],
+      ['/reports', '报表打印'],
+      ['/performance', '大数据演示'],
+    ] as const) {
+      await page.goto(appPath(testInfo, path));
+      await expect(page.getByText(title).first()).toBeVisible();
+    }
+
     await expectNoPageHorizontalOverflow(page);
   });
 

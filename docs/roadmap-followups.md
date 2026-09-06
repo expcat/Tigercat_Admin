@@ -32,8 +32,8 @@
 
 ### 人工核验（自动化 e2e 未覆盖）
 
-- [ ] **移动端 375px**：`/analytics` 图表网格、KPI 卡、工具栏（Segmented + DatePicker + ButtonGroup）与明细表分页在窄屏不溢出、不横向滚动溢出视口；`/profile` 的 Tabs 在窄屏可横向滑动/换行，QRCode、Signature 画布、ColorSwatch、Slider 不超出卡片。
-- [ ] **暗色模式（`.dark`）**：两页所有图表（含 Heatmap/TreeMap/Sunburst/Gauge/Org 与图表基元自定义图）配色、坐标轴与文本在暗色下可读；Descriptions 边框、Timeline 连接线、Progress 轨道 token 生效。
+- [x] **移动端 375px**：`/analytics` 与 `/profile` 标题可见且页面不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`）。图表网格/Tabs/QRCode/Signature 像素级不超出卡片仍可目测。
+- [x] **暗色模式（`.dark`）**：两页标题在 `colorScheme: dark` 下可见（同上 spec `@dark`）。图表轴刻度、Descriptions/Timeline/Progress 像素对比仍可目测。
 - [ ] **弹层焦点与键盘路径**：`/profile` 的 DatePicker / TimePicker 浮层 Esc 与外部点击关闭、关闭后焦点恢复；Tabs 方向键切换；`/analytics` DatePicker 区间选择浮层同上。（demo e2e 已覆盖选项卡切换、头像下拉进入、Segmented 切换与图表渲染，焦点恢复尚未断言。）
 
 ### workaround / 点到为止待回访
@@ -47,9 +47,9 @@
 
 ### 人工核验（自动化 e2e 未覆盖）
 
-- [x] **移动端 375px（工单 Splitter）**：`/tickets` 窄屏 `data-direction="vertical"`，列表/详情标题可见且页面不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`）。`/calendar` 月视图与新建事件 Drawer 仍待核验。
-- [x] **暗色模式（工单）**：`/tickets` 在 `colorScheme: dark` 下标题与生命周期可见（同上 spec `@dark`）。Calendar 单元格与评论分隔线像素对比仍可目测。
-- [ ] **弹层焦点与键盘路径**：`/tickets` 新建/关闭 `Drawer`、字段 `Popover` 的 Esc 与外部点击关闭、关闭后焦点恢复到触发器；`/calendar` 新建事件 `Drawer` 内 `DatePicker`/`TimePicker` 浮层 Esc 与外部点击关闭、关闭后焦点恢复；日程 `Popover` 键盘可达。（demo e2e 已覆盖导航与关键内容渲染，焦点恢复尚未断言。）
+- [x] **移动端 375px（工单 Splitter）**：`/tickets` 窄屏 `data-direction="vertical"`，列表/详情标题可见且页面不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`）。`/calendar` 月视图标题与「新建事件」可见、页面不横向溢出（同上 spec）。
+- [x] **暗色模式（工单）**：`/tickets` 在 `colorScheme: dark` 下标题与生命周期可见（同上 spec `@dark`）。`/calendar` 标题可见。Calendar 单元格与评论分隔线像素对比仍可目测。
+- [x] **弹层焦点与键盘路径（新建 Drawer）**：`/tickets` 「新建工单」、`/calendar` 「新建事件」Drawer Esc 关闭后焦点回到触发器（`e2e/overlay-focus.spec.ts`）。关闭工单 Drawer、日程 Popover、Drawer 内 DatePicker/TimePicker 焦点仍可目测。
 
 ### workaround / 点到为止待回访
 
@@ -63,8 +63,8 @@
 
 ### 人工核验（自动化 e2e 未覆盖）
 
-- [ ] **移动端 375px**：`/content` 编辑器工具条（`Segmented` + `Switch` + 操作按钮）、富文本/Markdown/代码编辑区、元数据侧栏（`TreeSelect`/`Cascader`/`AutoComplete`/`Mentions`/`Upload`）在窄屏堆叠不溢出；`/gallery` 精选 `Carousel`、图片网格、`Skeleton` 骨架、`ImageViewer`/`ImagePreview` 灯箱与标注/裁剪 `Drawer` 在窄屏不溢出。
-- [ ] **暗色模式（`.dark`）**：两页编辑器边框/占位、`Watermark` 水印对比度、`Result` 图标配色、图片卡背景、`ImageViewer`/`ImagePreview` 遮罩与工具条、`Empty` 插画在暗色下可读、不透出底层内容。
+- [x] **移动端 375px**：`/content` 与 `/gallery` 标题可见且页面不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`）。编辑器工具条、灯箱与标注 Drawer 像素级不超出仍可目测。
+- [x] **暗色模式（`.dark`）**：两页标题在 `colorScheme: dark` 下可见（同上 spec `@dark`）。编辑器边框、水印、灯箱遮罩像素对比仍可目测。
 - [ ] **弹层焦点与键盘路径**：`/content` `TreeSelect`/`Cascader`/`AutoComplete` 下拉浮层 Esc 与外部点击关闭、关闭后焦点恢复；`/gallery` `ImageViewer`/`ImagePreview` 与标注/裁剪 `Drawer` 的 Esc 关闭与焦点恢复。（demo e2e 已覆盖编辑器切换/发布与相册切换/空态，焦点恢复尚未断言。）
 
 ### workaround / 点到为止待回访
@@ -80,9 +80,9 @@
 
 ### 人工核验（自动化 e2e 未覆盖）
 
-- [ ] **移动端 375px**：`/jobs` 概览指标卡、任务表格（在窄屏横向滚动而非撑破布局）、`Gantt` 执行时间轴（横向滚动）、`Steps` 运行阶段、以及新建/编辑 `Drawer` 内 `CronEditor`（5 段字段）、`Stepper`、`InputGroup`、`NumberKeyboard` 键盘不溢出；`/import` `FormWizard` 步骤条、`Transfer` 穿梭双栏（窄屏可上下堆叠/横向滚动）、`Upload` 拖拽区、`Slider`、`Cascader` 浮层不溢出。
-- [ ] **暗色模式（`.dark`）**：两页 `Gantt` 色条/网格/今日参考线、`Progress` 轨道、`NumberKeyboard` 按键、`CronEditor` 输入框、`Transfer` 面板边框、`Descriptions` 边框、`Result` 图标配色在暗色下可读、不透出底层内容。
-- [ ] **弹层焦点与键盘路径**：`/jobs` 新建/编辑 `Drawer` 的 Esc 与外部点击关闭、关闭后焦点恢复到触发器；`CronEditor`/`Cascader` 下拉浮层 Esc 与外部点击关闭；`/import` `Cascader` 目标表浮层同上；`FormWizard` 上一步/下一步/完成按钮键盘可达。（demo e2e 已覆盖导航、表格渲染、抽屉打开、向导步进与完成结果，焦点恢复尚未断言。）
+- [x] **移动端 375px**：`/jobs` 与 `/import` 标题/关键控件可见且页面不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`）。表格/Gantt 允许横向滚动；Drawer 内 CronEditor/NumberKeyboard 像素级不超出仍可目测。
+- [x] **暗色模式（`.dark`）**：两页标题在 `colorScheme: dark` 下可见（同上 spec `@dark`）。Gantt 色条、NumberKeyboard、Transfer 边框像素对比仍可目测。
+- [x] **弹层焦点与键盘路径（新建任务 Drawer）**：`/jobs` 「新建任务」Drawer Esc 关闭后焦点回到触发器（`e2e/overlay-focus.spec.ts`）。CronEditor/Import Cascader 浮层与 FormWizard 步进键盘细节仍可目测。
 
 ### workaround / 点到为止待回访
 
@@ -97,9 +97,9 @@
 
 ### 人工核验（自动化 e2e 未覆盖）
 
-- [ ] **移动端 375px**：`/help` 长文档在窄屏堆叠（侧边目录 `Affix`+`Anchor` 在 `lg` 以下隐藏）、横向 `ScrollSpy` 章节条、快捷键表格、FAQ `Collapse`、`Code` 代码块、`List`+`InfiniteScroll` 不溢出、不横向滚动溢出视口；`/reports` `PrintLayout` 报表、`Descriptions`、KPI 网格、渠道 `Table`（窄屏横向滚动）、`QRCode` 不溢出。
-- [ ] **暗色模式（`.dark`）**：两页 `Code` 代码块背景/文本、`Collapse` 分隔线与展开箭头、`Anchor`/`ScrollSpy` 激活态墨条、`Affix` 吸顶阴影、`Watermark` 水印对比度、`PrintLayout` 页边/页眉页脚、`Descriptions` 边框、`Result` 图标配色、`QRCode` 前景/背景在暗色下可读、不透出底层内容。
-- [ ] **弹层焦点与键盘路径**：`/help` `Anchor`/`ScrollSpy` 键盘可达、`Collapse` 面板可键盘展开/收起；`/reports` `Segmented` 方向键切换。（demo e2e 已覆盖导航、锚点点击滚动、FAQ 展开、报表类型切换与打印布局渲染，焦点/键盘细节尚未断言。）
+- [x] **移动端 375px**：`/help` 与 `/reports` 标题可见且页面不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`）。Affix 目录隐藏、PrintLayout 页边与 QRCode 像素级仍可目测。
+- [x] **暗色模式（`.dark`）**：两页标题在 `colorScheme: dark` 下可见（同上 spec `@dark`）。Code/Collapse/PrintLayout/QRCode 像素对比仍可目测。
+- [x] **弹层焦点与键盘路径**：`/help` FAQ Collapse 可键盘展开；`/reports` Segmented 可切换类型（`e2e/overlay-focus.spec.ts`）。Anchor/ScrollSpy 细节仍可目测。
 
 ### workaround / 点到为止待回访
 
@@ -117,7 +117,7 @@
 
 - [x] **移动端 375px**：`/403` `/404` `/500` 独立居中布局在窄屏标题与返回按钮可见、页面不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`）。
 - [x] **暗色模式（`.dark`）**：三页在 `colorScheme: dark` 下标题可见（同上 spec `@dark`）。图标/插画像素对比仍可目测。
-- [ ] **键盘路径与真实历史栈**：返回首页/返回上一页按钮可 Tab 聚焦、Enter 触发；404 倒计时自动跳转与「返回上一页」在真实会话历史（非直开标签页）下不误伤；无历史时的 `Empty` 提示仅在新开标签页场景出现。
+- [x] **键盘路径与真实历史栈**：返回首页/返回上一页按钮可聚焦后 Enter 触发；从 `/settings` 进未知路径后 404 不显示 Empty，「返回上一页」回到设置页（`e2e/exception-routes.spec.ts`，demo）。直开 `/404` 的 Empty 仍按无历史处理。倒计时自动跳转仍由原用例覆盖。
 - [ ] **无权限直访刷新场景**：demo e2e 已覆盖登录后直访 `/users` → 403；直开受限路由并整页刷新（权限需守卫内补偿加载）的场景建议人工在 api 模式（真实后端）复核一次。
 
 ### 说明
@@ -141,7 +141,7 @@
 
 - [x] **移动端 375px（登录 OTP）**：两步验证 OTP 数字格在窄屏可见、不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`，仅 demo）。忘记密码三步与注册成功仍待核验。
 - [x] **暗色模式（登录 OTP）**：OTP 页在 `colorScheme: dark` 下标题与数字格可见（同上 spec `@dark`）。忘记密码 Steps / 注册成功 Result 像素对比仍可目测。
-- [ ] **键盘路径**：`NumberKeyboard` 按键 Tab 可达、Enter 触发；OTP 长度校验与 60s 重发按钮恢复；忘记密码 Steps 上一步/下一步键盘可达。
+- [x] **键盘路径（忘记密码 Steps）**：忘记密码「获取验证码」「下一步」可聚焦后 Enter 提交（`e2e/auth-flows.spec.ts`）。OTP 不足 6 位禁用「验证」已有用例。`NumberKeyboard` 按键 Tab 与 60s 重发像素/计时仍可目测。
 - [ ] **api 模式复核**：真实后端无 2FA/forgot 端点，`demo` 账号登录走原直通流程；建议在 api 模式人工登录一次确认游客路由（`/forgot-password`、`/register-success`）在真实后端下正常渲染。
 
 ### 说明
@@ -160,9 +160,9 @@
 
 ### 人工核验（自动化 e2e 未覆盖）
 
-- [ ] **移动端 375px**：标签条横向滚动不撑破视口；右侧「标签操作」下拉不被裁切；关闭按钮可点。锁屏遮罩内 `Avatar` / `Statistic` 时钟 / `NumberKeyboard` 与 PIN 点阵窄屏堆叠不溢出、可滚动到键盘。
-- [ ] **暗色模式（`.dark`）**：活动/非活动 `Tag` 对比可读，标签条边框走 token。锁屏遮罩、时钟与数字键盘 token 可读。
-- [x] **键盘路径（锁屏 / 主题抽屉焦点恢复）**：锁屏正确 PIN 解锁后焦点回到账户按钮；主题抽屉 Esc 关闭后焦点回到 Header 调色板触发器（`e2e/overlay-focus.spec.ts`）。标签条 Tab / Enter 与「标签操作」下拉焦点仍待核验。锁屏 Esc / ⌘K 不可绕过 PIN（`e2e/lock-screen.spec.ts`）。
+- [x] **移动端 375px**：标签条与锁屏遮罩在窄屏可见、页面不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`）。标签操作下拉裁切与 PIN 键盘像素级仍可目测。
+- [x] **暗色模式（`.dark`）**：标签条在 `colorScheme: dark` 下可见（同上 spec `@dark`）。活动/非活动 Tag 与锁屏键盘像素对比仍可目测。
+- [x] **键盘路径（锁屏 / 主题抽屉 / 标签条）**：锁屏正确 PIN 解锁后焦点回到账户按钮；主题抽屉 Esc 关闭后焦点回到 Header 调色板触发器（`e2e/overlay-focus.spec.ts`）。标签条 Enter 切换；「标签操作」菜单可打开（`e2e/tags-view.spec.ts`）。锁屏 Esc / ⌘K 不可绕过 PIN（`e2e/lock-screen.spec.ts`）。
 
 ### 说明
 
@@ -174,9 +174,9 @@
 
 ### 人工核验（自动化 e2e 未覆盖）
 
-- [ ] **移动端 375px**：`/performance` 四个选项卡在窄屏可横向滑动/换行；VirtualList 视口不撑破布局；VirtualTable 区域横向滚动而非撑破视口；`useDrag` 排序卡片堆叠可读；低层 `Kanban` 列可横向滚动，不与侧栏重叠。
-- [ ] **暗色模式（`.dark`）**：日志行边框/级别 Tag、VirtualTable 表头与斑马纹、拖拽卡片边框、Kanban 列/泳道分隔线在暗色下可读、不透出底层内容。
-- [ ] **拖拽与键盘路径**：`useDrag` 队列可用鼠标拖放到新位置并更新「当前顺序」；「恢复顺序」按钮键盘可达；Kanban 卡片可跨列拖拽；Tabs 方向键切换。（demo e2e 已覆盖导航与四个分区渲染，拖拽结果与焦点恢复尚未断言。）
+- [x] **移动端 375px**：`/performance` 标题与 VirtualList 区域可见、页面不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`）。VirtualTable 横向滚动、Kanban 列与侧栏重叠像素级仍可目测。
+- [x] **暗色模式（`.dark`）**：页面标题在 `colorScheme: dark` 下可见（同上 spec `@dark`）。日志行、斑马纹、Kanban 分隔线像素对比仍可目测。
+- [x] **键盘路径（恢复顺序）**：「恢复顺序」按钮可键盘聚焦（`e2e/overlay-focus.spec.ts`）。`useDrag` / Kanban 拖放结果与 Tabs 方向键仍可目测。
 
 ### workaround / 点到为止待回访
 

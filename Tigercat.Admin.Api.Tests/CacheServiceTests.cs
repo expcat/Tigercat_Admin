@@ -33,6 +33,7 @@ public class CacheServiceTests : IClassFixture<InMemoryApiFactory>
 
         await cache.RemoveAsync(key);
         Assert.Null(await cache.GetAsync<string>(key));
+        Assert.Null(await cache.GetAsync<string>(key));
     }
 
     [Fact]
