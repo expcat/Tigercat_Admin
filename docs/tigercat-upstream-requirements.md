@@ -1,6 +1,6 @@
 # Tigercat 上游组件需求
 
-面向 Tigercat 组件库开发。本仓库当前使用 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `2.1.4`。
+面向 Tigercat 组件库开发。本仓库目标包版本 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `2.2.0`。
 
 **单一事实源：** 这里记录「Admin 场景需要、但包侧尚未提供或能力不够」的上游需求。已落地的用法只写在 [frontend.md](frontend.md)。当前仍开放、需要立刻跟进的短清单在 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)，该文件只做索引，不复写本文细节。
 
@@ -37,7 +37,7 @@
 
 ## 1. 数据展示与日历
 
-### 1.1 Calendar 单元格事件插槽 — P1
+### 1.1 Calendar 单元格事件插槽 — P1（已在 v2.2.0 落地）
 
 - **场景：** `/calendar` 要在月视图格子里标事件圆点/条。
 - **现状：** 类型未暴露按日期格的渲染插槽；Admin 用右侧「当日日程」+ `Badge`/`Popover` 近似。
@@ -45,7 +45,7 @@
 - **建议 API：** `dateCellRender?(date, extra)` 或具名插槽 `#dateCell="{ date, events }"`；格子 `aria-label` 含当天事件数。React/Vue 对称。
 - **Admin 落地：** 上游补齐后替换右侧列表近似，不改日历 API 契约。
 
-### 1.2 Text 可复制 — P1
+### 1.2 Text 可复制 — P1（已在 v2.2.0 落地）
 
 - **场景：** 用户 ID、审计事件 ID、设置键名一键复制。
 - **现状：** `Text` 有 `truncate`，无 `copyable`；`Code` 已有 `copyable`。
@@ -53,7 +53,7 @@
 - **建议 API：** `copyable?: boolean | { text?, tooltip?, onCopy? }`；成功走现有 `Message` 或内部 tooltip；键盘可操作。
 - **Admin 落地：** 用户表、审计详情、设置键名去掉手写 clipboard 按钮。
 
-### 1.3 Code 语法高亮 — P2
+### 1.3 Code 语法高亮 — P2（已在 v2.2.0 落地）
 
 - **场景：** `/help` 示例、`/audit-logs` JSON、内容页代码预览。
 - **现状：** `Code` 纯文本 + 复制，无 `language`。
@@ -64,14 +64,14 @@
 
 ## 2. 布局与滚动
 
-### 2.1 滚动祖先自动探测 — P1
+### 2.1 滚动祖先自动探测 — P1（已在 v2.2.0 落地）
 
 - **场景：** Shell 内容滚在 `#main-content-scroll`，不是 `window`。
 - **现状：** `/help` 的 `Anchor`/`ScrollSpy` 要显式 `getContainer`，`Affix` 要 `target="#main-content-scroll"`。
 - **建议 API：** 未传 `target`/`getContainer` 时沿 DOM 找最近 overflow 滚动祖先，找不到再回落 `window`；保留显式覆盖。
 - **Admin 落地：** 去掉 Help 页硬编码容器绑定。
 
-### 2.2 Footer 在 App Shell 中的密度 — P2
+### 2.2 Footer 在 App Shell 中的密度 — P2（已在 v2.2.0 落地）
 
 - **场景：** 内容区底部版权条（本仓库已用 `Footer`）。
 - **现状：** `Footer` 可用；缺与 `Layout` 内容滚动、紧凑密度的约定示例。
@@ -82,20 +82,20 @@
 
 ## 3. 表单
 
-### 3.1 AutoComplete 受控输入与自由文本 — P2（部分已可用）
+### 3.1 AutoComplete 受控输入与自由文本 — P2（已在 v2.2.0 补文档/示例）
 
 - **场景：** `/content` 标题联想，同时允许未出现在选项里的标题。
 - **现状：** `allowFreeInput` + `searchValue`/`onSearchChange` 已够用；Admin 已接上。
 - **仍建议：** 文档明确「打字只改 query、提交才改 value」；给 combobox 受控示例（`value` + `searchValue` 同步）。
 - **不是缺口：** 不要为此再加第二套 `onInput`。
 
-### 3.2 动态表单项 / schema 表单 — P2
+### 3.2 动态表单项 / schema 表单 — P2（推迟：Admin 不做表单设计器）
 
 - **场景：** 对标 Vben/Pro 的配置驱动表单。Admin **不**做表单设计器产品。
 - **现状：** `Form`/`FormItem` + `FormWizard` 够演示；无 schema 渲染器。
 - **建议：** 若做，保持纯数据描述（字段、校验、显隐），不要绑后台代码生成。优先级低于日历插槽与 Text copyable。
 
-### 3.3 人机验证码组件 — P2
+### 3.3 人机验证码组件 — P2（推迟：Admin 无明示需求）
 
 - **场景：** 对标 Vben 滑块/点选验证码。Admin 登录已有 OTP 演示。
 - **建议：** 若提供，做成无后端耦合的展示+回调组件；Admin 无明示需求前不接。
@@ -104,21 +104,21 @@
 
 ## 4. 导航与 Shell
 
-### 4.1 内置全屏控件 — P2
+### 4.1 内置全屏控件 — P2（已在 v2.2.0 落地）
 
 - **场景：** Header 进入/退出浏览器全屏（Vben 常见）。
 - **现状：** 无 `Fullscreen`/`useFullscreen`；Admin 用 `Icon` + Fullscreen API。
 - **建议 API：** `useFullscreen()` 或 `FullscreenButton`，处理 `fullscreenchange`、无权限失败、SSR 空操作；内置 expand/collapse 图标。
 - **Admin 落地：** 上游提供后替换 Header 自定义 `IconDefinition`。
 
-### 4.2 Menu 搜索在折叠态 — P2
+### 4.2 Menu 搜索在折叠态 — P2（已在 v2.2.0 落地）
 
 - **场景：** 侧栏 `Menu searchable`（Admin 已在展开时开启）。
 - **现状：** 折叠态搜索框会挤占 64px 栏。
 - **建议：** `collapsed` 时自动隐藏搜索，或提供 `searchable="auto"`。
 - **Admin 落地：** 已用 `searchable={!collapsed}`。
 
-### 4.3 Icon 覆盖面 — P1
+### 4.3 Icon 覆盖面 — P1（已在 v2.2.0 落地）
 
 - **场景：** Shell 菜单、Header 全屏、页脚。
 - **现状：** 内置 `name` 集偏小（无 fullscreen/maximize、ticket、zap 等）；Admin 仍大量用本地 SVG。
@@ -129,21 +129,21 @@
 
 ## 5. 高级 / 复合
 
-### 5.1 独立 Drag 组件 — P2
+### 5.1 独立 Drag 组件 — P2（已在 v2.2.0 落地）
 
 - **场景：** `/performance` 自由排序。
 - **现状：** 无 `/Drag` 子路径，走 `useDrag`。
 - **建议：** 若提供独立组件，保持与 hook 同一套 item props/attrs，避免双轨。
 - **Admin 落地：** 有组件再评估替换，不提前抽象。
 
-### 5.2 编辑器可插拔 engine — P2
+### 5.2 编辑器可插拔 engine — P2（已在 v2.2.0 补适配示例）
 
 - **场景：** `/content` 富文本/Markdown/代码。
 - **现状：** 内置 contenteditable / 高亮，未接 TipTap/Quill/Prism。
 - **建议：** 保持现有 `engine`/`highlighter` 插口稳定，文档给最小适配示例。
 - **Admin 落地：** 演示继续内置引擎。
 
-### 5.3 图表基元联动 — P2
+### 5.3 图表基元联动 — P2（推迟：高层图已够用）
 
 - **场景：** `/analytics` `ChartCanvas` 系列。
 - **现状：** 点到为止，像素坐标预映射，Tooltip 未与轴精细联动。

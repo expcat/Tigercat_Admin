@@ -6,20 +6,10 @@
 
 ## 当前状态
 
-当前仓库使用 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `2.1.4`。此前 suggestions 清单中的项已在上游落地。
+当前仓库目标包版本 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `2.2.0`。此前 suggestions 清单中的开放项已在上游落地。
 
 ## 待上游改进
 
-| 优先级 | 缺口 | 详见 |
-| ------ | ---- | ---- |
-| P1 | Calendar 单元格事件插槽 | [需求 1.1](tigercat-upstream-requirements.md#11-calendar-单元格事件插槽--p1) |
-| P1 | Text 可复制 | [需求 1.2](tigercat-upstream-requirements.md#12-text-可复制--p1) |
-| P1 | 滚动祖先自动探测 | [需求 2.1](tigercat-upstream-requirements.md#21-滚动祖先自动探测--p1) |
-| P1 | Icon 覆盖面 | [需求 4.3](tigercat-upstream-requirements.md#43-icon-覆盖面--p1) |
-| P2 | Code 语法高亮 | [需求 1.3](tigercat-upstream-requirements.md#13-code-语法高亮--p2) |
-| P2 | 内置全屏控件 | [需求 4.1](tigercat-upstream-requirements.md#41-内置全屏控件--p2) |
-| P2 | Menu 折叠态搜索 | [需求 4.2](tigercat-upstream-requirements.md#42-menu-搜索在折叠态--p2) |
-| P2 | 独立 Drag 组件 | [需求 5.1](tigercat-upstream-requirements.md#51-独立-drag-组件--p2) |
-| P2 | 编辑器可插拔 engine | [需求 5.2](tigercat-upstream-requirements.md#52-编辑器可插拔-engine--p2) |
+当前没有开放项。P1 与清单内 P2 已在 Tigercat v2.2.0 落地；schema 表单、人机验证码、图表基元精细联动按需求文档明确推迟。
 
 *新增缺口先写需求文档，再把开放项同步到本表；落地后从本表删除。*
