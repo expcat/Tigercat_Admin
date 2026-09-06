@@ -11,6 +11,8 @@ import { Text } from '@expcat/tigercat-vue/Text'
 import { LineChart, BarChart, PieChart } from '../utils/lazyTigercat'
 import { Marquee } from '@expcat/tigercat-vue/Marquee'
 import { DataExport } from '@expcat/tigercat-vue/DataExport'
+import { Row } from '@expcat/tigercat-vue/Row'
+import { Col } from '@expcat/tigercat-vue/Col'
 import type { Session, StatsOverview, StatsTrend } from '../utils'
 import { apiRequest, getAuthHeaders } from '../utils'
 import {
@@ -392,20 +394,28 @@ const ANNOUNCEMENTS = [
       <template #header>
         <Text size="base" weight="bold">系统信息</Text>
       </template>
-      <MetricGrid :columns="4">
-        <MetricCard title="系统版本" value="v1.0.0" :framed="false">
-          <template #icon><Icon name="package" :size="20" /></template>
-        </MetricCard>
-        <MetricCard title="运行环境" value=".NET 10 + Vue 3" :framed="false">
-          <template #icon><Icon name="zap" :size="20" /></template>
-        </MetricCard>
-        <MetricCard title="最后更新" value="2026-01-28" :framed="false">
-          <template #icon><Icon name="calendar" :size="20" /></template>
-        </MetricCard>
-        <MetricCard title="API 状态" value="在线" :framed="false">
-          <template #icon><Icon name="globe" :size="20" /></template>
-        </MetricCard>
-      </MetricGrid>
+      <Row :gutter="[16, 16]">
+        <Col :span="{ xs: 24, sm: 12, lg: 6 }">
+          <MetricCard title="系统版本" value="v1.0.0" :framed="false">
+            <template #icon><Icon name="package" :size="20" /></template>
+          </MetricCard>
+        </Col>
+        <Col :span="{ xs: 24, sm: 12, lg: 6 }">
+          <MetricCard title="运行环境" value=".NET 10 + Vue 3" :framed="false">
+            <template #icon><Icon name="zap" :size="20" /></template>
+          </MetricCard>
+        </Col>
+        <Col :span="{ xs: 24, sm: 12, lg: 6 }">
+          <MetricCard title="最后更新" value="2026-01-28" :framed="false">
+            <template #icon><Icon name="calendar" :size="20" /></template>
+          </MetricCard>
+        </Col>
+        <Col :span="{ xs: 24, sm: 12, lg: 6 }">
+          <MetricCard title="API 状态" value="在线" :framed="false">
+            <template #icon><Icon name="globe" :size="20" /></template>
+          </MetricCard>
+        </Col>
+      </Row>
     </Card>
   </div>
 </template>

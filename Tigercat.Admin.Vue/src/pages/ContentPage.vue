@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
-import { Input } from '@expcat/tigercat-vue/Input'
+import { AutoComplete } from '@expcat/tigercat-vue/AutoComplete'
 import { Message } from '@expcat/tigercat-vue/Message'
 import { Tag } from '@expcat/tigercat-vue/Tag'
 import { Text } from '@expcat/tigercat-vue/Text'
@@ -89,6 +89,13 @@ const COLUMN_OPTIONS: CascaderOption[] = [
       { value: 'api', label: 'API 参考' },
     ],
   },
+]
+
+const TITLE_OPTIONS = [
+  { label: '组件库 v1.6 发布说明', value: '组件库 v1.6 发布说明' },
+  { label: '管理后台使用指南', value: '管理后台使用指南' },
+  { label: '版本更新日志', value: '版本更新日志' },
+  { label: '权限模型说明', value: '权限模型说明' },
 ]
 
 const MENTION_OPTIONS: MentionOption[] = [
@@ -284,7 +291,17 @@ const currentColumnText = computed(() => {
           </div>
         </template>
         <div class="space-y-3">
-          <Input v-model="title" placeholder="请输入内容标题" />
+          <AutoComplete
+            v-model="title"
+            :search-value="title"
+            :options="TITLE_OPTIONS"
+            allow-free-input
+            :default-active-first-option="false"
+            clearable
+            placeholder="请输入内容标题"
+            empty-text="没有匹配的历史标题"
+            @update:search-value="(query: string) => (title = query)"
+          />
           <Watermark :content="['草稿 DRAFT', '内部预览']" :font="{ fontSize: 15 }">
             <div class="rounded-lg border border-(--tiger-border,#e5e7eb) p-1">
               <RichTextEditor

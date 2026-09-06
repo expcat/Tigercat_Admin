@@ -14,6 +14,9 @@ import { Tag } from '@expcat/tigercat-react/Tag';
 import { Text } from '@expcat/tigercat-react/Text';
 import { ColorPicker } from '@expcat/tigercat-react/ColorPicker';
 import { Upload } from '@expcat/tigercat-react/Upload';
+import { Collapse } from '@expcat/tigercat-react/Collapse';
+import { CollapsePanel } from '@expcat/tigercat-react/CollapsePanel';
+import { Skeleton } from '@expcat/tigercat-react/Skeleton';
 import type { UploadRequestOptions } from '@expcat/tigercat-core';
 import { LogoIcon, SettingsIcon } from '../components/Icons';
 import { PageHeader } from '../components/PageHeader';
@@ -40,6 +43,9 @@ function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
+  const [openSettingGroups, setOpenSettingGroups] = useState<(string | number)[]>(
+    Object.keys(SETTINGS_GROUP_LABELS),
+  );
   const { has: hasPerm } = usePermission();
   const canEdit = hasPerm('setting:edit');
   const { watermarkEnabled, setWatermarkEnabled } = useWatermarkEnabled();
@@ -102,6 +108,24 @@ function SettingsPage() {
   };
 
   const groups = useMemo(() => groupSettings(settings), [settings]);
+
+  useEffect(() => {
+    const prefixes = groups.map(([prefix]) => prefix);
+    if (prefixes.length === 0) return;
+    setOpenSettingGroups((prev) => {
+      const next = new Set(prev);
+      prefixes.forEach((prefix) => next.add(prefix));
+      return Array.from(next);
+    });
+  }, [groups]);
+
+  useEffect(() => {
+    if (!targetSettingKey) return;
+    const prefix = targetSettingKey.split('.')[0];
+    setOpenSettingGroups((prev) =>
+      prev.includes(prefix) ? prev : [...prev, prefix],
+    );
+  }, [targetSettingKey]);
   const changedSettings = useMemo(
     () => settings.filter((s) => editValues[s.key] !== s.value),
     [settings, editValues],
@@ -157,7 +181,11 @@ function SettingsPage() {
 
       {loading ? (
         <Card>
-          <Text color="secondary">加载中…</Text>
+          <div className="space-y-3">
+            <Skeleton variant="text" />
+            <Skeleton variant="text" />
+            <Skeleton variant="button" />
+          </div>
         </Card>
       ) : (
         <>
@@ -243,11 +271,15 @@ function SettingsPage() {
             </div>
           </Card>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Collapse
+            accordion={false}
+            activeKey={openSettingGroups}
+            onChange={setOpenSettingGroups}>
             {groups.map(([prefix, items]) => (
-              <Card
+              <CollapsePanel
                 key={prefix}
-                title={SETTINGS_GROUP_LABELS[prefix] ?? prefix}>
+                panelKey={prefix}
+                header={SETTINGS_GROUP_LABELS[prefix] ?? prefix}>
                 <div className="space-y-4">
                   {items.map((item) => {
                     const ctrl = getControl(item.key);
@@ -348,9 +380,9 @@ function SettingsPage() {
                     );
                   })}
                 </div>
-              </Card>
+              </CollapsePanel>
             ))}
-          </div>
+          </Collapse>
 
           {canEdit && (
             <div className="flex flex-col justify-end gap-3 sm:flex-row sm:flex-wrap">

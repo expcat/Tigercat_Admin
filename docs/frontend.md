@@ -50,7 +50,9 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 - 桌面侧栏：宽 `240px`，折叠宽 `64px`，使用 `Sidebar`、`Menu`、`SubMenu`、`MenuItem`。
 - 桌面侧栏主菜单保持 `mode="inline"`；折叠态继续传 `collapsed` 并开启 `popupPortal`，由上游在收缩时自动退化为 popup 子菜单，不再手动切换 `vertical`。
 - 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭；Esc 关闭为 Drawer 内置行为（经 `onClose/@close` 回调），不要再手动监听 keydown。`destroyOnClose` 会等关场过渡后再卸载；焦点恢复用 `onAfterClose` / `@after-close`。不要再传已删除的 `destroyOnCloseAfterLeave` / `onAfterLeave` / `@after-leave`。
-- Header：使用 `Header`、`Breadcrumb`、`Button`、`Dropdown`、`Avatar`、`Tag`，包含侧栏开关、面包屑、主题配置抽屉入口、主题切换、修改密码、锁定屏幕和退出。
+- Header：使用 `Header`、`Breadcrumb`、`Button`、`Dropdown`、`Avatar`、`Tag`、`Icon`，包含侧栏开关、面包屑、主题配置抽屉入口、内容区全屏（浏览器 Fullscreen API，无包级 Fullscreen 组件）、主题切换、修改密码、锁定屏幕和退出。
+- 侧栏菜单：展开态开启 `Menu searchable`（`searchPlaceholder="搜索菜单"`）；折叠到 64px 时关闭搜索，避免挤占迷你栏。
+- 页脚：`Content` 滚动区内、页面主体之后渲染 `Footer`（`ShellFooter`），随内容滚动，不占固定视口高度。
 - 路由进度：受保护路由切换时用 `LoadingBar.start()` / `LoadingBar.finish()` 驱动顶部进度条（失败或 `next(false)` 也要 `finish`）；根节点挂载 `#tiger-loading-bar-container-root`，由 `LoadingBar` 把 `LoadingBarContainer` 挂进去（子路径 `/LoadingBar` 与 `/LoadingBarContainer` 分开）。游客页与独立异常页不显示。
 - 命令面板：`Spotlight` 默认 `hotkey` 已绑定 ⌘K / Ctrl+K，不要再在 App 里叠一层 keydown 开关，否则受控 `open` 会被两次 toggle 抵消。
 - 多标签（tags-view）：受保护 Shell 在 Header 与 Content 之间显示标签条（`TagsView`）。打开受保护路由即生成标签；标题复用 `getShellPageTitle`，路由映射复用 `SHELL_MENU_ROUTES` / `resolveShellPageKey`（先精确查 `SHELL_ROUTE_TO_MENU`，再按前缀映射，使 `/projects/:id` 与 Vue `projects-detail` 仍高亮列表菜单 `projects`）。仪表盘（`home`）固定在最前且不可关闭；关闭当前时跳到相邻标签，关尽后回到仪表盘。刷新后从 `sessionStorage` 键 `tigercat-admin:tags-view` 恢复（损坏/缺失 JSON 时回退为仅仪表盘）。游客页与 `/403` `/404` `/500` 不套 `MainLayout`，因此不显示标签条。面包屑仍由 `MainHeader` + `getShellBreadcrumbItems` 负责，不要在标签条重复实现。
@@ -104,25 +106,25 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 
 | 页面/区域 | 主要 Tigercat 组件 | 关键交互 |
 | --------- | ------------------ | -------- |
-| Shell | `Layout`、`Content`、`Header`、`Sidebar`、`Drawer`、`Menu`、`Breadcrumb`、`Dropdown`、`Avatar`、`Tag`、`Statistic`、`NumberKeyboard`、`Watermark`、`ColorSwatch`、`Segmented`、`Switch`、`LoadingBar`、`LoadingBarContainer` | 折叠菜单、移动抽屉、主题切换、账号菜单、多标签条（打开/关闭当前·其他·全部、sessionStorage 恢复）、锁屏全屏遮罩（头像下拉锁定，demo PIN 解锁）、全局内容水印（`/settings` 开关，用户名 + 日期）、主题配置抽屉（外观 / 主色 / 紧凑密度，接 `utils/theme.ts`）、受保护路由切换顶部 LoadingBar（落地或失败后消失） |
+| Shell | `Layout`、`Content`、`Header`、`Footer`、`Sidebar`、`Drawer`、`Menu`、`Breadcrumb`、`Dropdown`、`Avatar`、`Tag`、`Statistic`、`NumberKeyboard`、`Watermark`、`ColorSwatch`、`Segmented`、`Switch`、`LoadingBar`、`LoadingBarContainer`、`Icon` | 折叠菜单、展开态菜单搜索、移动抽屉、主题切换、账号菜单、内容区全屏、页脚版权条、多标签条（打开/关闭当前·其他·全部、sessionStorage 恢复）、锁屏全屏遮罩（头像下拉锁定，demo PIN 解锁）、全局内容水印（`/settings` 开关，用户名 + 日期）、主题配置抽屉（外观 / 主色 / 紧凑密度，接 `utils/theme.ts`）、受保护路由切换顶部 LoadingBar（落地或失败后消失） |
 | Shell 全局挂件 | `Spotlight`、`Tour`、`FloatButton`/`FloatButtonGroup`、`BackTop`、`Badge`、`Popover`、`Drawer`、`ChatWindow`、`Notification` | 命令面板 ⌘K、首登引导、右下快捷动作/回到顶部、消息铃铛（toast 用 `actions` 渲染「查看」并保留整条 `onClick` 兜底）、在线客服坞（`ChatDock` 发送仍走 `POST /api/chat/messages`，已登录时连 `/hubs/chat` 收完整列表 fan-out；Mock/无 WS 时只 REST。不要把 hub 事件当成 `Message` toast） |
 | 登录/注册 | `Card`、`Form`、`FormItem`、`Input`、`Button`、`Message` | 表单校验、成功跳转、错误提示 |
-| 仪表盘 | `Alert`、`Card`、`Text`、`Tag`、`Select`、`Statistic`、`Loading`、`Empty`、`LineChart`、`BarChart`、`PieChart`、`Marquee`、`DataExport` | 概览指标、图表空状态、快捷跳转、统计区上方运维公告跑马灯（文档流，不遮挡指标卡片）、概览区按 `trendDays` 导出当前统计与趋势（`GET /api/export/overview` Blob，不用页面 JSON.stringify） |
+| 仪表盘 | `Alert`、`Card`、`Text`、`Tag`、`Select`、`Statistic`、`Loading`、`Empty`、`LineChart`、`BarChart`、`PieChart`、`Marquee`、`DataExport`、`Row`/`Col` | 概览指标、图表空状态、快捷跳转、统计区上方运维公告跑马灯（文档流，不遮挡指标卡片）、概览区按 `trendDays` 导出当前统计与趋势（`GET /api/export/overview` Blob，不用页面 JSON.stringify）、系统信息栅格 |
 | 用户管理 | `DataTableWithToolbar`、`Avatar`、`Button`、`ContextMenu`、`Input`、`Modal`、`Form`、`Select`、`Tag`、`Tooltip`、`Checkbox`、`CropUpload` | 分页搜索、排序、列显隐、批量状态、头像裁剪、角色选择、窄屏卡片模式、行右键菜单（编辑 / 启停 / 删除，权限不足隐藏或禁用）、工具栏独立 `导出` / `新增用户` 按钮 |
 | 角色管理 | `DataTableWithToolbar`、`Tree`、`Checkbox`、`Modal`、`Popconfirm`、`Select`、`Tag` | 权限树、角色用户配置、导出字段、删除确认、窄屏卡片模式 |
-| 系统设置 | `Card`、`Input`、`InputNumber`、`ColorPicker`、`Segmented`、`Switch`、`Upload`、`Modal` | 分组设置、Logo 上传、保存确认、恢复默认值、全局内容水印开关（`theme.watermark`，本机立即生效）。ColorPicker 触发器/面板文案走 `appText.colorPicker`（「选择颜色」等），不要包一层假文案 |
+| 系统设置 | `Card`、`Input`、`InputNumber`、`ColorPicker`、`Segmented`、`Switch`、`Upload`、`Modal`、`Collapse`/`CollapsePanel`、`Skeleton` | 分组设置（Collapse 手风琴，默认全部展开）、加载骨架、Logo 上传、保存确认、恢复默认值、全局内容水印开关（`theme.watermark`，本机立即生效）。ColorPicker 触发器/面板文案走 `appText.colorPicker`（「选择颜色」等），不要包一层假文案 |
 | 文件管理 | `FileManager`、`SplitButton`、`ContextMenu`、`Button`、`Select`、`Tag`、`Modal`、`Message` | 上传（`SplitButton` 主按钮上传、菜单选择文件）、类型筛选、选择、普通删除、强制删除、文件行右键菜单（预览 / 打开 / 删除，删除仍走确认与 `media:delete`） |
 | 通知中心 | `NotificationCenter`、`Badge`、`Statistic`、`Card`、`Button`、`notification` | 已读/未读、批量已读、站内跳转、创建/广播 `POST /api/notifications`（`notification:create`）；列表/已读接口不变。铃铛点单条时 `notification.*({ actions, onClick })`，按钮与整条点击都进 `/notifications` |
 | 任务面板 | `TaskBoard`、`Statistic`、`Card`、`Input`、`Tag`、`Modal`、`notification` | 拖拽流转、WIP 限制、详情、完成确认 |
-| 审计日志 | `ActivityFeed`、`Timeline`、`Input`、`Select`、`Statistic`、`Empty`、`Modal`、`DataExport`、`CheckboxGroup` | 筛选、详情、JSON 预览、`DataExport` 导出 csv/json/xlsx（带当前筛选与字段勾选，`GET /api/audit-logs/export` Blob，权限 `audit:export`）、保留清理 |
-| 个人中心 | `Tabs`/`TabPane`、`Descriptions`、`Avatar`、`Badge`、`Statistic`、`Rate`、`QRCode`、`Signature`、`InputOTP`、`MaskInput`、`ColorSwatch`、`Radio`/`RadioGroup`、`Slider`、`DatePicker`、`TimePicker`、`Textarea`、`Switch`、`Divider`、`Space`、`Timeline`、`List` | 选项卡分区、资料只读视图、两步验证开关对接 enable/disable、`InputOTP` 绑定确认、手机号掩码演示、电子签名、偏好设置、登录设备与历史 |
+| 审计日志 | `ActivityFeed`、`Timeline`、`Input`、`Select`、`Statistic`、`Empty`、`Modal`、`DataExport`、`CheckboxGroup`、`Code` | 筛选、详情、JSON 预览（`Code copyable`，不要手写 `<pre>`）、`DataExport` 导出 csv/json/xlsx（带当前筛选与字段勾选，`GET /api/audit-logs/export` Blob，权限 `audit:export`）、保留清理 |
+| 个人中心 | `Tabs`/`TabPane`、`Descriptions`、`Avatar`、`Badge`、`Statistic`、`Rate`、`QRCode`、`Signature`、`InputOTP`、`MaskInput`、`ColorSwatch`、`Radio`/`RadioGroup`、`Slider`、`DatePicker`、`TimePicker`、`Textarea`、`Switch`、`Divider`、`Space`、`Timeline`、`List`、`Row`/`Col`、`Icon` | 选项卡分区、资料只读视图、KPI 栅格、两步验证开关对接 enable/disable、`InputOTP` 绑定确认、手机号掩码演示、电子签名、偏好设置、登录设备与历史 |
 | 数据分析 | `Segmented`、`DatePicker`、`ButtonGroup`、`Statistic`、`Progress`、`Skeleton`、`AreaChart`、`DonutChart`、`FunnelChart`、`GaugeChart`、`HeatmapChart`、`RadarChart`、`ScatterChart`、`TreeMapChart`、`SunburstChart`、`OrgChart`、`ChartCanvas`/`ChartAxis`/`ChartGrid`/`ChartSeries`/`ChartLegend`/`ChartTooltip`、`Table`、`Pagination` | 时间范围切换、KPI 进度、多类型图表、组织分布、图表基元自定义、明细分页 |
 | 实时监控 | `Segmented`、`Statistic`、`GaugeChart`、`AreaChart`、`LineChart`、`ActivityFeed`、`Progress`、`Tag`、`Badge` | 优先 SignalR `/hubs/monitor` 按 2s / 3s / 5s（默认 3s）推送同一份 snapshot JSON；暂停后停止推送；连接失败或 Mock 演示回退轮询 `GET /api/monitor/snapshot`；CPU/内存/磁盘水位、QPS/延迟滚动窗口、节点状态、事件流封顶 |
-| 项目列表 | `Card`、`Statistic`、`Tag`、`Avatar`/`AvatarGroup`、`Progress`、`Input`、`Segmented`、`Pagination`、`Empty` | 卡片网格、名称/负责人/编号搜索、状态分段筛选（规划中/进行中/已暂停/已完成）、分页、点击卡片或「查看详情」进入 `/projects/:id`；列表筛选/分页接 `GET /api/projects` |
+| 项目列表 | `Card`、`Statistic`、`Tag`、`Avatar`/`AvatarGroup`、`Progress`、`Input`、`Segmented`、`Pagination`、`Empty`、`Row`/`Col` | 卡片网格（`Row`/`Col` 响应式 span）、名称/负责人/编号搜索、状态分段筛选（规划中/进行中/已暂停/已完成）、分页、点击卡片或「查看详情」进入 `/projects/:id`；列表筛选/分页接 `GET /api/projects` |
 | 项目详情 | `Descriptions`、`Steps`/`StepsItem`、`Tabs`/`TabPane`、`Anchor`/`AnchorLink`、`Timeline`、`CommentThread`、`Empty`、`Progress`、`Avatar`/`AvatarGroup` | 动态路由 `:id`、概览/成员/动态、页内锚点切 Tab、未知 id 空态仍保持列表菜单高亮；详情接 `GET /api/projects/{id}`，讨论接 `GET /api/comments?targetType=project` |
 | 工单中心 | `Splitter`、`Resizable`、`Steps`/`StepsItem`、`ChatWindow`、`CommentThread`、`Mentions`、`Descriptions`、`Rate`、`Badge`、`Tag`、`Popover`、`Drawer`、`Upload`、`Textarea`、`RadioGroup`/`Radio`、`Input`、`Divider` | 主从分栏（宽屏左右 / 窄屏上下）、工单生命周期、对话、内部 @ 协作、附件、关闭确认、新建工单；列表/详情/关闭/对话接 `/api/tickets`，内部备注接 `/api/comments?targetType=ticket` |
 | 团队日历 | `Calendar`、`Countdown`、`Statistic`、`Badge`、`Popover`、`Tag`、`List`、`Drawer`、`DatePicker`、`TimePicker`、`RadioGroup`/`Radio`、`Input` | 月视图选择、下一日程倒计时、当日日程标记与详情、即将到来列表、新建事件；可见月与即将到来接 `GET /api/calendar/events`，Drawer 创建接 `POST /api/calendar/events` |
-| 内容编辑 | `Segmented`、`RichTextEditor`、`MarkdownEditor`、`CodeEditor`、`Watermark`、`Switch`、`Space`、`TreeSelect`、`Cascader`、`TagsInput`、`Mentions`、`Upload`、`Result`、`Tag`、`Input` | 编辑器三态切换、草稿水印、分类树/栏目级联、`TagsInput` 多标签、@ 协作者、附件上传、立即发布开关、发布成功结果页；挂载加载种子文章 `a1`，保存草稿 / 发布接 `PUT /api/content/articles/{id}`，刷新后从接口恢复。协作者与附件仍本页本地。工具条「加粗 / 斜体」等走 `appText.richTextEditor` / `markdownEditor`，不要自绘一套工具条 |
+| 内容编辑 | `Segmented`、`RichTextEditor`、`MarkdownEditor`、`CodeEditor`、`Watermark`、`Switch`、`Space`、`TreeSelect`、`Cascader`、`TagsInput`、`Mentions`、`Upload`、`Result`、`Tag`、`AutoComplete` | 编辑器三态切换、标题 `AutoComplete`（`allowFreeInput`，可输入未列出的标题）、草稿水印、分类树/栏目级联、`TagsInput` 多标签、@ 协作者、附件上传、立即发布开关、发布成功结果页；挂载加载种子文章 `a1`，保存草稿 / 发布接 `PUT /api/content/articles/{id}`，刷新后从接口恢复。协作者与附件仍本页本地。工具条「加粗 / 斜体」等走 `appText.richTextEditor` / `markdownEditor`，不要自绘一套工具条 |
 | 媒体图库 | `Carousel`、`ImageGroup`、`Image`、`ImagePreview`、`ImageViewer`、`ImageAnnotation`、`ImageCropper`、`Masonry`、`AspectRatio`、`ImageCompare`、`Segmented`、`Skeleton`、`Empty`、`Tag`、`Drawer` | 精选轮播、相册切换、瀑布流网格、固定比例封面、版本前后对比、网格灯箱预览、大图查看（缩放/旋转/导航）、矩形/椭圆标注、16:9 裁剪、刷新骨架屏、空相册空态 |
 | 定时任务 | `CronEditor`、`Stepper`、`InputGroup`/`InputGroupAddon`、`NumberKeyboard`、`Gantt`、`Switch`、`Progress`、`Steps`/`StepsItem`、`Badge`、`Tag`、`Drawer`、原生 `Table` | 调度表达式编辑、并发数步进、超时数值+单位、批量条数数字键盘、执行时间轴、启停切换、执行进度、运行阶段、新建/编辑任务；列表 / 启停 / 新建编辑接 `/api/jobs`，Gantt 使用返回的 `start` / `end` / `progress` / `color` |
 | 数据导入 | `FormWizard`、`Transfer`、`Upload`、`Cascader`、`Slider`、`RadioGroup`/`Radio`、`Progress`、`Result`、`Descriptions` | 分步向导、字段映射穿梭框、文件上传、目标表级联、批量大小滑块、导入模式/冲突策略、导入进度、确认摘要、完成结果页；前三步仍本地，完成时 `POST /api/import-jobs` 并轮询 `GET` 直到完成，最近任务 ID 写入 `sessionStorage` 键 `tigercat-admin:last-import-job` 以便刷新恢复 Result |
@@ -164,6 +166,12 @@ import { AspectRatio } from '@expcat/tigercat-react/AspectRatio';
 import { ImageCompare } from '@expcat/tigercat-react/ImageCompare';
 import { ScrollArea } from '@expcat/tigercat-react/ScrollArea';
 import { Highlight } from '@expcat/tigercat-react/Highlight';
+import { AutoComplete } from '@expcat/tigercat-react/AutoComplete';
+import { Footer } from '@expcat/tigercat-react/Footer';
+import { Icon } from '@expcat/tigercat-react/Icon';
+import { Row } from '@expcat/tigercat-react/Row';
+import { Col } from '@expcat/tigercat-react/Col';
+import { Skeleton } from '@expcat/tigercat-react/Skeleton';
 import { Marquee } from '@expcat/tigercat-react/Marquee';
 import { DataExport } from '@expcat/tigercat-react/DataExport';
 import { CheckboxGroup } from '@expcat/tigercat-react/CheckboxGroup';
@@ -226,7 +234,7 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 ## 已对齐的上游能力
 
-本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `^2.1.4`：
+本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `^2.1.4`。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。
 
 | 组件 | 平台 | 上游现状 | 本项目保留的布局 glue |
 | ---- | ---- | -------- | --------------------- |

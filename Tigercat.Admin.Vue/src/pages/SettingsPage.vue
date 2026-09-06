@@ -15,6 +15,9 @@ import { Tag } from '@expcat/tigercat-vue/Tag'
 import { Text } from '@expcat/tigercat-vue/Text'
 import { ColorPicker } from '@expcat/tigercat-vue/ColorPicker'
 import { Upload } from '@expcat/tigercat-vue/Upload'
+import { Collapse } from '@expcat/tigercat-vue/Collapse'
+import { CollapsePanel } from '@expcat/tigercat-vue/CollapsePanel'
+import { Skeleton } from '@expcat/tigercat-vue/Skeleton'
 import type { UploadRequestOptions } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import AppLogo from '../components/AppLogo.vue'
@@ -31,6 +34,7 @@ const editValues = ref<Record<string, string>>({})
 const loading = ref(true)
 const saving = ref(false)
 const saveConfirmOpen = ref(false)
+const openSettingGroups = ref<(string | number)[]>(Object.keys(SETTINGS_GROUP_LABELS))
 const { has: hasPerm } = usePermission()
 const { watermarkEnabled, setWatermarkEnabled } = useWatermarkEnabled()
 const route = useRoute()
@@ -122,7 +126,27 @@ onMounted(async () => {
   await fetchSettings()
   scrollToTargetSetting()
 })
+watch(groups, (nextGroups) => {
+  for (const [prefix] of nextGroups) {
+    if (!openSettingGroups.value.includes(prefix)) {
+      openSettingGroups.value = [...openSettingGroups.value, prefix]
+    }
+  }
+})
+
+watch(targetSettingKey, (key) => {
+  if (!key) return
+  const prefix = key.split('.')[0]
+  if (!openSettingGroups.value.includes(prefix)) {
+    openSettingGroups.value = [...openSettingGroups.value, prefix]
+  }
+})
+
 watch([targetSettingKey, loading], scrollToTargetSetting)
+
+function handleSettingGroupsChange(keys: (string | number)[]) {
+  openSettingGroups.value = keys
+}
 </script>
 
 <template>
@@ -135,7 +159,11 @@ watch([targetSettingKey, loading], scrollToTargetSetting)
     />
 
     <Card v-if="loading">
-      <Text color="secondary">加载中…</Text>
+      <div class="space-y-3">
+        <Skeleton variant="text" />
+        <Skeleton variant="text" />
+        <Skeleton variant="button" />
+      </div>
     </Card>
 
     <template v-else>
@@ -213,8 +241,17 @@ watch([targetSettingKey, loading], scrollToTargetSetting)
         </div>
       </Card>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card v-for="[prefix, items] in groups" :key="prefix" :title="SETTINGS_GROUP_LABELS[prefix] ?? prefix">
+      <Collapse
+        :accordion="false"
+        :active-key="openSettingGroups"
+        @update:active-key="handleSettingGroupsChange"
+      >
+        <CollapsePanel
+          v-for="[prefix, items] in groups"
+          :key="prefix"
+          :panel-key="prefix"
+          :header="SETTINGS_GROUP_LABELS[prefix] ?? prefix"
+        >
           <div class="space-y-4">
             <div
               v-for="item in items"
@@ -278,8 +315,8 @@ watch([targetSettingKey, loading], scrollToTargetSetting)
               />
             </div>
           </div>
-        </Card>
-      </div>
+        </CollapsePanel>
+      </Collapse>
 
       <div v-if="canEdit" class="flex flex-col justify-end gap-3 sm:flex-row sm:flex-wrap">
         <Popconfirm

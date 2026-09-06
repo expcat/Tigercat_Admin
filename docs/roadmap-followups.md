@@ -2,7 +2,7 @@
 
 本文集中记录执行 [Roadmap.md](../Roadmap.md) 各阶段时**主动推迟**的收尾、人工核验与 workaround 清理事项，统一在全部阶段完成后批量处理或验证，不在单个阶段内提前修复。
 
-组件层面的上游缺口见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)；本文聚焦本项目侧需要回头执行的事项。
+组件层面的上游缺口见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)（开放项短清单：[frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)）；本文聚焦本项目侧需要回头执行的事项。
 
 > 处理约定：每完成一个阶段，把该阶段推迟的事项按下方结构追加；最终统一执行时逐条勾选。
 

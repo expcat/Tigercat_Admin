@@ -85,6 +85,9 @@ export function MainSidebar({
             popupPortal
             mode="inline"
             items={filteredMenuItems as MenuItem[]}
+            searchable={!displayCollapsed}
+            searchPlaceholder="搜索菜单"
+            emptyText="没有匹配的菜单"
             className={`!min-w-0 ${displayCollapsed ? 'menu-collapsed' : ''}`}
             onSelect={handleSelect}
             onOpenChange={(_key, info) => setExpandedKeys(info.openKeys)}

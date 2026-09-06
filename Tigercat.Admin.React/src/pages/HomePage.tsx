@@ -9,6 +9,8 @@ import { Text } from '@expcat/tigercat-react/Text';
 import { LineChart, BarChart, PieChart } from '../utils/lazyTigercat';
 import { Marquee } from '@expcat/tigercat-react/Marquee';
 import { DataExport } from '@expcat/tigercat-react/DataExport';
+import { Row } from '@expcat/tigercat-react/Row';
+import { Col } from '@expcat/tigercat-react/Col';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
   UsersIcon,
@@ -496,32 +498,40 @@ function HomePage() {
 
       {/* 系统信息 */}
       <Card header={<Text size="base" weight="bold">系统信息</Text>}>
-        <MetricGrid columns={4}>
-          <MetricCard
-            framed={false}
-            title="系统版本"
-            value="v1.0.0"
-            icon={<PackageIcon size={20} />}
-          />
-          <MetricCard
-            framed={false}
-            title="运行环境"
-            value=".NET 10 + React 19"
-            icon={<ZapIcon size={20} />}
-          />
-          <MetricCard
-            framed={false}
-            title="最后更新"
-            value="2026-01-28"
-            icon={<CalendarIcon size={20} />}
-          />
-          <MetricCard
-            framed={false}
-            title="API 状态"
-            value="在线"
-            icon={<GlobeIcon size={20} />}
-          />
-        </MetricGrid>
+        <Row gutter={[16, 16]}>
+          <Col span={{ xs: 24, sm: 12, lg: 6 }}>
+            <MetricCard
+              framed={false}
+              title="系统版本"
+              value="v1.0.0"
+              icon={<PackageIcon size={20} />}
+            />
+          </Col>
+          <Col span={{ xs: 24, sm: 12, lg: 6 }}>
+            <MetricCard
+              framed={false}
+              title="运行环境"
+              value=".NET 10 + React 19"
+              icon={<ZapIcon size={20} />}
+            />
+          </Col>
+          <Col span={{ xs: 24, sm: 12, lg: 6 }}>
+            <MetricCard
+              framed={false}
+              title="最后更新"
+              value="2026-01-28"
+              icon={<CalendarIcon size={20} />}
+            />
+          </Col>
+          <Col span={{ xs: 24, sm: 12, lg: 6 }}>
+            <MetricCard
+              framed={false}
+              title="API 状态"
+              value="在线"
+              icon={<GlobeIcon size={20} />}
+            />
+          </Col>
+        </Row>
       </Card>
     </div>
   );

@@ -14,6 +14,8 @@ import { Progress } from '@expcat/tigercat-vue/Progress'
 import { Segmented } from '@expcat/tigercat-vue/Segmented'
 import { Pagination } from '@expcat/tigercat-vue/Pagination'
 import { Empty } from '@expcat/tigercat-vue/Empty'
+import { Row } from '@expcat/tigercat-vue/Row'
+import { Col } from '@expcat/tigercat-vue/Col'
 import PageHeader from '../components/PageHeader.vue'
 import MetricGrid from '../components/MetricGrid.vue'
 import MetricCard from '../components/MetricCard.vue'
@@ -172,14 +174,17 @@ function statusMeta(project: ProjectRecord) {
       </template>
     </PageActionPanel>
 
-    <div
+    <Row
       v-if="projects.length"
       data-testid="projects-grid"
-      class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+      :gutter="[16, 16]"
     >
-      <Card
+      <Col
         v-for="project in projects"
         :key="project.id"
+        :span="{ xs: 24, md: 12, xl: 8 }"
+      >
+      <Card
         hoverable
         class="cursor-pointer"
         :data-testid="`project-card-${project.id}`"
@@ -235,7 +240,8 @@ function statusMeta(project: ProjectRecord) {
           </div>
         </template>
       </Card>
-    </div>
+      </Col>
+    </Row>
     <Card v-else>
       <Empty
         :description="loading ? '正在加载项目…' : '没有符合条件的项目，试试调整搜索或状态筛选。'"

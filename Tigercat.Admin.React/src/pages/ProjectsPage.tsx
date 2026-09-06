@@ -13,6 +13,8 @@ import { Progress } from '@expcat/tigercat-react/Progress';
 import { Segmented } from '@expcat/tigercat-react/Segmented';
 import { Pagination } from '@expcat/tigercat-react/Pagination';
 import { Empty } from '@expcat/tigercat-react/Empty';
+import { Row } from '@expcat/tigercat-react/Row';
+import { Col } from '@expcat/tigercat-react/Col';
 import { PageHeader } from '../components/PageHeader';
 import { MetricCard, MetricGrid, PageActionPanel } from '../components/PageFragments';
 import { CheckCircleIcon, ClockIcon, PackageIcon, TrendingUpIcon } from '../components/Icons';
@@ -192,18 +194,19 @@ function ProjectsPage() {
       />
 
       {projects.length > 0 ? (
-        <div
+        <Row
           data-testid="projects-grid"
-          className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+          gutter={[16, 16]}
         >
           {projects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              onOpen={openProject}
-            />
+            <Col key={project.id} span={{ xs: 24, md: 12, xl: 8 }}>
+              <ProjectCard
+                project={project}
+                onOpen={openProject}
+              />
+            </Col>
           ))}
-        </div>
+        </Row>
       ) : (
         <Card>
           <Empty

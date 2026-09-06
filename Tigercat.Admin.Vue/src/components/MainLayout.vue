@@ -31,6 +31,7 @@ import { useTagsView } from '../utils/tags-view'
 import { useLockScreen } from '../utils/lock-screen'
 import TagsView from './TagsView.vue'
 import LockScreen from './LockScreen.vue'
+import ShellFooter from './ShellFooter.vue'
 
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)'
 const DEMO_MODE = import.meta.env.VITE_TIGERCAT_DEMO === 'true'
@@ -259,6 +260,7 @@ watch(
         <Content id="main-content-scroll" class="min-h-0 flex-1 overflow-auto p-3 pb-24 scroll-smooth sm:p-4 sm:pb-24 md:p-6 md:pb-28">
           <div class="mx-auto max-w-7xl animate-fade-in">
             <slot></slot>
+            <ShellFooter />
           </div>
         </Content>
         <div

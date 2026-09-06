@@ -26,6 +26,7 @@ import {
 import { useTagsView } from '../utils/tags-view';
 import { TagsView } from './TagsView';
 import { LockScreen } from './LockScreen';
+import { ShellFooter } from './ShellFooter';
 import { useLockScreen } from '../utils/lock-screen';
 
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)';
@@ -228,7 +229,10 @@ export function MainLayout({
             onCloseAll={tagsView.closeAll}
           />
           <Content id="main-content-scroll" className="min-h-0 flex-1 overflow-auto p-3 pb-24 scroll-smooth sm:p-4 sm:pb-24 md:p-6 md:pb-28">
-            <div className="mx-auto max-w-7xl animate-fade-in">{children}</div>
+            <div className="mx-auto max-w-7xl animate-fade-in">
+              {children}
+              <ShellFooter />
+            </div>
           </Content>
           {watermarkEnabled ? (
             <div

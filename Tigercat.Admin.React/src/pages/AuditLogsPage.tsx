@@ -15,6 +15,7 @@ import { Timeline } from '@expcat/tigercat-react/Timeline';
 import { DataExport } from '@expcat/tigercat-react/DataExport';
 import { CheckboxGroup } from '@expcat/tigercat-react/CheckboxGroup';
 import { Checkbox } from '@expcat/tigercat-react/Checkbox';
+import { Code } from '@expcat/tigercat-react/Code';
 import type { ActivityItem, TimelineItem } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import {
@@ -462,9 +463,14 @@ function AuditLogsPage() {
                 {selectedLog.eventType} · {selectedLog.actor ?? '系统'} ·{' '}
                 {formatDateTime(selectedLog.occurredAtUtc)}
               </Text>
-              <pre className="max-h-72 max-w-full overflow-auto rounded bg-(--tiger-bg-hover,#f8fafc) p-3 text-sm">
-                {JSON.stringify(selectedLog.data, null, 2)}
-              </pre>
+              <div className="max-h-72 max-w-full overflow-auto rounded bg-(--tiger-bg-hover,#f8fafc) p-3">
+                <Code
+                  code={JSON.stringify(selectedLog.data, null, 2)}
+                  copyable
+                  copyLabel="复制"
+                  copiedLabel="已复制"
+                />
+              </div>
             </div>
           ) : (
             <Empty description="暂无可查看的审计详情" showImage={false} />

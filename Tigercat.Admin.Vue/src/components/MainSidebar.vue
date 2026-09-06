@@ -108,6 +108,9 @@ const bottomMenuItems = computed(() => toMenuItems(filteredBottomMenuItems.value
           popup-portal
           mode="inline"
           :items="mainMenuItems"
+          :searchable="!displayCollapsed"
+          search-placeholder="搜索菜单"
+          empty-text="没有匹配的菜单"
           class="!min-w-0"
           :class="{ 'menu-collapsed': displayCollapsed }"
           @select="handleMenuSelect"

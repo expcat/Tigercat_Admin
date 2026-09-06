@@ -16,6 +16,7 @@ import { Timeline } from '@expcat/tigercat-vue/Timeline'
 import { DataExport } from '@expcat/tigercat-vue/DataExport'
 import { CheckboxGroup } from '@expcat/tigercat-vue/CheckboxGroup'
 import { Checkbox } from '@expcat/tigercat-vue/Checkbox'
+import { Code } from '@expcat/tigercat-vue/Code'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
 import ChartEmptyState from '../components/ChartEmptyState.vue'
@@ -399,7 +400,14 @@ onMounted(async () => {
           <Text size="sm" color="secondary">
             {{ selectedLog.eventType }} · {{ selectedLog.actor ?? '系统' }} · {{ formatDateTime(selectedLog.occurredAtUtc) }}
           </Text>
-          <pre class="max-h-72 max-w-full overflow-auto rounded bg-(--tiger-bg-hover,#f8fafc) p-3 text-sm">{{ JSON.stringify(selectedLog.data, null, 2) }}</pre>
+          <div class="max-h-72 max-w-full overflow-auto rounded bg-(--tiger-bg-hover,#f8fafc) p-3">
+            <Code
+              :code="JSON.stringify(selectedLog.data, null, 2)"
+              copyable
+              copy-label="复制"
+              copied-label="已复制"
+            />
+          </div>
         </div>
         <Empty v-else description="暂无可查看的审计详情" :show-image="false" />
       </Card>

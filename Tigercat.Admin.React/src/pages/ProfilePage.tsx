@@ -28,6 +28,9 @@ import { DatePicker } from '@expcat/tigercat-react/DatePicker';
 import { TimePicker } from '@expcat/tigercat-react/TimePicker';
 import { InputOTP } from '@expcat/tigercat-react/InputOTP';
 import { MaskInput } from '@expcat/tigercat-react/MaskInput';
+import { Row } from '@expcat/tigercat-react/Row';
+import { Col } from '@expcat/tigercat-react/Col';
+import { Icon } from '@expcat/tigercat-react/Icon';
 import type {
   DescriptionsItem,
   TimelineItem,
@@ -36,7 +39,7 @@ import type {
 } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { MutedPanel } from '../components/PageFragments';
-import { UserIcon } from '../components/Icons';
+
 import {
   DEMO_OTP_CODE,
   OTP_LENGTH,
@@ -164,7 +167,7 @@ function ProfilePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        icon={<UserIcon size={24} />}
+        icon={<Icon name="user" size="lg" />}
         title="个人中心"
         subtitle="管理你的资料、安全选项、偏好与登录设备"
         tags={[
@@ -210,17 +213,23 @@ function ProfilePage() {
               </div>
             </Card>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <Card>
-                <Statistic title="登录次数" value={1280} groupSeparator />
-              </Card>
-              <Card>
-                <Statistic title="积分" value={4860} suffix="分" />
-              </Card>
-              <Card>
-                <Statistic title="连续在线" value={36} suffix="天" />
-              </Card>
-            </div>
+            <Row gutter={[16, 16]}>
+              <Col span={{ xs: 24, sm: 8 }}>
+                <Card>
+                  <Statistic title="登录次数" value={1280} groupSeparator />
+                </Card>
+              </Col>
+              <Col span={{ xs: 24, sm: 8 }}>
+                <Card>
+                  <Statistic title="积分" value={4860} suffix="分" />
+                </Card>
+              </Col>
+              <Col span={{ xs: 24, sm: 8 }}>
+                <Card>
+                  <Statistic title="连续在线" value={36} suffix="天" />
+                </Card>
+              </Col>
+            </Row>
 
             <Card title="资料详情">
               <Descriptions items={basicItems} column={{ xs: 1, sm: 2, lg: 3 }} bordered colon />

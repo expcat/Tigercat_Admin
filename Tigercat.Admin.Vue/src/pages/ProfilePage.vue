@@ -28,6 +28,8 @@ import { DatePicker } from '@expcat/tigercat-vue/DatePicker'
 import { TimePicker } from '@expcat/tigercat-vue/TimePicker'
 import { InputOTP } from '@expcat/tigercat-vue/InputOTP'
 import { MaskInput } from '@expcat/tigercat-vue/MaskInput'
+import { Row } from '@expcat/tigercat-vue/Row'
+import { Col } from '@expcat/tigercat-vue/Col'
 import type {
   DescriptionsItem,
   TimelineItem,
@@ -224,11 +226,17 @@ function handleSave(scope: string) {
             </div>
           </Card>
 
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Card><Statistic title="登录次数" :value="1280" group-separator /></Card>
-            <Card><Statistic title="积分" :value="4860" suffix="分" /></Card>
-            <Card><Statistic title="连续在线" :value="36" suffix="天" /></Card>
-          </div>
+          <Row :gutter="[16, 16]">
+            <Col :span="{ xs: 24, sm: 8 }">
+              <Card><Statistic title="登录次数" :value="1280" group-separator /></Card>
+            </Col>
+            <Col :span="{ xs: 24, sm: 8 }">
+              <Card><Statistic title="积分" :value="4860" suffix="分" /></Card>
+            </Col>
+            <Col :span="{ xs: 24, sm: 8 }">
+              <Card><Statistic title="连续在线" :value="36" suffix="天" /></Card>
+            </Col>
+          </Row>
 
           <Card title="资料详情">
             <Descriptions :items="basicItems" :column="{ xs: 1, sm: 2, lg: 3 }" bordered colon />
