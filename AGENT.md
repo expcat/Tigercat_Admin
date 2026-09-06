@@ -61,6 +61,13 @@
 - 新增跨领域能力时，先更新 [docs/llm.md](docs/llm.md) 的按需读取路由，再更新或新增对应专题文档。
 - 文档更新优先复用现有专题，避免同一事实在多个文件重复维护；入口文件只写导航和决策规则。
 
+## CI 约束
+
+- GitHub Actions CI（`.github/workflows/ci.yml`）**只允许** `workflow_dispatch` 手动触发。
+- **禁止**恢复或新增对 `push` / `pull_request`（或其他自动事件）的 CI 触发，除非用户明确要求改回自动跑。
+- 部署工作流（`deploy.yml`）本身已是手动触发，保持不变。
+- 细节与门禁步骤见 [docs/operations.md](docs/operations.md)「CI 与发布门禁」。
+
 ## 验证要求
 
 | 改动类型 | 最小验证 |
