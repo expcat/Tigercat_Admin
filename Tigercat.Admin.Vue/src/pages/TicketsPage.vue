@@ -22,12 +22,14 @@ import { Textarea } from '@expcat/tigercat-vue/Textarea'
 import { RadioGroup } from '@expcat/tigercat-vue/RadioGroup'
 import { Radio } from '@expcat/tigercat-vue/Radio'
 import { Divider } from '@expcat/tigercat-vue/Divider'
+import { WorkflowActionBar, WorkflowTimeline } from '@expcat/tigercat-vue/WorkflowTimeline'
 import type {
   ChatMessage,
   CommentNode,
   MentionOption,
   UploadFile,
   DescriptionsItem,
+  WorkflowActionBarItem,
 } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import MutedPanel from '../components/MutedPanel.vue'
@@ -36,7 +38,9 @@ import {
   createTicket,
   fetchTicket,
   fetchTickets,
+  getTicketWorkflowSteps,
   sendTicketMessage,
+  TICKET_WORKFLOW_ACTIONS,
   updateTicket,
 } from '../utils/tickets'
 import { createComment, fetchComments } from '../utils/comments'
@@ -171,6 +175,15 @@ const selectedDescriptions = computed<DescriptionsItem[]>(() => {
     { label: '更新时间', content: t.updatedAt },
   ]
 })
+
+const workflowSteps = computed(() => (selected.value ? getTicketWorkflowSteps(selected.value) : []))
+const workflowActionsDisabled = computed(
+  () => selected.value?.status === 'resolved' || selected.value?.status === 'closed',
+)
+
+function handleWorkflowAction(item: WorkflowActionBarItem) {
+  Message.info({ content: `演示：${item.label}（未接入审批引擎）`, duration: 2200 })
+}
 
 // ── 对话 ──────────────────────────────────────────
 const draft = ref('')
@@ -441,6 +454,22 @@ const openCount = computed(
                 </Steps>
               </Card>
             </div>
+
+            <Card class="mt-4">
+              <template #header><Text weight="bold">审批进度</Text></template>
+              <WorkflowTimeline :steps="workflowSteps" />
+              <div class="mt-3">
+                <WorkflowActionBar
+                  :items="TICKET_WORKFLOW_ACTIONS"
+                  :disabled="workflowActionsDisabled"
+                  aria-label="审批操作"
+                  @action="handleWorkflowAction"
+                />
+              </div>
+              <Text size="sm" color="secondary" class="mt-2 block">
+                展示用审批时间线，操作不接入引擎。
+              </Text>
+            </Card>
 
             <Card class="mt-4">
               <template #header><Text weight="bold">对话</Text></template>

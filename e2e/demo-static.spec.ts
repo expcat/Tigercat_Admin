@@ -179,10 +179,13 @@ test.describe('阶段 2 — 协作沟通', () => {
 
     await page.goto('/#/tickets');
     await expect(page.getByText('工单中心').first()).toBeVisible();
-    // 默认选中第一条工单，右侧详情应渲染生命周期与工单信息。
+    // 默认选中第一条工单，右侧详情应渲染生命周期、工单信息与展示用审批时间线。
     await expect(page.getByText('导出报表时偶发 500 错误').first()).toBeVisible();
     await expect(page.getByText('工单生命周期', { exact: true })).toBeVisible();
     await expect(page.getByText('工单信息', { exact: true })).toBeVisible();
+    await expect(page.getByText('审批进度', { exact: true })).toBeVisible();
+    await expect(page.getByRole('toolbar', { name: '审批操作' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '通过' })).toBeEnabled();
 
     // 新建工单抽屉可打开。
     await page.getByRole('button', { name: '新建工单' }).click();

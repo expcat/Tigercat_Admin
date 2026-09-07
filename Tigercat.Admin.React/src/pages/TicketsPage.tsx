@@ -21,6 +21,7 @@ import { Textarea } from '@expcat/tigercat-react/Textarea';
 import { RadioGroup } from '@expcat/tigercat-react/RadioGroup';
 import { Radio } from '@expcat/tigercat-react/Radio';
 import { Divider } from '@expcat/tigercat-react/Divider';
+import { WorkflowActionBar, WorkflowTimeline } from '@expcat/tigercat-react/WorkflowTimeline';
 import type {
   ChatMessage,
   CommentNode,
@@ -29,6 +30,7 @@ import type {
   DescriptionsItem,
   TagVariant,
   BadgeVariant,
+  WorkflowActionBarItem,
 } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { MutedPanel } from '../components/PageFragments';
@@ -37,7 +39,9 @@ import {
   createTicket,
   fetchTicket,
   fetchTickets,
+  getTicketWorkflowSteps,
   sendTicketMessage,
+  TICKET_WORKFLOW_ACTIONS,
   updateTicket,
 } from '../utils/tickets';
 import { createComment, fetchComments } from '../utils/comments';
@@ -199,6 +203,17 @@ function TicketsPage() {
         { label: '更新时间', content: selected.updatedAt },
       ]
     : [];
+
+  const workflowSteps = useMemo(
+    () => (selected ? getTicketWorkflowSteps(selected) : []),
+    [selected],
+  );
+  const workflowActionsDisabled =
+    selected?.status === 'resolved' || selected?.status === 'closed';
+
+  const handleWorkflowAction = (item: WorkflowActionBarItem) => {
+    Message.info({ content: `演示：${item.label}（未接入审批引擎）`, duration: 2200 });
+  };
 
   const handleSend = async (value: string) => {
     const text = value.trim();
@@ -436,6 +451,21 @@ function TicketsPage() {
                     </Steps>
                   </Card>
                 </div>
+
+                <Card header={<Text weight="bold">审批进度</Text>} className="mt-4">
+                  <WorkflowTimeline steps={workflowSteps} />
+                  <div className="mt-3">
+                    <WorkflowActionBar
+                      items={TICKET_WORKFLOW_ACTIONS}
+                      disabled={workflowActionsDisabled}
+                      ariaLabel="审批操作"
+                      onAction={handleWorkflowAction}
+                    />
+                  </div>
+                  <Text size="sm" color="secondary" className="mt-2 block">
+                    展示用审批时间线，操作不接入引擎。
+                  </Text>
+                </Card>
 
                 <Card header={<Text weight="bold">对话</Text>} className="mt-4">
                   <Resizable axis="vertical" handles={['bottom']} defaultHeight={300} minHeight={200} maxHeight={460} style={{ width: '100%' }}>
