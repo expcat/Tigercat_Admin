@@ -188,6 +188,11 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(ImportJobResponse))]
 [JsonSerializable(typeof(CreateImportJobRequest))]
 [JsonSerializable(typeof(ApiResponse<ImportJobResponse>))]
+// Dynamic menu schema (no CRUD)
+[JsonSerializable(typeof(MenuSchemaNodeResponse))]
+[JsonSerializable(typeof(MenuSchemaNodeResponse[]))]
+[JsonSerializable(typeof(MenuSchemaResponse))]
+[JsonSerializable(typeof(ApiResponse<MenuSchemaResponse>))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }

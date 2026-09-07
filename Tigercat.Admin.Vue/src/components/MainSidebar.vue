@@ -7,10 +7,10 @@ import Icon from './Icon.vue'
 import AppLogo from './AppLogo.vue'
 import { usePermission } from '../utils/permission'
 import {
-  SHELL_BOTTOM_MENU_ITEMS,
-  SHELL_MENU_ITEMS,
-  filterShellMenuItems,
+  filterShellMenuSchema,
   getShellExpandedKeys,
+  schemaToShellMenuItems,
+  useShellMenuSchema,
 } from '../utils/shell-navigation'
 
 const props = withDefaults(defineProps<{
@@ -48,11 +48,12 @@ const displayCollapsed = computed(() =>
 )
 
 const { has: hasPerm } = usePermission()
+const menuSchema = useShellMenuSchema()
 const filteredMenuItems = computed(() =>
-  filterShellMenuItems(SHELL_MENU_ITEMS, hasPerm)
+  filterShellMenuSchema(menuSchema.value.items, hasPerm)
 )
 const filteredBottomMenuItems = computed(() =>
-  filterShellMenuItems(SHELL_BOTTOM_MENU_ITEMS, hasPerm)
+  filterShellMenuSchema(menuSchema.value.bottomItems, hasPerm)
 )
 
 watch(
@@ -65,17 +66,28 @@ watch(
 
 const menuIcon = (name?: string, size = 20) => h(Icon, { name: name || 'placeholder', size })
 
-function toMenuItems(items: typeof SHELL_MENU_ITEMS): MenuItem[] {
+function withMenuIcons(items: MenuItem[]): MenuItem[] {
   return items.map((item) => ({
-    key: item.key,
-    label: item.label,
-    icon: menuIcon(item.icon, item.key === 'home' || item.key === 'system' || item.key === 'about' ? 20 : 18),
-    children: item.children ? toMenuItems(item.children) : undefined,
+    ...item,
+    icon:
+      typeof item.icon === 'string'
+        ? menuIcon(
+            item.icon,
+            item.key === 'home' || item.key === 'system' || item.key === 'about'
+              ? 20
+              : 18,
+          )
+        : item.icon,
+    children: item.children ? withMenuIcons(item.children) : undefined,
   }))
 }
 
-const mainMenuItems = computed(() => toMenuItems(filteredMenuItems.value))
-const bottomMenuItems = computed(() => toMenuItems(filteredBottomMenuItems.value))
+const mainMenuItems = computed(() =>
+  withMenuIcons(schemaToShellMenuItems(filteredMenuItems.value)),
+)
+const bottomMenuItems = computed(() =>
+  withMenuIcons(schemaToShellMenuItems(filteredBottomMenuItems.value)),
+)
 </script>
 
 <template>

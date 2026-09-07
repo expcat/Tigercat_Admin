@@ -1,3 +1,5 @@
+import { MOCK_MENU_SCHEMA_PAYLOAD } from './menu-schema';
+
 type ApiResponse<T = unknown> = {
   code: number;
   message: string;
@@ -1520,6 +1522,12 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
 
   if (path === '/api/auth/change-password' && method === 'POST') return makeJson({ message: '密码修改成功' });
   if (path === '/api/auth/logout' && method === 'POST') return makeJson({ message: '退出成功' });
+
+  if (path === '/api/menus/schema' && method === 'GET') {
+    const username = sessionUsername(request, init);
+    if (!username) return makeError('未授权', 401);
+    return makeJson(MOCK_MENU_SCHEMA_PAYLOAD);
+  }
 
   if (path === '/api/auth/permissions' && method === 'GET') {
     const username = sessionUsername(request, init);

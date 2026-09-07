@@ -1,15 +1,86 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Menu } from '@expcat/tigercat-react/Menu';
 import { Sidebar } from '@expcat/tigercat-react/Sidebar';
 import type { MenuItem } from '@expcat/tigercat-core';
-import { LogoIcon, ChevronRightIcon, ChevronLeftIcon } from './Icons';
+import {
+  ActivityIcon,
+  BellIcon,
+  CalendarIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ClipboardIcon,
+  ClockIcon,
+  DashboardIcon,
+  EditIcon,
+  FileTextIcon,
+  HelpIcon,
+  ImageIcon,
+  InfoIcon,
+  LogoIcon,
+  MessageIcon,
+  MonitorIcon,
+  PackageIcon,
+  PaletteIcon,
+  ServerIcon,
+  SettingsIcon,
+  ShieldIcon,
+  TerminalIcon,
+  TicketIcon,
+  TrendingUpIcon,
+  UploadIcon,
+  UsersIcon,
+  ZapIcon,
+} from './Icons';
 import { usePermission } from '../utils/permission';
 import {
-  SHELL_BOTTOM_MENU_ITEMS,
-  SHELL_MENU_ITEMS,
-  filterShellMenuItems,
+  filterShellMenuSchema,
   getShellExpandedKeys,
+  schemaToShellMenuItems,
+  useShellMenuSchema,
 } from '../utils/shell-navigation';
+
+const MENU_ICONS: Record<string, (size: number) => ReactNode> = {
+  dashboard: (size) => <DashboardIcon size={size} />,
+  trendingUp: (size) => <TrendingUpIcon size={size} />,
+  monitor: (size) => <MonitorIcon size={size} />,
+  package: (size) => <PackageIcon size={size} />,
+  ticket: (size) => <TicketIcon size={size} />,
+  calendar: (size) => <CalendarIcon size={size} />,
+  edit: (size) => <EditIcon size={size} />,
+  image: (size) => <ImageIcon size={size} />,
+  clock: (size) => <ClockIcon size={size} />,
+  upload: (size) => <UploadIcon size={size} />,
+  zap: (size) => <ZapIcon size={size} />,
+  help: (size) => <HelpIcon size={size} />,
+  fileText: (size) => <FileTextIcon size={size} />,
+  users: (size) => <UsersIcon size={size} />,
+  shield: (size) => <ShieldIcon size={size} />,
+  settings: (size) => <SettingsIcon size={size} />,
+  bell: (size) => <BellIcon size={size} />,
+  clipboard: (size) => <ClipboardIcon size={size} />,
+  activity: (size) => <ActivityIcon size={size} />,
+  info: (size) => <InfoIcon size={size} />,
+  message: (size) => <MessageIcon size={size} />,
+  palette: (size) => <PaletteIcon size={size} />,
+  terminal: (size) => <TerminalIcon size={size} />,
+  server: (size) => <ServerIcon size={size} />,
+};
+
+function iconSizeForKey(key: MenuItem['key']): number {
+  return key === 'home' || key === 'system' || key === 'about' ? 20 : 18;
+}
+
+function withMenuIcons(items: MenuItem[]): MenuItem[] {
+  return items.map((item) => {
+    const iconName = typeof item.icon === 'string' ? item.icon : undefined;
+    const render = iconName ? MENU_ICONS[iconName] : undefined;
+    return {
+      ...item,
+      icon: render ? render(iconSizeForKey(item.key)) : item.icon,
+      children: item.children ? withMenuIcons(item.children) : undefined,
+    };
+  });
+}
 
 interface MainSidebarProps {
   collapsed: boolean;
@@ -34,13 +105,22 @@ export function MainSidebar({
     'system',
   ]);
   const { has: hasPerm } = usePermission();
+  const menuSchema = useShellMenuSchema();
 
   const filteredMenuItems = useMemo(() => {
-    return filterShellMenuItems(SHELL_MENU_ITEMS, hasPerm);
-  }, [hasPerm]);
+    return filterShellMenuSchema(menuSchema.items, hasPerm);
+  }, [hasPerm, menuSchema.items]);
   const filteredBottomMenuItems = useMemo(() => {
-    return filterShellMenuItems(SHELL_BOTTOM_MENU_ITEMS, hasPerm);
-  }, [hasPerm]);
+    return filterShellMenuSchema(menuSchema.bottomItems, hasPerm);
+  }, [hasPerm, menuSchema.bottomItems]);
+  const mainMenuItems = useMemo(
+    () => withMenuIcons(schemaToShellMenuItems(filteredMenuItems)),
+    [filteredMenuItems],
+  );
+  const bottomMenuItems = useMemo(
+    () => withMenuIcons(schemaToShellMenuItems(filteredBottomMenuItems)),
+    [filteredBottomMenuItems],
+  );
   const requiredOpenKeys = useMemo(
     () => getShellExpandedKeys(activeMenu, filteredMenuItems),
     [activeMenu, filteredMenuItems],
@@ -84,7 +164,7 @@ export function MainSidebar({
             collapsed={displayCollapsed}
             popupPortal
             mode="inline"
-            items={filteredMenuItems as MenuItem[]}
+            items={mainMenuItems}
             searchable={!displayCollapsed}
             searchPlaceholder="搜索菜单"
             emptyText="没有匹配的菜单"
@@ -101,7 +181,7 @@ export function MainSidebar({
             collapsed={displayCollapsed}
             popupPortal
             mode="inline"
-            items={filteredBottomMenuItems as MenuItem[]}
+            items={bottomMenuItems}
             className={`!min-w-0 ${displayCollapsed ? 'menu-collapsed' : ''}`}
             onSelect={handleSelect}
           />

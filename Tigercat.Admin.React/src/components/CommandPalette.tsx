@@ -3,12 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import type { SpotlightItem } from '@expcat/tigercat-core';
 import { Spotlight } from '@expcat/tigercat-react/Spotlight';
 import {
-  SHELL_MENU_ITEMS,
-  SHELL_BOTTOM_MENU_ITEMS,
   SHELL_MENU_ROUTES,
-  filterShellMenuItems,
+  filterShellMenuSchema,
+  flattenShellMenuLeaves,
   isShellPageKey,
-  type ShellMenuItemDef,
+  useShellMenuSchema,
 } from '../utils/shell-navigation';
 import { usePermission } from '../utils/permission';
 
@@ -26,15 +25,6 @@ type CommandData =
       value: 'theme' | 'chat' | 'notifications' | 'password' | 'logout';
     };
 
-const flattenRoutes = (items: ShellMenuItemDef[]): ShellMenuItemDef[] =>
-  items.flatMap((item) =>
-    item.children
-      ? flattenRoutes(item.children)
-      : isShellPageKey(item.key)
-        ? [item]
-        : [],
-  );
-
 export function CommandPalette({
   onToggleTheme,
   onChangePassword,
@@ -43,6 +33,7 @@ export function CommandPalette({
 }: CommandPaletteProps) {
   const navigate = useNavigate();
   const { has: hasPerm } = usePermission();
+  const menuSchema = useShellMenuSchema();
 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -78,26 +69,31 @@ export function CommandPalette({
   };
 
   const items = useMemo<SpotlightItem[]>(() => {
-    const permitted = filterShellMenuItems(
-      [...SHELL_MENU_ITEMS, ...SHELL_BOTTOM_MENU_ITEMS],
+    const permitted = filterShellMenuSchema(
+      [...menuSchema.items, ...menuSchema.bottomItems],
       hasPerm,
     );
-    const navItems: SpotlightItem[] = flattenRoutes(permitted).flatMap((item) => {
-      if (!isShellPageKey(item.key)) {
-        return [];
-      }
+    const navItems: SpotlightItem[] = flattenShellMenuLeaves(permitted).flatMap(
+      (item) => {
+        if (!isShellPageKey(item.key)) {
+          return [];
+        }
 
-      return [
-        {
-          key: `route:${item.key}`,
-          label: item.label,
-          description: `跳转到${item.label}`,
-          group: '页面导航',
-          keywords: [item.label, item.key],
-          data: { kind: 'route', value: SHELL_MENU_ROUTES[item.key] } as CommandData,
-        },
-      ];
-    });
+        return [
+          {
+            key: `route:${item.key}`,
+            label: item.label ?? item.key,
+            description: `跳转到${item.label ?? item.key}`,
+            group: '页面导航',
+            keywords: [item.label ?? '', item.key],
+            data: {
+              kind: 'route',
+              value: SHELL_MENU_ROUTES[item.key],
+            } as CommandData,
+          },
+        ];
+      },
+    );
 
     const actionItems: SpotlightItem[] = [
       {
@@ -143,7 +139,7 @@ export function CommandPalette({
     ];
 
     return [...navItems, ...actionItems];
-  }, [hasPerm]);
+  }, [hasPerm, menuSchema]);
 
   const handleSelect = (item: SpotlightItem) => {
     handleOpenChange(false);

@@ -1,31 +1,14 @@
-import React from 'react';
+import { useEffect, useState } from 'react';
 import {
-  ActivityIcon,
-  BellIcon,
-  CalendarIcon,
-  ClipboardIcon,
-  ClockIcon,
-  DashboardIcon,
-  EditIcon,
-  FileTextIcon,
-  HelpIcon,
-  ImageIcon,
-  InfoIcon,
-  MessageIcon,
-  MonitorIcon,
-  PackageIcon,
-  PaletteIcon,
-  ServerIcon,
-  SettingsIcon,
-  ShieldIcon,
-  TerminalIcon,
-  TicketIcon,
-  TrendingUpIcon,
-  UploadIcon,
-  UserIcon,
-  UsersIcon,
-  ZapIcon,
-} from '../components/Icons';
+  filterMenuByPermission,
+  menuSchemaToMenuItems,
+  type MenuItem,
+  type MenuSchema,
+  type MenuSchemaNode,
+} from '@expcat/tigercat-core';
+import { getAuthHeaders } from './auth';
+import { apiRequest } from './request';
+import type { MenuSchemaPayload } from './types';
 
 export type ShellPageKey =
   | 'home'
@@ -60,193 +43,208 @@ export type ShellMenuKey =
   | 'opsGroup'
   | 'helpGroup';
 
-export interface ShellMenuItemDef {
-  key: ShellMenuKey;
-  label: string;
-  icon: React.ReactNode;
-  permission?: string | string[];
-  children?: ShellMenuItemDef[];
-}
-
-const pageMenuItems: Record<ShellPageKey, ShellMenuItemDef> = {
+const pageNodes: Record<ShellPageKey, MenuSchemaNode> = {
   home: {
     key: 'home',
     label: '仪表盘',
-    icon: <DashboardIcon size={20} />,
+    icon: 'dashboard',
     permission: 'dashboard:view',
+    path: '/dashboard',
   },
   analytics: {
     key: 'analytics',
     label: '数据分析看板',
-    icon: <TrendingUpIcon size={18} />,
+    icon: 'trendingUp',
+    path: '/analytics',
   },
   monitor: {
     key: 'monitor',
     label: '实时监控',
-    icon: <MonitorIcon size={18} />,
+    icon: 'monitor',
+    path: '/monitor',
   },
   projects: {
     key: 'projects',
     label: '项目列表',
-    icon: <PackageIcon size={18} />,
+    icon: 'package',
+    path: '/projects',
   },
   tickets: {
     key: 'tickets',
     label: '工单中心',
-    icon: <TicketIcon size={18} />,
+    icon: 'ticket',
+    path: '/tickets',
   },
   calendar: {
     key: 'calendar',
     label: '团队日历',
-    icon: <CalendarIcon size={18} />,
+    icon: 'calendar',
+    path: '/calendar',
   },
   content: {
     key: 'content',
     label: '内容编辑',
-    icon: <EditIcon size={18} />,
+    icon: 'edit',
+    path: '/content',
   },
   gallery: {
     key: 'gallery',
     label: '媒体图库',
-    icon: <ImageIcon size={18} />,
+    icon: 'image',
+    path: '/gallery',
   },
   jobs: {
     key: 'jobs',
     label: '定时任务',
-    icon: <ClockIcon size={18} />,
+    icon: 'clock',
+    path: '/jobs',
   },
   import: {
     key: 'import',
     label: '数据导入',
-    icon: <UploadIcon size={18} />,
+    icon: 'upload',
+    path: '/import',
   },
   performance: {
     key: 'performance',
     label: '大数据演示',
-    icon: <ZapIcon size={18} />,
+    icon: 'zap',
+    path: '/performance',
   },
   help: {
     key: 'help',
     label: '帮助中心',
-    icon: <HelpIcon size={18} />,
+    icon: 'help',
+    path: '/help',
   },
   reports: {
     key: 'reports',
     label: '报表打印',
-    icon: <FileTextIcon size={18} />,
+    icon: 'fileText',
+    path: '/reports',
   },
   users: {
     key: 'users',
     label: '用户管理',
-    icon: <UsersIcon size={18} />,
+    icon: 'users',
     permission: 'user:view',
+    path: '/users',
   },
   roles: {
     key: 'roles',
     label: '角色管理',
-    icon: <ShieldIcon size={18} />,
+    icon: 'shield',
     permission: 'role:view',
+    path: '/roles',
   },
   settings: {
     key: 'settings',
     label: '系统设置',
-    icon: <SettingsIcon size={18} />,
+    icon: 'settings',
+    path: '/settings',
   },
   files: {
     key: 'files',
     label: '文件管理',
-    icon: <FileTextIcon size={18} />,
+    icon: 'fileText',
     permission: 'media:view',
+    path: '/files',
   },
   notifications: {
     key: 'notifications',
     label: '通知中心',
-    icon: <BellIcon size={18} />,
+    icon: 'bell',
+    path: '/notifications',
   },
   tasks: {
     key: 'tasks',
     label: '任务面板',
-    icon: <ClipboardIcon size={18} />,
+    icon: 'clipboard',
+    path: '/tasks',
   },
   audit: {
     key: 'audit',
     label: '审计日志',
-    icon: <ActivityIcon size={18} />,
+    icon: 'activity',
+    path: '/audit-logs',
   },
   about: {
     key: 'about',
     label: '关于',
-    icon: <InfoIcon size={20} />,
+    icon: 'info',
+    path: '/about',
   },
   profile: {
     key: 'profile',
     label: '个人中心',
-    icon: <UserIcon size={18} />,
+    icon: 'user',
+    path: '/profile',
+    hideInMenu: true,
   },
 };
 
-export const SHELL_MENU_ITEMS: ShellMenuItemDef[] = [
-  pageMenuItems.home,
+export const SHELL_MENU_SCHEMA: MenuSchema = [
+  pageNodes.home,
   {
     key: 'analyticsGroup',
     label: '数据分析',
-    icon: <TrendingUpIcon size={20} />,
-    children: [pageMenuItems.analytics, pageMenuItems.monitor],
+    icon: 'trendingUp',
+    children: [pageNodes.analytics, pageNodes.monitor],
   },
   {
     key: 'collaborationGroup',
     label: '协作',
-    icon: <MessageIcon size={20} />,
-    children: [pageMenuItems.tickets, pageMenuItems.calendar],
+    icon: 'message',
+    children: [pageNodes.tickets, pageNodes.calendar],
   },
   {
     key: 'contentGroup',
     label: '内容管理',
-    icon: <PaletteIcon size={20} />,
-    children: [pageMenuItems.content, pageMenuItems.gallery],
+    icon: 'palette',
+    children: [pageNodes.content, pageNodes.gallery],
   },
   {
     key: 'projectsGroup',
     label: '项目',
-    icon: <PackageIcon size={20} />,
-    children: [pageMenuItems.projects],
+    icon: 'package',
+    children: [pageNodes.projects],
   },
   {
     key: 'opsGroup',
     label: '运维',
-    icon: <TerminalIcon size={20} />,
-    children: [pageMenuItems.jobs, pageMenuItems.import, pageMenuItems.performance],
+    icon: 'terminal',
+    children: [pageNodes.jobs, pageNodes.import, pageNodes.performance],
   },
   {
     key: 'helpGroup',
     label: '帮助支持',
-    icon: <HelpIcon size={20} />,
-    children: [pageMenuItems.help, pageMenuItems.reports],
+    icon: 'help',
+    children: [pageNodes.help, pageNodes.reports],
   },
   {
     key: 'system',
     label: '系统管理',
-    icon: <ServerIcon size={20} />,
+    icon: 'server',
     children: [
-      pageMenuItems.users,
-      pageMenuItems.roles,
-      pageMenuItems.settings,
-      pageMenuItems.files,
-      pageMenuItems.notifications,
-      pageMenuItems.tasks,
-      pageMenuItems.audit,
+      pageNodes.users,
+      pageNodes.roles,
+      pageNodes.settings,
+      pageNodes.files,
+      pageNodes.notifications,
+      pageNodes.tasks,
+      pageNodes.audit,
     ],
   },
 ];
 
-export const SHELL_BOTTOM_MENU_ITEMS: ShellMenuItemDef[] = [
-  pageMenuItems.about,
-];
+export const SHELL_BOTTOM_MENU_SCHEMA: MenuSchema = [pageNodes.about];
 
-// 不进左侧菜单、仅供标题/面包屑解析的页面（如头像下拉进入的个人中心）。
-export const SHELL_HIDDEN_MENU_ITEMS: ShellMenuItemDef[] = [
-  pageMenuItems.profile,
-];
+export const SHELL_HIDDEN_MENU_SCHEMA: MenuSchema = [pageNodes.profile];
+
+export const BUNDLED_MENU_SCHEMA_PAYLOAD: MenuSchemaPayload = {
+  items: SHELL_MENU_SCHEMA,
+  bottomItems: SHELL_BOTTOM_MENU_SCHEMA,
+};
 
 export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   home: '/dashboard',
@@ -319,51 +317,101 @@ export function isShellPageKey(value: unknown): value is ShellPageKey {
   );
 }
 
-function isShellMenuItemPermitted(
-  item: ShellMenuItemDef,
-  hasPermission: (permission: string) => boolean,
-): boolean {
-  if (!item.permission) {
-    return true;
-  }
-
-  const codes = Array.isArray(item.permission)
-    ? item.permission
-    : [item.permission];
-  return codes.every((code) => hasPermission(code));
+function isUsableSchema(value: unknown): value is MenuSchema {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every(
+      (node) =>
+        Boolean(node) &&
+        typeof node === 'object' &&
+        typeof (node as MenuSchemaNode).key === 'string',
+    )
+  );
 }
 
-export function filterShellMenuItems(
-  items: ShellMenuItemDef[],
-  hasPermission: (permission: string) => boolean,
-): ShellMenuItemDef[] {
-  return items
-    .map((item) => {
-      if (item.children) {
-        const visibleChildren = filterShellMenuItems(
-          item.children,
-          hasPermission,
-        );
-        if (visibleChildren.length === 0) {
-          return null;
+function bundledPayload(): MenuSchemaPayload {
+  return {
+    items: SHELL_MENU_SCHEMA,
+    bottomItems: SHELL_BOTTOM_MENU_SCHEMA,
+  };
+}
+
+let menuSchemaRequest: Promise<MenuSchemaPayload> | null = null;
+
+export function resetShellMenuSchema(): void {
+  menuSchemaRequest = null;
+}
+
+export async function loadShellMenuSchema(): Promise<MenuSchemaPayload> {
+  if (!menuSchemaRequest) {
+    menuSchemaRequest = (async () => {
+      try {
+        const res = await apiRequest<MenuSchemaPayload>('/api/menus/schema', {
+          headers: getAuthHeaders(),
+        });
+        if (
+          isUsableSchema(res.data?.items) &&
+          isUsableSchema(res.data?.bottomItems)
+        ) {
+          return {
+            items: res.data.items,
+            bottomItems: res.data.bottomItems,
+          };
         }
-
-        return {
-          ...item,
-          children: visibleChildren,
-        };
+      } catch {
+        // Live API without this endpoint, or a transient error: keep bundled tree.
       }
+      return bundledPayload();
+    })();
+  }
+  return menuSchemaRequest;
+}
 
-      return isShellMenuItemPermitted(item, hasPermission) ? item : null;
-    })
-    .filter(Boolean) as ShellMenuItemDef[];
+export function useShellMenuSchema(): MenuSchemaPayload {
+  const [payload, setPayload] = useState<MenuSchemaPayload>(bundledPayload());
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadShellMenuSchema().then((next) => {
+      if (!cancelled) {
+        setPayload(next);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return payload;
+}
+
+export function schemaToShellMenuItems(nodes: MenuSchemaNode[]): MenuItem[] {
+  return stripMenuHref(menuSchemaToMenuItems(nodes));
+}
+
+export function filterShellMenuSchema(
+  nodes: MenuSchemaNode[],
+  hasPermission: (permission: string) => boolean,
+): MenuSchemaNode[] {
+  return filterMenuByPermission(nodes, hasPermission);
+}
+
+function stripMenuHref(items: MenuItem[]): MenuItem[] {
+  return items.map((item) => {
+    const { href: _href, ...rest } = item;
+    return {
+      ...rest,
+      children: item.children ? stripMenuHref(item.children) : undefined,
+    };
+  });
 }
 
 function findShellMenuTrail(
-  items: ShellMenuItemDef[],
+  items: MenuSchemaNode[],
   key: string,
-  trail: ShellMenuItemDef[] = [],
-): ShellMenuItemDef[] | undefined {
+  trail: MenuSchemaNode[] = [],
+): MenuSchemaNode[] | undefined {
   for (const item of items) {
     const nextTrail = [...trail, item];
 
@@ -383,9 +431,9 @@ function findShellMenuTrail(
 }
 
 function findShellMenuItem(
-  items: ShellMenuItemDef[],
+  items: MenuSchemaNode[],
   key: string,
-): ShellMenuItemDef | undefined {
+): MenuSchemaNode | undefined {
   for (const item of items) {
     if (item.key === key) {
       return item;
@@ -404,18 +452,18 @@ function findShellMenuItem(
 
 export function getShellBreadcrumbItems(
   key: string,
-  items: ShellMenuItemDef[] = [
-    ...SHELL_MENU_ITEMS,
-    ...SHELL_BOTTOM_MENU_ITEMS,
-    ...SHELL_HIDDEN_MENU_ITEMS,
+  items: MenuSchemaNode[] = [
+    ...SHELL_MENU_SCHEMA,
+    ...SHELL_BOTTOM_MENU_SCHEMA,
+    ...SHELL_HIDDEN_MENU_SCHEMA,
   ],
 ): string[] {
-  return findShellMenuTrail(items, key)?.map((item) => item.label) ?? [];
+  return findShellMenuTrail(items, key)?.map((item) => item.label ?? '') ?? [];
 }
 
 export function getShellExpandedKeys(
   key: string,
-  items: ShellMenuItemDef[] = SHELL_MENU_ITEMS,
+  items: MenuSchemaNode[] = SHELL_MENU_SCHEMA,
 ): (string | number)[] {
   const trail = findShellMenuTrail(items, key) ?? [];
   return trail.slice(0, -1).map((item) => item.key);
@@ -425,11 +473,23 @@ export function getShellPageTitle(key: string): string {
   return (
     findShellMenuItem(
       [
-        ...SHELL_MENU_ITEMS,
-        ...SHELL_BOTTOM_MENU_ITEMS,
-        ...SHELL_HIDDEN_MENU_ITEMS,
+        ...SHELL_MENU_SCHEMA,
+        ...SHELL_BOTTOM_MENU_SCHEMA,
+        ...SHELL_HIDDEN_MENU_SCHEMA,
       ],
       key,
     )?.label ?? '仪表盘'
+  );
+}
+
+export function flattenShellMenuLeaves(
+  items: MenuSchemaNode[],
+): MenuSchemaNode[] {
+  return items.flatMap((item) =>
+    item.children
+      ? flattenShellMenuLeaves(item.children)
+      : isShellPageKey(item.key)
+        ? [item]
+        : [],
   );
 }

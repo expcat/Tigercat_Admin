@@ -15,6 +15,7 @@ import {
   saveThemePreferences,
   applyTheme,
   watchSystemTheme,
+  resetShellMenuSchema,
   type Session,
   type ThemeMode,
   type ThemePreferences,
@@ -116,6 +117,7 @@ const loadHome = async (tokenOverride?: string) => {
 const clearAuthenticatedState = () => {
   persistSession(null)
   permission.clear()
+  resetShellMenuSchema()
   homeMessage.value = ''
   homeError.value = ''
 }

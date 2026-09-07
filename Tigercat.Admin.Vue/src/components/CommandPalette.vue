@@ -4,10 +4,11 @@ import { useRouter } from 'vue-router'
 import type { SpotlightItem } from '@expcat/tigercat-core'
 import { Spotlight } from '@expcat/tigercat-vue/Spotlight'
 import {
-  SHELL_MENU_ITEMS,
-  SHELL_BOTTOM_MENU_ITEMS,
-  filterShellMenuItems,
-  type ShellMenuItemDef,
+  SHELL_MENU_ROUTES,
+  filterShellMenuSchema,
+  flattenShellMenuLeaves,
+  isShellPageKey,
+  useShellMenuSchema,
 } from '../utils/shell-navigation'
 import { usePermission } from '../utils/permission'
 
@@ -62,24 +63,27 @@ type CommandData =
   | { kind: 'route'; value: string }
   | { kind: 'action'; value: 'theme' | 'chat' | 'notifications' | 'password' | 'logout' }
 
-const flattenRoutes = (items: ShellMenuItemDef[]): ShellMenuItemDef[] =>
-  items.flatMap((item) =>
-    item.children ? flattenRoutes(item.children) : item.routeName ? [item] : [],
-  )
+const menuSchema = useShellMenuSchema()
 
 const navItems = computed<SpotlightItem[]>(() => {
-  const permitted = filterShellMenuItems(
-    [...SHELL_MENU_ITEMS, ...SHELL_BOTTOM_MENU_ITEMS],
+  const permitted = filterShellMenuSchema(
+    [...menuSchema.value.items, ...menuSchema.value.bottomItems],
     permission.has,
   )
-  return flattenRoutes(permitted).map((item) => ({
-    key: `route:${item.routeName}`,
-    label: item.label,
-    description: `跳转到${item.label}`,
-    group: '页面导航',
-    keywords: [item.label, item.routeName ?? ''],
-    data: { kind: 'route', value: item.routeName } as CommandData,
-  }))
+  return flattenShellMenuLeaves(permitted).flatMap((item) => {
+    if (!isShellPageKey(item.key)) {
+      return []
+    }
+    const routeName = SHELL_MENU_ROUTES[item.key]
+    return [{
+      key: `route:${routeName}`,
+      label: item.label ?? item.key,
+      description: `跳转到${item.label ?? item.key}`,
+      group: '页面导航',
+      keywords: [item.label ?? '', item.key, routeName],
+      data: { kind: 'route', value: routeName } as CommandData,
+    }]
+  })
 })
 
 const actionItems = computed<SpotlightItem[]>(() => [

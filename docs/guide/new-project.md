@@ -19,7 +19,7 @@ pnpm create vite my-admin --template react-ts   # React
 pnpm create vite my-admin --template vue-ts     # Vue
 ```
 
-依赖清单（版本以蓝本 [Tigercat.Admin.React/package.json](../../Tigercat.Admin.React/package.json) / [Tigercat.Admin.Vue/package.json](../../Tigercat.Admin.Vue/package.json) 为准，当前蓝本为 Tigercat `^2.1.4`）：
+依赖清单（版本以蓝本 [Tigercat.Admin.React/package.json](../../Tigercat.Admin.React/package.json) / [Tigercat.Admin.Vue/package.json](../../Tigercat.Admin.Vue/package.json) 为准，当前蓝本为 Tigercat `^2.3.0`）：
 
 | 类别 | React 端 | Vue 端 | 说明 |
 | ---- | -------- | ------ | ---- |
@@ -91,7 +91,7 @@ pnpm add -D @tailwindcss/postcss
 | `src/components/PageHeader.tsx` + `PageFragments.tsx`（Vue：`PageHeader.vue`、`MetricCard.vue`、`MetricGrid.vue`、`MutedPanel.vue`、`PageActionPanel.vue`、`ChartEmptyState.vue`） | 页面级片段组件 | 原样 |
 | `src/components/ProtectedRoute.tsx` + `GuestRoute.tsx`（Vue：`ProtectedShell.vue` + `GuestShell.vue` + `src/router/index.ts`） | 路由守卫与路由表 | 路由表替换为自己的页面 |
 | `src/components/PermissionGuard.tsx`（Vue：`src/directives/permission.ts` + `directives/index.ts`） | 权限控件 / 指令 | 原样 |
-| `src/utils/`：`theme.ts`、`request.ts`、`auth.ts`、`permission.tsx`（Vue：`permission.ts`）、`permission-helpers.ts`、`types.ts`、`constants.ts`、`common.ts`、`hooks.ts`（Vue：`composables.ts`）、`shell-navigation.tsx`（Vue：`shell-navigation.ts`）、`tags-view.ts`、`lock-screen.ts`、`watermark.ts`、`fullscreen.ts`、`tigercatText.ts`、`lazyTigercat.tsx`（Vue：`lazyTigercat.ts`）、`validation.ts` | 主题 / 请求 / 会话 / 权限 / 导航 / 多标签 / 锁屏 / 水印 / 全屏 / 文案 / 重组件懒加载 | `types.ts` 裁剪为自己的业务类型；`shell-navigation` 替换菜单表；`constants.ts` 检查 API 前缀；无图表/编辑器/裁剪/Gantt 页时可删 `lazyTigercat` |
+| `src/utils/`：`theme.ts`、`request.ts`、`auth.ts`、`permission.tsx`（Vue：`permission.ts`）、`permission-helpers.ts`、`types.ts`、`constants.ts`、`common.ts`、`hooks.ts`（Vue：`composables.ts`）、`shell-navigation.ts`、`tags-view.ts`、`lock-screen.ts`、`watermark.ts`、`fullscreen.ts`、`tigercatText.ts`、`lazyTigercat.tsx`（Vue：`lazyTigercat.ts`）、`validation.ts` | 主题 / 请求 / 会话 / 权限 / 导航 / 多标签 / 锁屏 / 水印 / 全屏 / 文案 / 重组件懒加载 | `types.ts` 裁剪为自己的业务类型；`shell-navigation` 替换菜单 schema（`GET /api/menus/schema` 失败时回退本地树）；`constants.ts` 检查 API 前缀；无图表/编辑器/裁剪/Gantt 页时可删 `lazyTigercat` |
 | `src/main.tsx` + `App.tsx`（Vue：`src/main.ts` + `App.vue`） | 应用入口（ConfigProvider locale、Router 模式） | **删除 `@tigercat-admin/mock-api` 的 import、`isTigercatDemoEnabled` 与 `installTigercatMockApi(...)` 调用**（除非选 backend.md 方案 C）；不需要 hash 路由时可删 `VITE_TIGERCAT_ROUTER_MODE` 分支 |
 
 蓝本中 `src/utils/` 其余文件（`notifications.ts`、`monitor.ts`、`chat.ts`、`realtime.ts`、`task-board.ts`、`settings.ts`、`media.ts`、`export.ts`、`workbench.ts`）是具体业务页面的 API 包装，按你实际要做的页面选择性复制。复制 Monitor / Chat 实时面时同时复制 `realtime.ts` 并安装 `@microsoft/signalr`。

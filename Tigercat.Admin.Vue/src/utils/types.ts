@@ -1,3 +1,5 @@
+import type { MenuSchema } from '@expcat/tigercat-core';
+
 export interface Session {
   token: string;
   username: string;
@@ -32,6 +34,11 @@ export interface PermissionInfo {
 export interface UserPermissions {
   username: string;
   permissions: PermissionInfo[];
+}
+
+export interface MenuSchemaPayload {
+  items: MenuSchema;
+  bottomItems: MenuSchema;
 }
 
 // ---- P2: Shared CRUD types ----

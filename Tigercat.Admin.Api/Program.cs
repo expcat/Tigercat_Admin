@@ -295,6 +295,7 @@ app.MapEndpoint<ContentEndpoints>();
 app.MapEndpoint<JobsEndpoints>();
 app.MapEndpoint<ImportJobsEndpoints>();
 app.MapEndpoint<MonitorEndpoints>();
+app.MapEndpoint<MenusEndpoints>();
 app.MapHub<MonitorHub>(RealtimeHubs.MonitorPath);
 app.MapHub<ChatHub>(RealtimeHubs.ChatPath);
 

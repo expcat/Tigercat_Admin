@@ -50,6 +50,7 @@
 | 数据导入 | [docs/api/import.md](api/import.md) |
 | 系统设置 | [docs/api/settings.md](api/settings.md) |
 | 媒体资源 | [docs/api/media.md](api/media.md) |
+| 动态菜单 schema | [docs/api/menus.md](api/menus.md) |
 
 ## 后续文档同步
 

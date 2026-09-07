@@ -89,6 +89,7 @@ Monitor / Chat SignalR（`/hubs/monitor`、`/hubs/chat`）使用同一套会话 
 | 数据导入 | [api/import.md](api/import.md) | `/api/import-jobs`、只读进度轮询（后台推进） |
 | 系统设置 | [api/settings.md](api/settings.md) | `/api/settings` |
 | 媒体资源 | [api/media.md](api/media.md) | `/api/media`、内容读取、删除、孤儿清理 |
+| 动态菜单 schema | [api/menus.md](api/menus.md) | `GET /api/menus/schema`（只读，无 CRUD） |
 
 ## 维护规则
 

@@ -34,6 +34,7 @@ import { PermissionRoute } from './components/PermissionRoute';
 import {
   SHELL_MENU_ROUTES,
   isShellPageKey,
+  resetShellMenuSchema,
   resolveShellPageKey,
   type ShellPageKey,
 } from './utils/shell-navigation';
@@ -404,6 +405,7 @@ function App() {
   const clearAuthenticatedState = useCallback(() => {
     persistSession(null);
     permission.clear();
+    resetShellMenuSchema();
     setHomeMessage('');
     setHomeError('');
   }, [permission, persistSession]);
