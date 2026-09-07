@@ -45,7 +45,7 @@ cd Tigercat.Admin.Vue && pnpm dev
 | Vue | 5173 |
 | Aspire Dashboard | 动态 |
 
-前端通过 `/api` 访问后端。Aspire 会注入 `VITE_API_URL`，单独开发时由 Vite 代理 `/api` 与 `/hubs`（WebSocket）到 API。
+前端通过 `/api` 访问后端。Aspire 会注入 `VITE_API_URL`。单独 `pnpm dev` 时 Vite 把 `/api` 与 `/hubs`（WebSocket）代理到 `http://127.0.0.1:5137`，可用 `VITE_API_URL` 覆盖。
 
 ## 常用命令
 

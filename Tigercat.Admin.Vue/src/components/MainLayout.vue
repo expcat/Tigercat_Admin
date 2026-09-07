@@ -257,7 +257,7 @@ watch(
           @close-others="closeOthers"
           @close-all="closeAll"
         />
-        <Content id="main-content-scroll" class="min-h-0 flex-1 overflow-auto p-3 pb-24 scroll-smooth sm:p-4 sm:pb-24 md:p-6 md:pb-28">
+        <Content id="main-content-scroll" class="min-h-0 flex-1 overflow-auto p-3 pb-28 pe-24 scroll-smooth sm:p-4 sm:pb-28 sm:pe-24 md:p-6 md:pb-32 md:pe-28">
           <div class="mx-auto max-w-7xl animate-fade-in">
             <slot></slot>
             <ShellFooter />

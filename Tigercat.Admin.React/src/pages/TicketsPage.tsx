@@ -75,6 +75,13 @@ const PRIORITY_META: Record<TicketPriority, { label: string; variant: TagVariant
   medium: { label: '中', variant: 'warning' },
   low: { label: '低', variant: 'info' },
 };
+const CHAT_STATUS: Record<TicketStatus, { text: string; variant: BadgeVariant }> = {
+  open: { text: '工单待受理', variant: 'warning' },
+  accepted: { text: '工单已受理', variant: 'info' },
+  progress: { text: '工单进行中', variant: 'primary' },
+  resolved: { text: '工单已解决', variant: 'success' },
+  closed: { text: '工单已关闭', variant: 'default' },
+};
 
 const assignees: MentionOption[] = [
   { value: '王小虎', label: '王小虎 · 前端' },
@@ -321,7 +328,7 @@ function TicketsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Text weight="bold">工单列表</Text>
-          <Badge content={openCount} variant="primary" standalone />
+          <Badge content={openCount} showZero variant="primary" standalone />
           <Text size="sm" color="secondary">
             个待跟进
           </Text>
@@ -476,8 +483,8 @@ function TicketsPage() {
                       placeholder="回复提交人，回车发送"
                       sendText="发送"
                       emptyText={detailLoading ? '正在加载对话…' : '暂无对话，开始回复吧'}
-                      statusText="工单进行中"
-                      statusVariant={'primary' as BadgeVariant}
+                      statusText={CHAT_STATUS[selected.status].text}
+                      statusVariant={CHAT_STATUS[selected.status].variant}
                       showAvatar={false}
                       showName={false}
                       onChange={setDraft}

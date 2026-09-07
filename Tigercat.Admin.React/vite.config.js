@@ -35,11 +35,11 @@ export default defineConfig({
     port: parseInt(process.env.PORT || '5174'),
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://127.0.0.1:5100',
+        target: process.env.VITE_API_URL || 'http://127.0.0.1:5137',
         changeOrigin: true,
       },
       '/hubs': {
-        target: process.env.VITE_API_URL || 'http://127.0.0.1:5100',
+        target: process.env.VITE_API_URL || 'http://127.0.0.1:5137',
         changeOrigin: true,
         ws: true,
       },

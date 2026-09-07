@@ -170,6 +170,10 @@
     -webkit-text-fill-color: transparent;
     display: inline-block;
     letter-spacing: -0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
     transition: opacity 0.3s;
   }
 

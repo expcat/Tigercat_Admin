@@ -228,7 +228,7 @@ export function MainLayout({
             onCloseOthers={tagsView.closeOthers}
             onCloseAll={tagsView.closeAll}
           />
-          <Content id="main-content-scroll" className="min-h-0 flex-1 overflow-auto p-3 pb-24 scroll-smooth sm:p-4 sm:pb-24 md:p-6 md:pb-28">
+          <Content id="main-content-scroll" className="min-h-0 flex-1 overflow-auto p-3 pb-28 pe-24 scroll-smooth sm:p-4 sm:pb-28 sm:pe-24 md:p-6 md:pb-32 md:pe-28">
             <div className="mx-auto max-w-7xl animate-fade-in">
               {children}
               <ShellFooter />

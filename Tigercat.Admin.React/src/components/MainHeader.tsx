@@ -115,9 +115,9 @@ export function MainHeader({
   }, []);
 
   return (
-    <Header height="auto" className="p2-main-header flex min-h-16 flex-wrap items-center justify-between gap-3 px-4 py-2 z-10 md:flex-nowrap md:px-6">
+    <Header height="auto" className="p2-main-header flex min-h-16 flex-wrap items-center justify-between gap-2 px-3 py-2 z-10 sm:gap-3 sm:px-4 md:flex-nowrap md:px-6">
       <div className="flex min-w-0 flex-1 flex-col gap-1 py-2">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           {showSidebarToggle && (
             <Button
               variant="outline"
@@ -129,7 +129,7 @@ export function MainHeader({
               {sidebarOpen ? <XIcon size={18} /> : <MenuIcon size={18} />}
             </Button>
           )}
-          <Text size="lg" weight="bold" className="p2-header-title">
+          <Text size="lg" weight="bold" className="p2-header-title whitespace-nowrap">
             管理中心
           </Text>
         </div>
@@ -148,9 +148,9 @@ export function MainHeader({
       </div>
 
       {/* 右侧操作区 */}
-      <div className="flex min-w-0 max-w-full shrink-0 items-center gap-2 sm:gap-3">
+      <div className="flex shrink-0 items-center gap-1 sm:gap-3">
         {demoMode && (
-          <Tag variant="warning" className="p2-header-demo-tag rounded-full px-3 font-medium">
+          <Tag variant="warning" className="p2-header-demo-tag hidden rounded-full px-3 font-medium sm:inline-flex">
             演示模式
           </Tag>
         )}
@@ -190,12 +190,12 @@ export function MainHeader({
               <Avatar className="p2-avatar shrink-0 font-bold text-sm bg-gradient-to-tr from-(--tiger-primary,#3b82f6) to-blue-400 text-white">
                 {accountLabel.charAt(0).toUpperCase()}
               </Avatar>
-              <span className="min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937)">
+              <span className="p2-header-user-name hidden min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937) sm:inline">
                 {accountLabel}
               </span>
               <ChevronDownIcon
                 size={14}
-                className={`p2-header-chevron shrink-0 ${open ? 'rotate-180' : ''}`}
+                className={`p2-header-chevron hidden shrink-0 sm:block ${open ? 'rotate-180' : ''}`}
               />
             </button>
           )}>

@@ -111,9 +111,9 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
 </script>
 
 <template>
-  <Header height="auto" class="p2-main-header flex min-h-16 flex-wrap items-center justify-between gap-3 px-4 py-2 z-10 md:flex-nowrap md:px-6">
+  <Header height="auto" class="p2-main-header flex min-h-16 flex-wrap items-center justify-between gap-2 px-3 py-2 z-10 sm:gap-3 sm:px-4 md:flex-nowrap md:px-6">
     <div class="flex min-w-0 flex-1 flex-col gap-1 py-2">
-      <div class="flex items-center gap-2">
+      <div class="flex min-w-0 items-center gap-2">
         <Button
           v-if="props.showSidebarToggle"
           variant="outline"
@@ -125,7 +125,7 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
         >
           <Icon :name="props.sidebarOpen ? 'x' : 'menu'" :size="18" />
         </Button>
-        <Text size="lg" weight="bold" class="p2-header-title">管理中心</Text>
+        <Text size="lg" weight="bold" class="p2-header-title whitespace-nowrap">管理中心</Text>
       </div>
       <Breadcrumb class-name="min-w-0 max-w-full overflow-hidden text-sm text-(--tiger-text-secondary,#64748b)" :max-items="4">
         <BreadcrumbItem>管理中心</BreadcrumbItem>
@@ -140,11 +140,11 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
     </div>
     
     <!-- 右侧操作区 -->
-    <div class="flex min-w-0 max-w-full shrink-0 items-center gap-2 sm:gap-3">
+    <div class="flex shrink-0 items-center gap-1 sm:gap-3">
       <Tag
         v-if="props.demoMode"
         variant="warning"
-        class="p2-header-demo-tag rounded-full px-3 font-medium"
+        class="p2-header-demo-tag hidden rounded-full px-3 font-medium sm:inline-flex"
       >
         演示模式
       </Tag>
@@ -180,11 +180,11 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
             <Avatar class="p2-avatar shrink-0 font-bold text-sm bg-gradient-to-tr from-(--tiger-primary,#3b82f6) to-blue-400 text-white">
               {{ getAccountLabel(props.session).charAt(0).toUpperCase() }}
             </Avatar>
-            <span class="min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937)">{{ getAccountLabel(props.session) }}</span>
+            <span class="p2-header-user-name hidden min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937) sm:inline">{{ getAccountLabel(props.session) }}</span>
             <Icon
               name="chevronDown"
               :size="14"
-              class="p2-header-chevron shrink-0"
+              class="p2-header-chevron hidden shrink-0 sm:block"
               :class="{ 'rotate-180': open }"
             />
           </button>

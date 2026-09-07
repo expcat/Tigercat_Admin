@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, h, watch } from 'vue'
+import { ref, computed, h, watch, nextTick } from 'vue'
 import { Menu } from '@expcat/tigercat-vue/Menu'
 import { Sidebar } from '@expcat/tigercat-vue/Sidebar'
 import type { MenuItem } from '@expcat/tigercat-core'
@@ -32,6 +32,14 @@ const emit = defineEmits<{
 }>()
 
 const expandedKeys = ref<(string | number)[]>(['system'])
+const menuNav = ref<HTMLElement | null>(null)
+
+function scrollLastMenuItemIntoView() {
+  const nav = menuNav.value
+  if (!nav) return
+  const items = nav.querySelectorAll<HTMLElement>('button, a, [role="menuitem"]')
+  items[items.length - 1]?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
 
 const handleMenuSelect = (key: string | number) => {
   const k = String(key)
@@ -62,6 +70,14 @@ watch(
     expandedKeys.value = getShellExpandedKeys(activeMenu, items)
   },
   { immediate: true }
+)
+
+watch(
+  expandedKeys,
+  () => {
+    void nextTick(scrollLastMenuItemIntoView)
+  },
+  { deep: true }
 )
 
 const menuIcon = (name?: string, size = 20) => h(Icon, { name: name || 'placeholder', size })
@@ -97,7 +113,7 @@ const bottomMenuItems = computed(() =>
     :collapsed-width="props.collapsedWidth"
     class="h-full shrink-0"
   >
-    <div class="flex h-full min-h-0 flex-col">
+    <div class="flex h-full min-h-0 flex-col overflow-hidden">
       <!-- Logo -->
       <div class="flex h-16 shrink-0 items-center justify-center border-b border-(--tiger-border,#e2e8f0) overflow-hidden">
         <div class="flex items-center gap-3">
@@ -112,7 +128,7 @@ const bottomMenuItems = computed(() =>
       </div>
 
       <!-- Menu -->
-      <nav class="min-h-0 flex-1 overflow-y-auto py-2">
+      <nav ref="menuNav" class="min-h-0 flex-1 overflow-y-auto py-2">
         <Menu
           :selected-keys="[activeMenu]"
           :open-keys="expandedKeys"

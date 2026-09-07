@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Menu } from '@expcat/tigercat-react/Menu';
 import { Sidebar } from '@expcat/tigercat-react/Sidebar';
 import type { MenuItem } from '@expcat/tigercat-core';
@@ -104,6 +104,7 @@ export function MainSidebar({
   const [expandedKeys, setExpandedKeys] = useState<(string | number)[]>([
     'system',
   ]);
+  const menuNavRef = useRef<HTMLElement | null>(null);
   const { has: hasPerm } = usePermission();
   const menuSchema = useShellMenuSchema();
 
@@ -130,6 +131,13 @@ export function MainSidebar({
     setExpandedKeys(requiredOpenKeys);
   }, [requiredOpenKeys]);
 
+  useEffect(() => {
+    const nav = menuNavRef.current;
+    if (!nav) return;
+    const items = nav.querySelectorAll<HTMLElement>('button, a, [role="menuitem"]');
+    items[items.length - 1]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [expandedKeys]);
+
   const handleSelect = (key: string | number) => {
     onMenuSelect(String(key));
   };
@@ -142,7 +150,7 @@ export function MainSidebar({
       width={sidebarWidth}
       collapsedWidth={collapsedWidth}
       className="h-full shrink-0">
-      <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
         {/* Logo */}
         <div className="flex h-16 shrink-0 items-center justify-center border-b border-(--tiger-border,#e2e8f0) overflow-hidden">
           <div className="flex items-center gap-3">
@@ -157,7 +165,7 @@ export function MainSidebar({
         </div>
 
         {/* Menu */}
-        <nav className="min-h-0 flex-1 overflow-y-auto py-2">
+        <nav ref={menuNavRef} className="min-h-0 flex-1 overflow-y-auto py-2">
           <Menu
             selectedKeys={[activeMenu]}
             openKeys={expandedKeys}

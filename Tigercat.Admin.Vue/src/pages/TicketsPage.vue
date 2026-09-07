@@ -305,6 +305,21 @@ const splitStyle = computed(() => ({ height: isWide.value ? '640px' : '900px' })
 const openCount = computed(
   () => tickets.value.filter((t) => t.status !== 'closed' && t.status !== 'resolved').length,
 )
+
+const CHAT_STATUS: Record<
+  TicketStatus,
+  { text: string; variant: 'warning' | 'info' | 'primary' | 'success' | 'default' }
+> = {
+  open: { text: '工单待受理', variant: 'warning' },
+  accepted: { text: '工单已受理', variant: 'info' },
+  progress: { text: '工单进行中', variant: 'primary' },
+  resolved: { text: '工单已解决', variant: 'success' },
+  closed: { text: '工单已关闭', variant: 'default' },
+}
+
+const chatStatus = computed(() =>
+  selected.value ? CHAT_STATUS[selected.value.status] : CHAT_STATUS.progress,
+)
 </script>
 
 <template>
@@ -322,7 +337,7 @@ const openCount = computed(
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2">
         <Text weight="bold">工单列表</Text>
-        <Badge :content="openCount" variant="primary" standalone />
+        <Badge :content="openCount" :show-zero="true" variant="primary" standalone />
         <Text size="sm" color="secondary">个待跟进</Text>
       </div>
       <Button @click="openDrawer">
@@ -488,8 +503,8 @@ const openCount = computed(
                   placeholder="回复提交人，回车发送"
                   send-text="发送"
                   :empty-text="detailLoading ? '正在加载对话…' : '暂无对话，开始回复吧'"
-                  status-text="工单进行中"
-                  status-variant="primary"
+                  :status-text="chatStatus.text"
+                  :status-variant="chatStatus.variant"
                   :show-avatar="false"
                   :show-name="false"
                   @send="handleSend"
