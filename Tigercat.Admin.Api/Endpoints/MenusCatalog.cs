@@ -36,6 +36,7 @@ internal static class MenusCatalog
         var reports = Page("reports", "报表打印", "fileText", "/reports");
         var users = Page("users", "用户管理", "users", "/users", "user:view");
         var roles = Page("roles", "角色管理", "shield", "/roles", "role:view");
+        var menus = Page("menus", "菜单管理", "menu", "/menus", "menu:view");
         var settings = Page("settings", "系统设置", "settings", "/settings");
         var files = Page("files", "文件管理", "fileText", "/files", "media:view");
         var notifications = Page("notifications", "通知中心", "bell", "/notifications");
@@ -95,7 +96,7 @@ internal static class MenusCatalog
                     Key = "system",
                     Label = "系统管理",
                     Icon = "server",
-                    Children = [users, roles, settings, files, notifications, tasks, audit],
+                    Children = [users, roles, menus, settings, files, notifications, tasks, audit],
                 },
             ],
             BottomItems = [about],

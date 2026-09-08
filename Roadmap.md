@@ -2,6 +2,8 @@
 
 视觉走查 1–27 与对应修复已完成（`feat/visual-fix` 已合入）。本文只留**还可能回头做**的视觉残留，以及既有非视觉收尾入口。不发明产品功能。
 
+> **中台递进（本轨例外）**：工作流 + 动态菜单演示按 [`docs/midplatform-roadmap.md`](docs/midplatform-roadmap.md) 执行（M1=2.3.2 起）。该轨的中台 demo 切片**覆盖**文首「不发明产品功能」冻结，仅限本 track；其它视觉残留 / followups 口径不变。
+
 非视觉推迟项仍只维护在 [`docs/roadmap-followups.md`](docs/roadmap-followups.md)。上游组件缺口见 [`docs/tigercat-upstream-requirements.md`](docs/tigercat-upstream-requirements.md)（开放项短清单 [`docs/frontend-upstream-suggestions.md`](docs/frontend-upstream-suggestions.md)）。包 API / 口径残留见下文「视觉残留」与「视觉口径」。
 
 路径前缀：Vue = `Tigercat.Admin.Vue/src/`，React = `Tigercat.Admin.React/src/`。

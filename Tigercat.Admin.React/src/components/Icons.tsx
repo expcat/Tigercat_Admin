@@ -480,6 +480,7 @@ export const Icons = {
   Server: ServerIcon,
   Users: UsersIcon,
   Shield: ShieldIcon,
+  Menu: MenuIcon,
   Settings: SettingsIcon,
   Info: InfoIcon,
   Home: HomeIcon,

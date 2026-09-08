@@ -172,6 +172,12 @@ const router = createRouter({
           meta: { requiresPermission: 'role:view' },
         },
         {
+          path: 'menus',
+          name: 'menus',
+          component: () => import('../pages/MenusPage.vue'),
+          meta: { requiresPermission: 'menu:view' },
+        },
+        {
           path: 'settings',
           name: 'settings',
           component: () => import('../pages/SettingsPage.vue'),

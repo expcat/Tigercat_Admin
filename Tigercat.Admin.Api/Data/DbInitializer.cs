@@ -10,7 +10,7 @@ namespace Tigercat.Admin.Api.Data;
 
 public static class DbInitializer
 {
-    public const string PermissionSeedVersion = "2026.08.27.1";
+    public const string PermissionSeedVersion = "2026.09.08.1";
     public const string PermissionSeedVersionKey = "security.permissionSeedVersion";
     public const string PermissionSeedChecksumKey = "security.permissionSeedChecksum";
 
@@ -48,6 +48,10 @@ public static class DbInitializer
         ("role:create",    "创建角色"),
         ("role:edit",      "编辑角色"),
         ("role:delete",    "删除角色"),
+        ("menu:view",      "查看菜单管理"),
+        ("menu:create",    "创建菜单节点"),
+        ("menu:edit",      "编辑菜单节点"),
+        ("menu:delete",    "删除菜单节点"),
         ("setting:view",   "查看系统设置"),
         ("setting:edit",   "编辑系统设置"),
         ("media:view",     "查看媒体资源"),

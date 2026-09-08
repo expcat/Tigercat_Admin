@@ -51,7 +51,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 - 桌面侧栏主菜单保持 `mode="inline"`；折叠态继续传 `collapsed` 并开启 `popupPortal`，由上游在收缩时自动退化为 popup 子菜单，不再手动切换 `vertical`。
 - 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭；Esc 关闭为 Drawer 内置行为（经 `onClose/@close` 回调），不要再手动监听 keydown。`destroyOnClose` 会等关场过渡后再卸载；焦点恢复用 `onAfterClose` / `@after-close`。不要再传已删除的 `destroyOnCloseAfterLeave` / `onAfterLeave` / `@after-leave`。
 - Header：使用 `Header`、`Breadcrumb`、`Button`、`Dropdown`、`Avatar`、`Tag`、`Icon`，包含侧栏开关、面包屑、主题配置抽屉入口、内容区全屏（浏览器 Fullscreen API，无包级 Fullscreen 组件）、主题切换、修改密码、锁定屏幕和退出。
-- 侧栏菜单：展开态开启 `Menu searchable`（`searchPlaceholder="搜索菜单"`）；折叠到 64px 时关闭搜索，避免挤占迷你栏。登录后 `GET /api/menus/schema` 拉 `MenuSchemaNode` 树，经 `filterMenuByPermission` 与 `menuSchemaToMenuItems` 喂给现有 `Menu`（不要自写第二套菜单渲染）。失败时回退 `shell-navigation` 里的打包 schema。路由仍按 `SHELL_MENU_ROUTES` / `onSelect` 跳转，不把 schema `path` 当成 `<a href>`（hash 演示路由会错）。本阶段没有菜单 CRUD 页。
+- 侧栏菜单：展开态开启 `Menu searchable`（`searchPlaceholder="搜索菜单"`）；折叠到 64px 时关闭搜索，避免挤占迷你栏。登录后 `GET /api/menus/schema` 拉 `MenuSchemaNode` 树，经 `filterMenuByPermission` 与 `menuSchemaToMenuItems` 喂给现有 `Menu`（不要自写第二套菜单渲染）。失败时回退 `shell-navigation` 里的打包 schema。路由仍按 `SHELL_MENU_ROUTES` / `onSelect` 跳转，不把 schema `path` 当成 `<a href>`（hash 演示路由会错）。菜单管理轻页在系统管理下（`/menus`，`menu:view`），对 schema 做 CRUD，并用角色权限做过滤预览。
 - 中台演示（展示层）：工单详情用 `WorkflowTimeline` + `WorkflowActionBar` 画 mock 审批步骤与操作条。步骤由工单状态在前端派生，按钮只 `Message.info` 提示「未接入审批引擎」。不要接 Flowable/Camunda，也不要为此新增审批 API。
 - 页脚：`Content` 滚动区内、页面主体之后渲染 `Footer`（`ShellFooter`），随内容滚动，不占固定视口高度。
 - 路由进度：受保护路由切换时用 `LoadingBar.start()` / `LoadingBar.finish()` 驱动顶部进度条（失败或 `next(false)` 也要 `finish`）；根节点挂载 `#tiger-loading-bar-container-root`，由 `LoadingBar` 把 `LoadingBarContainer` 挂进去（子路径 `/LoadingBar` 与 `/LoadingBarContainer` 分开）。游客页与独立异常页不显示。
@@ -78,6 +78,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 | `performance` | `/performance` | 大数据演示（分组「运维」） | 无入口权限 |
 | `users` | `/users` | 用户管理 | `user:view` |
 | `roles` | `/roles` | 角色管理 | `role:view` |
+| `menus` | `/menus` | 菜单管理（分组「系统管理」） | `menu:view` |
 | `settings` | `/settings` | 系统设置 | 无入口权限 |
 | `files` | `/files` | 文件管理 | `media:view` |
 | `notifications` | `/notifications` | 通知中心 | 无入口权限 |
@@ -88,7 +89,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 | — | `/403` `/404` `/500` | 异常页（公共独立布局，不进菜单） | 无（独立兜底页） |
 | — | `/login` `/register` `/forgot-password` `/register-success` | 游客认证页（Guest shell，不进菜单） | 无（游客路由） |
 
-React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-router-dom` 管路由；Vue 通过 `vue-router`、`ProtectedShell`、`GuestShell` 与路由 meta `requiresPermission` 守卫管理。未知路径统一重定向 `/404`；已登录但缺少入口权限（`/users` 需 `user:view`、`/roles` 需 `role:view`、`/files` 需 `media:view`）重定向 `/403`，权限加载完成前守卫保持加载态避免误判。刷新后都从 `SESSION_KEY` 读取会话并加载权限；MockApi 演示账号 `demo` 为只读权限（无 `user:view`/`role:view`/`media:view`），用于演示 403 场景。项目详情是本仓库首个动态参数路由：双端参数名均为 `id`（React `useParams().id`，Vue `useRoute().params.id`）；未知 id 渲染页内空态，不跳出 Shell。
+React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-router-dom` 管路由；Vue 通过 `vue-router`、`ProtectedShell`、`GuestShell` 与路由 meta `requiresPermission` 守卫管理。未知路径统一重定向 `/404`；已登录但缺少入口权限（`/users` 需 `user:view`、`/roles` 需 `role:view`、`/menus` 需 `menu:view`、`/files` 需 `media:view`）重定向 `/403`，权限加载完成前守卫保持加载态避免误判。刷新后都从 `SESSION_KEY` 读取会话并加载权限；MockApi 演示账号 `demo` 为只读权限（无 `user:view`/`role:view`/`menu:view`/`media:view`），用于演示 403 场景。项目详情是本仓库首个动态参数路由：双端参数名均为 `id`（React `useParams().id`，Vue `useRoute().params.id`）；未知 id 渲染页内空态，不跳出 Shell。
 
 ## 视觉与布局规则
 
@@ -113,6 +114,7 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 | 仪表盘 | `Alert`、`Card`、`Text`、`Tag`、`Select`、`Statistic`、`Loading`、`Empty`、`LineChart`、`BarChart`、`PieChart`、`Marquee`、`DataExport`、`Row`/`Col` | 概览指标、图表空状态、快捷跳转、统计区上方运维公告跑马灯（文档流，不遮挡指标卡片）、概览区按 `trendDays` 导出当前统计与趋势（`GET /api/export/overview` Blob，不用页面 JSON.stringify）、系统信息栅格 |
 | 用户管理 | `DataTableWithToolbar`、`Avatar`、`Button`、`ContextMenu`、`Input`、`Modal`、`Form`、`Select`、`Tag`、`Tooltip`、`Checkbox`、`CropUpload` | 分页搜索、排序、列显隐、批量状态、头像裁剪、角色选择、窄屏卡片模式、行右键菜单（编辑 / 启停 / 删除，权限不足隐藏或禁用）、工具栏独立 `导出` / `新增用户` 按钮 |
 | 角色管理 | `DataTableWithToolbar`、`Tree`、`Checkbox`、`Modal`、`Popconfirm`、`Select`、`Tag` | 权限树、角色用户配置、导出字段、删除确认、窄屏卡片模式 |
+| 菜单管理 | `Tree`、`Menu`、`Card`、`Modal`、`Form`、`Select`、`Switch`、`Popconfirm`、`Empty` | schema 树 CRUD（`/api/menus/schema` + `/api/menus/nodes`）、按角色 `filterMenuByPermission` 预览、`schemaToRouteRecords` 计数。不要自写第二套菜单渲染 |
 | 系统设置 | `Card`、`Input`、`InputNumber`、`ColorPicker`、`Segmented`、`Switch`、`Upload`、`Modal`、`Collapse`/`CollapsePanel`、`Skeleton` | 分组设置（Collapse 手风琴，默认全部展开）、加载骨架、Logo 上传、保存确认、恢复默认值、全局内容水印开关（`theme.watermark`，本机立即生效）。ColorPicker 触发器/面板文案走 `appText.colorPicker`（「选择颜色」等），不要包一层假文案 |
 | 文件管理 | `FileManager`、`SplitButton`、`ContextMenu`、`Button`、`Select`、`Tag`、`Modal`、`Message` | 上传（`SplitButton` 主按钮上传、菜单选择文件）、类型筛选、选择、普通删除、强制删除、文件行右键菜单（预览 / 打开 / 删除，删除仍走确认与 `media:delete`） |
 | 通知中心 | `NotificationCenter`、`Badge`、`Statistic`、`Card`、`Button`、`notification` | 已读/未读、批量已读、站内跳转、创建/广播 `POST /api/notifications`（`notification:create`）；列表/已读接口不变。铃铛点单条时 `notification.*({ actions, onClick })`，按钮与整条点击都进 `/notifications` |
@@ -236,7 +238,7 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 ## 已对齐的上游能力
 
-本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `^2.3.1`。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。
+本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `^2.3.2`。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。
 
 | 组件 | 平台 | 上游现状 | 本项目保留的布局 glue |
 | ---- | ---- | -------- | --------------------- |
@@ -258,5 +260,5 @@ LLM 生成新页面或复刻页面时，至少满足：
 | `List` | React / Vue | `bordered` 是外框布尔，不再接受 `'bordered' \| 'divided' \| 'none'`。 | 个人中心设备列表写 `bordered`。 |
 | `ImageCropper` / `CropUpload` | React / Vue | `v2.1.4` 起 ResizeObserver 只量父级宽度，拟合尺寸写内层 stage，裁剪画布不再越缩越小。无新必填 prop。 | Gallery 裁剪抽屉和 Users 头像 CropUpload 不另加高度 workaround。 |
 | `SplitButton` | React / Vue | `v2.1.4` 主按钮与 chevron 同高。 | Files 页上传继续用 SplitButton。 |
-| `MenuSchema` | core | `v2.3.0` 起 `MenuSchemaNode` + `filterMenuByPermission` / `menuSchemaToMenuItems`，映射到现有 `Menu`，无新必填 prop。 | Shell 侧栏与命令面板用 schema 过滤后的 `items`；应用图标名仍走本地 Icon 映射。 |
+| `MenuSchema` | core | `v2.3.0` 起 `MenuSchemaNode` + `filterMenuByPermission` / `menuSchemaToMenuItems`，映射到现有 `Menu`，无新必填 prop。`v2.3.2` 起 schema 元数据 `hideInBreadcrumb` / `flatMenu` / `badge` / `iframeSrc` 与 `schemaToRouteRecords`。 | Shell 侧栏与命令面板用 schema 过滤后的 `items`；应用图标名仍走本地 Icon 映射。菜单管理轻页 CRUD 这些字段，并用角色权限预览过滤结果。 |
 | `WorkflowTimeline` / `WorkflowActionBar` | React / Vue | `v2.3.0` 起审批步骤时间线 + 操作条，映射到现有 `Timeline`，无 BPM 引擎。`v2.3.1` 起状态 Tag 读 `locale.workflowTimeline` / `labels`（zh-CN 已通过/进行中/待处理/已驳回/已撤销）。 | 工单详情用本地 mock 步骤演示；同意/驳回等按钮只 toast，不接引擎、不新增审批 API。中文站点走 `appLocale`，不必再 overlay 状态文案。 |

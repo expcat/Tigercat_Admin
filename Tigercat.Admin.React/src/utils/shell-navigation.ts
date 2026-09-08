@@ -25,6 +25,7 @@ export type ShellPageKey =
   | 'reports'
   | 'users'
   | 'roles'
+  | 'menus'
   | 'settings'
   | 'files'
   | 'notifications'
@@ -137,6 +138,13 @@ const pageNodes: Record<ShellPageKey, MenuSchemaNode> = {
     permission: 'role:view',
     path: '/roles',
   },
+  menus: {
+    key: 'menus',
+    label: '菜单管理',
+    icon: 'menu',
+    permission: 'menu:view',
+    path: '/menus',
+  },
   settings: {
     key: 'settings',
     label: '系统设置',
@@ -228,6 +236,7 @@ export const SHELL_MENU_SCHEMA: MenuSchema = [
     children: [
       pageNodes.users,
       pageNodes.roles,
+      pageNodes.menus,
       pageNodes.settings,
       pageNodes.files,
       pageNodes.notifications,
@@ -262,6 +271,7 @@ export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   reports: '/reports',
   users: '/users',
   roles: '/roles',
+  menus: '/menus',
   settings: '/settings',
   files: '/files',
   notifications: '/notifications',
@@ -338,9 +348,11 @@ function bundledPayload(): MenuSchemaPayload {
 }
 
 let menuSchemaRequest: Promise<MenuSchemaPayload> | null = null;
+const menuSchemaListeners = new Set<() => void>();
 
 export function resetShellMenuSchema(): void {
   menuSchemaRequest = null;
+  menuSchemaListeners.forEach((listener) => listener());
 }
 
 export async function loadShellMenuSchema(): Promise<MenuSchemaPayload> {
@@ -373,13 +385,18 @@ export function useShellMenuSchema(): MenuSchemaPayload {
 
   useEffect(() => {
     let cancelled = false;
-    void loadShellMenuSchema().then((next) => {
-      if (!cancelled) {
-        setPayload(next);
-      }
-    });
+    const refresh = () => {
+      void loadShellMenuSchema().then((next) => {
+        if (!cancelled) {
+          setPayload(next);
+        }
+      });
+    };
+    refresh();
+    menuSchemaListeners.add(refresh);
     return () => {
       cancelled = true;
+      menuSchemaListeners.delete(refresh);
     };
   }, []);
 

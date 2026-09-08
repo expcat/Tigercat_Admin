@@ -69,6 +69,7 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<MonitorSnapshotSource>();
 builder.Services.AddSingleton<MonitorPushRegistry>();
 builder.Services.AddSingleton<ChatRealtimeNotifier>();
+builder.Services.AddSingleton<MenuSchemaStore>();
 builder.Services.AddHostedService<MonitorPushService>();
 
 // Database provider selection is explicit via Database:Provider when configured.

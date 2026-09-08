@@ -6,6 +6,7 @@ export const GROUP_LABELS: Record<string, string> = {
   dashboard: '仪表盘',
   user: '用户管理',
   role: '角色管理',
+  menu: '菜单管理',
   setting: '系统设置',
   media: '媒体',
   audit: '审计',

@@ -75,6 +75,7 @@ const HelpPage = lazy(() => import('./pages/HelpPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 const RolesPage = lazy(() => import('./pages/RolesPage'));
+const MenusPage = lazy(() => import('./pages/MenusPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const FilesPage = lazy(() => import('./pages/FilesPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
@@ -586,6 +587,9 @@ function App() {
           </Route>
           <Route element={<PermissionRoute code="role:view" />}>
             <Route path="/roles" element={<RolesPage />} />
+          </Route>
+          <Route element={<PermissionRoute code="menu:view" />}>
+            <Route path="/menus" element={<MenusPage />} />
           </Route>
           <Route path="/settings" element={<SettingsPage />} />
           <Route element={<PermissionRoute code="media:view" />}>

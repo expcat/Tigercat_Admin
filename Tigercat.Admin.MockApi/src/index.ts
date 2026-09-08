@@ -1,4 +1,11 @@
-import { MOCK_MENU_SCHEMA_PAYLOAD } from './menu-schema';
+import {
+  cloneMenuSchemaPayload,
+  createMenuNode,
+  deleteMenuNode,
+  updateMenuNode,
+  type MockMenuNodeWrite,
+  type MockMenuSchemaPayload,
+} from './menu-schema';
 
 type ApiResponse<T = unknown> = {
   code: number;
@@ -283,6 +290,7 @@ type DemoState = {
   jobs: JobItem[];
   importJobs: ImportJobItem[];
   auditLogs: AuditLogItem[];
+  menuSchema: MockMenuSchemaPayload;
   retentionDays: number;
   nextUserId: number;
   nextRoleId: number;
@@ -331,6 +339,10 @@ const permissions: PermissionInfo[] = [
   ['task:create', '创建运维任务'],
   ['task:edit', '编辑运维任务'],
   ['notification:create', '创建通知'],
+  ['menu:view', '查看菜单管理'],
+  ['menu:create', '创建菜单节点'],
+  ['menu:edit', '编辑菜单节点'],
+  ['menu:delete', '删除菜单节点'],
 ].map(([code, description], index) => ({
   id: index + 1,
   code,
@@ -403,7 +415,7 @@ function initialState(): DemoState {
         description: '编辑员，可查看和编辑',
         createdAt: '2026-01-02T00:00:00.000Z',
         permissionIds: permissions
-          .filter((item) => !['user:delete', 'role:delete', 'audit:export'].includes(item.code))
+          .filter((item) => !['user:delete', 'role:delete', 'menu:delete', 'audit:export'].includes(item.code))
           .map((item) => item.id),
       },
       {
@@ -527,6 +539,7 @@ function initialState(): DemoState {
     articles: seedArticles(),
     jobs: seedJobs(),
     importJobs: [],
+    menuSchema: cloneMenuSchemaPayload(),
     auditLogs: [
       audit('auth-login', 'auth', 'auth.user.login', '用户登录', 'admin 登录了系统。', 'admin'),
       audit('user-update', 'user', 'admin.user.updated', '更新用户', 'admin 更新了用户 editor 的资料或角色配置。', 'admin'),
@@ -1325,6 +1338,7 @@ function readState(storageKey: string): DemoState {
         articles: parsed.articles ?? seeded.articles,
         jobs: parsed.jobs ?? seeded.jobs,
         importJobs: parsed.importJobs ?? seeded.importJobs,
+        menuSchema: parsed.menuSchema ?? seeded.menuSchema,
         nextTicketNumber: parsed.nextTicketNumber ?? seeded.nextTicketNumber,
         nextJobNumber: parsed.nextJobNumber ?? seeded.nextJobNumber,
         nextImportJobNumber: parsed.nextImportJobNumber ?? seeded.nextImportJobNumber,
@@ -1340,6 +1354,37 @@ function readState(storageKey: string): DemoState {
   }
   writeState(storageKey, seeded);
   return seeded;
+}
+
+function userPermissionCodes(state: DemoState, username: string): string[] {
+  if (username === 'demo') return [...DEMO_ACCOUNT_PERMISSIONS];
+  if (username === 'admin') return permissions.map((item) => item.code);
+  const user = state.users.find((item) => item.username === username);
+  if (!user) return [];
+  const codes = new Set<string>();
+  for (const roleId of user.roleIds) {
+    const role = state.roles.find((item) => item.id === roleId);
+    if (!role) continue;
+    for (const permissionId of role.permissionIds) {
+      const permission = permissions.find((item) => item.id === permissionId);
+      if (permission) codes.add(permission.code);
+    }
+  }
+  return [...codes];
+}
+
+function requireMenuPermission(
+  state: DemoState,
+  request: Request | null,
+  init: RequestInit,
+  code: string,
+): Response | null {
+  const username = sessionUsername(request, init);
+  if (!username) return makeError('未授权', 401);
+  if (!userPermissionCodes(state, username).includes(code)) {
+    return makeError('权限不足', 403);
+  }
+  return null;
 }
 
 function sessionUsername(request: Request | null, init: RequestInit): string {
@@ -1526,7 +1571,37 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   if (path === '/api/menus/schema' && method === 'GET') {
     const username = sessionUsername(request, init);
     if (!username) return makeError('未授权', 401);
-    return makeJson(MOCK_MENU_SCHEMA_PAYLOAD);
+    return makeJson(cloneMenuSchemaPayload(state.menuSchema));
+  }
+
+  if (path === '/api/menus/nodes' && method === 'POST') {
+    const denied = requireMenuPermission(state, request, init, 'menu:create');
+    if (denied) return denied;
+    const result = createMenuNode(state.menuSchema, body as MockMenuNodeWrite);
+    if (!result.ok) return makeError(result.message, result.status);
+    writeState(storageKey, state);
+    return makeJson(result.node, { status: 201 });
+  }
+
+  const menuNodeMatch = path.match(/^\/api\/menus\/nodes\/([^/]+)$/);
+  if (menuNodeMatch) {
+    const key = decodeURIComponent(menuNodeMatch[1]);
+    if (method === 'PUT') {
+      const denied = requireMenuPermission(state, request, init, 'menu:edit');
+      if (denied) return denied;
+      const result = updateMenuNode(state.menuSchema, key, body as MockMenuNodeWrite);
+      if (!result.ok) return makeError(result.message, result.status);
+      writeState(storageKey, state);
+      return makeJson(result.node);
+    }
+    if (method === 'DELETE') {
+      const denied = requireMenuPermission(state, request, init, 'menu:delete');
+      if (denied) return denied;
+      const result = deleteMenuNode(state.menuSchema, key);
+      if (!result.ok) return makeError(result.message, result.status);
+      writeState(storageKey, state);
+      return makeJson({ message: result.message });
+    }
   }
 
   if (path === '/api/auth/permissions' && method === 'GET') {

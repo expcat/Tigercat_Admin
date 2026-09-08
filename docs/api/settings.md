@@ -46,7 +46,7 @@
 | `theme.primaryColor` | `#2563eb` | HEX 主色 |
 | `theme.compactMode` | `false` | 紧凑模式 |
 | `ops.auditRetentionDays` | `90` | 审计日志保留天数 |
-| `security.permissionSeedVersion` | `2026.06.02.1` | 权限种子数据版本 |
+| `security.permissionSeedVersion` | `2026.09.08.1` | 权限种子数据版本 |
 | `security.permissionSeedChecksum` | 自动生成 | 权限种子数据摘要 |
 
 ## 关键示例
