@@ -253,6 +253,7 @@ async function handleAddNote() {
 // ── 关闭工单 ───────────────────────────────────────
 const confirmingClose = ref(false)
 function requestClose() {
+  captureDrawerTrigger()
   confirmingClose.value = true
 }
 async function confirmClose() {
@@ -663,6 +664,7 @@ const chatStatus = computed(() =>
       :mask-closable="true"
       @update:open="(v: boolean) => (confirmingClose = v)"
       @close="confirmingClose = false"
+      @after-close="focusDrawerTrigger"
     >
       <div class="space-y-4">
         <MutedPanel description="关闭后工单将标记为“已关闭”，演示环境下可重新创建。" />

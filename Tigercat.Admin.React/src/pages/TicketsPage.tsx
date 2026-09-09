@@ -200,7 +200,14 @@ function TicketsPage() {
     void loadTicketDetail(id);
   };
 
+  const drawerTriggerRef = useRef<HTMLElement | null>(null);
+  const captureDrawerTrigger = () => {
+    drawerTriggerRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  };
+
   const requestClose = () => {
+    captureDrawerTrigger();
     setConfirmingClose(true);
   };
 
@@ -304,12 +311,6 @@ function TicketsPage() {
     } catch (error: unknown) {
       Message.error({ content: readErrorMessage(error, '关闭工单失败'), duration: 3000 });
     }
-  };
-
-  const drawerTriggerRef = useRef<HTMLElement | null>(null);
-  const captureDrawerTrigger = () => {
-    drawerTriggerRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
   };
 
   const openDrawer = () => {
@@ -653,7 +654,8 @@ function TicketsPage() {
         width="360px"
         mask
         maskClosable
-        onClose={() => setConfirmingClose(false)}>
+        onClose={() => setConfirmingClose(false)}
+        onAfterClose={() => drawerTriggerRef.current?.focus()}>
         <div className="space-y-4">
           <MutedPanel description="关闭后工单将标记为“已关闭”，演示环境下可重新创建。" />
           <div className="flex justify-end gap-2">

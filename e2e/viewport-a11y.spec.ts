@@ -47,14 +47,17 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
 
     await page.goto(appPath(testInfo, '/users'));
     await expect(page.getByText('用户管理').first()).toBeVisible();
-    await expect(page.locator('[data-tiger-table-layout="card"]').first()).toBeVisible();
-    await expect(page.getByText('admin').first()).toBeVisible();
+    const usersCards = page.locator('[data-tiger-table-layout="card"]').first();
+    await expect(usersCards).toBeVisible();
+    // Header username is `hidden sm:inline`; assert the card row, not the chrome.
+    await expect(usersCards.getByText('admin').first()).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
 
     await page.goto(appPath(testInfo, '/roles'));
     await expect(page.getByText('角色管理').first()).toBeVisible();
-    await expect(page.locator('[data-tiger-table-layout="card"]').first()).toBeVisible();
-    await expect(page.getByText('Admin').first()).toBeVisible();
+    const rolesCards = page.locator('[data-tiger-table-layout="card"]').first();
+    await expect(rolesCards).toBeVisible();
+    await expect(rolesCards.getByText('Admin').first()).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
   });
 

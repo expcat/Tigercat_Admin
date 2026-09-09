@@ -231,6 +231,103 @@ test.describe('页面 Drawer 焦点恢复', () => {
   });
 });
 
+async function expectEscClosesNestedOverlay(
+  page: import('@playwright/test').Page,
+  trigger: import('@playwright/test').Locator,
+  overlay: import('@playwright/test').Locator,
+  parent: import('@playwright/test').Locator,
+) {
+  await trigger.scrollIntoViewIfNeeded();
+  await trigger.click();
+  await expect(overlay).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(overlay).toBeHidden();
+  await expect(parent).toBeVisible();
+}
+
+test.describe('日历 / 导入 / 任务剩余弹层', () => {
+  test('/calendar 新建事件 Drawer 内 DatePicker / TimePicker Esc 关闭浮层且不关掉 Drawer', async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(60_000);
+    await loginAsAdmin(page, testInfo);
+    await page.goto(appPath(testInfo, '/calendar'));
+    const trigger = page.getByRole('button', { name: '新建事件' });
+    await expect(trigger).toBeVisible();
+    await trigger.click();
+
+    const drawer = page.getByRole('dialog', { name: '新建事件' });
+    await expect(drawer).toBeVisible();
+    const titleField = page.getByPlaceholder('例如：迭代评审会');
+    await expect(titleField).toBeVisible();
+
+    const dateTrigger = drawer.getByRole('button', { name: '打开日历' });
+    const datePanel = page.locator('[data-tiger="datepicker-panel"]');
+    await expectEscClosesNestedOverlay(page, dateTrigger, datePanel, drawer);
+
+    const timeTrigger = drawer.getByRole('button', { name: '打开时间选择器' }).first();
+    const timePanel = page.locator('[data-tiger="timepicker-panel"]');
+    await expectEscClosesNestedOverlay(page, timeTrigger, timePanel, drawer);
+
+    await titleField.focus();
+    await page.keyboard.press('Escape');
+    await expect(titleField).toBeHidden();
+    await expectFocused(trigger);
+  });
+
+  test('/tickets 确认关闭工单 Drawer Esc 后焦点回到触发器', async ({ page }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+    await page.goto(appPath(testInfo, '/tickets'));
+    await expect(page.getByText('工单中心').first()).toBeVisible();
+
+    const trigger = page.getByRole('button', { name: '关闭工单', exact: true });
+    await expect(trigger).toBeVisible();
+    await trigger.click();
+    const confirm = page.getByRole('button', { name: '确认关闭', exact: true });
+    await expect(confirm).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(confirm).toBeHidden();
+    await expectFocused(trigger);
+  });
+
+  test('/import Cascader 浮层 Esc 与外部点击关闭', async ({ page }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+    await page.goto(appPath(testInfo, '/import'));
+    await expect(page.getByText('数据导入').first()).toBeVisible();
+
+    const pageTitle = page.getByText('数据导入').first();
+    const cascaderTrigger = page.getByRole('combobox').filter({ hasText: '人力资源 / 员工表' });
+    const cascaderDropdown = page.locator('[data-tiger-cascader-dropdown]');
+    await expectEscClosesOverlay(page, cascaderTrigger, cascaderDropdown);
+    await expectOutsideClickClosesOverlay(page, cascaderTrigger, cascaderDropdown, pageTitle);
+  });
+
+  test('/jobs 新建任务 Drawer 内 CronEditor 可见且 Esc 关闭 Drawer', async ({
+    page,
+  }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+    await page.goto(appPath(testInfo, '/jobs'));
+    const trigger = page.getByRole('button', { name: '新建任务' });
+    await expect(trigger).toBeVisible();
+    await trigger.click();
+
+    const drawer = page.getByRole('dialog', { name: '新建任务' });
+    await expect(drawer).toBeVisible();
+    const field = page.getByPlaceholder('例如：每日对账批处理');
+    await expect(field).toBeVisible();
+    const cron = drawer.locator('[data-tiger-croneditor]');
+    await expect(cron).toBeVisible();
+    await expect(cron.locator('input').first()).toBeVisible();
+    await expect(cron.locator('select').first()).toBeVisible();
+
+    await field.focus();
+    await page.keyboard.press('Escape');
+    await expect(field).toBeHidden();
+    await expectFocused(trigger);
+  });
+});
+
 test.describe('个人中心 / 数据分析浮层焦点', () => {
   test('/profile Tabs 方向键切换，DatePicker / TimePicker Esc 与外部点击关闭', async ({
     page,

@@ -49,7 +49,7 @@
 
 - [x] **移动端 375px（工单 Splitter）**：`/tickets` 窄屏 `data-direction="vertical"`，列表/详情标题、ActionBar、ChatWindow 可见且页面不横向溢出；窄屏不挂 `Resizable`（`e2e/viewport-a11y.spec.ts` `@mobile`）。`/calendar` 月视图标题与「新建事件」可见、页面不横向溢出（同上 spec）。`/approvals/:id` ActionBar + 时间线可见、不横向溢出。
 - [x] **暗色模式（工单）**：`/tickets` 在 `colorScheme: dark` 下标题、生命周期、ActionBar、ChatWindow 可见（同上 spec `@dark`）。`/calendar` 标题可见。`/approvals/:id` ActionBar 可见。Calendar 单元格与评论分隔线像素对比仍可目测。
-- [x] **弹层焦点与键盘路径（新建 Drawer）**：`/tickets` 「新建工单」、`/calendar` 「新建事件」Drawer Esc 关闭后焦点回到触发器（`e2e/overlay-focus.spec.ts`）。关闭工单 Drawer、日程 Popover、Drawer 内 DatePicker/TimePicker 焦点仍可目测。
+- [x] **弹层焦点与键盘路径（新建 Drawer）**：`/tickets` 「新建工单」、`/calendar` 「新建事件」Drawer Esc 关闭后焦点回到触发器（`e2e/overlay-focus.spec.ts`）。「关闭工单」确认 Drawer 同上。Drawer 内 DatePicker/TimePicker Esc 关闭浮层且不关掉 Drawer。日程列表 hover Popover 仍可目测（非键盘陷阱，非 P0）。
 
 ### workaround / 点到为止待回访
 
@@ -82,7 +82,7 @@
 
 - [x] **移动端 375px**：`/jobs` 与 `/import` 标题/关键控件可见且页面不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`）。表格/Gantt 允许横向滚动；Drawer 内 CronEditor/NumberKeyboard 像素级不超出仍可目测。
 - [x] **暗色模式（`.dark`）**：两页标题在 `colorScheme: dark` 下可见（同上 spec `@dark`）。Gantt 色条、NumberKeyboard、Transfer 边框像素对比仍可目测。
-- [x] **弹层焦点与键盘路径（新建任务 Drawer）**：`/jobs` 「新建任务」Drawer Esc 关闭后焦点回到触发器（`e2e/overlay-focus.spec.ts`）。CronEditor/Import Cascader 浮层与 FormWizard 步进键盘细节仍可目测。
+- [x] **弹层焦点与键盘路径（新建任务 Drawer）**：`/jobs` 「新建任务」Drawer Esc 关闭后焦点回到触发器；Drawer 内 CronEditor 内联可见、无门户浮层（`e2e/overlay-focus.spec.ts`）。`/import` Cascader Esc 与外部点击关闭。FormWizard 步进键盘细节仍可目测（非 P0；`demo-static` 已覆盖逐步点击）。
 
 ### workaround / 点到为止待回访
 
@@ -119,6 +119,7 @@
 - [x] **暗色模式（`.dark`）**：三页在 `colorScheme: dark` 下标题可见（同上 spec `@dark`）。图标/插画像素对比仍可目测。
 - [x] **键盘路径与真实历史栈**：返回首页/返回上一页按钮可聚焦后 Enter 触发；从 `/settings` 进未知路径后 404 不显示 Empty，「返回上一页」回到设置页（`e2e/exception-routes.spec.ts`，demo）。直开 `/404` 的 Empty 仍按无历史处理。倒计时自动跳转仍由原用例覆盖。
 - [ ] **无权限直访刷新场景**：demo e2e 已覆盖登录后直访 `/users` → 403；直开受限路由并整页刷新（权限需守卫内补偿加载）的场景建议人工在 api 模式（真实后端）复核一次。
+- [ ] **Vue demo hash 整页刷新 `/users`**：`demo-static` 浏览核心页后 `reload` 落到登录页（React 正常）。非键盘/弹层 P0；刷新会话与守卫竞态仍可目测。
 
 ### 说明
 - **MockApi `demo` 账号权限收窄**：静态演示模式下 `demo`/`demo` 现返回只读权限集（无 `user:view`/`role:view`/`media:view`），用于演示 403；`admin`/`admin123` 与真实 .NET 端行为不变。

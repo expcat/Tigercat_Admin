@@ -81,12 +81,13 @@
 **Tigercat（按需）**: 图表基元 axis↔tooltip；审批打印配方 — M3-S1 扫描为 NO_GAP（高层图已联动轴与 tooltip；PrintLayout 已覆盖报表打印；审批打印配方无独立库缺口）
 
 **Admin**
-- roadmap-followups：弹层焦点 e2e — M3-S1 已做（`/profile` DatePicker/TimePicker/Tabs、`/analytics` DatePicker、`/content` 下拉、`/gallery` 灯箱与标注裁剪 Drawer）
-- 内存态页按需 MockApi — 工单对话 / 备注 / 日历事件此前已接 API；S2 未再迁新页（SKIPPED_MOCKAPI）
+- roadmap-followups：弹层焦点 e2e — M3-S1 已做（`/profile` DatePicker/TimePicker/Tabs、`/analytics` DatePicker、`/content` 下拉、`/gallery` 灯箱与标注裁剪 Drawer）；M3-S3 补齐 `/calendar` Drawer 内选择器、`/tickets` 确认关闭、`/import` Cascader、`/jobs` CronEditor
+- 内存态页按需 MockApi — 工单对话 / 备注 / 日历事件此前已接 API；S2/S3 未再迁新页（SKIPPED_MOCKAPI）
 - Chat/Resizable/窄屏与审批同屏打磨 — M3-S2：宽屏 Resizable + ChatWindow 内部滚动；窄屏去掉 Resizable；`/approvals/:id` ActionBar + 时间线不横向溢出
-- Upload/编辑器可插拔 — 仓库无明示产品需求，S1/S2 跳过
+- Upload/编辑器可插拔 — 仓库无明示产品需求，S1–S3 跳过
+- 真机 / Playwright Review — M3-S3：Vue + React demo 走查 overlay-focus / viewport-a11y / demo-static；库侧 NO_GAP 未发 2.3.4；无新 P0
 
-**验收**: followups 勾一批；无新 P0
+**验收**: followups 勾一批；无新 P0 — 已满足（M3-S3 关闭）
 
 ### M4 — 2.4.0（可选大步，有信号再开）
 - WorkflowDesigner（simple）
