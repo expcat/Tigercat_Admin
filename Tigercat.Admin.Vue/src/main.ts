@@ -4,13 +4,14 @@ import {
   isTigercatDemoEnabled,
 } from '@tigercat-admin/mock-api'
 import './style.css'
-import App from './App.vue'
-import router from './router'
 import { vPermission } from './directives'
 
 installTigercatMockApi({
   enabled: isTigercatDemoEnabled(import.meta.env.VITE_TIGERCAT_DEMO),
 })
+
+const { default: App } = await import('./App.vue')
+const { default: router } = await import('./router')
 
 const app = createApp(App)
 app.directive('permission', vPermission)

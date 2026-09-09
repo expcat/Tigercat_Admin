@@ -431,9 +431,8 @@ internal sealed class ApprovalStore
             Key = step.Key,
             Title = step.Title,
             Status = step.Status,
-            Actor = step.Actor is null
-                ? null
-                : new ApprovalActorResponse { Id = step.Actor.Id, Name = step.Actor.Name },
+            Actor = CloneActor(step.Actor),
+            Actors = step.Actors?.Select(item => CloneActor(item)!).ToArray(),
             Action = step.Action,
             Comment = step.Comment,
             Time = step.Time,
@@ -443,6 +442,11 @@ internal sealed class ApprovalStore
             SignMode = step.SignMode,
             RollbackPoint = step.RollbackPoint,
         };
+
+    private static ApprovalActorResponse? CloneActor(ApprovalActorResponse? actor)
+        => actor is null
+            ? null
+            : new ApprovalActorResponse { Id = actor.Id, Name = actor.Name, Status = actor.Status };
 
     private static (string? Value, string? Error) NormalizeRequired(string? value, string emptyMessage, int maxLength)
     {
@@ -745,6 +749,7 @@ internal sealed class ApprovalStore
             SignMode = "countersign",
             Action = status == "approved" ? "approve" : null,
             Actor = Actor(actor ?? "admin"),
+            Actors = ManagerActors(status),
             Comment = comment,
             Time = time,
             Order = order,
@@ -761,6 +766,13 @@ internal sealed class ApprovalStore
                 },
             ],
         };
+
+    private static ApprovalActorResponse[] ManagerActors(string status)
+        =>
+        [
+            new() { Id = "wang", Name = "王经理", Status = "approved" },
+            new() { Id = "li", Name = "李总监", Status = status == "approved" ? "approved" : "pending" },
+        ];
 
     private static ApprovalStepResponse ArchiveStep(string status, string? time, int order, string? comment = null)
         => new()

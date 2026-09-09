@@ -59,6 +59,23 @@ public abstract class ApprovalsEndpointsTests<TFixture> : IClassFixture<TFixture
     }
 
     [Fact]
+    public async Task GetApproval_SeedIncludesCountersignActors()
+    {
+        var token = await LoginAsAdminAsync();
+        var response = await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/approvals/AP-1001", token));
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<ApprovalDetailResponse>();
+        Assert.NotNull(body?.Data);
+        var manager = body.Data.Steps.First(step => step.Key == "manager");
+        Assert.Equal("pending", manager.Status);
+        Assert.Equal("countersign", manager.SignMode);
+        Assert.NotNull(manager.Actors);
+        Assert.Equal(2, manager.Actors.Length);
+        Assert.Contains(manager.Actors, actor => actor.Name == "王经理" && actor.Status == "approved");
+        Assert.Contains(manager.Actors, actor => actor.Name == "李总监" && actor.Status == "pending");
+    }
+
+    [Fact]
     public async Task GetApproval_Missing_Returns404()
     {
         var token = await LoginAsAdminAsync();

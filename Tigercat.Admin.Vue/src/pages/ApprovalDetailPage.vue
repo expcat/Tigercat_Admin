@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Affix } from '@expcat/tigercat-vue/Affix'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Descriptions } from '@expcat/tigercat-vue/Descriptions'
@@ -10,11 +11,13 @@ import { FormItem } from '@expcat/tigercat-vue/FormItem'
 import { Message } from '@expcat/tigercat-vue/Message'
 import { Modal } from '@expcat/tigercat-vue/Modal'
 import { Select } from '@expcat/tigercat-vue/Select'
+import { TabPane } from '@expcat/tigercat-vue/TabPane'
+import { Tabs } from '@expcat/tigercat-vue/Tabs'
 import { Text } from '@expcat/tigercat-vue/Text'
 import { Textarea } from '@expcat/tigercat-vue/Textarea'
 import { WorkflowViewer } from '@expcat/tigercat-vue/WorkflowViewer'
 import { WorkflowActionBar, WorkflowTimeline } from '@expcat/tigercat-vue/WorkflowTimeline'
-import type { DescriptionsItem, WorkflowActionBarItem } from '@expcat/tigercat-core'
+import type { DescriptionsItem, WorkflowActionBarItem, WorkflowActionPayload } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import { ApiError } from '../utils/request'
 import {
@@ -42,6 +45,7 @@ const acting = ref(false)
 const transferOpen = ref(false)
 const transferTo = ref('demo')
 const transferComment = ref('')
+const activeTab = ref('progress')
 
 const id = computed(() => {
   const raw = route.params.id
@@ -87,8 +91,13 @@ async function loadDetail() {
 }
 
 watch(id, () => {
+  activeTab.value = 'progress'
   void loadDetail()
 }, { immediate: true })
+
+function handleTabChange(key: string | number) {
+  activeTab.value = String(key)
+}
 
 async function runAction(action: ApprovalAction, extra?: { comment?: string; transferTo?: string }) {
   if (!detail.value) return
@@ -108,7 +117,7 @@ async function runAction(action: ApprovalAction, extra?: { comment?: string; tra
   }
 }
 
-function handleWorkflowAction(item: WorkflowActionBarItem) {
+function handleWorkflowAction(item: WorkflowActionBarItem, payload?: WorkflowActionPayload) {
   if (item.action === 'transfer') {
     transferTo.value = detail.value?.assignee === 'admin' ? 'demo' : 'admin'
     transferComment.value = ''
@@ -116,7 +125,8 @@ function handleWorkflowAction(item: WorkflowActionBarItem) {
     return
   }
   if (item.action === 'approve' || item.action === 'reject') {
-    void runAction(item.action)
+    const comment = payload?.comment?.trim()
+    void runAction(item.action, { comment: comment || undefined })
   }
 }
 
@@ -139,7 +149,7 @@ async function confirmTransfer() {
     <PageHeader
       icon="checkCircle"
       :title="detail?.title ?? '审批详情'"
-      subtitle="表单 + WorkflowViewer / WorkflowTimeline + ActionBar。动作写回 mock 实例。"
+      subtitle="表单 + 审批进度 Timeline / 流程结构 Viewer + 底栏 ActionBar。动作写回 mock 实例。"
       :tags="[{ label: statusMeta.label, variant: statusMeta.variant }]"
     />
 
@@ -152,14 +162,27 @@ async function confirmTransfer() {
 
     <Empty v-if="missing" description="没有找到该审批实例" />
     <Text v-else-if="loading && !detail" color="secondary">正在加载审批详情…</Text>
-    <div v-else-if="detail" class="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-      <div class="min-w-0 space-y-4">
+    <div v-else-if="detail" class="min-w-0 space-y-4">
+      <Card class="min-w-0">
+        <template #header><Text weight="bold">申请表单</Text></template>
+        <Descriptions :items="descriptions" :column="1" />
+      </Card>
+      <Card class="min-w-0">
+        <Tabs :active-key="activeTab" @update:active-key="handleTabChange">
+          <TabPane tab-key="progress" label="审批进度">
+            <div class="min-w-0 overflow-x-auto">
+              <WorkflowTimeline :steps="steps" />
+            </div>
+          </TabPane>
+          <TabPane tab-key="structure" label="流程结构">
+            <div class="min-w-0 overflow-x-auto">
+              <WorkflowViewer :steps="steps" />
+            </div>
+          </TabPane>
+        </Tabs>
+      </Card>
+      <Affix target="#main-content-scroll" :offset-bottom="0" :z-index="20">
         <Card class="min-w-0">
-          <template #header><Text weight="bold">申请表单</Text></template>
-          <Descriptions :items="descriptions" :column="1" />
-        </Card>
-        <Card class="min-w-0">
-          <template #header><Text weight="bold">审批操作</Text></template>
           <div class="min-w-0">
             <WorkflowActionBar
               :items="APPROVAL_WORKFLOW_ACTIONS"
@@ -170,24 +193,10 @@ async function confirmTransfer() {
             />
           </div>
           <Text size="sm" color="secondary" class="mt-2 block">
-            通过 / 驳回 / 转交会写回当前实例；关联工单时同步工单状态。不接审批引擎。
+            同意 / 拒绝 / 转交会写回当前实例；关联工单时同步工单状态。不接审批引擎。
           </Text>
         </Card>
-      </div>
-      <div class="min-w-0 space-y-4">
-        <Card class="min-w-0">
-          <template #header><Text weight="bold">审批树</Text></template>
-          <div class="min-w-0 overflow-x-auto">
-            <WorkflowViewer :steps="steps" />
-          </div>
-        </Card>
-        <Card class="min-w-0">
-          <template #header><Text weight="bold">审批时间线</Text></template>
-          <div class="min-w-0 overflow-x-auto">
-            <WorkflowTimeline :steps="steps" />
-          </div>
-        </Card>
-      </div>
+      </Affix>
     </div>
 
     <Modal

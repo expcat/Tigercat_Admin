@@ -1,8 +1,8 @@
-# 工作流 + 动态菜单中台 — 递进 Roadmap（2.3.x → 2.4）
+# 工作流 + 动态菜单中台 — 递进 Roadmap（2.3.x → 2.4.2）
 
-- **基线**: Tigercat `v2.3.2` + Admin 菜单轻页（M1-S4）
-- **日期**: 2026-09-08
-- **原则**: 库做 schema / helpers / 展示组件；应用做路由、Mock 流转、管理页。不接 Flowable/Camunda；禁止与现有 Menu / Timeline 双轨。小切片交付，上游按 2.3.x（每次 +1）发版后再回灌 Admin。
+- **基线**: Tigercat `v2.4.2` + Admin `^2.4.2`
+- **日期**: 2026-09-09
+- **原则**: 库做 schema / helpers / 展示组件；应用做路由、Mock 流转、管理页。不接 Flowable/Camunda；禁止与现有 Menu / Timeline 双轨。小切片交付，上游发版后再回灌 Admin。
 
 权威副本：
 - Tigercat: `docs/ROADMAP.md`「中台递进里程碑」
@@ -16,6 +16,9 @@
 | ---- | ---- |
 | 2.3.0 | MenuSchema helpers；WorkflowTimeline / WorkflowActionBar；双端 demo |
 | 2.3.1 | live-review 批次 + Admin 对应修复 |
+| 2.3.2 | M1：WorkflowViewer + MenuSchema 元数据；Admin 菜单轻页 / 审批 Mock |
+| 2.4.0 | M4：WorkflowDesigner（simple）+ SchemaForm；Admin 设计页与发起弹层 |
+| 2.4.2 | **M242 完成**：Viewer 扫读 / 会签 `actors` / ActionBar 确认+意见 / Designer 摘要+兄弟 `+`；Admin 详情 IA + Designer 页跟上 |
 
 ---
 
@@ -23,23 +26,23 @@
 
 **要。** 现状够「进度条 + 操作条」，对标钉钉/飞书仍缺「一眼看懂结构」和「业务闭环」。分三层，避免一次上引擎。
 
-### L1 展示增强（库，优先）
+### L1 展示增强（库，优先）— 2.4.2 已交付
 - WorkflowViewer：只读钉钉风树（发起→审批→抄送→条件分支 stub），同一套 step 模型
-- children 并行/抄送视觉落地（core 已有 children 字段）
-- 会签/或签/依次展示字段 + locale
-- ActionBar + 确认框配方（文案进 locale）
-- 当前路径高亮 / 驳回回退点（只读语义）
+- children 并行/抄送视觉落地；会签人走 `actors[]`，不要假并行 children
+- 会签/或签/依次展示字段 + locale；卡内名单 + N/M
+- ActionBar 主次 + 确认 description + 可选意见框
+- 当前路径高亮 / 驳回回退点 / 图例（只读语义）
 
-### L2 业务演示闭环（Admin）
+### L2 业务演示闭环（Admin）— 2.4.2 已交付
 - 待办 / 已办 / 抄送 / 发起列表
-- Mock 状态机（同意/驳回/转交写回实例，非 toast-only）
-- 详情：表单区 + Viewer/Timeline + ActionBar
+- Mock 状态机（同意/驳回/转交写回实例，非 toast-only；拒绝可带意见）
+- 详情 IA：表单 + Tab（默认 Timeline 进度 / Viewer 结构）+ sticky ActionBar
 - 与工单等现有域挂一条演示链路
 
-### L3 配置与引擎边界（有产品信号再开）
-- WorkflowDesigner（simple JSON 树，可选子路径，可 tree-shake）
-- 字段权限 / 超时提醒的展示约定（仍无引擎）
-- 明确不做进主包：BPMN 设计器、Flowable/Camunda 运行时
+### L3 配置与引擎边界
+- WorkflowDesigner（simple JSON 树，摘要卡 + 选中编辑 + 兄弟 `+`）— 2.4.2 已交付；仍无引擎
+- 字段权限 / 超时提醒的展示约定（仍无引擎，有产品信号再开）
+- 明确不做进主包：BPMN 设计器、Flowable/Camunda 运行时、加签/组织解析/表单设计器
 
 ---
 
@@ -89,22 +92,38 @@
 
 **验收**: followups 勾一批；无新 P0 — 已满足（M3-S3 关闭）
 
-### M4 — 2.4.0（可选大步，有信号再开）
-- WorkflowDesigner（simple）— 库 S1 已发；Admin `/workflow-designer` 本地轻编辑 + Viewer 预览
-- Schema 表单 — 库 S2 已发；Admin 挂在审批中心「发起审批」弹层
+### M4 — 2.4.0（可选大步，已开）
+- WorkflowDesigner（simple）— 库已发；Admin `/workflow-designer` 本地轻编辑 + Viewer 预览
+- Schema 表单 — 库已发；Admin 挂在审批中心「发起审批」弹层
 - Captcha — SKIP（登录无明示需求）
 - 不做：若依全家桶；租户/组织/字典组件化进 Tigercat；Flowable/Camunda/BPMN
 
+### M242 — 2.4.2（工作流 UX 扫读 + 详情 IA）— **完成**
+
+**Tigercat `v2.4.2`**
+- Viewer：当前节点色点/「进行中」、path 图例、会签人名单 + N/M、cc「已抄送」
+- ActionBar：同意 primary / 拒绝 outline+danger；确认 title+description；拒绝可意见框
+- Designer：摘要卡 + 选中编辑 + 兄弟「在后方插入」；会签人 `actors[]`
+- 仍是 `WorkflowTimelineStep`；无第二套 Timeline；无 BPMN
+
+**Admin `^2.4.2`**
+- 详情：申请表单 + Tab（默认 Timeline / 结构 Viewer）+ sticky ActionBar；同意/拒绝写回（可带意见）；种子会签多人
+- `/workflow-designer` 跟上摘要卡与兄弟 `+`；预览同一份 `steps`
+- 工单详情保持 Timeline+ActionBar，不改成完整审批壳
+
+**验收**: 见 Tigercat `CHANGELOG` `## v2.4.2`；Admin `docs/frontend.md`「审批工作流（v2.4.2）」与 `docs/api/approvals.md`。
+
 ## 4. 跨仓节奏
 
-1. **Tigercat 先发**：每个 M 对应一次 `2.3.x` 小版本（+1）；库内只做 schema / helpers / 展示组件与文档/示例/测试。
-2. **Admin 后跟**：升依赖到对应 `^2.3.x` 后再做路由、Mock 流转、管理页与真机 Review。
+1. **Tigercat 先发**：库内只做 schema / helpers / 展示组件与文档/示例/测试。
+2. **Admin 后跟**：升依赖到对应 `^x.y.z` 后再做路由、Mock 流转、管理页与真机 Review。
 3. **切片**：单里程碑内可再拆 PR；不跨仓同时大改同一语义。
-4. **回写**：发版后同步 CHANGELOG / 本 roadmap / Admin `docs/midplatform-roadmap.md`；上游缺口只登记到 Admin 上游清单。
-5. **门禁**：M1→M2→M3 递进；M4（2.4.0）仅在有明确产品信号时开。
+4. **回写**：发版后同步 CHANGELOG / 本 roadmap；上游缺口只登记到 Admin 上游清单。
+5. **门禁**：M1→M2→M3 递进；M4（2.4.0）已开；**M242（2.4.2）已完成**。
 
 ## 5. 明确不做（全里程碑）
 - Flowable / Camunda / Activiti 嵌入
 - BPMN 2.0 设计器进主包
 - 第二套 Menu / Timeline 渲染系统
 - 租户 / 部门 / 岗位 / 字典作为 Tigercat 组件
+- 运行时加签 / 组织解析 / 表单设计器 / Asana「Request changes」

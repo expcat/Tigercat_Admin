@@ -206,10 +206,14 @@ test.describe('阶段 2 — 协作沟通', () => {
     await expect(page.getByText('工单升级：导出报表偶发 500').first()).toBeVisible();
     await page.getByRole('button', { name: '查看' }).first().click();
     await expect(page.getByText('申请表单', { exact: true })).toBeVisible();
-    await expect(page.getByText('审批树', { exact: true })).toBeVisible();
-    await expect(page.getByText('审批时间线', { exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '审批进度' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByLabel('审批流程')).toBeHidden();
     await expect(page.getByRole('toolbar', { name: '审批操作' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '通过' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '同意' })).toBeVisible();
+    await page.getByRole('tab', { name: '流程结构' }).click();
+    await expect(page.getByLabel('审批流程')).toBeVisible();
+    await expect(page.getByLabel('审批流程').getByText('王经理', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('审批流程').getByText('李总监', { exact: true })).toBeVisible();
   });
 
   test('流程设计页可轻编辑并预览同一份 steps', async ({ page }) => {
@@ -217,11 +221,31 @@ test.describe('阶段 2 — 协作沟通', () => {
 
     await page.goto('/#/workflow-designer');
     await expect(page.getByText('流程设计').first()).toBeVisible();
-    await expect(page.getByRole('region', { name: '流程设计器' })).toBeVisible();
-    await expect(page.getByText('主管会签').first()).toBeVisible();
+    const designer = page.getByRole('region', { name: '流程设计器' });
+    await expect(designer).toBeVisible();
+    await expect(designer.getByRole('group', { name: '主管会签' })).toBeVisible();
+    await expect(designer.getByText('李四, 钱七')).toBeVisible();
+    await expect(page.getByRole('region', { name: '节点设置' })).toHaveCount(0);
+    await expect(designer.getByRole('button', { name: '在后方插入 (主管会签)' })).toBeVisible();
+
+    const preview = page.getByLabel('审批流程');
+    await expect(preview.getByText('李四', { exact: true })).toBeVisible();
+    await expect(preview.getByText('钱七', { exact: true })).toBeVisible();
+
+    await designer.getByRole('group', { name: '主管会签' }).getByText('李四, 钱七').click();
+    await expect(page.getByRole('region', { name: '节点设置' })).toBeVisible();
+    await expect(page.getByLabel('审批人 1')).toHaveValue('李四');
+    await expect(page.getByLabel('审批人 2')).toHaveValue('钱七');
+
+    await expect(page.getByText('当前 4 个节点')).toBeVisible();
     await expect(page.getByRole('button', { name: '恢复默认' })).toBeVisible();
     await page.getByRole('button', { name: '添加步骤' }).click();
-    await expect(page.getByText(/当前 \d+ 个节点/)).toBeVisible();
+    await expect(page.getByText('当前 5 个节点')).toBeVisible();
+
+    await page.getByRole('button', { name: '恢复默认' }).click();
+    await expect(page.getByText('当前 4 个节点')).toBeVisible();
+    await designer.getByRole('button', { name: '在后方插入 (主管会签)' }).click();
+    await expect(page.getByText('当前 5 个节点')).toBeVisible();
   });
 
   test('团队日历可展示日程并打开新建事件', async ({ page }) => {

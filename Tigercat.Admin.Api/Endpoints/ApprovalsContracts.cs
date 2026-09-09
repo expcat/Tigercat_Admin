@@ -4,6 +4,7 @@ public class ApprovalActorResponse
 {
     public string? Id { get; set; }
     public string? Name { get; set; }
+    public string? Status { get; set; }
 }
 
 public class ApprovalStepResponse
@@ -12,6 +13,7 @@ public class ApprovalStepResponse
     public string? Title { get; set; }
     public string? Status { get; set; }
     public ApprovalActorResponse? Actor { get; set; }
+    public ApprovalActorResponse[]? Actors { get; set; }
     public string? Action { get; set; }
     public string? Comment { get; set; }
     public string? Time { get; set; }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Affix } from '@expcat/tigercat-react/Affix';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Descriptions } from '@expcat/tigercat-react/Descriptions';
@@ -9,11 +10,13 @@ import { FormItem } from '@expcat/tigercat-react/FormItem';
 import { Message } from '@expcat/tigercat-react/Message';
 import { Modal } from '@expcat/tigercat-react/Modal';
 import { Select } from '@expcat/tigercat-react/Select';
+import { TabPane } from '@expcat/tigercat-react/TabPane';
+import { Tabs } from '@expcat/tigercat-react/Tabs';
 import { Text } from '@expcat/tigercat-react/Text';
 import { Textarea } from '@expcat/tigercat-react/Textarea';
 import { WorkflowViewer } from '@expcat/tigercat-react/WorkflowViewer';
 import { WorkflowActionBar, WorkflowTimeline } from '@expcat/tigercat-react/WorkflowTimeline';
-import type { DescriptionsItem, WorkflowActionBarItem } from '@expcat/tigercat-core';
+import type { DescriptionsItem, WorkflowActionBarItem, WorkflowActionPayload } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { CheckCircleIcon } from '../components/Icons';
 import { normalizeInput } from '../utils';
@@ -45,6 +48,7 @@ function ApprovalDetailPage() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferTo, setTransferTo] = useState('demo');
   const [transferComment, setTransferComment] = useState('');
+  const [activeTab, setActiveTab] = useState('progress');
 
   const loadDetail = useCallback(async () => {
     if (!id) {
@@ -70,6 +74,7 @@ function ApprovalDetailPage() {
   }, [id]);
 
   useEffect(() => {
+    setActiveTab('progress');
     void loadDetail();
   }, [loadDetail]);
 
@@ -101,7 +106,7 @@ function ApprovalDetailPage() {
     }
   };
 
-  const handleWorkflowAction = (item: WorkflowActionBarItem) => {
+  const handleWorkflowAction = (item: WorkflowActionBarItem, payload?: WorkflowActionPayload) => {
     if (item.action === 'transfer') {
       setTransferTo(detail?.assignee === 'admin' ? 'demo' : 'admin');
       setTransferComment('');
@@ -109,7 +114,8 @@ function ApprovalDetailPage() {
       return;
     }
     if (item.action === 'approve' || item.action === 'reject') {
-      void runAction(item.action);
+      const comment = payload?.comment?.trim();
+      void runAction(item.action, { comment: comment || undefined });
     }
   };
 
@@ -127,7 +133,7 @@ function ApprovalDetailPage() {
     <div className="min-w-0 space-y-4">
       <PageHeader
         title={detail?.title ?? '审批详情'}
-        subtitle="表单 + WorkflowViewer / WorkflowTimeline + ActionBar。动作写回 mock 实例。"
+        subtitle="表单 + 审批进度 Timeline / 流程结构 Viewer + 底栏 ActionBar。动作写回 mock 实例。"
         icon={<CheckCircleIcon size={22} />}
         tags={[{ label: statusMeta.label, variant: statusMeta.variant }]}
       />
@@ -148,12 +154,26 @@ function ApprovalDetailPage() {
       ) : loading && !detail ? (
         <Text color="secondary">正在加载审批详情…</Text>
       ) : detail ? (
-        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-          <div className="min-w-0 space-y-4">
-            <Card header={<Text weight="bold">申请表单</Text>} className="min-w-0">
-              <Descriptions items={descriptions} column={1} />
-            </Card>
-            <Card header={<Text weight="bold">审批操作</Text>} className="min-w-0">
+        <div className="min-w-0 space-y-4">
+          <Card header={<Text weight="bold">申请表单</Text>} className="min-w-0">
+            <Descriptions items={descriptions} column={1} />
+          </Card>
+          <Card className="min-w-0">
+            <Tabs activeKey={activeTab} onActiveKeyChange={(key) => setActiveTab(String(key))}>
+              <TabPane tabKey="progress" label="审批进度">
+                <div className="min-w-0 overflow-x-auto">
+                  <WorkflowTimeline steps={steps} />
+                </div>
+              </TabPane>
+              <TabPane tabKey="structure" label="流程结构">
+                <div className="min-w-0 overflow-x-auto">
+                  <WorkflowViewer steps={steps} />
+                </div>
+              </TabPane>
+            </Tabs>
+          </Card>
+          <Affix target="#main-content-scroll" offsetBottom={0} zIndex={20}>
+            <Card className="min-w-0">
               <div className="min-w-0">
                 <WorkflowActionBar
                   items={APPROVAL_WORKFLOW_ACTIONS}
@@ -164,22 +184,10 @@ function ApprovalDetailPage() {
                 />
               </div>
               <Text size="sm" color="secondary" className="mt-2 block">
-                通过 / 驳回 / 转交会写回当前实例；关联工单时同步工单状态。不接审批引擎。
+                同意 / 拒绝 / 转交会写回当前实例；关联工单时同步工单状态。不接审批引擎。
               </Text>
             </Card>
-          </div>
-          <div className="min-w-0 space-y-4">
-            <Card header={<Text weight="bold">审批树</Text>} className="min-w-0">
-              <div className="min-w-0 overflow-x-auto">
-                <WorkflowViewer steps={steps} />
-              </div>
-            </Card>
-            <Card header={<Text weight="bold">审批时间线</Text>} className="min-w-0">
-              <div className="min-w-0 overflow-x-auto">
-                <WorkflowTimeline steps={steps} />
-              </div>
-            </Card>
-          </div>
+          </Affix>
         </div>
       ) : null}
 

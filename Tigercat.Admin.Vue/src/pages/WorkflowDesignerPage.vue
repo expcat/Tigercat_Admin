@@ -15,10 +15,7 @@ const DEFAULT_DESIGNER_STEPS: WorkflowTimelineStep[] = [
     key: 'manager',
     title: '主管会签',
     signMode: 'countersign',
-    children: [
-      { key: 'm1', title: '李四' },
-      { key: 'm2', title: '钱七' },
-    ],
+    actors: [{ name: '李四' }, { name: '钱七' }],
   },
   { key: 'finance', title: '财务复核' },
   { key: 'done', title: '完成' },
@@ -45,16 +42,16 @@ function resetDesigner() {
     <PageHeader
       icon="gitBranch"
       title="流程设计"
-      subtitle="简单 JSON 树编辑器，复用 WorkflowTimelineStep。本页本地轻编辑，不接 Flowable / BPMN。"
+      subtitle="摘要卡 + 选中编辑 + 兄弟插入。复用 WorkflowTimelineStep，不接 Flowable / BPMN。"
       :tags="[
         { label: '演示', variant: 'primary' },
-        { label: 'v2.4.0', variant: 'info' },
+        { label: 'v2.4.2', variant: 'info' },
       ]"
     />
 
     <MutedPanel
       compact
-      description="编辑结果只留在本页。右侧 WorkflowViewer 读同一份 steps，不是第二套流程模型。"
+      description="未选中只显示摘要；点选后编辑。会签人写在 actors，不要塞进 children。右侧 Viewer 读同一份 steps。"
     />
 
     <div class="flex flex-wrap items-center gap-2">

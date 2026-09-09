@@ -52,7 +52,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 - 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭；Esc 关闭为 Drawer 内置行为（经 `onClose/@close` 回调），不要再手动监听 keydown。`destroyOnClose` 会等关场过渡后再卸载；焦点恢复用 `onAfterClose` / `@after-close`。不要再传已删除的 `destroyOnCloseAfterLeave` / `onAfterLeave` / `@after-leave`。
 - Header：使用 `Header`、`Breadcrumb`、`Button`、`Dropdown`、`Avatar`、`Tag`、`Icon`，包含侧栏开关、面包屑、主题配置抽屉入口、内容区全屏（浏览器 Fullscreen API，无包级 Fullscreen 组件）、主题切换、修改密码、锁定屏幕和退出。
 - 侧栏菜单：展开态开启 `Menu searchable`（`searchPlaceholder="搜索菜单"`）；折叠到 64px 时关闭搜索，避免挤占迷你栏。登录后 `GET /api/menus/schema` 拉 `MenuSchemaNode` 树，经 `filterMenuByPermission` 与 `menuSchemaToMenuItems` 喂给现有 `Menu`（不要自写第二套菜单渲染）。失败时回退 `shell-navigation` 里的打包 schema。游客态该接口 401 会落到打包树；SPA 登录成功（无整页刷新）必须 `resetShellMenuSchema` 再拉一次 live schema，否则 iframeSrc-only 等节点会一直缺到整页刷新。壳主要业务路由是 mixed：`schemaToRouteRecords` + `utils/page-map` 懒加载页面（Vue `router/index.ts` 初始绑定打包树，live schema 再 `addRoute`；React 按 live schema 渲染 `<Route>` 元素，不要再包一层非 Route 组件，否则 React Router 7 会拒绝）。导航走 schema `path`（`getShellNavigatePath`），不要把 `path` 写成 `MenuItem.href`（hash 演示路由会整页跳走）。游客 / 403·404·500 / `projects/:id` / `approvals/:id` 仍是静态路由。无 pageMap 但有安全 `iframeSrc` 的节点走通用嵌入页。菜单管理轻页在系统管理下（`/menus`，`menu:view`），对 schema 做 CRUD，并用角色权限做过滤预览。
-- 中台演示：协作下「审批中心」`/approvals`（待办 / 已办 / 抄送 / 我发起的）+ `/approvals/:id` + 「流程设计」`/workflow-designer`。详情把同一份 mock `steps` 交给 `WorkflowViewer` 与 `WorkflowTimeline`，`WorkflowActionBar` 的同意 / 驳回 / 转交走 `POST /api/approvals/{id}/actions` 写回实例（不是 toast-only）。发起审批弹层用 `SchemaForm`（`^2.4.0`），不要再手写一套 FormItem。流程设计页用 `WorkflowDesigner` 轻编辑本地 JSON 树，预览仍走同一份 `steps` 的 `WorkflowViewer`。工单详情仍用 Timeline + ActionBar，动作写回工单 `PUT`；完整实例状态机以审批中心为准。不要接 Flowable/Camunda，也不要自写第二套 Timeline / Menu。
+- 中台演示：协作下「审批中心」`/approvals`（待办 / 已办 / 抄送 / 我发起的）+ `/approvals/:id` + 「流程设计」`/workflow-designer`。详情 IA、Designer 摘要卡、库/应用分工与 Do-NOT 见下文「审批工作流（v2.4.2）」。发起审批弹层用 `SchemaForm`（`^2.4.2`），不要再手写一套 FormItem。工单详情仍用 Timeline + ActionBar，动作写回工单 `PUT`；完整实例状态机以审批中心为准。不要接 Flowable/Camunda，也不要自写第二套 Timeline / Menu。
 - 页脚：`Content` 滚动区内、页面主体之后渲染 `Footer`（`ShellFooter`），随内容滚动，不占固定视口高度。
 - 路由进度：受保护路由切换时用 `LoadingBar.start()` / `LoadingBar.finish()` 驱动顶部进度条（失败或 `next(false)` 也要 `finish`）；根节点挂载 `#tiger-loading-bar-container-root`，由 `LoadingBar` 把 `LoadingBarContainer` 挂进去（子路径 `/LoadingBar` 与 `/LoadingBarContainer` 分开）。游客页与独立异常页不显示。
 - 命令面板：`Spotlight` 默认 `hotkey` 已绑定 ⌘K / Ctrl+K，不要再在 App 里叠一层 keydown 开关，否则受控 `open` 会被两次 toggle 抵消。
@@ -132,8 +132,8 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 | 项目列表 | `Card`、`Statistic`、`Tag`、`Avatar`/`AvatarGroup`、`Progress`、`Input`、`Segmented`、`Pagination`、`Empty`、`Row`/`Col` | 卡片网格（`Row`/`Col` 响应式 span）、名称/负责人/编号搜索、状态分段筛选（规划中/进行中/已暂停/已完成）、分页、点击卡片或「查看详情」进入 `/projects/:id`；列表筛选/分页接 `GET /api/projects` |
 | 项目详情 | `Descriptions`、`Steps`/`StepsItem`、`Tabs`/`TabPane`、`Anchor`/`AnchorLink`、`Timeline`、`CommentThread`、`Empty`、`Progress`、`Avatar`/`AvatarGroup` | 动态路由 `:id`、概览/成员/动态、页内锚点切 Tab、未知 id 空态仍保持列表菜单高亮；详情接 `GET /api/projects/{id}`，讨论接 `GET /api/comments?targetType=project` |
 | 工单中心 | `Splitter`、`Resizable`、`Steps`/`StepsItem`、`WorkflowTimeline`/`WorkflowActionBar`、`ChatWindow`、`CommentThread`、`Mentions`、`Descriptions`、`Rate`、`Badge`、`Tag`、`Popover`、`Drawer`、`Upload`、`Textarea`、`RadioGroup`/`Radio`、`Input`、`Divider` | 主从分栏（宽屏左右 / 窄屏上下）。宽屏对话区 `Resizable` 竖向调高，ChatWindow 填满并内部滚动，`textarea` `resize-none` 避免与底手柄冲突；窄屏去掉 Resizable、固定高度，避免与垂直 Splitter 叠拖。工单生命周期、展示用审批时间线（步骤由工单状态派生）、对话、内部 @ 协作、附件、关闭确认、新建工单；列表/详情/关闭/对话接 `/api/tickets`，内部备注接 `/api/comments?targetType=ticket`。ActionBar 同意/驳回写回工单状态，转交/评论写回一条对话（不改状态），撤销禁用；完整待办实例见审批中心。窄屏覆盖见 `e2e/viewport-a11y.spec.ts` |
-| 审批中心 | `DataTableWithToolbar`、`Segmented`、`Descriptions`、`WorkflowViewer`、`WorkflowTimeline`/`WorkflowActionBar`、`Modal`、`SchemaForm`、`Tag` | 四条列表车道、发起审批、详情表单 + Viewer/Timeline + ActionBar 确认配方。发起弹层用 `SchemaForm`（`showActions={false}`，页脚提交调 `validate()`）。同意/驳回/转交写回 `/api/approvals/{id}/actions`；同一份 `steps`，不要第二套 Timeline。无 BPM。详情窄屏单列 `min-w-0`，ActionBar wrap，Viewer/Timeline 可横向滚但不撑破页面（`e2e/viewport-a11y.spec.ts` `@mobile`） |
-| 流程设计 | `WorkflowDesigner`、`WorkflowViewer`、`Card`、`Button` | `/workflow-designer` 本地轻编辑 JSON 树，预览用同一份 `steps` 的 Viewer。不写回引擎，不是 BPMN。窄屏两卡叠放、`min-w-0` + 横向滚 |
+| 审批中心 | `DataTableWithToolbar`、`Segmented`、`Descriptions`、`Tabs`/`TabPane`、`Affix`、`WorkflowViewer`、`WorkflowTimeline`/`WorkflowActionBar`、`Modal`、`SchemaForm`、`Tag` | 四条列表车道、发起审批。详情：申请表单 `Descriptions` + Tab（默认「审批进度」Timeline / 「流程结构」Viewer）+ sticky `WorkflowActionBar`（`Affix` `target="#main-content-scroll"`）。发起弹层用 `SchemaForm`（`showActions={false}`，页脚提交调 `validate()`）。同意/驳回/转交写回 `/api/approvals/{id}/actions`（拒绝可带意见）；同一份 `steps`，不要第二套 Timeline。无 BPM、无加签。详情窄屏单列 `min-w-0`，底栏 wrap 不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`） |
+| 流程设计 | `WorkflowDesigner`、`WorkflowViewer`、`Card`、`Button` | `/workflow-designer` 吃库 2.4.2 摘要卡 + 选中编辑 + 兄弟 `+`（「在后方插入」）。默认种子会签人写 `actors[]`，不要把人名做成 `children`。预览 Viewer 绑定同一份 `steps`。不写回引擎，不是 BPMN。窄屏两卡叠放、`min-w-0` + 横向滚 |
 | 团队日历 | `Calendar`、`Countdown`、`Statistic`、`Badge`、`Popover`、`Tag`、`List`、`Drawer`、`DatePicker`、`TimePicker`、`RadioGroup`/`Radio`、`Input` | 月视图 `events` + React `dateCellRender` / Vue `#dateCell` 在格子内标色点和数量；点击日期看右侧当日详情与即将到来列表、新建事件。不要自绘第二套格内事件层。可见月与即将到来接 `GET /api/calendar/events`，Drawer 创建接 `POST /api/calendar/events` |
 | 内容编辑 | `Segmented`、`RichTextEditor`、`MarkdownEditor`、`CodeEditor`、`Watermark`、`Switch`、`Space`、`TreeSelect`、`Cascader`、`TagsInput`、`Mentions`、`Upload`、`Result`、`Tag`、`AutoComplete` | 编辑器三态切换、标题 `AutoComplete`（`allowFreeInput`，可输入未列出的标题）、草稿水印、分类树/栏目级联、`TagsInput` 多标签、@ 协作者、附件上传、立即发布开关、发布成功结果页；挂载加载种子文章 `a1`，保存草稿 / 发布接 `PUT /api/content/articles/{id}`，刷新后从接口恢复。协作者与附件仍本页本地。工具条「加粗 / 斜体」等走 `appText.richTextEditor` / `markdownEditor`，不要自绘一套工具条 |
 | 媒体图库 | `Carousel`、`ImageGroup`、`Image`、`ImagePreview`、`ImageViewer`、`ImageAnnotation`、`ImageCropper`、`Masonry`、`AspectRatio`、`ImageCompare`、`Segmented`、`Skeleton`、`Empty`、`Tag`、`Drawer` | 精选轮播、相册切换、瀑布流网格、固定比例封面、版本前后对比、网格灯箱预览、大图查看（缩放/旋转/导航）、矩形/椭圆标注、16:9 裁剪、刷新骨架屏、空相册空态 |
@@ -249,7 +249,7 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 ## 已对齐的上游能力
 
-本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `^2.4.0`。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 Captcha 仍跳过（登录无明示需求）。
+本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `^2.4.2`。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 Captcha 仍跳过（登录无明示需求）。
 
 | 组件 | 平台 | 上游现状 | 本项目保留的布局 glue |
 | ---- | ---- | -------- | --------------------- |
@@ -272,8 +272,48 @@ LLM 生成新页面或复刻页面时，至少满足：
 | `ImageCropper` / `CropUpload` | React / Vue | `v2.1.4` 起 ResizeObserver 只量父级宽度，拟合尺寸写内层 stage，裁剪画布不再越缩越小。无新必填 prop。 | Gallery 裁剪抽屉和 Users 头像 CropUpload 不另加高度 workaround。 |
 | `SplitButton` | React / Vue | `v2.1.4` 主按钮与 chevron 同高。 | Files 页上传继续用 SplitButton。 |
 | `MenuSchema` | core | `v2.3.0` 起 `MenuSchemaNode` + `filterMenuByPermission` / `menuSchemaToMenuItems`，映射到现有 `Menu`，无新必填 prop。`v2.3.2` 起 schema 元数据 `hideInBreadcrumb` / `flatMenu` / `badge` / `iframeSrc` 与 `schemaToRouteRecords`。 | Shell 侧栏与命令面板用 schema 过滤后的 `items`；主要业务路由用 `schemaToRouteRecords` + `page-map` 懒加载（见上文 mixed 路由）。应用图标名仍走本地 Icon 映射。菜单管理轻页 CRUD 这些字段，并用角色权限预览过滤结果。 |
-| `WorkflowTimeline` / `WorkflowActionBar` | React / Vue | `v2.3.0` 起审批步骤时间线 + 操作条，映射到现有 `Timeline`，无 BPM 引擎。`v2.3.1` 起状态 Tag 读 `locale.workflowTimeline` / `labels`（zh-CN 已通过/进行中/待处理/已驳回/已撤销）。`v2.3.2` 起 ActionBar 可选 `confirm` 确认配方。 | 工单详情用工单状态派生步骤，同意/驳回写回工单 `PUT`。审批中心详情用接口返回的 `steps`，ActionBar `confirm` 后 `POST /api/approvals/{id}/actions`。中文站点走 `appLocale`。 |
-| `WorkflowViewer` | React / Vue | `v2.3.2` 起只读钉钉风审批树，复用 `WorkflowTimelineStep`（含 children / 会签 / 抄送 / 条件 stub），不是第二套 Timeline。 | 审批详情与 Timeline 共用同一 `steps`；不要自绘树或再包一层 Timeline。 |
-| `WorkflowDesigner` | React / Vue | `v2.4.0` 起简单 JSON 树编辑器，复用 `WorkflowTimelineStep`，可选 `path` 子路径。不是 BPMN / Flowable。 | `/workflow-designer` 本地轻编辑；预览用同一份 `steps` 的 `WorkflowViewer`。 |
-| `SchemaForm` | React / Vue | `v2.4.0` 起 schema 驱动表单，包 Form / FormItem。字段 `name` 支持点路径；校验复用 Form `rules` / `condition`。Captcha 未做。 | 审批中心「发起审批」弹层用 schema 渲表单；`showActions={false}`，提交走页脚 + `validate()`。不要自写第二套动态表单。 |
+| `WorkflowTimeline` / `WorkflowActionBar` | React / Vue | `v2.3.0` 起审批步骤时间线 + 操作条，映射到现有 `Timeline`，无 BPM 引擎。`v2.3.1` 起状态 Tag 读 `locale.workflowTimeline` / `labels`。`v2.3.2` 起 ActionBar 可选 `confirm`。`v2.4.2` 起确认句含 `description`、拒绝可意见框；`commentRequired` 只改文案/aria，库不拦空提交。sticky 不在库内。 | 工单详情用工单状态派生步骤，同意/驳回写回工单 `PUT`（Tickets 保持 Timeline+ActionBar，不要改成完整审批壳）。审批详情默认 Tab 用 Timeline（不内嵌 ActionBar）；底栏 `Affix` sticky ActionBar，`confirm` 后 `POST /api/approvals/{id}/actions`，意见走第二参 `payload.comment`。中文站点走 `appLocale`。 |
+| `WorkflowViewer` | React / Vue | `v2.3.2` 起只读钉钉风审批树，复用 `WorkflowTimelineStep`（含 children / 会签 / 抄送 / 条件 stub），不是第二套 Timeline。`v2.4.2` 起当前节点色点+「进行中」、path 图例、会签人名单 + N/M（`actors[]`，不要把人画成 `children` 横向分支）、cc 弱化为「已抄送」。 | 审批详情「流程结构」Tab 才渲染 Viewer；与 Timeline 共用同一 `steps`。会签人在卡内，并行/抄送/条件才用 `children`。不要自绘树或再包一层 Timeline。 |
+| `WorkflowDesigner` | React / Vue | `v2.4.0` 起简单 JSON 树编辑器，复用 `WorkflowTimelineStep`，可选 `path` 子路径。`v2.4.2` 起未选中是摘要卡（kind 色点 / title / actors 名 / approve 才出 signMode Tag），选中后右侧或下方编辑；兄弟 `+`（「在后方插入」）走 `insertWorkflowStepAfterPath`。不是 BPMN / Flowable。 | `/workflow-designer` 直接吃库组件，不要在页面上堆四字段网格。默认种子会签人用 `actors[]`。预览用同一份 `steps` 的 `WorkflowViewer`。 |
+| `SchemaForm` | React / Vue | `v2.4.0` 起 schema 驱动表单，包 Form / FormItem。字段 `name` 支持点路径；校验复用 Form `rules` / `condition`。Captcha 未做。**不是**表单设计器。 | 审批中心「发起审批」弹层用 schema 渲表单；`showActions={false}`，提交走页脚 + `validate()`。不要自写第二套动态表单，也不要把 SchemaForm 做成宜搭式表单设计器。 |
 | `Calendar` | React / Vue | `v2.2.0` 起月视图 `events`、React `dateCellRender(date, extra)`、Vue `#dateCell="{ date, events, extra }"`，格子 `aria-label` 含当天事件数。 | `/calendar` 把接口事件映射为 `events` 并走格内渲染；右侧当日列表只做选中日详情，不再当格内事件的唯一展示。 |
+
+## 审批工作流（v2.4.2）
+
+库做展示 / schema / helpers；Admin 做路由、mock 写回和详情壳。两端共用同一套 `WorkflowTimelineStep`。Viewer 是树，Timeline 是 flatten，不是第二套时间线。里程碑 M242 已完成，roadmap 见 [midplatform-roadmap.md](midplatform-roadmap.md)。
+
+### 库 vs Admin
+
+| 层 | 职责 | 本仓库落点 |
+| -- | ---- | ---------- |
+| Tigercat `^2.4.2` | Viewer 扫读（色点 / 进行中 / 图例 / 会签人 + N/M / cc 弱化）；ActionBar 主次 + 确认 description + 可选意见框；Designer 摘要卡 + 选中编辑 + 兄弟 `+` | 包组件，页面不要重写四字段网格或第二套 Timeline |
+| Admin | 路由、mock 状态机、详情 IA、sticky 底栏、Designer 演示种子 | `ApprovalDetailPage.*`、`WorkflowDesignerPage.*`、MockApi / `ApprovalStore` |
+
+### 详情 IA
+
+```text
+[PageHeader 标题/状态]
+[申请表单 Card — Descriptions(formFields)；不要做表单设计器]
+[Tabs]
+   默认「审批进度」= WorkflowTimeline（flatten，不带内嵌 ActionBar）
+   「流程结构」= WorkflowViewer（全树 + path + 图例）
+[sticky 底栏] WorkflowActionBar confirm
+   Affix target="#main-content-scroll"（先例：Vue HelpPage）
+   Content 已有 pb-28，避开右下 FloatButton
+```
+
+默认不要同时堆 Viewer + Timeline。会签人在 `actors[]`（可选 `status`），`children` 只表示并行 / 抄送 / 条件。写回仍是**节点级**（一次同意推进当前 approve 节点），不要按人拆待办。Tickets 页保持 Timeline + ActionBar，不要改成完整审批壳。
+
+### Designer
+
+`/workflow-designer` 直接使用库 `WorkflowDesigner`：未选中是摘要；点选后出现「节点设置」；节点下「在后方插入」加兄弟，不是 child。默认种子把会签人写成 `actors[]`。右侧 / 下方 `WorkflowViewer` 绑定同一份 `steps`。编辑结果只留在本页，不写回引擎。
+
+### Do-NOT（2.4.2 明确不做）
+
+- Flowable / Camunda / Activiti / BPMN 2.0 设计器
+- 第二套 Timeline / Menu
+- 运行时加签 / 减签 / 前加签 / 后加签 / 收回；Asana「Request changes」
+- 组织解析（连续多级主管、角色、表单内联系人）
+- 表单设计器（`SchemaForm` 只渲 schema，不是设计器）
+- 库内 sticky ActionBar（sticky 由 Admin 贴底栏）
+- 运行时加抄送选人器

@@ -324,6 +324,7 @@ export type ApprovalAction = 'approve' | 'reject' | 'transfer' | 'comment';
 export interface ApprovalActor {
   id?: string;
   name?: string;
+  status?: string;
 }
 
 export interface ApprovalStep {
@@ -331,6 +332,7 @@ export interface ApprovalStep {
   title?: string;
   status?: string;
   actor?: ApprovalActor;
+  actors?: ApprovalActor[];
   action?: string;
   comment?: string;
   time?: string;

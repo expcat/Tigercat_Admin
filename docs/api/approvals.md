@@ -34,10 +34,16 @@
 | `reason` | string | 申请说明，最长 2000 |
 | `amount` | string? | 金额或天数展示 |
 | `formFields` | array | 详情表单区 `{ label, value }` |
-| `steps` | array | 与 `@expcat/tigercat-core` `WorkflowTimelineStep` 对齐的步骤树（含 children / kind / signMode） |
+| `steps` | array | 与 `@expcat/tigercat-core` `WorkflowTimelineStep` 对齐的步骤树（含 children / kind / signMode / 可选 `actors`） |
 | `actedBy` | string[] | 已操作过的用户名（进入已办） |
 
-`steps[]` 关键字段：`key`、`title`、`status`（`pending` / `active` / `approved` / `rejected` / `canceled`）、`actor`、`action`、`comment`、`time`、`order`、`children`、`kind`（`start` / `approve` / `cc` / `condition`）、`signMode`、`rollbackPoint`。前端把同一份 `steps` 交给 `WorkflowViewer` 与 `WorkflowTimeline`，不要再造第二套时间线。
+`steps[]` 关键字段：`key`、`title`、`status`（`pending` / `active` / `approved` / `rejected` / `canceled`）、`actor`、`actors`、`action`、`comment`、`time`、`order`、`children`、`kind`（`start` / `approve` / `cc` / `condition`）、`signMode`、`rollbackPoint`。
+
+- `actor`：单数处理人，向后兼容。
+- `actors`：可选会签 / 或签 / 依次名单。有 `actors.length` 时前端展示以名单为准，否则回落到 `actor`。每项 `{ id?, name?, status? }`；`status` 可选（`approved` / `pending` 等），只用于卡内已签/待处理点，**不**拆成每人一条待办。
+- `children`：并行 / 抄送 / 条件子树。**不要**把会签人做成 children（Viewer 会画成横向分支）。
+
+前端把同一份 `steps` 交给 `WorkflowViewer` 与 `WorkflowTimeline`，不要再造第二套时间线。写回仍是节点级：一次同意推进当前 `kind=approve` 节点。
 
 分页使用 `PagedResponse<ApprovalListItem>`。
 

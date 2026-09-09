@@ -91,11 +91,12 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
     await page.getByRole('button', { name: '查看' }).first().click();
 
     await expect(page.getByText('申请表单', { exact: true })).toBeVisible();
-    await expect(page.getByText('审批时间线', { exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '审批进度' })).toBeVisible();
     const actionBar = page.getByRole('toolbar', { name: '审批操作' });
-    await actionBar.scrollIntoViewIfNeeded();
     await expect(actionBar).toBeVisible();
-    await expect(page.getByRole('button', { name: '通过' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '同意' })).toBeVisible();
+    await page.getByText('申请表单', { exact: true }).scrollIntoViewIfNeeded();
+    await expect(actionBar).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
   });
 
@@ -104,8 +105,10 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
 
     await page.goto(appPath(testInfo, '/workflow-designer'));
     await expect(page.getByText('流程设计').first()).toBeVisible();
-    await expect(page.getByRole('region', { name: '流程设计器' })).toBeVisible();
-    await expect(page.getByText('主管会签').first()).toBeVisible();
+    const designer = page.getByRole('region', { name: '流程设计器' });
+    await expect(designer).toBeVisible();
+    await expect(designer.getByRole('group', { name: '主管会签' })).toBeVisible();
+    await expect(designer.getByRole('button', { name: '在后方插入 (主管会签)' })).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
   });
 

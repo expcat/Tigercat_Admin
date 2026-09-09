@@ -5,6 +5,7 @@ export type ApprovalAction = 'approve' | 'reject' | 'transfer' | 'comment';
 export type ApprovalActor = {
   id?: string;
   name?: string;
+  status?: string;
 };
 
 export type ApprovalStep = {
@@ -12,6 +13,7 @@ export type ApprovalStep = {
   title?: string;
   status?: string;
   actor?: ApprovalActor;
+  actors?: ApprovalActor[];
   action?: string;
   comment?: string;
   time?: string;
@@ -88,6 +90,7 @@ const actor = (name: string): ApprovalActor => ({ id: name, name });
 const cloneStep = (step: ApprovalStep): ApprovalStep => ({
   ...step,
   actor: step.actor ? { ...step.actor } : undefined,
+  actors: step.actors?.map((item) => ({ ...item })),
   children: step.children?.map(cloneStep),
 });
 
@@ -156,6 +159,11 @@ const startStep = (name: string, time: string, order: number): ApprovalStep => (
   order,
 });
 
+const managerActors = (status: string): ApprovalActor[] => [
+  { id: 'wang', name: '王经理', status: 'approved' },
+  { id: 'li', name: '李总监', status: status === 'approved' ? 'approved' : 'pending' },
+];
+
 const managerStep = (
   status: string,
   name: string | null,
@@ -170,6 +178,7 @@ const managerStep = (
   signMode: 'countersign',
   action: status === 'approved' ? 'approve' : undefined,
   actor: actor(name ?? 'admin'),
+  actors: managerActors(status),
   comment,
   time,
   order,
