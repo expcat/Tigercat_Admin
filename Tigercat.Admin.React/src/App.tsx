@@ -65,6 +65,8 @@ const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const TicketsPage = lazy(() => import('./pages/TicketsPage'));
+const ApprovalsPage = lazy(() => import('./pages/ApprovalsPage'));
+const ApprovalDetailPage = lazy(() => import('./pages/ApprovalDetailPage'));
 const CalendarPage = lazy(() => import('./pages/CalendarPage'));
 const ContentPage = lazy(() => import('./pages/ContentPage'));
 const GalleryPage = lazy(() => import('./pages/GalleryPage'));
@@ -573,6 +575,8 @@ function App() {
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/:id" element={<ProjectDetailPage />} />
           <Route path="/tickets" element={<TicketsPage />} />
+          <Route path="/approvals" element={<ApprovalsPage />} />
+          <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/content" element={<ContentPage />} />
           <Route path="/gallery" element={<GalleryPage />} />

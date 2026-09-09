@@ -26,6 +26,7 @@ internal static class MenusCatalog
         var monitor = Page("monitor", "实时监控", "monitor", "/monitor");
         var projects = Page("projects", "项目列表", "package", "/projects");
         var tickets = Page("tickets", "工单中心", "ticket", "/tickets");
+        var approvals = Page("approvals", "审批中心", "checkCircle", "/approvals");
         var calendar = Page("calendar", "团队日历", "calendar", "/calendar");
         var content = Page("content", "内容编辑", "edit", "/content");
         var gallery = Page("gallery", "媒体图库", "image", "/gallery");
@@ -61,7 +62,7 @@ internal static class MenusCatalog
                     Key = "collaborationGroup",
                     Label = "协作",
                     Icon = "message",
-                    Children = [tickets, calendar],
+                    Children = [tickets, approvals, calendar],
                 },
                 new()
                 {

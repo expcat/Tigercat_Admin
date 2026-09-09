@@ -120,6 +120,16 @@ const router = createRouter({
           component: () => import('../pages/TicketsPage.vue'),
         },
         {
+          path: 'approvals',
+          name: 'approvals',
+          component: () => import('../pages/ApprovalsPage.vue'),
+        },
+        {
+          path: 'approvals/:id',
+          name: 'approvals-detail',
+          component: () => import('../pages/ApprovalDetailPage.vue'),
+        },
+        {
           path: 'calendar',
           name: 'calendar',
           component: () => import('../pages/CalendarPage.vue'),

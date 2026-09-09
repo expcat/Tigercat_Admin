@@ -42,3 +42,5 @@
 | `POST /api/tickets/{id}/messages` | 登录 | Body：`content` | 更新后的工单对象（含 self 消息与一条 other 演示回复） | `400` 内容为空或过长；`404` 工单不存在 |
 
 新建工单号按现有 `TK-*` 数字递增。关闭确认路径使用 `PUT` 且 `status=closed`。
+
+审批中心 mock 实例可挂 `ticketId`；同意/驳回写回实例时会同步本接口的工单 `status`（见 [approvals.md](approvals.md)）。工单详情 ActionBar 自己的同意/驳回也走 `PUT`。

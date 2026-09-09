@@ -70,6 +70,7 @@ builder.Services.AddSingleton<MonitorSnapshotSource>();
 builder.Services.AddSingleton<MonitorPushRegistry>();
 builder.Services.AddSingleton<ChatRealtimeNotifier>();
 builder.Services.AddSingleton<MenuSchemaStore>();
+builder.Services.AddSingleton<ApprovalStore>();
 builder.Services.AddHostedService<MonitorPushService>();
 
 // Database provider selection is explicit via Database:Provider when configured.
@@ -297,6 +298,7 @@ app.MapEndpoint<JobsEndpoints>();
 app.MapEndpoint<ImportJobsEndpoints>();
 app.MapEndpoint<MonitorEndpoints>();
 app.MapEndpoint<MenusEndpoints>();
+app.MapEndpoint<ApprovalsEndpoints>();
 app.MapHub<MonitorHub>(RealtimeHubs.MonitorPath);
 app.MapHub<ChatHub>(RealtimeHubs.ChatPath);
 

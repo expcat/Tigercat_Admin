@@ -195,6 +195,20 @@ namespace Tigercat.Admin.Api.Serialization;
 [JsonSerializable(typeof(MenuNodeWriteRequest))]
 [JsonSerializable(typeof(ApiResponse<MenuSchemaResponse>))]
 [JsonSerializable(typeof(ApiResponse<MenuSchemaNodeResponse>))]
+// Approval mock instances
+[JsonSerializable(typeof(ApprovalActorResponse))]
+[JsonSerializable(typeof(ApprovalStepResponse))]
+[JsonSerializable(typeof(ApprovalStepResponse[]))]
+[JsonSerializable(typeof(ApprovalFormFieldResponse))]
+[JsonSerializable(typeof(ApprovalFormFieldResponse[]))]
+[JsonSerializable(typeof(ApprovalListItemResponse))]
+[JsonSerializable(typeof(ApprovalListItemResponse[]))]
+[JsonSerializable(typeof(PagedResponse<ApprovalListItemResponse>))]
+[JsonSerializable(typeof(ApprovalDetailResponse))]
+[JsonSerializable(typeof(CreateApprovalRequest))]
+[JsonSerializable(typeof(ApprovalActionRequest))]
+[JsonSerializable(typeof(ApiResponse<ApprovalDetailResponse>))]
+[JsonSerializable(typeof(ApiResponse<PagedResponse<ApprovalListItemResponse>>))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }

@@ -52,7 +52,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 - 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭；Esc 关闭为 Drawer 内置行为（经 `onClose/@close` 回调），不要再手动监听 keydown。`destroyOnClose` 会等关场过渡后再卸载；焦点恢复用 `onAfterClose` / `@after-close`。不要再传已删除的 `destroyOnCloseAfterLeave` / `onAfterLeave` / `@after-leave`。
 - Header：使用 `Header`、`Breadcrumb`、`Button`、`Dropdown`、`Avatar`、`Tag`、`Icon`，包含侧栏开关、面包屑、主题配置抽屉入口、内容区全屏（浏览器 Fullscreen API，无包级 Fullscreen 组件）、主题切换、修改密码、锁定屏幕和退出。
 - 侧栏菜单：展开态开启 `Menu searchable`（`searchPlaceholder="搜索菜单"`）；折叠到 64px 时关闭搜索，避免挤占迷你栏。登录后 `GET /api/menus/schema` 拉 `MenuSchemaNode` 树，经 `filterMenuByPermission` 与 `menuSchemaToMenuItems` 喂给现有 `Menu`（不要自写第二套菜单渲染）。失败时回退 `shell-navigation` 里的打包 schema。路由仍按 `SHELL_MENU_ROUTES` / `onSelect` 跳转，不把 schema `path` 当成 `<a href>`（hash 演示路由会错）。菜单管理轻页在系统管理下（`/menus`，`menu:view`），对 schema 做 CRUD，并用角色权限做过滤预览。
-- 中台演示（展示层）：工单详情用 `WorkflowTimeline` + `WorkflowActionBar` 画 mock 审批步骤与操作条。步骤由工单状态在前端派生，按钮只 `Message.info` 提示「未接入审批引擎」。不要接 Flowable/Camunda，也不要为此新增审批 API。
+- 中台演示：协作下「审批中心」`/approvals`（待办 / 已办 / 抄送 / 我发起的）+ `/approvals/:id`。详情把同一份 mock `steps` 交给 `WorkflowViewer` 与 `WorkflowTimeline`，`WorkflowActionBar` 的同意 / 驳回 / 转交走 `POST /api/approvals/{id}/actions` 写回实例（不是 toast-only）。工单详情仍用 Timeline + ActionBar，动作写回工单 `PUT`；完整实例状态机以审批中心为准。不要接 Flowable/Camunda，也不要自写第二套 Timeline。
 - 页脚：`Content` 滚动区内、页面主体之后渲染 `Footer`（`ShellFooter`），随内容滚动，不占固定视口高度。
 - 路由进度：受保护路由切换时用 `LoadingBar.start()` / `LoadingBar.finish()` 驱动顶部进度条（失败或 `next(false)` 也要 `finish`）；根节点挂载 `#tiger-loading-bar-container-root`，由 `LoadingBar` 把 `LoadingBarContainer` 挂进去（子路径 `/LoadingBar` 与 `/LoadingBarContainer` 分开）。游客页与独立异常页不显示。
 - 命令面板：`Spotlight` 默认 `hotkey` 已绑定 ⌘K / Ctrl+K，不要再在 App 里叠一层 keydown 开关，否则受控 `open` 会被两次 toggle 抵消。
@@ -75,6 +75,9 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 | `monitor` | `/monitor` | 实时监控（分组「数据分析」） | 无入口权限 |
 | `projects` | `/projects` | 项目列表（分组「项目」） | 无入口权限 |
 | — | `/projects/:id` | 项目详情（动态参数 `id`，不进侧栏；列表菜单保持高亮） | 无入口权限 |
+| `tickets` | `/tickets` | 工单中心（分组「协作」） | 无入口权限 |
+| `approvals` | `/approvals` | 审批中心（分组「协作」） | 无入口权限 |
+| — | `/approvals/:id` | 审批详情（动态参数 `id`，不进侧栏；列表菜单保持高亮） | 无入口权限 |
 | `performance` | `/performance` | 大数据演示（分组「运维」） | 无入口权限 |
 | `users` | `/users` | 用户管理 | `user:view` |
 | `roles` | `/roles` | 角色管理 | `role:view` |
@@ -89,7 +92,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 | — | `/403` `/404` `/500` | 异常页（公共独立布局，不进菜单） | 无（独立兜底页） |
 | — | `/login` `/register` `/forgot-password` `/register-success` | 游客认证页（Guest shell，不进菜单） | 无（游客路由） |
 
-React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-router-dom` 管路由；Vue 通过 `vue-router`、`ProtectedShell`、`GuestShell` 与路由 meta `requiresPermission` 守卫管理。未知路径统一重定向 `/404`；已登录但缺少入口权限（`/users` 需 `user:view`、`/roles` 需 `role:view`、`/menus` 需 `menu:view`、`/files` 需 `media:view`）重定向 `/403`，权限加载完成前守卫保持加载态避免误判。刷新后都从 `SESSION_KEY` 读取会话并加载权限；MockApi 演示账号 `demo` 为只读权限（无 `user:view`/`role:view`/`menu:view`/`media:view`），用于演示 403 场景。项目详情是本仓库首个动态参数路由：双端参数名均为 `id`（React `useParams().id`，Vue `useRoute().params.id`）；未知 id 渲染页内空态，不跳出 Shell。
+React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-router-dom` 管路由；Vue 通过 `vue-router`、`ProtectedShell`、`GuestShell` 与路由 meta `requiresPermission` 守卫管理。未知路径统一重定向 `/404`；已登录但缺少入口权限（`/users` 需 `user:view`、`/roles` 需 `role:view`、`/menus` 需 `menu:view`、`/files` 需 `media:view`）重定向 `/403`，权限加载完成前守卫保持加载态避免误判。刷新后都从 `SESSION_KEY` 读取会话并加载权限；MockApi 演示账号 `demo` 为只读权限（无 `user:view`/`role:view`/`menu:view`/`media:view`），用于演示 403 场景。项目详情与审批详情都是动态参数路由：双端参数名均为 `id`（React `useParams().id`，Vue `useRoute().params.id`）；未知 id 渲染页内空态，不跳出 Shell。审批详情高亮侧栏 `approvals`。
 
 ## 视觉与布局规则
 
@@ -125,7 +128,8 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 | 实时监控 | `Segmented`、`Statistic`、`GaugeChart`、`AreaChart`、`LineChart`、`ActivityFeed`、`Progress`、`Tag`、`Badge` | 优先 SignalR `/hubs/monitor` 按 2s / 3s / 5s（默认 3s）推送同一份 snapshot JSON；暂停后停止推送；连接失败或 Mock 演示回退轮询 `GET /api/monitor/snapshot`；CPU/内存/磁盘水位、QPS/延迟滚动窗口、节点状态、事件流封顶 |
 | 项目列表 | `Card`、`Statistic`、`Tag`、`Avatar`/`AvatarGroup`、`Progress`、`Input`、`Segmented`、`Pagination`、`Empty`、`Row`/`Col` | 卡片网格（`Row`/`Col` 响应式 span）、名称/负责人/编号搜索、状态分段筛选（规划中/进行中/已暂停/已完成）、分页、点击卡片或「查看详情」进入 `/projects/:id`；列表筛选/分页接 `GET /api/projects` |
 | 项目详情 | `Descriptions`、`Steps`/`StepsItem`、`Tabs`/`TabPane`、`Anchor`/`AnchorLink`、`Timeline`、`CommentThread`、`Empty`、`Progress`、`Avatar`/`AvatarGroup` | 动态路由 `:id`、概览/成员/动态、页内锚点切 Tab、未知 id 空态仍保持列表菜单高亮；详情接 `GET /api/projects/{id}`，讨论接 `GET /api/comments?targetType=project` |
-| 工单中心 | `Splitter`、`Resizable`、`Steps`/`StepsItem`、`WorkflowTimeline`/`WorkflowActionBar`、`ChatWindow`、`CommentThread`、`Mentions`、`Descriptions`、`Rate`、`Badge`、`Tag`、`Popover`、`Drawer`、`Upload`、`Textarea`、`RadioGroup`/`Radio`、`Input`、`Divider` | 主从分栏（宽屏左右 / 窄屏上下）、工单生命周期、展示用审批时间线（mock 步骤 + 操作条 stub，无 BPM）、对话、内部 @ 协作、附件、关闭确认、新建工单；列表/详情/关闭/对话接 `/api/tickets`，内部备注接 `/api/comments?targetType=ticket` |
+| 工单中心 | `Splitter`、`Resizable`、`Steps`/`StepsItem`、`WorkflowTimeline`/`WorkflowActionBar`、`ChatWindow`、`CommentThread`、`Mentions`、`Descriptions`、`Rate`、`Badge`、`Tag`、`Popover`、`Drawer`、`Upload`、`Textarea`、`RadioGroup`/`Radio`、`Input`、`Divider` | 主从分栏（宽屏左右 / 窄屏上下）、工单生命周期、展示用审批时间线（步骤由工单状态派生）、对话、内部 @ 协作、附件、关闭确认、新建工单；列表/详情/关闭/对话接 `/api/tickets`，内部备注接 `/api/comments?targetType=ticket`。ActionBar 同意/驳回写回工单状态，转交写回一条对话；完整待办实例见审批中心 |
+| 审批中心 | `DataTableWithToolbar`、`Segmented`、`Descriptions`、`WorkflowViewer`、`WorkflowTimeline`/`WorkflowActionBar`、`Modal`、`Form`、`Select`、`Tag` | 四条列表车道、发起审批、详情表单 + Viewer/Timeline + ActionBar 确认配方。同意/驳回/转交写回 `/api/approvals/{id}/actions`；同一份 `steps`，不要第二套 Timeline。无 BPM |
 | 团队日历 | `Calendar`、`Countdown`、`Statistic`、`Badge`、`Popover`、`Tag`、`List`、`Drawer`、`DatePicker`、`TimePicker`、`RadioGroup`/`Radio`、`Input` | 月视图选择、下一日程倒计时、当日日程标记与详情、即将到来列表、新建事件；可见月与即将到来接 `GET /api/calendar/events`，Drawer 创建接 `POST /api/calendar/events` |
 | 内容编辑 | `Segmented`、`RichTextEditor`、`MarkdownEditor`、`CodeEditor`、`Watermark`、`Switch`、`Space`、`TreeSelect`、`Cascader`、`TagsInput`、`Mentions`、`Upload`、`Result`、`Tag`、`AutoComplete` | 编辑器三态切换、标题 `AutoComplete`（`allowFreeInput`，可输入未列出的标题）、草稿水印、分类树/栏目级联、`TagsInput` 多标签、@ 协作者、附件上传、立即发布开关、发布成功结果页；挂载加载种子文章 `a1`，保存草稿 / 发布接 `PUT /api/content/articles/{id}`，刷新后从接口恢复。协作者与附件仍本页本地。工具条「加粗 / 斜体」等走 `appText.richTextEditor` / `markdownEditor`，不要自绘一套工具条 |
 | 媒体图库 | `Carousel`、`ImageGroup`、`Image`、`ImagePreview`、`ImageViewer`、`ImageAnnotation`、`ImageCropper`、`Masonry`、`AspectRatio`、`ImageCompare`、`Segmented`、`Skeleton`、`Empty`、`Tag`、`Drawer` | 精选轮播、相册切换、瀑布流网格、固定比例封面、版本前后对比、网格灯箱预览、大图查看（缩放/旋转/导航）、矩形/椭圆标注、16:9 裁剪、刷新骨架屏、空相册空态 |
@@ -150,6 +154,7 @@ import { FileManager } from '@expcat/tigercat-react/FileManager';
 import { ActivityFeed } from '@expcat/tigercat-react/ActivityFeed';
 import { Timeline } from '@expcat/tigercat-react/Timeline';
 import { WorkflowTimeline } from '@expcat/tigercat-react/WorkflowTimeline';
+import { WorkflowViewer } from '@expcat/tigercat-react/WorkflowViewer';
 import { Upload } from '@expcat/tigercat-react/Upload';
 import { CropUpload } from '@expcat/tigercat-react/CropUpload';
 import { ColorPicker } from '@expcat/tigercat-react/ColorPicker';
@@ -184,7 +189,7 @@ import { Checkbox } from '@expcat/tigercat-react/Checkbox';
 
 Vue 端将包名替换为 `@expcat/tigercat-vue/...`。没有 `/Drag` 组件，拖拽走 hook 子路径 `/useDrag`；React 用 `getDragItemProps`，Vue 用 `getDragItemAttrs`。命令式 `notification` 没有公开子路径，允许从包根导入。`Message` 用 `/Message`。
 
-同文件族可从父路径一起导入（`Dropdown`/`DropdownMenu`/`DropdownItem`、`Menu`/`MenuItem`/`SubMenu`、`Tabs`/`TabPane`、`Steps`/`StepsItem`、`ContextMenu*`、`NavigationMenu*`、`WorkflowTimeline`/`WorkflowActionBar`）。`FormItem`、`AvatarGroup`、`RadioGroup` 是独立入口，不要从 `Form`/`Avatar`/`Radio` 再导出。
+同文件族可从父路径一起导入（`Dropdown`/`DropdownMenu`/`DropdownItem`、`Menu`/`MenuItem`/`SubMenu`、`Tabs`/`TabPane`、`Steps`/`StepsItem`、`ContextMenu*`、`NavigationMenu*`、`WorkflowTimeline`/`WorkflowActionBar`）。`WorkflowViewer` 是独立入口 `@expcat/tigercat-react/WorkflowViewer`（Vue 换包名）。`FormItem`、`AvatarGroup`、`RadioGroup` 是独立入口，不要从 `Form`/`Avatar`/`Radio` 再导出。
 
 页面已按路由 `lazy` / `() => import(...)` 拆包。图表、编辑器、裁剪/标注、Gantt 再按交互边界懒加载：双端从 `src/utils/lazyTigercat` 引入（React `lazy` + `Suspense`，Vue `defineAsyncComponent`）。仪表盘 / 监控 / 数据分析懒加载图表；内容页只加载当前编辑器；图库裁剪/标注在抽屉打开后加载；用户头像 `CropUpload` 在编辑弹层出现后加载；定时任务 `Gantt` 随页面异步加载。不要把这些重入口静态写进 Shell。Vite `manualChunks` 只把**静态可达**的 `@expcat/tigercat-*` 放进 `vendor-ui`，避免把懒加载模块打回同一 chunk。
 
@@ -261,4 +266,5 @@ LLM 生成新页面或复刻页面时，至少满足：
 | `ImageCropper` / `CropUpload` | React / Vue | `v2.1.4` 起 ResizeObserver 只量父级宽度，拟合尺寸写内层 stage，裁剪画布不再越缩越小。无新必填 prop。 | Gallery 裁剪抽屉和 Users 头像 CropUpload 不另加高度 workaround。 |
 | `SplitButton` | React / Vue | `v2.1.4` 主按钮与 chevron 同高。 | Files 页上传继续用 SplitButton。 |
 | `MenuSchema` | core | `v2.3.0` 起 `MenuSchemaNode` + `filterMenuByPermission` / `menuSchemaToMenuItems`，映射到现有 `Menu`，无新必填 prop。`v2.3.2` 起 schema 元数据 `hideInBreadcrumb` / `flatMenu` / `badge` / `iframeSrc` 与 `schemaToRouteRecords`。 | Shell 侧栏与命令面板用 schema 过滤后的 `items`；应用图标名仍走本地 Icon 映射。菜单管理轻页 CRUD 这些字段，并用角色权限预览过滤结果。 |
-| `WorkflowTimeline` / `WorkflowActionBar` | React / Vue | `v2.3.0` 起审批步骤时间线 + 操作条，映射到现有 `Timeline`，无 BPM 引擎。`v2.3.1` 起状态 Tag 读 `locale.workflowTimeline` / `labels`（zh-CN 已通过/进行中/待处理/已驳回/已撤销）。 | 工单详情用本地 mock 步骤演示；同意/驳回等按钮只 toast，不接引擎、不新增审批 API。中文站点走 `appLocale`，不必再 overlay 状态文案。 |
+| `WorkflowTimeline` / `WorkflowActionBar` | React / Vue | `v2.3.0` 起审批步骤时间线 + 操作条，映射到现有 `Timeline`，无 BPM 引擎。`v2.3.1` 起状态 Tag 读 `locale.workflowTimeline` / `labels`（zh-CN 已通过/进行中/待处理/已驳回/已撤销）。`v2.3.2` 起 ActionBar 可选 `confirm` 确认配方。 | 工单详情用工单状态派生步骤，同意/驳回写回工单 `PUT`。审批中心详情用接口返回的 `steps`，ActionBar `confirm` 后 `POST /api/approvals/{id}/actions`。中文站点走 `appLocale`。 |
+| `WorkflowViewer` | React / Vue | `v2.3.2` 起只读钉钉风审批树，复用 `WorkflowTimelineStep`（含 children / 会签 / 抄送 / 条件 stub），不是第二套 Timeline。 | 审批详情与 Timeline 共用同一 `steps`；不要自绘树或再包一层 Timeline。 |

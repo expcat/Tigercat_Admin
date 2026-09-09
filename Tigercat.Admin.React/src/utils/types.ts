@@ -315,6 +315,76 @@ export interface UpdateTicketPayload {
   satisfaction?: number;
 }
 
+export type ApprovalLane = 'todo' | 'done' | 'cc' | 'started';
+
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'canceled';
+
+export type ApprovalAction = 'approve' | 'reject' | 'transfer' | 'comment';
+
+export interface ApprovalActor {
+  id?: string;
+  name?: string;
+}
+
+export interface ApprovalStep {
+  key: string;
+  title?: string;
+  status?: string;
+  actor?: ApprovalActor;
+  action?: string;
+  comment?: string;
+  time?: string;
+  order?: number;
+  children?: ApprovalStep[];
+  kind?: string;
+  signMode?: string;
+  rollbackPoint?: boolean;
+}
+
+export interface ApprovalFormField {
+  label: string;
+  value: string;
+}
+
+export interface ApprovalListItem {
+  id: string;
+  title: string;
+  category: string;
+  ticketId?: string | null;
+  starter: string;
+  assignee: string;
+  cc: string[];
+  status: ApprovalStatus;
+  currentStepKey?: string;
+  currentStepTitle?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApprovalDetail extends ApprovalListItem {
+  reason: string;
+  amount?: string | null;
+  formFields: ApprovalFormField[];
+  steps: ApprovalStep[];
+  actedBy: string[];
+}
+
+export interface CreateApprovalPayload {
+  title: string;
+  category?: string;
+  reason?: string;
+  amount?: string;
+  ticketId?: string;
+  assignee?: string;
+  cc?: string[];
+}
+
+export interface ApprovalActionPayload {
+  action: ApprovalAction;
+  comment?: string;
+  transferTo?: string;
+}
+
 export interface CreateCommentPayload {
   targetType: CommentTargetType;
   targetId: string;

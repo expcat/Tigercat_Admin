@@ -69,6 +69,12 @@ const pageNodes: Record<string, MockMenuSchemaNode> = {
     icon: 'ticket',
     path: '/tickets',
   },
+  approvals: {
+    key: 'approvals',
+    label: '审批中心',
+    icon: 'checkCircle',
+    path: '/approvals',
+  },
   calendar: {
     key: 'calendar',
     label: '团队日历',
@@ -189,7 +195,7 @@ export const MOCK_MENU_SCHEMA_ITEMS: MockMenuSchemaNode[] = [
     key: 'collaborationGroup',
     label: '协作',
     icon: 'message',
-    children: [pageNodes.tickets, pageNodes.calendar],
+    children: [pageNodes.tickets, pageNodes.approvals, pageNodes.calendar],
   },
   {
     key: 'contentGroup',

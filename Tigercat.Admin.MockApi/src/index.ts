@@ -6,6 +6,15 @@ import {
   type MockMenuNodeWrite,
   type MockMenuSchemaPayload,
 } from './menu-schema';
+import {
+  applyApprovalAction,
+  createApproval,
+  getApproval,
+  listApprovals,
+  restoreApprovals,
+  seedApprovals,
+  type ApprovalInstance,
+} from './approvals';
 
 type ApiResponse<T = unknown> = {
   code: number;
@@ -282,6 +291,7 @@ type DemoState = {
   notifications: NotificationItem[];
   tasks: TaskItem[];
   tickets: TicketItem[];
+  approvals: ApprovalInstance[];
   chatMessages: ChatMessageItem[];
   comments: CommentItem[];
   projects: ProjectItem[];
@@ -297,6 +307,7 @@ type DemoState = {
   nextMediaId: number;
   nextTaskId: number;
   nextTicketNumber: number;
+  nextApprovalNumber: number;
   nextJobNumber: number;
   nextImportJobNumber: number;
   nextMessageSeq: number;
@@ -492,6 +503,7 @@ function initialState(): DemoState {
       task('task-audit-page', '审计日志页联调完成', '后端聚合 Redis Streams，双端页面已完成 ActivityFeed 与 Timeline 验证。', '管理后台', 'medium', 'done', '2026-05-28T06:00:00.000Z', 3, false),
     ],
     tickets: seedTickets(),
+    approvals: seedApprovals(),
     chatMessages: [
       {
         id: 'chat-welcome',
@@ -552,6 +564,7 @@ function initialState(): DemoState {
     nextMediaId: 4,
     nextTaskId: 7,
     nextTicketNumber: 2051,
+    nextApprovalNumber: 1100,
     nextJobNumber: 1005,
     nextImportJobNumber: 1001,
     nextMessageSeq: 1,
@@ -1331,6 +1344,7 @@ function readState(storageKey: string): DemoState {
         ...seeded,
         ...parsed,
         tickets: parsed.tickets ?? seeded.tickets,
+        approvals: restoreApprovals(parsed.approvals, seeded.approvals),
         chatMessages: parsed.chatMessages ?? seeded.chatMessages,
         comments: parsed.comments ?? seeded.comments,
         projects: parsed.projects ?? seeded.projects,
@@ -1340,6 +1354,7 @@ function readState(storageKey: string): DemoState {
         importJobs: parsed.importJobs ?? seeded.importJobs,
         menuSchema: parsed.menuSchema ?? seeded.menuSchema,
         nextTicketNumber: parsed.nextTicketNumber ?? seeded.nextTicketNumber,
+        nextApprovalNumber: parsed.nextApprovalNumber ?? seeded.nextApprovalNumber,
         nextJobNumber: parsed.nextJobNumber ?? seeded.nextJobNumber,
         nextImportJobNumber: parsed.nextImportJobNumber ?? seeded.nextImportJobNumber,
         nextMessageSeq: parsed.nextMessageSeq ?? seeded.nextMessageSeq,
@@ -2216,6 +2231,74 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   const TICKET_STATUSES: TicketStatus[] = ['open', 'accepted', 'progress', 'resolved', 'closed'];
   const TICKET_PRIORITIES: TicketPriority[] = ['high', 'medium', 'low'];
   const COMMENT_TARGETS: CommentTargetType[] = ['ticket', 'project'];
+
+  if (path === '/api/approvals' && method === 'GET') {
+    const username = sessionUsername(request, init);
+    if (!username) return makeError('未授权', 401);
+    const listed = listApprovals(
+      state.approvals,
+      username,
+      url.searchParams.get('lane'),
+      url.searchParams.get('keyword'),
+    );
+    if (listed.error) return makeError(listed.error, 400);
+    return makeJson(pageItems(listed.items, url, 50));
+  }
+
+  if (path === '/api/approvals' && method === 'POST') {
+    const username = sessionUsername(request, init);
+    if (!username) return makeError('未授权', 401);
+    const created = createApproval(
+      state.approvals,
+      state.nextApprovalNumber,
+      username,
+      body as {
+        title?: string;
+        category?: string;
+        reason?: string;
+        amount?: string;
+        ticketId?: string;
+        assignee?: string;
+        cc?: string[];
+      },
+      nowTicketLabel(),
+    );
+    if (created.error || !created.detail) return makeError(created.error ?? '创建失败', 400);
+    state.nextApprovalNumber = created.nextNumber;
+    writeState(storageKey, state);
+    return makeJson(created.detail, { status: 201 });
+  }
+
+  const approvalActionMatch = path.match(/^\/api\/approvals\/([^/]+)\/actions$/);
+  if (approvalActionMatch && method === 'POST') {
+    const username = sessionUsername(request, init);
+    if (!username) return makeError('未授权', 401);
+    const result = applyApprovalAction(
+      state.approvals,
+      decodeURIComponent(approvalActionMatch[1]),
+      username,
+      body as { action?: string; comment?: string; transferTo?: string },
+      nowTicketLabel(),
+    );
+    if (!result.ok) return makeError(result.message, result.status);
+    if (result.ticketId && result.ticketStatus) {
+      const ticket = state.tickets.find((item) => item.id === result.ticketId);
+      if (ticket && ticket.status !== result.ticketStatus) {
+        ticket.status = result.ticketStatus as TicketStatus;
+        ticket.updatedAt = nowTicketLabel();
+      }
+    }
+    writeState(storageKey, state);
+    return makeJson(result.detail);
+  }
+
+  const approvalMatch = path.match(/^\/api\/approvals\/([^/]+)$/);
+  if (approvalMatch && method === 'GET') {
+    const username = sessionUsername(request, init);
+    if (!username) return makeError('未授权', 401);
+    const detail = getApproval(state.approvals, decodeURIComponent(approvalMatch[1]));
+    return detail ? makeJson(detail) : makeError('审批实例不存在', 404);
+  }
 
   if (path === '/api/tickets' && method === 'GET') {
     const keyword = url.searchParams.get('keyword')?.trim().toLowerCase();

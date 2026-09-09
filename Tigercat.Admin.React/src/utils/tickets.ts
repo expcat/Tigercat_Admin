@@ -1,4 +1,4 @@
-import type { WorkflowActionBarItem, WorkflowTimelineStep } from '@expcat/tigercat-core';
+import type { WorkflowActionBarItem, WorkflowTimelineAction, WorkflowTimelineStep } from '@expcat/tigercat-core';
 import { apiRequest } from './request';
 import { getAuthHeaders } from './auth';
 import type {
@@ -124,6 +124,22 @@ export function updateTicket(id: string, payload: UpdateTicketPayload) {
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
+}
+
+export function nextTicketStatusForWorkflow(
+  status: TicketStatus,
+  action: WorkflowTimelineAction,
+): TicketStatus | null {
+  if (action === 'approve') {
+    if (status === 'open') return 'accepted';
+    if (status === 'accepted') return 'progress';
+    if (status === 'progress') return 'resolved';
+    return null;
+  }
+  if (action === 'reject') {
+    return status === 'closed' ? null : 'closed';
+  }
+  return null;
 }
 
 export function sendTicketMessage(id: string, content: string) {

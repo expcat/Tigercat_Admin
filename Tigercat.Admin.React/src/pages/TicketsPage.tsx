@@ -40,6 +40,7 @@ import {
   fetchTicket,
   fetchTickets,
   getTicketWorkflowSteps,
+  nextTicketStatusForWorkflow,
   sendTicketMessage,
   TICKET_WORKFLOW_ACTIONS,
   updateTicket,
@@ -218,8 +219,31 @@ function TicketsPage() {
   const workflowActionsDisabled =
     selected?.status === 'resolved' || selected?.status === 'closed';
 
-  const handleWorkflowAction = (item: WorkflowActionBarItem) => {
-    Message.info({ content: `演示：${item.label}（未接入审批引擎）`, duration: 2200 });
+  const handleWorkflowAction = async (item: WorkflowActionBarItem) => {
+    if (!selected) return;
+    const id = selected.id;
+    try {
+      if (item.action === 'transfer') {
+        const payload = await sendTicketMessage(id, '已转交（演示写回）。完整实例状态机见审批中心。');
+        setTickets((prev) =>
+          prev.map((ticket) => (ticket.id === id ? toTicketView(payload.data, ticket.notes) : ticket)),
+        );
+        Message.success({ content: '已写回工单对话（转交演示）', duration: 2200 });
+        return;
+      }
+      const nextStatus = nextTicketStatusForWorkflow(selected.status, item.action);
+      if (!nextStatus) {
+        Message.info({ content: '当前工单状态不能再流转', duration: 2200 });
+        return;
+      }
+      const payload = await updateTicket(id, { status: nextStatus });
+      setTickets((prev) =>
+        prev.map((ticket) => (ticket.id === id ? toTicketView(payload.data, ticket.notes) : ticket)),
+      );
+      Message.success({ content: `已写回工单状态：${nextStatus}`, duration: 2200 });
+    } catch (error: unknown) {
+      Message.error({ content: readErrorMessage(error, '审批动作写回失败'), duration: 3000 });
+    }
   };
 
   const handleSend = async (value: string) => {
@@ -470,7 +494,7 @@ function TicketsPage() {
                     />
                   </div>
                   <Text size="sm" color="secondary" className="mt-2 block">
-                    展示用审批时间线，操作不接入引擎。
+                    工单详情动作会写回工单状态；完整待办/已办/抄送实例见审批中心。
                   </Text>
                 </Card>
 

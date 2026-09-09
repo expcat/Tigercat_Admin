@@ -27,6 +27,7 @@ export const MENU_ICON_OPTIONS = [
   { label: '帮助', value: 'help' },
   { label: '项目', value: 'package' },
   { label: '工单', value: 'ticket' },
+  { label: '审批', value: 'checkCircle' },
   { label: '日历', value: 'calendar' },
   { label: '编辑', value: 'edit' },
   { label: '图片', value: 'image' },

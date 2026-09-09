@@ -194,6 +194,19 @@ test.describe('阶段 2 — 协作沟通', () => {
     expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
   });
 
+  test('审批中心可展示待办并打开详情', async ({ page }) => {
+    await login(page);
+
+    await page.goto('/#/approvals');
+    await expect(page.getByText('审批中心').first()).toBeVisible();
+    await expect(page.getByText('工单升级：导出报表偶发 500').first()).toBeVisible();
+    await page.getByRole('button', { name: '查看' }).first().click();
+    await expect(page.getByText('申请表单', { exact: true })).toBeVisible();
+    await expect(page.getByText('审批树', { exact: true })).toBeVisible();
+    await expect(page.getByText('审批时间线', { exact: true })).toBeVisible();
+    await expect(page.getByRole('toolbar', { name: '审批操作' })).toBeVisible();
+  });
+
   test('团队日历可展示日程并打开新建事件', async ({ page }) => {
     await login(page);
 

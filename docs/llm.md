@@ -41,6 +41,7 @@
 | 实时监控 | [docs/api/monitor.md](api/monitor.md) |
 | 任务面板 | [docs/api/tasks.md](api/tasks.md) |
 | 工单 | [docs/api/tickets.md](api/tickets.md) |
+| 审批 Mock | [docs/api/approvals.md](api/approvals.md) |
 | 聊天坞 | [docs/api/chat.md](api/chat.md) |
 | 评论 | [docs/api/comments.md](api/comments.md) |
 | 项目 | [docs/api/projects.md](api/projects.md) |
