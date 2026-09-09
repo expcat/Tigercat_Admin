@@ -406,9 +406,11 @@ function bundledPayload(): MenuSchemaPayload {
 let menuSchemaRequest: Promise<MenuSchemaPayload> | null = null;
 const menuSchemaListeners = new Set<() => void>();
 
-export function resetShellMenuSchema(): void {
+export function resetShellMenuSchema(): Promise<MenuSchemaPayload> {
   menuSchemaRequest = null;
+  const request = loadShellMenuSchema();
   menuSchemaListeners.forEach((listener) => listener());
+  return request;
 }
 
 export async function loadShellMenuSchema(): Promise<MenuSchemaPayload> {

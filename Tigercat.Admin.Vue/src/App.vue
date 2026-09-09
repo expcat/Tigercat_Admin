@@ -95,9 +95,12 @@ const persistSession = (nextSession: Session | null) => {
 
 const onLoginSuccess = async (nextSession: Session) => {
   persistSession(nextSession)
+  // Guest 401 falls back to bundled schema; SPA login must refetch live tree
+  // (iframeSrc-only nodes) before the first protected navigation.
   await Promise.all([
     loadHome(nextSession.token),
     permission.load(nextSession.token),
+    resetShellMenuSchema(),
   ])
   router.push(getSafeReturnTo(route.query.redirect))
 }

@@ -383,9 +383,12 @@ function App() {
 
   const onLoginSuccess = async (nextSession: Session) => {
     persistSession(nextSession);
+    // Guest 401 falls back to bundled schema; SPA login must refetch live tree
+    // (iframeSrc-only nodes) before the first protected navigation.
     await Promise.all([
       loadHome(nextSession.token),
       permission.load(nextSession.token),
+      resetShellMenuSchema(),
     ]);
     navigate(getSafeReturnTo((location.state as LocationState | null)?.returnTo), {
       replace: true,

@@ -73,7 +73,7 @@
 - mixed 动态路由 + pageMap 懒加载 — M2-S1 已做（Vue + React；游客/异常/参数详情路由仍静态）
 - 按钮级权限演示 — M2-S2 已做（`/permission-demo`，现有 PermissionGuard / v-permission / usePermission，无新 Tigercat helper）
 - Calendar dateCellRender 替换格内事件双轨 — M2-S2 已做（`events` + React `dateCellRender` / Vue `#dateCell`；右侧保留选中日详情）
-- 真机 Review — 留给 m2-s3（本切片未跑 live Review）
+- 真机 Review — M2-S3 已走查 Vue + React（mixed schema 路由 / iframeSrc 嵌入 / permission-demo 含 demo 缺权隐藏 / Calendar 格内色点+数量；SPA 登录补 live schema 刷新；无 P0；库仍 NO_GAP 未发 2.3.3）
 
 **验收**: 壳主要业务路由可由 schema 驱动；按钮权限可演示
 

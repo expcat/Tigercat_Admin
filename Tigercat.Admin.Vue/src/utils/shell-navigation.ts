@@ -415,10 +415,11 @@ function bundledPayload(): MenuSchemaPayload {
 let menuSchemaRequest: Promise<MenuSchemaPayload> | null = null;
 const menuSchemaListeners = new Set<(payload: MenuSchemaPayload) => void>();
 
-export function resetShellMenuSchema(): void {
+export function resetShellMenuSchema(): Promise<MenuSchemaPayload> {
   menuSchemaRequest = null;
-  void loadShellMenuSchema().then((payload) => {
+  return loadShellMenuSchema().then((payload) => {
     menuSchemaListeners.forEach((listener) => listener(payload));
+    return payload;
   });
 }
 
