@@ -1,4 +1,10 @@
-import type { TagVariant, WorkflowActionBarItem, WorkflowTimelineStep } from '@expcat/tigercat-core';
+import type {
+  FormValues,
+  SchemaFormSchema,
+  TagVariant,
+  WorkflowActionBarItem,
+  WorkflowTimelineStep,
+} from '@expcat/tigercat-core';
 import { apiRequest } from './request';
 import { getAuthHeaders } from './auth';
 import type {
@@ -29,6 +35,34 @@ export const APPROVAL_TRANSFER_OPTIONS = [
   { label: 'admin', value: 'admin' },
   { label: 'demo', value: 'demo' },
 ];
+
+export const EMPTY_APPROVAL_CREATE: FormValues = {
+  title: '',
+  category: '工单',
+  reason: '',
+  assignee: 'admin',
+  ticketId: '',
+};
+
+export const APPROVAL_CREATE_SCHEMA: SchemaFormSchema = {
+  fields: [
+    { name: 'title', label: '标题', required: true, placeholder: '例如：请假、报销或工单升级' },
+    { name: 'category', label: '类型', type: 'select', options: APPROVAL_CATEGORY_OPTIONS },
+    { name: 'assignee', label: '处理人', type: 'select', options: APPROVAL_TRANSFER_OPTIONS },
+    { name: 'ticketId', label: '关联工单', placeholder: '可选，如 TK-2048' },
+    { name: 'reason', label: '说明', type: 'textarea', placeholder: '申请原因' },
+  ],
+};
+
+export function approvalCreateFromValues(values: FormValues): CreateApprovalPayload {
+  return {
+    title: String(values.title ?? '').trim(),
+    category: String(values.category ?? '工单'),
+    reason: String(values.reason ?? '').trim() || undefined,
+    assignee: String(values.assignee ?? 'admin'),
+    ticketId: String(values.ticketId ?? '').trim() || undefined,
+  };
+}
 
 export const APPROVAL_WORKFLOW_ACTIONS: WorkflowActionBarItem[] = [
   { key: 'approve', label: '通过', action: 'approve', variant: 'primary' },

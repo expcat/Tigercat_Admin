@@ -1,27 +1,23 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@expcat/tigercat-react/Button';
 import { DataTableWithToolbar } from '@expcat/tigercat-react/DataTableWithToolbar';
-import { Form } from '@expcat/tigercat-react/Form';
-import { FormItem } from '@expcat/tigercat-react/FormItem';
-import { Input } from '@expcat/tigercat-react/Input';
 import { Message } from '@expcat/tigercat-react/Message';
 import { Modal } from '@expcat/tigercat-react/Modal';
+import { SchemaForm } from '@expcat/tigercat-react/SchemaForm';
 import { Segmented } from '@expcat/tigercat-react/Segmented';
-import { Select } from '@expcat/tigercat-react/Select';
 import { Tag } from '@expcat/tigercat-react/Tag';
-import { Textarea } from '@expcat/tigercat-react/Textarea';
-import type { TableColumn } from '@expcat/tigercat-core';
+import type { FormHandle, FormValues, TableColumn } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { CheckCircleIcon } from '../components/Icons';
-import { normalizeInput } from '../utils';
 import {
-  APPROVAL_CATEGORY_OPTIONS,
+  APPROVAL_CREATE_SCHEMA,
   APPROVAL_LANES,
   APPROVAL_PAGE_SIZE,
   APPROVAL_STATUS_META,
-  APPROVAL_TRANSFER_OPTIONS,
+  approvalCreateFromValues,
   createApproval,
+  EMPTY_APPROVAL_CREATE,
   fetchApprovals,
   isApprovalLane,
 } from '../utils/approvals';
@@ -31,16 +27,9 @@ function readErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-const EMPTY_CREATE = {
-  title: '',
-  category: '工单',
-  reason: '',
-  assignee: 'admin',
-  ticketId: '',
-};
-
 function ApprovalsPage() {
   const navigate = useNavigate();
+  const createFormRef = useRef<FormHandle>(null);
   const [lane, setLane] = useState<ApprovalLane>('todo');
   const [keyword, setKeyword] = useState('');
   const [page, setPage] = useState(1);
@@ -50,7 +39,7 @@ function ApprovalsPage() {
   const [total, setTotal] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [createForm, setCreateForm] = useState({ ...EMPTY_CREATE });
+  const [createForm, setCreateForm] = useState<FormValues>({ ...EMPTY_APPROVAL_CREATE });
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -74,22 +63,19 @@ function ApprovalsPage() {
   };
 
   const handleCreate = async () => {
-    const title = createForm.title.trim();
-    if (!title) {
+    const valid = await createFormRef.current?.validate();
+    if (!valid) return;
+    const body = approvalCreateFromValues(createForm);
+    if (!body.title) {
       Message.warning({ content: '请填写审批标题', duration: 2000 });
       return;
     }
     setCreating(true);
     try {
-      const payload = await createApproval({
-        title,
-        category: createForm.category,
-        reason: createForm.reason.trim() || undefined,
-        assignee: createForm.assignee,
-        ticketId: createForm.ticketId.trim() || undefined,
-      });
+      const payload = await createApproval(body);
       setCreateOpen(false);
-      setCreateForm({ ...EMPTY_CREATE });
+      setCreateForm({ ...EMPTY_APPROVAL_CREATE });
+      createFormRef.current?.resetFields();
       Message.success({ content: '已发起审批', duration: 2000 });
       navigate(`/approvals/${encodeURIComponent(payload.data.id)}`);
     } catch (error: unknown) {
@@ -258,44 +244,15 @@ function ApprovalsPage() {
             </Button>
           </div>
         }>
-        <Form labelWidth={96}>
-          <FormItem label="标题" required>
-            <Input
-              value={createForm.title}
-              placeholder="例如：请假、报销或工单升级"
-              onChange={(value) => setCreateForm((prev) => ({ ...prev, title: normalizeInput(value) }))}
-            />
-          </FormItem>
-          <FormItem label="类型">
-            <Select
-              value={createForm.category}
-              options={APPROVAL_CATEGORY_OPTIONS}
-              onChange={(value) => setCreateForm((prev) => ({ ...prev, category: String(value) }))}
-            />
-          </FormItem>
-          <FormItem label="处理人">
-            <Select
-              value={createForm.assignee}
-              options={APPROVAL_TRANSFER_OPTIONS}
-              onChange={(value) => setCreateForm((prev) => ({ ...prev, assignee: String(value) }))}
-            />
-          </FormItem>
-          <FormItem label="关联工单">
-            <Input
-              value={createForm.ticketId}
-              placeholder="可选，如 TK-2048"
-              onChange={(value) => setCreateForm((prev) => ({ ...prev, ticketId: normalizeInput(value) }))}
-            />
-          </FormItem>
-          <FormItem label="说明">
-            <Textarea
-              value={createForm.reason}
-              rows={3}
-              placeholder="申请原因"
-              onChange={(value) => setCreateForm((prev) => ({ ...prev, reason: normalizeInput(value) }))}
-            />
-          </FormItem>
-        </Form>
+        <SchemaForm
+          ref={createFormRef}
+          schema={APPROVAL_CREATE_SCHEMA}
+          model={createForm}
+          showActions={false}
+          labelWidth={96}
+          ariaLabel="发起审批表单"
+          onChange={setCreateForm}
+        />
       </Modal>
     </div>
   );

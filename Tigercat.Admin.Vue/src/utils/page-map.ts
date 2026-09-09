@@ -10,6 +10,7 @@ export const SHELL_PAGE_MAP = {
   projects: () => import('../pages/ProjectsPage.vue'),
   tickets: () => import('../pages/TicketsPage.vue'),
   approvals: () => import('../pages/ApprovalsPage.vue'),
+  workflowDesigner: () => import('../pages/WorkflowDesignerPage.vue'),
   calendar: () => import('../pages/CalendarPage.vue'),
   content: () => import('../pages/ContentPage.vue'),
   gallery: () => import('../pages/GalleryPage.vue'),

@@ -314,6 +314,7 @@ public abstract class ApprovalsEndpointsTests<TFixture> : IClassFixture<TFixture
         var body = await response.ReadApiResponseAsync<MenuSchemaResponse>();
         var collaboration = body!.Data!.Items.First(item => item.Key == "collaborationGroup");
         Assert.Contains(collaboration.Children!, item => item.Key == "approvals" && item.Path == "/approvals");
+        Assert.Contains(collaboration.Children!, item => item.Key == "workflowDesigner" && item.Path == "/workflow-designer");
     }
 
     private async Task<PagedResponse<ApprovalListItemResponse>> ListAsync(string token, string lane)

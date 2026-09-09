@@ -90,9 +90,10 @@
 **验收**: followups 勾一批；无新 P0 — 已满足（M3-S3 关闭）
 
 ### M4 — 2.4.0（可选大步，有信号再开）
-- WorkflowDesigner（simple）
-- Schema 表单 / Captcha — 仅真实产品需求
-- 不做：若依全家桶；租户/组织/字典组件化进 Tigercat
+- WorkflowDesigner（simple）— 库 S1 已发；Admin `/workflow-designer` 本地轻编辑 + Viewer 预览
+- Schema 表单 — 库 S2 已发；Admin 挂在审批中心「发起审批」弹层
+- Captcha — SKIP（登录无明示需求）
+- 不做：若依全家桶；租户/组织/字典组件化进 Tigercat；Flowable/Camunda/BPMN
 
 ## 4. 跨仓节奏
 

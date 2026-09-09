@@ -3,24 +3,21 @@ import { computed, h, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { DataTableWithToolbar } from '@expcat/tigercat-vue/DataTableWithToolbar'
-import { Form } from '@expcat/tigercat-vue/Form'
-import { FormItem } from '@expcat/tigercat-vue/FormItem'
-import { Input } from '@expcat/tigercat-vue/Input'
 import { Message } from '@expcat/tigercat-vue/Message'
 import { Modal } from '@expcat/tigercat-vue/Modal'
+import { SchemaForm } from '@expcat/tigercat-vue/SchemaForm'
 import { Segmented } from '@expcat/tigercat-vue/Segmented'
-import { Select } from '@expcat/tigercat-vue/Select'
 import { Tag } from '@expcat/tigercat-vue/Tag'
-import { Textarea } from '@expcat/tigercat-vue/Textarea'
-import type { TableColumn } from '@expcat/tigercat-core'
+import type { FormHandle, FormValues, TableColumn } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import {
-  APPROVAL_CATEGORY_OPTIONS,
+  APPROVAL_CREATE_SCHEMA,
   APPROVAL_LANES,
   APPROVAL_PAGE_SIZE,
   APPROVAL_STATUS_META,
-  APPROVAL_TRANSFER_OPTIONS,
+  approvalCreateFromValues,
   createApproval,
+  EMPTY_APPROVAL_CREATE,
   fetchApprovals,
   isApprovalLane,
 } from '../utils/approvals'
@@ -40,13 +37,8 @@ const items = ref<ApprovalListItem[]>([])
 const total = ref(0)
 const createOpen = ref(false)
 const creating = ref(false)
-const createForm = ref({
-  title: '',
-  category: '工单',
-  reason: '',
-  assignee: 'admin',
-  ticketId: '',
-})
+const createFormRef = ref<FormHandle | null>(null)
+const createForm = ref<FormValues>({ ...EMPTY_APPROVAL_CREATE })
 
 function openDetail(id: string) {
   void router.push(`/approvals/${encodeURIComponent(id)}`)
@@ -74,6 +66,10 @@ watch([lane, keyword, page, pageSize], () => {
   void loadList()
 }, { immediate: true })
 
+function handleCreateModelChange(values: FormValues) {
+  createForm.value = values
+}
+
 function handleLaneChange(value: string | number) {
   const next = String(value)
   if (!isApprovalLane(next)) return
@@ -82,22 +78,19 @@ function handleLaneChange(value: string | number) {
 }
 
 async function handleCreate() {
-  const title = createForm.value.title.trim()
-  if (!title) {
+  const valid = await createFormRef.value?.validate()
+  if (!valid) return
+  const body = approvalCreateFromValues(createForm.value)
+  if (!body.title) {
     Message.warning({ content: '请填写审批标题', duration: 2000 })
     return
   }
   creating.value = true
   try {
-    const payload = await createApproval({
-      title,
-      category: createForm.value.category,
-      reason: createForm.value.reason.trim() || undefined,
-      assignee: createForm.value.assignee,
-      ticketId: createForm.value.ticketId.trim() || undefined,
-    })
+    const payload = await createApproval(body)
     createOpen.value = false
-    createForm.value = { title: '', category: '工单', reason: '', assignee: 'admin', ticketId: '' }
+    createForm.value = { ...EMPTY_APPROVAL_CREATE }
+    createFormRef.value?.resetFields()
     Message.success({ content: '已发起审批', duration: 2000 })
     await router.push(`/approvals/${encodeURIComponent(payload.data.id)}`)
   } catch (error: unknown) {
@@ -231,23 +224,15 @@ function handlePageSizeChange(next: { current: number; pageSize: number }) {
       cancel-text="取消"
       @ok="handleCreate"
     >
-      <Form :label-width="96">
-        <FormItem label="标题" required>
-          <Input v-model="createForm.title" placeholder="例如：请假、报销或工单升级" />
-        </FormItem>
-        <FormItem label="类型">
-          <Select v-model="createForm.category" :options="APPROVAL_CATEGORY_OPTIONS" />
-        </FormItem>
-        <FormItem label="处理人">
-          <Select v-model="createForm.assignee" :options="APPROVAL_TRANSFER_OPTIONS" />
-        </FormItem>
-        <FormItem label="关联工单">
-          <Input v-model="createForm.ticketId" placeholder="可选，如 TK-2048" />
-        </FormItem>
-        <FormItem label="说明">
-          <Textarea v-model="createForm.reason" :rows="3" placeholder="申请原因" />
-        </FormItem>
-      </Form>
+      <SchemaForm
+        ref="createFormRef"
+        :schema="APPROVAL_CREATE_SCHEMA"
+        :model="createForm"
+        :show-actions="false"
+        :label-width="96"
+        aria-label="发起审批表单"
+        @update:model="handleCreateModelChange"
+      />
     </Modal>
   </div>
 </template>

@@ -12,6 +12,7 @@ export const SHELL_PAGE_MAP = {
   projects: lazy(() => import('../pages/ProjectsPage')),
   tickets: lazy(() => import('../pages/TicketsPage')),
   approvals: lazy(() => import('../pages/ApprovalsPage')),
+  workflowDesigner: lazy(() => import('../pages/WorkflowDesignerPage')),
   calendar: lazy(() => import('../pages/CalendarPage')),
   content: lazy(() => import('../pages/ContentPage')),
   gallery: lazy(() => import('../pages/GalleryPage')),

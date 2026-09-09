@@ -259,6 +259,15 @@ export const CheckCircleIcon = (props: IconProps) => (
   </IconBase>
 );
 
+export const GitBranchIcon = (props: IconProps) => (
+  <IconBase {...props}>
+    <line x1="6" x2="6" y1="3" y2="15" />
+    <circle cx="18" cy="6" r="3" />
+    <circle cx="6" cy="18" r="3" />
+    <path d="M18 9a9 9 0 0 1-9 9" />
+  </IconBase>
+);
+
 export const FileTextIcon = (props: IconProps) => (
   <IconBase {...props}>
     <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
@@ -493,6 +502,7 @@ export const Icons = {
   Link: LinkIcon,
   TrendingUp: TrendingUpIcon,
   CheckCircle: CheckCircleIcon,
+  GitBranch: GitBranchIcon,
   FileText: FileTextIcon,
   Edit: EditIcon,
   Image: ImageIcon,

@@ -16,6 +16,7 @@ export type ShellPageKey =
   | 'monitor'
   | 'tickets'
   | 'approvals'
+  | 'workflowDesigner'
   | 'calendar'
   | 'content'
   | 'gallery'
@@ -83,6 +84,12 @@ const pageNodes: Record<ShellPageKey, MenuSchemaNode> = {
     label: '审批中心',
     icon: 'checkCircle',
     path: '/approvals',
+  },
+  workflowDesigner: {
+    key: 'workflowDesigner',
+    label: '流程设计',
+    icon: 'gitBranch',
+    path: '/workflow-designer',
   },
   calendar: {
     key: 'calendar',
@@ -217,7 +224,7 @@ export const SHELL_MENU_SCHEMA: MenuSchema = [
     key: 'collaborationGroup',
     label: '协作',
     icon: 'message',
-    children: [pageNodes.tickets, pageNodes.approvals, pageNodes.calendar],
+    children: [pageNodes.tickets, pageNodes.approvals, pageNodes.workflowDesigner, pageNodes.calendar],
   },
   {
     key: 'contentGroup',
@@ -277,6 +284,7 @@ export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   projects: '/projects',
   tickets: '/tickets',
   approvals: '/approvals',
+  workflowDesigner: '/workflow-designer',
   calendar: '/calendar',
   content: '/content',
   gallery: '/gallery',

@@ -37,4 +37,15 @@ test.describe('审批中心 mock 流转', () => {
     }
     await expect(page.getByText(/已同意，实例状态已写回|经理审批/).first()).toBeVisible();
   });
+
+  test('发起审批弹层使用 SchemaForm 并可提交', async ({ page }) => {
+    await page.goto('/approvals');
+    await page.getByRole('button', { name: '发起审批' }).click();
+    const form = page.locator('[data-tiger-schema-form]');
+    await expect(form).toBeVisible();
+    await form.getByPlaceholder('例如：请假、报销或工单升级').fill('SchemaForm 演示审批');
+    await page.getByRole('button', { name: '提交' }).click();
+    await expect(page.getByText('申请表单', { exact: true })).toBeVisible();
+    await expect(page.getByText('SchemaForm 演示审批').first()).toBeVisible();
+  });
 });

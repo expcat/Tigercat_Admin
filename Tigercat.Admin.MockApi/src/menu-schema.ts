@@ -75,6 +75,12 @@ const pageNodes: Record<string, MockMenuSchemaNode> = {
     icon: 'checkCircle',
     path: '/approvals',
   },
+  workflowDesigner: {
+    key: 'workflowDesigner',
+    label: '流程设计',
+    icon: 'gitBranch',
+    path: '/workflow-designer',
+  },
   calendar: {
     key: 'calendar',
     label: '团队日历',
@@ -201,7 +207,7 @@ export const MOCK_MENU_SCHEMA_ITEMS: MockMenuSchemaNode[] = [
     key: 'collaborationGroup',
     label: '协作',
     icon: 'message',
-    children: [pageNodes.tickets, pageNodes.approvals, pageNodes.calendar],
+    children: [pageNodes.tickets, pageNodes.approvals, pageNodes.workflowDesigner, pageNodes.calendar],
   },
   {
     key: 'contentGroup',

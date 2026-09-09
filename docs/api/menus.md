@@ -63,4 +63,4 @@ schema 存在内存（.NET 进程内 `MenuSchemaStore`；MockApi 写入 `session
 
 角色预览不走独立接口：管理页 `GET /api/roles/{id}` 取权限码，在前端调用 core `filterMenuByPermission`。
 
-MockApi 与 .NET API 共用同一棵种子树（含系统管理下的「菜单管理」），CRUD 写回各自的内存 / 演示状态。
+MockApi 与 .NET API 共用同一棵种子树（含系统管理下的「菜单管理」、协作下的「审批中心」与「流程设计」），CRUD 写回各自的内存 / 演示状态。

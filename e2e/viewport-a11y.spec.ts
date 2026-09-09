@@ -99,6 +99,16 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
     await expectNoPageHorizontalOverflow(page);
   });
 
+  test('流程设计窄屏设计器与预览不溢出', async ({ page }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+
+    await page.goto(appPath(testInfo, '/workflow-designer'));
+    await expect(page.getByText('流程设计').first()).toBeVisible();
+    await expect(page.getByRole('region', { name: '流程设计器' })).toBeVisible();
+    await expect(page.getByText('主管会签').first()).toBeVisible();
+    await expectNoPageHorizontalOverflow(page);
+  });
+
   test('异常页 403 / 404 / 500 窄屏居中不溢出', async ({ page }, testInfo) => {
     await loginAsAdmin(page, testInfo);
 
