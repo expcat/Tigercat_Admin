@@ -78,12 +78,13 @@
 **验收**: 壳主要业务路由可由 schema 驱动；按钮权限可演示
 
 ### M3 — 2.3.4（体验与工程债）
-**Tigercat（按需）**: 图表基元 axis↔tooltip；审批打印配方
+**Tigercat（按需）**: 图表基元 axis↔tooltip；审批打印配方 — M3-S1 扫描为 NO_GAP（高层图已联动轴与 tooltip；PrintLayout 已覆盖报表打印；审批打印配方无独立库缺口）
 
 **Admin**
-- roadmap-followups：弹层焦点 e2e；内存态页按需 MockApi
-- Chat/Resizable/窄屏与审批同屏打磨
-- Upload/编辑器可插拔 — 有需求再接
+- roadmap-followups：弹层焦点 e2e — M3-S1 已做（`/profile` DatePicker/TimePicker/Tabs、`/analytics` DatePicker、`/content` 下拉、`/gallery` 灯箱与标注裁剪 Drawer）
+- 内存态页按需 MockApi — 未在 S1 迁（单页收益不够，留给后续切片）
+- Chat/Resizable/窄屏与审批同屏打磨 — 窄屏溢出已有 viewport 覆盖，非 P0/P1
+- Upload/编辑器可插拔 — 仓库无明示产品需求，S1 跳过
 
 **验收**: followups 勾一批；无新 P0
 

@@ -34,7 +34,7 @@
 
 - [x] **移动端 375px**：`/analytics` 与 `/profile` 标题可见且页面不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`）。图表网格/Tabs/QRCode/Signature 像素级不超出卡片仍可目测。
 - [x] **暗色模式（`.dark`）**：两页标题在 `colorScheme: dark` 下可见（同上 spec `@dark`）。图表轴刻度、Descriptions/Timeline/Progress 像素对比仍可目测。
-- [ ] **弹层焦点与键盘路径**：`/profile` 的 DatePicker / TimePicker 浮层 Esc 与外部点击关闭、关闭后焦点恢复；Tabs 方向键切换；`/analytics` DatePicker 区间选择浮层同上。（demo e2e 已覆盖选项卡切换、头像下拉进入、Segmented 切换与图表渲染，焦点恢复尚未断言。）
+- [x] **弹层焦点与键盘路径**：`/profile` 的 DatePicker / TimePicker 浮层 Esc 与外部点击关闭、关闭后焦点回到页面（不困在浮层）；Tabs 方向键切换；`/analytics` DatePicker 区间选择浮层同上（`e2e/overlay-focus.spec.ts`）。
 
 ### workaround / 点到为止待回访
 
@@ -55,7 +55,7 @@
 
 - [ ] **Calendar 格内事件标记**：当前 `Calendar` 类型签名未暴露按日期格的事件渲染插槽，事件标记以右侧“当日日程”列表 + `Badge`/`Popover` 近似呈现；后续若上游补齐单元格渲染插槽，可在日历格内直接标注事件圆点。
 - [ ] **协作数据为内存态**：`/tickets` 的对话、内部备注、附件与 `/calendar` 事件均为页面内内存数据（与阶段 1 一致，未接 MockApi/真实端点），刷新后重置；如需“类服务端”分页/筛选，再按 [api.md](api.md) 约定补 demo/mock 契约。
-- [ ] **Resizable 对话面板**：`/tickets` 详情对话区用 `Resizable`（`axis=vertical`）演示竖向调整高度，统一核验时确认与 `ChatWindow` 内部滚动、窄屏上下分栏的交互无冲突。
+- [ ] **Resizable 对话面板**：`/tickets` 详情对话区用 `Resizable`（`axis=vertical`，`minHeight=200` / `maxHeight=460`）演示竖向调整高度。窄屏已由 `Splitter` 改为上下分栏，且 `e2e/viewport-a11y.spec.ts` `@mobile` 断言 `/tickets` 不横向溢出，未见 P0/P1 冲突；剩余是 ChatWindow 内部滚动与拖拽手柄的目测打磨。
 
 ---
 
@@ -65,7 +65,7 @@
 
 - [x] **移动端 375px**：`/content` 与 `/gallery` 标题可见且页面不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`）。编辑器工具条、灯箱与标注 Drawer 像素级不超出仍可目测。
 - [x] **暗色模式（`.dark`）**：两页标题在 `colorScheme: dark` 下可见（同上 spec `@dark`）。编辑器边框、水印、灯箱遮罩像素对比仍可目测。
-- [ ] **弹层焦点与键盘路径**：`/content` `TreeSelect`/`Cascader`/`AutoComplete` 下拉浮层 Esc 与外部点击关闭、关闭后焦点恢复；`/gallery` `ImageViewer`/`ImagePreview` 与标注/裁剪 `Drawer` 的 Esc 关闭与焦点恢复。（demo e2e 已覆盖编辑器切换/发布与相册切换/空态，焦点恢复尚未断言。）
+- [x] **弹层焦点与键盘路径**：`/content` `TreeSelect`/`Cascader`/`AutoComplete` 下拉浮层 Esc 与外部点击关闭、关闭后焦点不困在浮层；`/gallery` `ImageViewer`/`ImagePreview` 与标注/裁剪 `Drawer` 的 Esc 关闭后焦点回到触发器（`e2e/overlay-focus.spec.ts`）。
 
 ### workaround / 点到为止待回访
 

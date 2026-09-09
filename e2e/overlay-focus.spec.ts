@@ -93,6 +93,79 @@ async function expectCreateDrawerEscRestoresFocus(
   await expectFocused(trigger);
 }
 
+/** Trigger, its chrome root, or the page — not a leftover overlay. */
+async function expectFocusReturnedToPage(
+  trigger: import('@playwright/test').Locator,
+): Promise<void> {
+  await expect
+    .poll(async () =>
+      trigger.evaluate((element) => {
+        const active = document.activeElement;
+        if (!active) return false;
+        if (active === element || element.contains(active) || active.contains(element)) {
+          return true;
+        }
+        const chrome = element.closest('[data-tiger-chrome]');
+        if (chrome && chrome.contains(active)) return true;
+        const trapped = active.closest(
+          [
+            '[data-tiger-overlay-layer]',
+            '[data-tiger="datepicker-panel"]',
+            '[data-tiger="timepicker-panel"]',
+            '[data-tiger-autocomplete-dropdown]',
+            '[data-tiger-treeselect-dropdown]',
+            '[data-tiger-cascader-dropdown]',
+            '[data-tiger-image-preview]',
+            '[data-tiger-drawer]',
+          ].join(', '),
+        );
+        return !trapped;
+      }),
+    )
+    .toBe(true);
+}
+
+async function expectEscClosesOverlay(
+  page: import('@playwright/test').Page,
+  trigger: import('@playwright/test').Locator,
+  overlay: import('@playwright/test').Locator,
+  options: { restoreTrigger?: boolean; extraEscapes?: number } = {},
+) {
+  await trigger.scrollIntoViewIfNeeded();
+  await trigger.evaluate((element) => {
+    if (element instanceof HTMLElement) element.blur();
+  });
+  await trigger.click();
+  await expect(overlay).toBeVisible();
+  await page.keyboard.press('Escape');
+  for (let extra = 0; extra < (options.extraEscapes ?? 0); extra += 1) {
+    if (await overlay.isHidden()) break;
+    await page.keyboard.press('Escape');
+  }
+  await expect(overlay).toBeHidden();
+  if (options.restoreTrigger) {
+    await expectFocused(trigger);
+  } else {
+    await expectFocusReturnedToPage(trigger);
+  }
+}
+
+async function expectOutsideClickClosesOverlay(
+  page: import('@playwright/test').Page,
+  trigger: import('@playwright/test').Locator,
+  overlay: import('@playwright/test').Locator,
+  outside: import('@playwright/test').Locator,
+) {
+  await trigger.scrollIntoViewIfNeeded();
+  await trigger.evaluate((element) => {
+    if (element instanceof HTMLElement) element.blur();
+  });
+  await trigger.click();
+  await expect(overlay).toBeVisible();
+  await outside.click({ force: true });
+  await expect(overlay).toBeHidden();
+}
+
 test.describe('页面 Drawer 焦点恢复', () => {
   test('工单 / 日历 / 任务新建 Drawer Esc 后焦点回到触发器', async ({
     page,
@@ -155,6 +228,116 @@ test.describe('页面 Drawer 焦点恢复', () => {
     await expect(restore).toBeVisible();
     await restore.focus();
     await expectFocused(restore);
+  });
+});
+
+test.describe('个人中心 / 数据分析浮层焦点', () => {
+  test('/profile Tabs 方向键切换，DatePicker / TimePicker Esc 与外部点击关闭', async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(60_000);
+    await loginAsAdmin(page, testInfo);
+    await page.goto(appPath(testInfo, '/profile'));
+    await expect(page.getByText('个人中心').first()).toBeVisible();
+
+    const basicTab = page.getByRole('tab', { name: '基本资料' });
+    await basicTab.focus();
+    await expectFocused(basicTab);
+    await page.keyboard.press('ArrowRight');
+    const securityTab = page.getByRole('tab', { name: '安全设置' });
+    await expect(securityTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByText('两步验证').first()).toBeVisible();
+
+    await page.getByRole('tab', { name: '偏好' }).click();
+    await expect(page.getByText('主题色').first()).toBeVisible();
+
+    const dateTrigger = page.getByRole('button', { name: '打开日历' });
+    const datePanel = page.locator('[data-tiger="datepicker-panel"]');
+    await expectEscClosesOverlay(page, dateTrigger, datePanel);
+    await expectOutsideClickClosesOverlay(
+      page,
+      dateTrigger,
+      datePanel,
+      page.getByText('界面密度', { exact: true }),
+    );
+
+    const timeTrigger = page.getByRole('button', { name: '打开时间选择器' });
+    const timePanel = page.locator('[data-tiger="timepicker-panel"]');
+    await expectEscClosesOverlay(page, timeTrigger, timePanel);
+    await expectOutsideClickClosesOverlay(
+      page,
+      timeTrigger,
+      timePanel,
+      page.getByText('界面密度', { exact: true }),
+    );
+  });
+
+  test('/analytics DatePicker 区间浮层 Esc 与外部点击关闭', async ({ page }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+    await page.goto(appPath(testInfo, '/analytics'));
+    await expect(page.getByText('数据分析').first()).toBeVisible();
+
+    const dateTrigger = page.getByRole('button', { name: '打开日历' });
+    const datePanel = page.locator('[data-tiger="datepicker-panel"]');
+    await expectEscClosesOverlay(page, dateTrigger, datePanel);
+    await expectOutsideClickClosesOverlay(
+      page,
+      dateTrigger,
+      datePanel,
+      page.getByText('数据分析').first(),
+    );
+  });
+});
+
+test.describe('内容编辑 / 媒体图库浮层焦点', () => {
+  test('/content AutoComplete / TreeSelect / Cascader Esc 与外部点击关闭', async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(60_000);
+    await loginAsAdmin(page, testInfo);
+    await page.goto(appPath(testInfo, '/content'));
+    await expect(page.getByText('内容编辑').first()).toBeVisible();
+
+    const pageTitle = page.getByText('内容编辑').first();
+    const titleInput = page.getByPlaceholder('请输入内容标题');
+    const autoCompleteDropdown = page.locator('[data-tiger-autocomplete-dropdown]');
+    await expectEscClosesOverlay(page, titleInput, autoCompleteDropdown);
+    await expectOutsideClickClosesOverlay(page, titleInput, autoCompleteDropdown, pageTitle);
+
+    const treeTrigger = page.getByRole('combobox').filter({ hasText: /^前端$/ });
+    const treeDropdown = page.locator('[data-tiger-treeselect-dropdown]');
+    await expectEscClosesOverlay(page, treeTrigger, treeDropdown, { extraEscapes: 2 });
+    await expectOutsideClickClosesOverlay(page, treeTrigger, treeDropdown, pageTitle);
+
+    const cascaderTrigger = page.getByRole('combobox').filter({ hasText: '文档 / 指南' });
+    const cascaderDropdown = page.locator('[data-tiger-cascader-dropdown]');
+    await expectEscClosesOverlay(page, cascaderTrigger, cascaderDropdown);
+    await expectOutsideClickClosesOverlay(page, cascaderTrigger, cascaderDropdown, pageTitle);
+  });
+
+  test('/gallery ImageViewer / ImagePreview 与标注裁剪 Drawer Esc 后焦点回到触发器', async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(60_000);
+    await loginAsAdmin(page, testInfo);
+    await page.goto(appPath(testInfo, '/gallery'));
+    await expect(page.getByText('媒体图库').first()).toBeVisible();
+    await expect(page.getByText('产品概览').first()).toBeVisible();
+
+    const preview = page.locator('[data-tiger-image-preview]');
+    const viewButton = page.getByRole('button', { name: '查看' }).first();
+    await expectEscClosesOverlay(page, viewButton, preview, { restoreTrigger: true });
+
+    const slideshow = page.getByRole('button', { name: '幻灯片预览' });
+    await expectEscClosesOverlay(page, slideshow, preview, { restoreTrigger: true });
+
+    const annotate = page.getByRole('button', { name: '标注' }).first();
+    const annotateDrawer = page.getByRole('dialog', { name: '图片标注' });
+    await expectEscClosesOverlay(page, annotate, annotateDrawer, { restoreTrigger: true });
+
+    const crop = page.getByRole('button', { name: '裁剪' }).first();
+    const cropDrawer = page.getByRole('dialog', { name: '图片裁剪' });
+    await expectEscClosesOverlay(page, crop, cropDrawer, { restoreTrigger: true });
   });
 });
 
