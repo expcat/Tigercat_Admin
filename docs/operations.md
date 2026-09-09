@@ -75,7 +75,7 @@ dotnet list Tigercat.Aspire/Tigercat.Aspire.csproj package --vulnerable --includ
 dotnet list Tigercat.ServiceDefaults/Tigercat.ServiceDefaults.csproj package --vulnerable --include-transitive
 ```
 
-Playwright 默认 Desktop 项目会 `grepInvert` `@mobile` / `@dark`，避免把同一批用例再跑一遍。375 视口与 `colorScheme: dark` 是独立 project，只跑带对应 tag 的用例（`e2e/viewport-a11y.spec.ts`）。焦点恢复与 Vue overlay 回归在 `e2e/overlay-focus.spec.ts`（含 Shell 挂件、页面 Drawer、`/profile` / `/analytics` 选择器、`/content` 下拉、`/gallery` 灯箱与 Drawer），走 Desktop。只跑标注用例用 `pnpm e2e:mobile` / `pnpm e2e:dark`（demo 配置对应 `e2e:demo:mobile` / `e2e:demo:dark`）。
+Playwright 默认 Desktop 项目会 `grepInvert` `@mobile` / `@dark`，避免把同一批用例再跑一遍。375 视口与 `colorScheme: dark` 是独立 project，只跑带对应 tag 的用例（`e2e/viewport-a11y.spec.ts`，含 `/tickets` 对话区窄屏无 Resizable、`/approvals/:id` ActionBar + 时间线不溢出）。焦点恢复与 Vue overlay 回归在 `e2e/overlay-focus.spec.ts`（含 Shell 挂件、页面 Drawer、`/profile` / `/analytics` 选择器、`/content` 下拉、`/gallery` 灯箱与 Drawer），走 Desktop。只跑标注用例用 `pnpm e2e:mobile` / `pnpm e2e:dark`（demo 配置对应 `e2e:demo:mobile` / `e2e:demo:dark`）。
 
 ## NuGet 依赖审计
 

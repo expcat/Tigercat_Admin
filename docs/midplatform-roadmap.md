@@ -82,9 +82,9 @@
 
 **Admin**
 - roadmap-followups：弹层焦点 e2e — M3-S1 已做（`/profile` DatePicker/TimePicker/Tabs、`/analytics` DatePicker、`/content` 下拉、`/gallery` 灯箱与标注裁剪 Drawer）
-- 内存态页按需 MockApi — 未在 S1 迁（单页收益不够，留给后续切片）
-- Chat/Resizable/窄屏与审批同屏打磨 — 窄屏溢出已有 viewport 覆盖，非 P0/P1
-- Upload/编辑器可插拔 — 仓库无明示产品需求，S1 跳过
+- 内存态页按需 MockApi — 工单对话 / 备注 / 日历事件此前已接 API；S2 未再迁新页（SKIPPED_MOCKAPI）
+- Chat/Resizable/窄屏与审批同屏打磨 — M3-S2：宽屏 Resizable + ChatWindow 内部滚动；窄屏去掉 Resizable；`/approvals/:id` ActionBar + 时间线不横向溢出
+- Upload/编辑器可插拔 — 仓库无明示产品需求，S1/S2 跳过
 
 **验收**: followups 勾一批；无新 P0
 

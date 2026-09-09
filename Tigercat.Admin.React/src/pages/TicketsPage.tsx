@@ -99,6 +99,9 @@ const statusFilters: { value: 'all' | TicketStatus; label: string }[] = [
   { value: 'closed', label: '已关闭' },
 ];
 
+/** ChatWindow fills this box; textarea resize would fight the Resizable bottom handle. */
+const TICKET_CHAT_WINDOW_CLASS = 'h-full min-h-0 [&_textarea]:resize-none';
+
 function TicketsPage() {
   const [tickets, setTickets] = useState<TicketView[]>([]);
   const [loading, setLoading] = useState(false);
@@ -342,9 +345,26 @@ function TicketsPage() {
 
   const splitDirection: 'horizontal' | 'vertical' = isWide ? 'horizontal' : 'vertical';
   const splitStyle = { height: isWide ? '640px' : '900px' };
+  const ticketChatWindow = selected ? (
+    <ChatWindow
+      messages={selected.messages as ChatMessage[]}
+      value={draft}
+      className={TICKET_CHAT_WINDOW_CLASS}
+      inputRows={2}
+      placeholder="回复提交人，回车发送"
+      sendText="发送"
+      emptyText={detailLoading ? '正在加载对话…' : '暂无对话，开始回复吧'}
+      statusText={CHAT_STATUS[selected.status].text}
+      statusVariant={CHAT_STATUS[selected.status].variant}
+      showAvatar={false}
+      showName={false}
+      onChange={setDraft}
+      onSend={handleSend}
+    />
+  ) : null;
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <PageHeader
         icon={<TicketIcon size={24} />}
         title="工单中心"
@@ -371,10 +391,10 @@ function TicketsPage() {
         </Button>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="min-w-0 overflow-hidden">
         <Splitter direction={splitDirection} min={220} gutterSize={8} style={splitStyle}>
           {/* 左：列表 */}
-          <div className="flex h-full flex-col gap-3 overflow-hidden pr-1">
+          <div className="flex h-full min-w-0 flex-col gap-3 overflow-hidden pr-1">
             <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="搜索标题 / 提交人 / 工单号" clearable />
             <div className="flex flex-wrap gap-2">
               {statusFilters.map((f) => (
@@ -433,10 +453,10 @@ function TicketsPage() {
           </div>
 
           {/* 右：详情 */}
-          <div className="flex h-full flex-col overflow-y-auto pl-1">
+          <div className="flex h-full min-w-0 flex-col overflow-y-auto pl-1">
             {selected ? (
               <>
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Text size="lg" weight="bold">
                       {selected.title}
@@ -489,9 +509,11 @@ function TicketsPage() {
                   </Card>
                 </div>
 
-                <Card header={<Text weight="bold">审批进度</Text>} className="mt-4">
-                  <WorkflowTimeline steps={workflowSteps} />
-                  <div className="mt-3">
+                <Card header={<Text weight="bold">审批进度</Text>} className="mt-4 min-w-0">
+                  <div className="min-w-0 overflow-x-auto">
+                    <WorkflowTimeline steps={workflowSteps} />
+                  </div>
+                  <div className="mt-3 min-w-0">
                     <WorkflowActionBar
                       items={TICKET_WORKFLOW_ACTIONS}
                       disabled={workflowActionsDisabled}
@@ -504,23 +526,22 @@ function TicketsPage() {
                   </Text>
                 </Card>
 
-                <Card header={<Text weight="bold">对话</Text>} className="mt-4">
-                  <Resizable axis="vertical" handles={['bottom']} defaultHeight={300} minHeight={200} maxHeight={460} style={{ width: '100%' }}>
-                    <ChatWindow
-                      messages={selected.messages as ChatMessage[]}
-                      value={draft}
-                      className="h-full"
-                      placeholder="回复提交人，回车发送"
-                      sendText="发送"
-                      emptyText={detailLoading ? '正在加载对话…' : '暂无对话，开始回复吧'}
-                      statusText={CHAT_STATUS[selected.status].text}
-                      statusVariant={CHAT_STATUS[selected.status].variant}
-                      showAvatar={false}
-                      showName={false}
-                      onChange={setDraft}
-                      onSend={handleSend}
-                    />
-                  </Resizable>
+                <Card header={<Text weight="bold">对话</Text>} className="mt-4 min-w-0">
+                  {isWide ? (
+                    <Resizable
+                      axis="vertical"
+                      handles={['bottom']}
+                      defaultHeight={300}
+                      minHeight={200}
+                      maxHeight={460}
+                      className="w-full overflow-hidden"
+                      style={{ width: '100%' }}
+                      aria-label="调整对话区高度">
+                      {ticketChatWindow}
+                    </Resizable>
+                  ) : (
+                    <div className="h-[280px] min-h-0 overflow-hidden">{ticketChatWindow}</div>
+                  )}
                 </Card>
 
                 <Card header={<Text weight="bold">内部备注</Text>} className="mt-4">

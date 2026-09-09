@@ -135,7 +135,7 @@ async function confirmTransfer() {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="min-w-0 space-y-4">
     <PageHeader
       icon="checkCircle"
       :title="detail?.title ?? '审批详情'"
@@ -152,34 +152,40 @@ async function confirmTransfer() {
 
     <Empty v-if="missing" description="没有找到该审批实例" />
     <Text v-else-if="loading && !detail" color="secondary">正在加载审批详情…</Text>
-    <div v-else-if="detail" class="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-      <div class="space-y-4">
-        <Card>
+    <div v-else-if="detail" class="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+      <div class="min-w-0 space-y-4">
+        <Card class="min-w-0">
           <template #header><Text weight="bold">申请表单</Text></template>
           <Descriptions :items="descriptions" :column="1" />
         </Card>
-        <Card>
+        <Card class="min-w-0">
           <template #header><Text weight="bold">审批操作</Text></template>
-          <WorkflowActionBar
-            :items="APPROVAL_WORKFLOW_ACTIONS"
-            confirm
-            :disabled="actionsDisabled"
-            aria-label="审批操作"
-            @action="handleWorkflowAction"
-          />
+          <div class="min-w-0">
+            <WorkflowActionBar
+              :items="APPROVAL_WORKFLOW_ACTIONS"
+              confirm
+              :disabled="actionsDisabled"
+              aria-label="审批操作"
+              @action="handleWorkflowAction"
+            />
+          </div>
           <Text size="sm" color="secondary" class="mt-2 block">
             通过 / 驳回 / 转交会写回当前实例；关联工单时同步工单状态。不接审批引擎。
           </Text>
         </Card>
       </div>
-      <div class="space-y-4">
-        <Card>
+      <div class="min-w-0 space-y-4">
+        <Card class="min-w-0">
           <template #header><Text weight="bold">审批树</Text></template>
-          <WorkflowViewer :steps="steps" />
+          <div class="min-w-0 overflow-x-auto">
+            <WorkflowViewer :steps="steps" />
+          </div>
         </Card>
-        <Card>
+        <Card class="min-w-0">
           <template #header><Text weight="bold">审批时间线</Text></template>
-          <WorkflowTimeline :steps="steps" />
+          <div class="min-w-0 overflow-x-auto">
+            <WorkflowTimeline :steps="steps" />
+          </div>
         </Card>
       </div>
     </div>

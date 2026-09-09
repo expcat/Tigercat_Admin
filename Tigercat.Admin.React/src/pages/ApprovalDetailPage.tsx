@@ -124,7 +124,7 @@ function ApprovalDetailPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <PageHeader
         title={detail?.title ?? '审批详情'}
         subtitle="表单 + WorkflowViewer / WorkflowTimeline + ActionBar。动作写回 mock 实例。"
@@ -148,30 +148,36 @@ function ApprovalDetailPage() {
       ) : loading && !detail ? (
         <Text color="secondary">正在加载审批详情…</Text>
       ) : detail ? (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-          <div className="space-y-4">
-            <Card header={<Text weight="bold">申请表单</Text>}>
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+          <div className="min-w-0 space-y-4">
+            <Card header={<Text weight="bold">申请表单</Text>} className="min-w-0">
               <Descriptions items={descriptions} column={1} />
             </Card>
-            <Card header={<Text weight="bold">审批操作</Text>}>
-              <WorkflowActionBar
-                items={APPROVAL_WORKFLOW_ACTIONS}
-                confirm
-                disabled={actionsDisabled}
-                ariaLabel="审批操作"
-                onAction={handleWorkflowAction}
-              />
+            <Card header={<Text weight="bold">审批操作</Text>} className="min-w-0">
+              <div className="min-w-0">
+                <WorkflowActionBar
+                  items={APPROVAL_WORKFLOW_ACTIONS}
+                  confirm
+                  disabled={actionsDisabled}
+                  ariaLabel="审批操作"
+                  onAction={handleWorkflowAction}
+                />
+              </div>
               <Text size="sm" color="secondary" className="mt-2 block">
                 通过 / 驳回 / 转交会写回当前实例；关联工单时同步工单状态。不接审批引擎。
               </Text>
             </Card>
           </div>
-          <div className="space-y-4">
-            <Card header={<Text weight="bold">审批树</Text>}>
-              <WorkflowViewer steps={steps} />
+          <div className="min-w-0 space-y-4">
+            <Card header={<Text weight="bold">审批树</Text>} className="min-w-0">
+              <div className="min-w-0 overflow-x-auto">
+                <WorkflowViewer steps={steps} />
+              </div>
             </Card>
-            <Card header={<Text weight="bold">审批时间线</Text>}>
-              <WorkflowTimeline steps={steps} />
+            <Card header={<Text weight="bold">审批时间线</Text>} className="min-w-0">
+              <div className="min-w-0 overflow-x-auto">
+                <WorkflowTimeline steps={steps} />
+              </div>
             </Card>
           </div>
         </div>

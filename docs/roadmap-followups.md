@@ -47,15 +47,15 @@
 
 ### 人工核验（自动化 e2e 未覆盖）
 
-- [x] **移动端 375px（工单 Splitter）**：`/tickets` 窄屏 `data-direction="vertical"`，列表/详情标题可见且页面不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`）。`/calendar` 月视图标题与「新建事件」可见、页面不横向溢出（同上 spec）。
-- [x] **暗色模式（工单）**：`/tickets` 在 `colorScheme: dark` 下标题与生命周期可见（同上 spec `@dark`）。`/calendar` 标题可见。Calendar 单元格与评论分隔线像素对比仍可目测。
+- [x] **移动端 375px（工单 Splitter）**：`/tickets` 窄屏 `data-direction="vertical"`，列表/详情标题、ActionBar、ChatWindow 可见且页面不横向溢出；窄屏不挂 `Resizable`（`e2e/viewport-a11y.spec.ts` `@mobile`）。`/calendar` 月视图标题与「新建事件」可见、页面不横向溢出（同上 spec）。`/approvals/:id` ActionBar + 时间线可见、不横向溢出。
+- [x] **暗色模式（工单）**：`/tickets` 在 `colorScheme: dark` 下标题、生命周期、ActionBar、ChatWindow 可见（同上 spec `@dark`）。`/calendar` 标题可见。`/approvals/:id` ActionBar 可见。Calendar 单元格与评论分隔线像素对比仍可目测。
 - [x] **弹层焦点与键盘路径（新建 Drawer）**：`/tickets` 「新建工单」、`/calendar` 「新建事件」Drawer Esc 关闭后焦点回到触发器（`e2e/overlay-focus.spec.ts`）。关闭工单 Drawer、日程 Popover、Drawer 内 DatePicker/TimePicker 焦点仍可目测。
 
 ### workaround / 点到为止待回访
 
-- [ ] **Calendar 格内事件标记**：当前 `Calendar` 类型签名未暴露按日期格的事件渲染插槽，事件标记以右侧“当日日程”列表 + `Badge`/`Popover` 近似呈现；后续若上游补齐单元格渲染插槽，可在日历格内直接标注事件圆点。
-- [ ] **协作数据为内存态**：`/tickets` 的对话、内部备注、附件与 `/calendar` 事件均为页面内内存数据（与阶段 1 一致，未接 MockApi/真实端点），刷新后重置；如需“类服务端”分页/筛选，再按 [api.md](api.md) 约定补 demo/mock 契约。
-- [ ] **Resizable 对话面板**：`/tickets` 详情对话区用 `Resizable`（`axis=vertical`，`minHeight=200` / `maxHeight=460`）演示竖向调整高度。窄屏已由 `Splitter` 改为上下分栏，且 `e2e/viewport-a11y.spec.ts` `@mobile` 断言 `/tickets` 不横向溢出，未见 P0/P1 冲突；剩余是 ChatWindow 内部滚动与拖拽手柄的目测打磨。
+- [x] **Calendar 格内事件标记**：已用 `events` + React `dateCellRender` / Vue `#dateCell` 在格子内标色点与数量；右侧当日列表只做选中日详情（M2）。
+- [x] **协作对话与日历已接 API**：`/tickets` 列表/详情/对话接 `/api/tickets`，内部备注接 `/api/comments?targetType=ticket`，`/calendar` 接 `/api/calendar/events`（刷新后由 MockApi / 后端恢复）。新建工单附件仍 `autoUpload=false`，与内容/导入演示一致。
+- [x] **Resizable 对话面板**：宽屏 `/tickets` 对话区仍用 `Resizable`（`axis=vertical`，`minHeight=200` / `maxHeight=460`），ChatWindow 填满并内部滚动，`textarea` `resize-none` 避免与底手柄冲突。窄屏去掉 Resizable、固定高度，避免与垂直 Splitter 叠拖（`e2e/viewport-a11y.spec.ts` `@mobile` 断言无 `[data-resizable]`；桌面 demo 断言有）。审批详情同屏用 `min-w-0` + ActionBar wrap，Viewer/Timeline 可横向滚但不撑破页面。
 
 ---
 

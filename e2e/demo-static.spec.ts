@@ -186,6 +186,10 @@ test.describe('阶段 2 — 协作沟通', () => {
     await expect(page.getByText('审批进度', { exact: true })).toBeVisible();
     await expect(page.getByRole('toolbar', { name: '审批操作' })).toBeVisible();
     await expect(page.getByRole('button', { name: '通过' })).toBeEnabled();
+    const chat = page.locator('#main-content-scroll [data-tiger-chat-window]').first();
+    await chat.scrollIntoViewIfNeeded();
+    await expect(chat).toBeVisible();
+    await expect(page.locator('#main-content-scroll [data-resizable]').first()).toBeVisible();
 
     // 新建工单抽屉可打开。
     await page.getByRole('button', { name: '新建工单' }).click();
@@ -205,6 +209,7 @@ test.describe('阶段 2 — 协作沟通', () => {
     await expect(page.getByText('审批树', { exact: true })).toBeVisible();
     await expect(page.getByText('审批时间线', { exact: true })).toBeVisible();
     await expect(page.getByRole('toolbar', { name: '审批操作' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '通过' })).toBeVisible();
   });
 
   test('团队日历可展示日程并打开新建事件', async ({ page }) => {

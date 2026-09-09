@@ -66,6 +66,33 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
     await expect(page.locator('[data-direction="vertical"]').first()).toBeVisible();
     await expect(page.getByText('工单生命周期', { exact: true })).toBeVisible();
     await expect(page.getByText('工单信息', { exact: true })).toBeVisible();
+
+    const actionBar = page.getByRole('toolbar', { name: '审批操作' });
+    await actionBar.scrollIntoViewIfNeeded();
+    await expect(actionBar).toBeVisible();
+    await expect(page.getByRole('button', { name: '通过' })).toBeVisible();
+
+    const chat = page.locator('#main-content-scroll [data-tiger-chat-window]').first();
+    await chat.scrollIntoViewIfNeeded();
+    await expect(chat).toBeVisible();
+    // Narrow: skip Resizable so ChatWindow scroll does not fight a vertical splitter handle.
+    await expect(page.locator('#main-content-scroll [data-resizable]')).toHaveCount(0);
+    await expectNoPageHorizontalOverflow(page);
+  });
+
+  test('Approval detail 窄屏 ActionBar 与时间线可用且不溢出', async ({ page }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+
+    await page.goto(appPath(testInfo, '/approvals'));
+    await expect(page.getByText('审批中心', { exact: true }).first()).toBeVisible();
+    await page.getByRole('button', { name: '查看' }).first().click();
+
+    await expect(page.getByText('申请表单', { exact: true })).toBeVisible();
+    await expect(page.getByText('审批时间线', { exact: true })).toBeVisible();
+    const actionBar = page.getByRole('toolbar', { name: '审批操作' });
+    await actionBar.scrollIntoViewIfNeeded();
+    await expect(actionBar).toBeVisible();
+    await expect(page.getByRole('button', { name: '通过' })).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
   });
 
@@ -215,6 +242,18 @@ test.describe('dark colorScheme coverage', { tag: '@dark' }, () => {
     await page.goto(appPath(testInfo, '/tickets'));
     await expect(page.getByText('工单中心').first()).toBeVisible();
     await expect(page.getByText('工单生命周期', { exact: true })).toBeVisible();
+    const ticketBar = page.getByRole('toolbar', { name: '审批操作' });
+    await ticketBar.scrollIntoViewIfNeeded();
+    await expect(ticketBar).toBeVisible();
+    const chat = page.locator('#main-content-scroll [data-tiger-chat-window]').first();
+    await chat.scrollIntoViewIfNeeded();
+    await expect(chat).toBeVisible();
+
+    await page.goto(appPath(testInfo, '/approvals'));
+    await page.getByRole('button', { name: '查看' }).first().click();
+    const approvalBar = page.getByRole('toolbar', { name: '审批操作' });
+    await approvalBar.scrollIntoViewIfNeeded();
+    await expect(approvalBar).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
   });
 

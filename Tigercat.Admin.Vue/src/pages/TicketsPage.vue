@@ -331,6 +331,8 @@ onBeforeUnmount(() => {
 })
 const splitDirection = computed(() => (isWide.value ? 'horizontal' : 'vertical'))
 const splitStyle = computed(() => ({ height: isWide.value ? '640px' : '900px' }))
+/** ChatWindow fills this box; textarea resize would fight the Resizable bottom handle. */
+const TICKET_CHAT_WINDOW_CLASS = 'h-full min-h-0 [&_textarea]:resize-none'
 
 const openCount = computed(
   () => tickets.value.filter((t) => t.status !== 'closed' && t.status !== 'resolved').length,
@@ -353,7 +355,7 @@ const chatStatus = computed(() =>
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="min-w-0 space-y-6">
     <PageHeader
       icon="ticket"
       title="工单中心"
@@ -376,7 +378,7 @@ const chatStatus = computed(() =>
       </Button>
     </div>
 
-    <Card class="overflow-hidden">
+    <Card class="min-w-0 overflow-hidden">
       <Splitter
         :direction="splitDirection"
         :min="220"
@@ -384,7 +386,7 @@ const chatStatus = computed(() =>
         :style="splitStyle"
       >
         <!-- 左：列表 -->
-        <div class="flex h-full flex-col gap-3 overflow-hidden pr-1">
+        <div class="flex h-full min-w-0 flex-col gap-3 overflow-hidden pr-1">
           <Input v-model="keyword" placeholder="搜索标题 / 提交人 / 工单号" clearable />
           <div class="flex flex-wrap gap-2">
             <button
@@ -446,9 +448,9 @@ const chatStatus = computed(() =>
         </div>
 
         <!-- 右：详情 -->
-        <div class="flex h-full flex-col overflow-y-auto pl-1">
+        <div class="flex h-full min-w-0 flex-col overflow-y-auto pl-1">
           <template v-if="selected">
-            <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex min-w-0 flex-wrap items-center justify-between gap-2">
               <div class="flex items-center gap-2">
                 <Text size="lg" weight="bold">{{ selected.title }}</Text>
                 <Tag :variant="STATUS_META[selected.status].variant" size="sm">
@@ -500,10 +502,12 @@ const chatStatus = computed(() =>
               </Card>
             </div>
 
-            <Card class="mt-4">
+            <Card class="mt-4 min-w-0">
               <template #header><Text weight="bold">审批进度</Text></template>
-              <WorkflowTimeline :steps="workflowSteps" />
-              <div class="mt-3">
+              <div class="min-w-0 overflow-x-auto">
+                <WorkflowTimeline :steps="workflowSteps" />
+              </div>
+              <div class="mt-3 min-w-0">
                 <WorkflowActionBar
                   :items="TICKET_WORKFLOW_ACTIONS"
                   :disabled="workflowActionsDisabled"
@@ -516,20 +520,24 @@ const chatStatus = computed(() =>
               </Text>
             </Card>
 
-            <Card class="mt-4">
+            <Card class="mt-4 min-w-0">
               <template #header><Text weight="bold">对话</Text></template>
               <Resizable
+                v-if="isWide"
                 axis="vertical"
                 :handles="['bottom']"
                 :default-height="300"
                 :min-height="200"
                 :max-height="460"
+                class="w-full overflow-hidden"
                 :style="{ width: '100%' }"
+                aria-label="调整对话区高度"
               >
                 <ChatWindow
                   v-model="draft"
                   :messages="(selected.messages as ChatMessage[])"
-                  class="h-full"
+                  :class="TICKET_CHAT_WINDOW_CLASS"
+                  :input-rows="2"
                   placeholder="回复提交人，回车发送"
                   send-text="发送"
                   :empty-text="detailLoading ? '正在加载对话…' : '暂无对话，开始回复吧'"
@@ -540,6 +548,22 @@ const chatStatus = computed(() =>
                   @send="handleSend"
                 />
               </Resizable>
+              <div v-else class="h-[280px] min-h-0 overflow-hidden">
+                <ChatWindow
+                  v-model="draft"
+                  :messages="(selected.messages as ChatMessage[])"
+                  :class="TICKET_CHAT_WINDOW_CLASS"
+                  :input-rows="2"
+                  placeholder="回复提交人，回车发送"
+                  send-text="发送"
+                  :empty-text="detailLoading ? '正在加载对话…' : '暂无对话，开始回复吧'"
+                  :status-text="chatStatus.text"
+                  :status-variant="chatStatus.variant"
+                  :show-avatar="false"
+                  :show-name="false"
+                  @send="handleSend"
+                />
+              </div>
             </Card>
 
             <Card class="mt-4">
