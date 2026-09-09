@@ -67,10 +67,10 @@
 **验收**: Viewer 双端 demo；菜单 CRUD 预览；审批非纯 toast；走查无 P0
 
 ### M2 — 2.3.3（应用层动态化）
-**Tigercat**: 仅当 M1 暴露上游缺口（按钮 permission helper、菜单 badge 等）
+**Tigercat**: 仅当 M1 暴露上游缺口（按钮 permission helper、菜单 badge 等）— M2-S1 扫描为 NO_GAP（badge / schemaToRouteRecords / dateCellRender / Admin 按钮权限工具已在 2.3.2 与应用层就绪）
 
 **Admin**
-- mixed 动态路由 + pageMap 懒加载
+- mixed 动态路由 + pageMap 懒加载 — M2-S1 已做（Vue + React；游客/异常/参数详情路由仍静态）
 - 按钮级权限演示
 - Calendar dateCellRender 替换格内事件双轨
 - 真机 Review

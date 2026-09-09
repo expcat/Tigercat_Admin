@@ -4,10 +4,10 @@ import { useRouter } from 'vue-router'
 import type { SpotlightItem } from '@expcat/tigercat-core'
 import { Spotlight } from '@expcat/tigercat-vue/Spotlight'
 import {
-  SHELL_MENU_ROUTES,
+  collectShellMenuNodes,
   filterShellMenuSchema,
   flattenShellMenuLeaves,
-  isShellPageKey,
+  getShellNavigatePath,
   useShellMenuSchema,
 } from '../utils/shell-navigation'
 import { usePermission } from '../utils/permission'
@@ -70,18 +70,19 @@ const navItems = computed<SpotlightItem[]>(() => {
     [...menuSchema.value.items, ...menuSchema.value.bottomItems],
     permission.has,
   )
+  const nodes = collectShellMenuNodes(menuSchema.value)
   return flattenShellMenuLeaves(permitted).flatMap((item) => {
-    if (!isShellPageKey(item.key)) {
+    const path = getShellNavigatePath(item.key, nodes)
+    if (!path) {
       return []
     }
-    const routeName = SHELL_MENU_ROUTES[item.key]
     return [{
-      key: `route:${routeName}`,
+      key: `route:${item.key}`,
       label: item.label ?? item.key,
       description: `跳转到${item.label ?? item.key}`,
       group: '页面导航',
-      keywords: [item.label ?? '', item.key, routeName],
-      data: { kind: 'route', value: routeName } as CommandData,
+      keywords: [item.label ?? '', item.key, path],
+      data: { kind: 'route', value: path } as CommandData,
     }]
   })
 })
@@ -142,7 +143,7 @@ const handleSelect = (item: SpotlightItem) => {
   }
 
   if (data.kind === 'route') {
-    router.push({ name: data.value })
+    void router.push(data.value)
     return
   }
 
@@ -154,7 +155,7 @@ const handleSelect = (item: SpotlightItem) => {
       emit('open-chat')
       break
     case 'notifications':
-      router.push({ name: 'notifications' })
+      void router.push('/notifications')
       break
     case 'password':
       emit('change-password')

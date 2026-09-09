@@ -263,60 +263,39 @@ export const BUNDLED_MENU_SCHEMA_PAYLOAD: MenuSchemaPayload = {
 };
 
 export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
-  home: 'dashboard',
-  analytics: 'analytics',
-  monitor: 'monitor',
-  projects: 'projects',
-  tickets: 'tickets',
-  approvals: 'approvals',
-  calendar: 'calendar',
-  content: 'content',
-  gallery: 'gallery',
-  jobs: 'jobs',
-  import: 'import',
-  performance: 'performance',
-  help: 'help',
-  reports: 'reports',
-  users: 'users',
-  roles: 'roles',
-  menus: 'menus',
-  settings: 'settings',
-  files: 'files',
-  notifications: 'notifications',
-  tasks: 'tasks',
-  audit: 'audit',
-  about: 'about',
-  profile: 'profile',
+  home: '/dashboard',
+  analytics: '/analytics',
+  monitor: '/monitor',
+  projects: '/projects',
+  tickets: '/tickets',
+  approvals: '/approvals',
+  calendar: '/calendar',
+  content: '/content',
+  gallery: '/gallery',
+  jobs: '/jobs',
+  import: '/import',
+  performance: '/performance',
+  help: '/help',
+  reports: '/reports',
+  users: '/users',
+  roles: '/roles',
+  menus: '/menus',
+  settings: '/settings',
+  files: '/files',
+  notifications: '/notifications',
+  tasks: '/tasks',
+  audit: '/audit-logs',
+  about: '/about',
+  profile: '/profile',
 };
 
-export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> = {
-  dashboard: 'home',
-  analytics: 'analytics',
-  monitor: 'monitor',
-  projects: 'projects',
-  'projects-detail': 'projects',
-  tickets: 'tickets',
-  approvals: 'approvals',
-  'approvals-detail': 'approvals',
-  calendar: 'calendar',
-  content: 'content',
-  gallery: 'gallery',
-  jobs: 'jobs',
-  import: 'import',
-  performance: 'performance',
-  help: 'help',
-  reports: 'reports',
-  users: 'users',
-  roles: 'roles',
-  menus: 'menus',
-  settings: 'settings',
-  files: 'files',
-  notifications: 'notifications',
-  tasks: 'tasks',
-  audit: 'audit',
-  about: 'about',
-  profile: 'profile',
-};
+export const SHELL_ROUTE_TO_MENU: Record<string, ShellPageKey | undefined> =
+  Object.fromEntries(
+    Object.entries(SHELL_MENU_ROUTES).map(([key, path]) => [
+      path,
+      key as ShellPageKey,
+    ]),
+  ) as Record<string, ShellPageKey | undefined>;
 
 export function resolveShellPageKey(
   routeKey: string | null | undefined,
@@ -354,6 +333,54 @@ export function isShellPageKey(value: unknown): value is ShellPageKey {
     typeof value === 'string' &&
     Object.prototype.hasOwnProperty.call(SHELL_MENU_ROUTES, value)
   );
+}
+
+export function normalizeShellPath(path: string | undefined): string | undefined {
+  if (path == null) {
+    return undefined;
+  }
+  const trimmed = path.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+}
+
+export function collectShellMenuNodes(
+  payload: MenuSchemaPayload = BUNDLED_MENU_SCHEMA_PAYLOAD,
+): MenuSchemaNode[] {
+  return [
+    ...payload.items,
+    ...payload.bottomItems,
+    ...SHELL_HIDDEN_MENU_SCHEMA,
+  ];
+}
+
+export function getShellNavigatePath(
+  key: string,
+  nodes: MenuSchemaNode[] = collectShellMenuNodes(),
+): string | undefined {
+  const node = findShellMenuItem(nodes, key);
+  const fromSchema = normalizeShellPath(node?.path);
+  if (fromSchema) {
+    return fromSchema;
+  }
+  if (node?.iframeSrc) {
+    return `/${key}`;
+  }
+  if (isShellPageKey(key)) {
+    return SHELL_MENU_ROUTES[key];
+  }
+  return undefined;
+}
+
+export function subscribeShellMenuSchema(
+  listener: (payload: MenuSchemaPayload) => void,
+): () => void {
+  menuSchemaListeners.add(listener);
+  return () => {
+    menuSchemaListeners.delete(listener);
+  };
 }
 
 function isUsableSchema(value: unknown): value is MenuSchema {
@@ -507,16 +534,25 @@ export function getShellExpandedKeys(
   return trail.slice(0, -1).map((item) => item.key);
 }
 
-export function getShellPageTitle(key: string): string {
-  return (
-    findShellMenuItem(
-      [
-        ...SHELL_MENU_SCHEMA,
-        ...SHELL_BOTTOM_MENU_SCHEMA,
-        ...SHELL_HIDDEN_MENU_SCHEMA,
-      ],
-      key,
-    )?.label ?? '仪表盘'
+export function getShellPageTitle(
+  key: string,
+  items: MenuSchemaNode[] = [
+    ...SHELL_MENU_SCHEMA,
+    ...SHELL_BOTTOM_MENU_SCHEMA,
+    ...SHELL_HIDDEN_MENU_SCHEMA,
+  ],
+): string {
+  return findShellMenuItem(items, key)?.label ?? '仪表盘';
+}
+
+function isNavigableMenuLeaf(node: MenuSchemaNode): boolean {
+  if (node.type === 'divider' || node.type === 'group') {
+    return false;
+  }
+  return Boolean(
+    isShellPageKey(node.key) ||
+      normalizeShellPath(node.path) ||
+      node.iframeSrc,
   );
 }
 
@@ -524,9 +560,9 @@ export function flattenShellMenuLeaves(
   items: MenuSchemaNode[],
 ): MenuSchemaNode[] {
   return items.flatMap((item) =>
-    item.children
+    item.children && item.children.length > 0
       ? flattenShellMenuLeaves(item.children)
-      : isShellPageKey(item.key)
+      : isNavigableMenuLeaf(item)
         ? [item]
         : [],
   );

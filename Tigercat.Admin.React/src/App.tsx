@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentType,
   type ErrorInfo,
   type ReactNode,
 } from 'react';
@@ -32,12 +33,17 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { GuestRoute } from './components/GuestRoute';
 import { PermissionRoute } from './components/PermissionRoute';
 import {
-  SHELL_MENU_ROUTES,
-  isShellPageKey,
+  collectShellMenuNodes,
+  getShellNavigatePath,
   resetShellMenuSchema,
   resolveShellPageKey,
+  useShellMenuSchema,
   type ShellPageKey,
 } from './utils/shell-navigation';
+import {
+  buildReactSchemaRoutes,
+  routeGuardPermission,
+} from './utils/schema-routes';
 import {
   SESSION_KEY,
   safeParse,
@@ -58,32 +64,8 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const RegisterSuccessPage = lazy(() => import('./pages/RegisterSuccessPage'));
-const HomePage = lazy(() => import('./pages/HomePage'));
-const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
-const MonitorPage = lazy(() => import('./pages/MonitorPage'));
-const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
-const TicketsPage = lazy(() => import('./pages/TicketsPage'));
-const ApprovalsPage = lazy(() => import('./pages/ApprovalsPage'));
 const ApprovalDetailPage = lazy(() => import('./pages/ApprovalDetailPage'));
-const CalendarPage = lazy(() => import('./pages/CalendarPage'));
-const ContentPage = lazy(() => import('./pages/ContentPage'));
-const GalleryPage = lazy(() => import('./pages/GalleryPage'));
-const JobsPage = lazy(() => import('./pages/JobsPage'));
-const ImportPage = lazy(() => import('./pages/ImportPage'));
-const PerformancePage = lazy(() => import('./pages/PerformancePage'));
-const HelpPage = lazy(() => import('./pages/HelpPage'));
-const ReportsPage = lazy(() => import('./pages/ReportsPage'));
-const UsersPage = lazy(() => import('./pages/UsersPage'));
-const RolesPage = lazy(() => import('./pages/RolesPage'));
-const MenusPage = lazy(() => import('./pages/MenusPage'));
-const SettingsPage = lazy(() => import('./pages/SettingsPage'));
-const FilesPage = lazy(() => import('./pages/FilesPage'));
-const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
-const TasksPage = lazy(() => import('./pages/TasksPage'));
-const AuditLogsPage = lazy(() => import('./pages/AuditLogsPage'));
-const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ExceptionPage = lazy(() => import('./pages/ExceptionPage'));
 
 void LoadingBarContainer;
@@ -188,7 +170,7 @@ interface HomeContext {
 
 interface ProtectedLayoutProps {
   user: { username: string } | null;
-  activeMenu: MenuKey;
+  activeMenu: string;
   themePrefs: ThemePreferences;
   onLogout: () => void;
   onChangePassword: () => void;
@@ -275,10 +257,55 @@ function ProtectedLayout({
   );
 }
 
+function SchemaBusinessRoutes({
+  routes,
+}: {
+  routes: ReturnType<typeof buildReactSchemaRoutes>;
+}) {
+  return (
+    <>
+      {routes.map((route) => {
+        const Page = route.component as ComponentType<{
+          src?: string;
+          title?: string;
+        }>;
+        const element = route.usesIframe ? (
+          <Page src={route.iframeSrc} title={route.meta.title} />
+        ) : (
+          <Page />
+        );
+        const pageRoute = (
+          <Route key={route.key} path={route.path} element={element} />
+        );
+        const permission = routeGuardPermission(route.key, route.permission);
+        if (permission) {
+          return (
+            <Route
+              key={`${route.key}-guard`}
+              element={<PermissionRoute code={permission} />}>
+              {pageRoute}
+            </Route>
+          );
+        }
+        return pageRoute;
+      })}
+    </>
+  );
+}
+
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const permission = usePermission();
+  const menuSchema = useShellMenuSchema();
+  const schemaNodes = useMemo(
+    () => collectShellMenuNodes(menuSchema),
+    [menuSchema],
+  );
+  const boundRoutes = useMemo(
+    () => buildReactSchemaRoutes(menuSchema),
+    [menuSchema],
+  );
   const routeBarStartedRef = useRef(false);
 
   const finishRouteBar = useCallback(() => {
@@ -479,10 +506,13 @@ function App() {
     setChangeForm({ oldPassword: '', newPassword: '' });
   };
 
-  const activeMenu = useMemo(
-    () => resolveShellPageKey(location.pathname, DEFAULT_MENU),
-    [location.pathname],
-  );
+  const activeMenu = useMemo(() => {
+    const exact = boundRoutes.find((route) => route.path === location.pathname);
+    if (exact) {
+      return exact.key;
+    }
+    return resolveShellPageKey(location.pathname, DEFAULT_MENU);
+  }, [boundRoutes, location.pathname]);
   const homeContext = useMemo(
     () => ({
       notice,
@@ -494,12 +524,13 @@ function App() {
   );
   const handleNavigate = useCallback(
     (key: string) => {
-      if (!isShellPageKey(key)) {
+      const path = getShellNavigatePath(key, schemaNodes);
+      if (!path) {
         return;
       }
-      navigate(SHELL_MENU_ROUTES[key]);
+      navigate(path);
     },
-    [navigate],
+    [navigate, schemaNodes],
   );
   const handleChangeField = useCallback(
     (field: ChangePasswordField, value: string) => {
@@ -569,40 +600,9 @@ function App() {
               onRouteLanded={finishRouteBar}
             />
           }>
-          <Route path="/dashboard" element={<HomePage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/monitor" element={<MonitorPage />} />
-          <Route path="/projects" element={<ProjectsPage />} />
+          <SchemaBusinessRoutes routes={boundRoutes} />
           <Route path="/projects/:id" element={<ProjectDetailPage />} />
-          <Route path="/tickets" element={<TicketsPage />} />
-          <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/content" element={<ContentPage />} />
-          <Route path="/gallery" element={<GalleryPage />} />
-          <Route path="/jobs" element={<JobsPage />} />
-          <Route path="/import" element={<ImportPage />} />
-          <Route path="/performance" element={<PerformancePage />} />
-          <Route path="/help" element={<HelpPage />} />
-          <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route element={<PermissionRoute code="user:view" />}>
-            <Route path="/users" element={<UsersPage />} />
-          </Route>
-          <Route element={<PermissionRoute code="role:view" />}>
-            <Route path="/roles" element={<RolesPage />} />
-          </Route>
-          <Route element={<PermissionRoute code="menu:view" />}>
-            <Route path="/menus" element={<MenusPage />} />
-          </Route>
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route element={<PermissionRoute code="media:view" />}>
-            <Route path="/files" element={<FilesPage />} />
-          </Route>
-          <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/tasks" element={<TasksPage />} />
-          <Route path="/audit-logs" element={<AuditLogsPage />} />
-          <Route path="/about" element={<AboutPage />} />
         </Route>
       </Route>
 

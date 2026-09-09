@@ -335,6 +335,45 @@ export function isShellPageKey(value: unknown): value is ShellPageKey {
   );
 }
 
+export function normalizeShellPath(path: string | undefined): string | undefined {
+  if (path == null) {
+    return undefined;
+  }
+  const trimmed = path.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+}
+
+export function collectShellMenuNodes(
+  payload: MenuSchemaPayload = BUNDLED_MENU_SCHEMA_PAYLOAD,
+): MenuSchemaNode[] {
+  return [
+    ...payload.items,
+    ...payload.bottomItems,
+    ...SHELL_HIDDEN_MENU_SCHEMA,
+  ];
+}
+
+export function getShellNavigatePath(
+  key: string,
+  nodes: MenuSchemaNode[] = collectShellMenuNodes(),
+): string | undefined {
+  const node = findShellMenuItem(nodes, key);
+  const fromSchema = normalizeShellPath(node?.path);
+  if (fromSchema) {
+    return fromSchema;
+  }
+  if (node?.iframeSrc) {
+    return `/${key}`;
+  }
+  if (isShellPageKey(key)) {
+    return SHELL_MENU_ROUTES[key];
+  }
+  return undefined;
+}
+
 function isUsableSchema(value: unknown): value is MenuSchema {
   return (
     Array.isArray(value) &&
@@ -494,16 +533,25 @@ export function getShellExpandedKeys(
   return trail.slice(0, -1).map((item) => item.key);
 }
 
-export function getShellPageTitle(key: string): string {
-  return (
-    findShellMenuItem(
-      [
-        ...SHELL_MENU_SCHEMA,
-        ...SHELL_BOTTOM_MENU_SCHEMA,
-        ...SHELL_HIDDEN_MENU_SCHEMA,
-      ],
-      key,
-    )?.label ?? '仪表盘'
+export function getShellPageTitle(
+  key: string,
+  items: MenuSchemaNode[] = [
+    ...SHELL_MENU_SCHEMA,
+    ...SHELL_BOTTOM_MENU_SCHEMA,
+    ...SHELL_HIDDEN_MENU_SCHEMA,
+  ],
+): string {
+  return findShellMenuItem(items, key)?.label ?? '仪表盘';
+}
+
+function isNavigableMenuLeaf(node: MenuSchemaNode): boolean {
+  if (node.type === 'divider' || node.type === 'group') {
+    return false;
+  }
+  return Boolean(
+    isShellPageKey(node.key) ||
+      normalizeShellPath(node.path) ||
+      node.iframeSrc,
   );
 }
 
@@ -511,9 +559,9 @@ export function flattenShellMenuLeaves(
   items: MenuSchemaNode[],
 ): MenuSchemaNode[] {
   return items.flatMap((item) =>
-    item.children
+    item.children && item.children.length > 0
       ? flattenShellMenuLeaves(item.children)
-      : isShellPageKey(item.key)
+      : isNavigableMenuLeaf(item)
         ? [item]
         : [],
   );

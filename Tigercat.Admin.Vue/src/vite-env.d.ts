@@ -20,6 +20,10 @@ declare module 'vue-router' {
   interface RouteMeta {
     requiresAuth?: boolean;
     requiresGuest?: boolean;
-    requiresPermission?: string;
+    requiresPermission?: string | string[];
+    menuKey?: string;
+    title?: string;
+    iframeSrc?: string;
+    hideInBreadcrumb?: boolean;
   }
 }

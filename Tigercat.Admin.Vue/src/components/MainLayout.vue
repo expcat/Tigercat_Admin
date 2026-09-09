@@ -20,11 +20,13 @@ import {
   useWatermarkEnabled,
 } from '../utils/watermark'
 import {
+  collectShellMenuNodes,
   getShellBreadcrumbItems,
-  SHELL_MENU_ROUTES,
+  getShellNavigatePath,
   getShellPageTitle,
   isShellPageKey,
   resolveShellPageKey,
+  useShellMenuSchema,
   type ShellPageKey
 } from '../utils/shell-navigation'
 import { useTagsView } from '../utils/tags-view'
@@ -54,34 +56,38 @@ defineEmits<{
 
 const route = useRoute()
 const router = useRouter()
+const menuSchema = useShellMenuSchema()
+const schemaNodes = computed(() => collectShellMenuNodes(menuSchema.value))
 
 const collapsed = ref(props.themePrefs.compactMode)
 const isMobile = ref(false)
 const sidebarOpen = ref(false)
 const chatOpen = ref(false)
 
+const selectedMenuKey = ref('home')
 const activeMenu = ref<ShellPageKey>('home')
 
-const pageTitle = computed(() => getShellPageTitle(activeMenu.value))
-const breadcrumbItems = computed(() => getShellBreadcrumbItems(activeMenu.value))
+const pageTitle = computed(() =>
+  getShellPageTitle(selectedMenuKey.value, schemaNodes.value),
+)
+const breadcrumbItems = computed(() =>
+  getShellBreadcrumbItems(selectedMenuKey.value, schemaNodes.value),
+)
 
-const navigateToPage = (key: ShellPageKey) => {
-  const routeName = SHELL_MENU_ROUTES[key]
-  if (!routeName) {
+const navigateToPage = (key: string) => {
+  const path = getShellNavigatePath(key, schemaNodes.value)
+  if (!path) {
     return
   }
 
-  activeMenu.value = key
+  selectedMenuKey.value = key
   if (isMobile.value) {
     handleSidebarClose()
   }
-  router.push({ name: routeName })
+  void router.push(path)
 }
 
 const handleMenuSelect = (key: string) => {
-  if (!isShellPageKey(key)) {
-    return
-  }
   navigateToPage(key)
 }
 
@@ -92,7 +98,7 @@ const {
   closeCurrent,
   closeOthers,
   closeAll,
-} = useTagsView(activeMenu, navigateToPage)
+} = useTagsView(activeMenu, (key) => navigateToPage(key))
 
 const { locked, lock, unlock } = useLockScreen()
 
@@ -160,11 +166,13 @@ watch(
 )
 
 watch(
-  () => route.name,
-  (name) => {
-    activeMenu.value = resolveShellPageKey(
-      typeof name === 'string' ? name : undefined,
-    )
+  () => [route.path, route.meta.menuKey] as const,
+  ([path, menuKey]) => {
+    const fromMeta = typeof menuKey === 'string' ? menuKey : undefined
+    selectedMenuKey.value = fromMeta || resolveShellPageKey(path)
+    if (isShellPageKey(selectedMenuKey.value)) {
+      activeMenu.value = selectedMenuKey.value
+    }
 
     if (isMobile.value) {
       handleSidebarClose()
@@ -201,7 +209,7 @@ watch(
       <div id="main-sidebar" class="h-full">
         <MainSidebar 
           :collapsed="false"
-          v-model:active-menu="activeMenu"
+          v-model:active-menu="selectedMenuKey"
           :show-collapse-toggle="false"
           sidebar-width="240px"
           collapsed-width="64px"
@@ -218,7 +226,7 @@ watch(
     >
       <MainSidebar 
         :collapsed="collapsed"
-        v-model:active-menu="activeMenu"
+        v-model:active-menu="selectedMenuKey"
         :show-collapse-toggle="true"
         sidebar-width="240px"
         collapsed-width="64px"
@@ -243,7 +251,7 @@ watch(
         @toggle-theme="$emit('toggle-theme')"
         @update-theme="$emit('update-theme', $event)"
         @toggle-sidebar="handleSidebarToggle"
-        @profile="router.push({ name: 'profile' })"
+        @profile="router.push('/profile')"
         @lock-screen="lock"
       />
 

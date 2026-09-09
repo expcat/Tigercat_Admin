@@ -6,7 +6,7 @@
 
 侧栏分两棵：`items` 是主菜单，`bottomItems` 是底栏（关于）。个人中心等不进侧栏的页面不在本接口里，仍由前端 `SHELL_HIDDEN_MENU_SCHEMA` 解析标题和面包屑。
 
-`path` 是站内路径，供契约与后续路由使用。当前 Shell 仍按菜单 `key` + `SHELL_MENU_ROUTES` 导航，不会把 `path` 写成 `MenuItem.href`，以免 hash 演示路由整页跳走。菜单管理轻页可增删改节点；新 key 若未写入 `SHELL_MENU_ROUTES`，侧栏能显示但点击不会跳转（mixed 动态路由是后续里程碑）。
+`path` 是站内路径。Shell 用 `schemaToRouteRecords` + `pageMap` 生成主要业务路由，点击侧栏按节点 `path` 跳转（`getShellNavigatePath`），不会把 `path` 写成 `MenuItem.href`，以免 hash 演示路由整页跳走。菜单管理轻页可增删改节点；新 key 若在 `pageMap` 里有对应页，或带安全 `iframeSrc`，会进入 mixed 路由；否则侧栏能显示但没有可挂载的页面。
 
 schema 存在内存（.NET 进程内 `MenuSchemaStore`；MockApi 写入 `sessionStorage` 演示状态）。重启 .NET API 会回到种子树；Mock 演示刷新会话前会保留 CRUD 结果。
 

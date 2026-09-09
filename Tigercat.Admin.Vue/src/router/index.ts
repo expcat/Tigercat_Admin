@@ -11,6 +11,11 @@ import {
   createPermissionContext,
   type Session,
 } from '../utils';
+import {
+  loadShellMenuSchema,
+  subscribeShellMenuSchema,
+} from '../utils/shell-navigation';
+import { buildVueSchemaChildren } from '../utils/schema-routes';
 import ExceptionPage from '../pages/ExceptionPage.vue';
 
 function isProtectedRoute(route: RouteLocationNormalized) {
@@ -77,6 +82,7 @@ const router = createRouter({
     },
     {
       path: '/',
+      name: 'protected',
       component: () => import('../components/ProtectedShell.vue'),
       meta: { requiresAuth: true },
       children: [
@@ -84,139 +90,18 @@ const router = createRouter({
           path: '',
           redirect: '/dashboard',
         },
-        {
-          path: 'dashboard',
-          name: 'dashboard',
-          component: () => import('../pages/HomePage.vue'),
-        },
-        {
-          path: 'analytics',
-          name: 'analytics',
-          component: () => import('../pages/AnalyticsPage.vue'),
-        },
-        {
-          path: 'monitor',
-          name: 'monitor',
-          component: () => import('../pages/MonitorPage.vue'),
-        },
-        {
-          path: 'projects',
-          name: 'projects',
-          component: () => import('../pages/ProjectsPage.vue'),
-        },
+        ...buildVueSchemaChildren(),
         {
           path: 'projects/:id',
           name: 'projects-detail',
           component: () => import('../pages/ProjectDetailPage.vue'),
-        },
-        {
-          path: 'profile',
-          name: 'profile',
-          component: () => import('../pages/ProfilePage.vue'),
-        },
-        {
-          path: 'tickets',
-          name: 'tickets',
-          component: () => import('../pages/TicketsPage.vue'),
-        },
-        {
-          path: 'approvals',
-          name: 'approvals',
-          component: () => import('../pages/ApprovalsPage.vue'),
+          meta: { menuKey: 'projects' },
         },
         {
           path: 'approvals/:id',
           name: 'approvals-detail',
           component: () => import('../pages/ApprovalDetailPage.vue'),
-        },
-        {
-          path: 'calendar',
-          name: 'calendar',
-          component: () => import('../pages/CalendarPage.vue'),
-        },
-        {
-          path: 'content',
-          name: 'content',
-          component: () => import('../pages/ContentPage.vue'),
-        },
-        {
-          path: 'gallery',
-          name: 'gallery',
-          component: () => import('../pages/GalleryPage.vue'),
-        },
-        {
-          path: 'jobs',
-          name: 'jobs',
-          component: () => import('../pages/JobsPage.vue'),
-        },
-        {
-          path: 'import',
-          name: 'import',
-          component: () => import('../pages/ImportPage.vue'),
-        },
-        {
-          path: 'performance',
-          name: 'performance',
-          component: () => import('../pages/PerformancePage.vue'),
-        },
-        {
-          path: 'help',
-          name: 'help',
-          component: () => import('../pages/HelpPage.vue'),
-        },
-        {
-          path: 'reports',
-          name: 'reports',
-          component: () => import('../pages/ReportsPage.vue'),
-        },
-        {
-          path: 'users',
-          name: 'users',
-          component: () => import('../pages/UsersPage.vue'),
-          meta: { requiresPermission: 'user:view' },
-        },
-        {
-          path: 'roles',
-          name: 'roles',
-          component: () => import('../pages/RolesPage.vue'),
-          meta: { requiresPermission: 'role:view' },
-        },
-        {
-          path: 'menus',
-          name: 'menus',
-          component: () => import('../pages/MenusPage.vue'),
-          meta: { requiresPermission: 'menu:view' },
-        },
-        {
-          path: 'settings',
-          name: 'settings',
-          component: () => import('../pages/SettingsPage.vue'),
-        },
-        {
-          path: 'files',
-          name: 'files',
-          component: () => import('../pages/FilesPage.vue'),
-          meta: { requiresPermission: 'media:view' },
-        },
-        {
-          path: 'notifications',
-          name: 'notifications',
-          component: () => import('../pages/NotificationsPage.vue'),
-        },
-        {
-          path: 'tasks',
-          name: 'tasks',
-          component: () => import('../pages/TasksPage.vue'),
-        },
-        {
-          path: 'audit-logs',
-          name: 'audit',
-          component: () => import('../pages/AuditLogsPage.vue'),
-        },
-        {
-          path: 'about',
-          name: 'about',
-          component: () => import('../pages/AboutPage.vue'),
+          meta: { menuKey: 'approvals' },
         },
       ],
     },
@@ -247,6 +132,21 @@ const router = createRouter({
 
 const permission = createPermissionContext();
 
+function syncSchemaRoutes(
+  payload: Parameters<typeof buildVueSchemaChildren>[0],
+) {
+  for (const record of buildVueSchemaChildren(payload)) {
+    const name = typeof record.name === 'string' ? record.name : undefined;
+    if (!name || router.hasRoute(name)) {
+      continue;
+    }
+    router.addRoute('protected', record);
+  }
+}
+
+subscribeShellMenuSchema(syncSchemaRoutes);
+void loadShellMenuSchema().then(syncSchemaRoutes);
+
 router.beforeEach(async (to, _from, next) => {
   const session = safeParse<Session>(localStorage.getItem(SESSION_KEY));
   const isAuthed = Boolean(session?.token);
@@ -254,7 +154,10 @@ router.beforeEach(async (to, _from, next) => {
   const requiresGuest = to.matched.some((record) => record.meta.requiresGuest);
   const requiresPermission = to.matched
     .map((record) => record.meta.requiresPermission)
-    .find((code): code is string => typeof code === 'string');
+    .find(
+      (code): code is string | string[] =>
+        typeof code === 'string' || Array.isArray(code),
+    );
   const showLoadingBar =
     isProtectedRoute(to) && to.fullPath !== _from.fullPath;
 
@@ -295,7 +198,10 @@ router.beforeEach(async (to, _from, next) => {
       }
       return;
     }
-    if (!permission.has(requiresPermission)) {
+    const requiredCodes = Array.isArray(requiresPermission)
+      ? requiresPermission
+      : [requiresPermission];
+    if (!permission.has(...requiredCodes)) {
       next('/403');
       return;
     }

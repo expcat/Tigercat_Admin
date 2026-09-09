@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import type { SpotlightItem } from '@expcat/tigercat-core';
 import { Spotlight } from '@expcat/tigercat-react/Spotlight';
 import {
-  SHELL_MENU_ROUTES,
+  collectShellMenuNodes,
   filterShellMenuSchema,
   flattenShellMenuLeaves,
-  isShellPageKey,
+  getShellNavigatePath,
   useShellMenuSchema,
 } from '../utils/shell-navigation';
 import { usePermission } from '../utils/permission';
@@ -73,9 +73,11 @@ export function CommandPalette({
       [...menuSchema.items, ...menuSchema.bottomItems],
       hasPerm,
     );
+    const nodes = collectShellMenuNodes(menuSchema);
     const navItems: SpotlightItem[] = flattenShellMenuLeaves(permitted).flatMap(
       (item) => {
-        if (!isShellPageKey(item.key)) {
+        const path = getShellNavigatePath(item.key, nodes);
+        if (!path) {
           return [];
         }
 
@@ -85,10 +87,10 @@ export function CommandPalette({
             label: item.label ?? item.key,
             description: `跳转到${item.label ?? item.key}`,
             group: '页面导航',
-            keywords: [item.label ?? '', item.key],
+            keywords: [item.label ?? '', item.key, path],
             data: {
               kind: 'route',
-              value: SHELL_MENU_ROUTES[item.key],
+              value: path,
             } as CommandData,
           },
         ];

@@ -18,9 +18,11 @@ import {
   useWatermarkEnabled,
 } from '../utils/watermark';
 import {
+  collectShellMenuNodes,
   getShellBreadcrumbItems,
   getShellPageTitle,
   isShellPageKey,
+  useShellMenuSchema,
   type ShellPageKey,
 } from '../utils/shell-navigation';
 import { useTagsView } from '../utils/tags-view';
@@ -69,6 +71,8 @@ export function MainLayout({
   const currentPageKey: ShellPageKey = isShellPageKey(currentActiveMenu)
     ? currentActiveMenu
     : 'home';
+  const menuSchema = useShellMenuSchema();
+  const schemaNodes = collectShellMenuNodes(menuSchema);
   const tagsView = useTagsView(currentPageKey, onNavigate);
   const { locked, lock, unlock } = useLockScreen();
   const wasLockedRef = useRef(locked);
@@ -135,8 +139,8 @@ export function MainLayout({
     setSidebarOpen(false);
   };
 
-  const pageTitle = getShellPageTitle(currentActiveMenu);
-  const breadcrumbItems = getShellBreadcrumbItems(currentActiveMenu);
+  const pageTitle = getShellPageTitle(currentActiveMenu, schemaNodes);
+  const breadcrumbItems = getShellBreadcrumbItems(currentActiveMenu, schemaNodes);
 
   return (
     <div className="relative h-screen w-full">
