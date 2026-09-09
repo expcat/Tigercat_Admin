@@ -62,7 +62,7 @@
 **Admin**（升 ^2.3.2 后）
 - 菜单管理轻页（基于 `/api/menus/schema` + 节点 CRUD；角色预览）— 本切片已做
 - 工单/审批 Mock 流转（待办 + 详情动作写回）— 本切片已做
-- 真机 Review 一轮 — 下一切片
+- 真机 Review 一轮 — Vue + React 已走查（菜单 CRUD / Viewer 角色预览；审批车道与详情同意/驳回/转交写回实例+关联工单；无 P0）
 
 **验收**: Viewer 双端 demo；菜单 CRUD 预览；审批非纯 toast；走查无 P0
 

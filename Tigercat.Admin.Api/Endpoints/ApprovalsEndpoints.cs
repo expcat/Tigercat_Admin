@@ -102,7 +102,7 @@ public class ApprovalsEndpoints : IEndpointDefinition
         if (!string.IsNullOrWhiteSpace(result.TicketId) && !string.IsNullOrWhiteSpace(result.TicketStatus))
         {
             var ticket = await db.Tickets.FirstOrDefaultAsync(item => item.PublicId == result.TicketId, ct);
-            if (ticket is not null && ticket.Status != result.TicketStatus)
+            if (ticket is not null && ApprovalStore.ShouldAdvanceTicketStatus(ticket.Status, result.TicketStatus))
             {
                 ticket.Status = result.TicketStatus;
                 ticket.UpdatedAt = DateTime.Now;

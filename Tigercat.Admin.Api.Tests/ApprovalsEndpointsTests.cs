@@ -157,6 +157,103 @@ public abstract class ApprovalsEndpointsTests<TFixture> : IClassFixture<TFixture
     }
 
     [Fact]
+    public async Task TransferLinkedProgressTicket_DoesNotRegressStatus()
+    {
+        var token = await LoginAsAdminAsync();
+        var before = await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/tickets/TK-2048", token));
+        before.EnsureSuccessStatusCode();
+        var beforeBody = await before.ReadApiResponseAsync<TicketResponse>();
+        Assert.Equal("progress", beforeBody?.Data?.Status);
+
+        var created = await _client.SendAsync(AuthJson(
+            HttpMethod.Post,
+            "/api/approvals",
+            token,
+            new
+            {
+                title = "转交不回退工单",
+                category = "工单",
+                reason = "挂接进行中工单后转交",
+                assignee = "admin",
+                ticketId = "TK-2048",
+            }));
+        created.EnsureSuccessStatusCode();
+        var createdBody = await created.ReadApiResponseAsync<ApprovalDetailResponse>();
+        var id = createdBody!.Data!.Id;
+
+        var transferred = await _client.SendAsync(AuthJson(
+            HttpMethod.Post,
+            $"/api/approvals/{id}/actions",
+            token,
+            new { action = "transfer", transferTo = "demo" }));
+        transferred.EnsureSuccessStatusCode();
+
+        var afterTransfer = await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/tickets/TK-2048", token));
+        afterTransfer.EnsureSuccessStatusCode();
+        var afterTransferBody = await afterTransfer.ReadApiResponseAsync<TicketResponse>();
+        Assert.Equal("progress", afterTransferBody?.Data?.Status);
+
+        var approved = await _client.SendAsync(AuthJson(
+            HttpMethod.Post,
+            $"/api/approvals/{id}/actions",
+            token,
+            new { action = "approve" }));
+        approved.EnsureSuccessStatusCode();
+
+        var afterApprove = await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/tickets/TK-2048", token));
+        var afterApproveBody = await afterApprove.ReadApiResponseAsync<TicketResponse>();
+        Assert.Equal("progress", afterApproveBody?.Data?.Status);
+    }
+
+    [Fact]
+    public async Task RejectLinkedTicket_ClosesTicket()
+    {
+        var token = await LoginAsAdminAsync();
+        var ticketCreated = await _client.SendAsync(AuthJson(
+            HttpMethod.Post,
+            "/api/tickets",
+            token,
+            new
+            {
+                title = "驳回关闭工单",
+                category = "需求",
+                priority = "low",
+                description = "独立工单，避免污染种子 TK-2050",
+            }));
+        ticketCreated.EnsureSuccessStatusCode();
+        var ticketCreatedBody = await ticketCreated.ReadApiResponseAsync<TicketResponse>();
+        var ticketId = ticketCreatedBody!.Data!.Id;
+
+        var created = await _client.SendAsync(AuthJson(
+            HttpMethod.Post,
+            "/api/approvals",
+            token,
+            new
+            {
+                title = "驳回关闭工单",
+                category = "工单",
+                reason = "驳回后工单应关闭",
+                assignee = "admin",
+                ticketId,
+            }));
+        created.EnsureSuccessStatusCode();
+        var createdBody = await created.ReadApiResponseAsync<ApprovalDetailResponse>();
+        var id = createdBody!.Data!.Id;
+
+        var rejected = await _client.SendAsync(AuthJson(
+            HttpMethod.Post,
+            $"/api/approvals/{id}/actions",
+            token,
+            new { action = "reject", comment = "不排期" }));
+        rejected.EnsureSuccessStatusCode();
+
+        var ticket = await _client.SendAsync(AuthRequest(HttpMethod.Get, $"/api/tickets/{ticketId}", token));
+        ticket.EnsureSuccessStatusCode();
+        var ticketBody = await ticket.ReadApiResponseAsync<TicketResponse>();
+        Assert.Equal("closed", ticketBody?.Data?.Status);
+    }
+
+    [Fact]
     public async Task ApproveLinkedTicket_UpdatesTicketStatus()
     {
         var token = await LoginAsAdminAsync();

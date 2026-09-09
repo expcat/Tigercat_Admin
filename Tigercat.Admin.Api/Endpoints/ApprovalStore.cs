@@ -217,7 +217,7 @@ internal sealed class ApprovalStore
                     break;
             }
 
-            var ticketStatus = ResolveTicketStatus(item);
+            var ticketStatus = ResolveTicketStatus(item, action);
             return new ApprovalMutation(true, 200, "Success", ToDetail(item), item.TicketId, ticketStatus);
         }
     }
@@ -249,9 +249,33 @@ internal sealed class ApprovalStore
         item.UpdatedAt = now;
     }
 
-    private static string? ResolveTicketStatus(ApprovalInstance item)
+    internal static bool ShouldAdvanceTicketStatus(string current, string next)
+    {
+        if (string.Equals(current, next, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return TicketStatusRank(next) > TicketStatusRank(current);
+    }
+
+    private static int TicketStatusRank(string status) => status.Trim().ToLowerInvariant() switch
+    {
+        "open" => 0,
+        "accepted" => 1,
+        "progress" => 2,
+        "resolved" or "closed" => 3,
+        _ => -1,
+    };
+
+    private static string? ResolveTicketStatus(ApprovalInstance item, string action)
     {
         if (string.IsNullOrWhiteSpace(item.TicketId))
+        {
+            return null;
+        }
+
+        if (action is "transfer" or "comment")
         {
             return null;
         }

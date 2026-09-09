@@ -13,6 +13,7 @@ import {
   listApprovals,
   restoreApprovals,
   seedApprovals,
+  shouldAdvanceTicketStatus,
   type ApprovalInstance,
 } from './approvals';
 
@@ -2283,7 +2284,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     if (!result.ok) return makeError(result.message, result.status);
     if (result.ticketId && result.ticketStatus) {
       const ticket = state.tickets.find((item) => item.id === result.ticketId);
-      if (ticket && ticket.status !== result.ticketStatus) {
+      if (ticket && shouldAdvanceTicketStatus(ticket.status, result.ticketStatus)) {
         ticket.status = result.ticketStatus as TicketStatus;
         ticket.updatedAt = nowTicketLabel();
       }

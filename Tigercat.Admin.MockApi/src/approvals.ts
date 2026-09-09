@@ -467,8 +467,22 @@ const remember = (item: ApprovalInstance, username: string) => {
   }
 };
 
-const ticketStatusFor = (item: ApprovalInstance): string | null => {
+const TICKET_STATUS_RANK: Record<string, number> = {
+  open: 0,
+  accepted: 1,
+  progress: 2,
+  resolved: 3,
+  closed: 3,
+};
+
+export function shouldAdvanceTicketStatus(current: string, next: string): boolean {
+  if (current === next) return false;
+  return (TICKET_STATUS_RANK[next] ?? -1) > (TICKET_STATUS_RANK[current] ?? -1);
+}
+
+const ticketStatusFor = (item: ApprovalInstance, action: ApprovalAction): string | null => {
   if (!item.ticketId) return null;
+  if (action === 'transfer' || action === 'comment') return null;
   if (item.status === 'approved') return 'resolved';
   if (item.status === 'rejected') return 'closed';
   if (item.status === 'pending') {
@@ -557,7 +571,7 @@ export function applyApprovalAction(
     status: 200,
     detail: toDetail(item),
     ticketId: item.ticketId,
-    ticketStatus: ticketStatusFor(item),
+    ticketStatus: ticketStatusFor(item, action),
   };
 }
 

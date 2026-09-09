@@ -6,7 +6,7 @@
 
 列表按当前登录用户划分四条车道：待办（当前处理人且未结束）、已办（当前用户曾同意/驳回/转交）、抄送（`cc` 含当前用户）、我发起的（`starter` 为当前用户）。同一实例可以同时出现在多条车道。
 
-同意 / 驳回 / 转交写回实例上的 `status`、`assignee`、`steps`（含当前步骤与抄送 children）。若实例带 `ticketId`，动作还会把关联工单状态写成 `accepted` / `progress` / `resolved` / `closed`（见 [tickets.md](tickets.md)）。工单详情自己的操作条走工单 `PUT`，完整 Viewer + 实例写回以本接口为准。
+同意 / 驳回 / 转交写回实例上的 `status`、`assignee`、`steps`（含当前步骤与抄送 children）。若实例带 `ticketId`，**同意 / 驳回**才会同步关联工单：通过且仍在审批中 → `accepted`（当前步为 `lead`/`start`）或 `progress`（后续步）；整单通过 → `resolved`；驳回 → `closed`。转交 / 评论不改工单状态；同步只允许前进（`open` < `accepted` < `progress` < `resolved`/`closed`），不会把已在 `progress` 的工单打回 `accepted`。工单详情自己的操作条走工单 `PUT`，完整 Viewer + 实例写回以本接口为准。
 
 ## 对象
 

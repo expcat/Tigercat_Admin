@@ -223,12 +223,18 @@ function TicketsPage() {
     if (!selected) return;
     const id = selected.id;
     try {
-      if (item.action === 'transfer') {
-        const payload = await sendTicketMessage(id, '已转交（演示写回）。完整实例状态机见审批中心。');
+      if (item.action === 'transfer' || item.action === 'comment') {
+        const text = item.action === 'transfer'
+          ? '已转交（演示写回）。完整实例状态机见审批中心。'
+          : '已添加评论（演示写回）。';
+        const payload = await sendTicketMessage(id, text);
         setTickets((prev) =>
           prev.map((ticket) => (ticket.id === id ? toTicketView(payload.data, ticket.notes) : ticket)),
         );
-        Message.success({ content: '已写回工单对话（转交演示）', duration: 2200 });
+        Message.success({
+          content: item.action === 'transfer' ? '已写回工单对话（转交演示）' : '已写回工单对话（评论）',
+          duration: 2200,
+        });
         return;
       }
       const nextStatus = nextTicketStatusForWorkflow(selected.status, item.action);

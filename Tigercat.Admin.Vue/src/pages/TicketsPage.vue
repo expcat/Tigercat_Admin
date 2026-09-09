@@ -186,12 +186,18 @@ async function handleWorkflowAction(item: WorkflowActionBarItem) {
   const t = selected.value
   if (!t) return
   try {
-    if (item.action === 'transfer') {
-      const payload = await sendTicketMessage(t.id, '已转交（演示写回）。完整实例状态机见审批中心。')
-      tickets.value = tickets.value.map((item) =>
-        item.id === t.id ? toTicketView(payload.data, item.notes) : item,
+    if (item.action === 'transfer' || item.action === 'comment') {
+      const text = item.action === 'transfer'
+        ? '已转交（演示写回）。完整实例状态机见审批中心。'
+        : '已添加评论（演示写回）。'
+      const payload = await sendTicketMessage(t.id, text)
+      tickets.value = tickets.value.map((row) =>
+        row.id === t.id ? toTicketView(payload.data, row.notes) : row,
       )
-      Message.success({ content: '已写回工单对话（转交演示）', duration: 2200 })
+      Message.success({
+        content: item.action === 'transfer' ? '已写回工单对话（转交演示）' : '已写回工单对话（评论）',
+        duration: 2200,
+      })
       return
     }
     const nextStatus = nextTicketStatusForWorkflow(t.status, item.action)
