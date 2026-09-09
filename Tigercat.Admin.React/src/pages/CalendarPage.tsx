@@ -16,11 +16,16 @@ import { DatePicker } from '@expcat/tigercat-react/DatePicker';
 import { TimePicker } from '@expcat/tigercat-react/TimePicker';
 import { RadioGroup } from '@expcat/tigercat-react/RadioGroup';
 import { Radio } from '@expcat/tigercat-react/Radio';
-import type {
-  ListItem,
-  TagVariant,
-  BadgeVariant,
+import {
+  calendarDateCellDotClasses,
+  calendarDateCellExtraClasses,
+  getCalendarEventDotStyle,
+  type BadgeVariant,
+  type CalendarDateCellExtra,
+  type ListItem,
+  type TagVariant,
 } from '@expcat/tigercat-core';
+
 import { PageHeader } from '../components/PageHeader';
 import { MutedPanel } from '../components/PageFragments';
 import { CalendarIcon, PlusIcon } from '../components/Icons';
@@ -29,6 +34,7 @@ import {
   createCalendarEvent,
   fetchCalendarEvents,
   formatCalendarDate,
+  toCalendarCellEvents,
   type CalendarEvent,
   type CalendarEventType,
 } from '../utils/calendar';
@@ -42,6 +48,24 @@ const TYPE_META: Record<CalendarEventType, { label: string; variant: TagVariant 
 
 const readErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
+
+function renderDateCell(_date: Date, extra: CalendarDateCellExtra) {
+  if (extra.events.length === 0) return null;
+  return (
+    <span className={`${calendarDateCellExtraClasses} flex-col`} aria-hidden="true">
+      <span className={calendarDateCellExtraClasses}>
+        {extra.events.slice(0, 3).map((event, index) => (
+          <span
+            key={event.key ?? `${extra.iso}-${index}`}
+            className={calendarDateCellDotClasses}
+            style={getCalendarEventDotStyle(event.color)}
+          />
+        ))}
+      </span>
+      <span className="text-[10px] leading-none">{extra.events.length}</span>
+    </span>
+  );
+}
 
 function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -122,6 +146,8 @@ function CalendarPage() {
   );
   const nextEvent = useMemo(() => upcoming.find((e) => e.ts > Date.now()) ?? null, [upcoming]);
   const countdownTarget = nextEvent ? new Date(nextEvent.ts) : new Date(Date.now() + 45 * 60 * 1000);
+
+  const cellEvents = useMemo(() => toCalendarCellEvents(events), [events]);
 
   const upcomingList: ListItem[] = useMemo(
     () =>
@@ -235,11 +261,18 @@ function CalendarPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card header={<Text weight="bold">日历</Text>} className="lg:col-span-2">
-          <Calendar value={selectedDate} mode="month" fullscreen onChange={(d) => setSelectedDate(d)} />
+          <Calendar
+            value={selectedDate}
+            mode="month"
+            fullscreen
+            events={cellEvents}
+            dateCellRender={renderDateCell}
+            onChange={(d) => setSelectedDate(d)}
+          />
           <MutedPanel
             compact
             className="mt-3"
-            description="点击日期查看当天日程；事件按类型在右侧列表中以标记区分。"
+            description="格子内用色点和数量标记当天事件；点击日期查看右侧详情。不要另画一套格内事件层。"
           />
         </Card>
 

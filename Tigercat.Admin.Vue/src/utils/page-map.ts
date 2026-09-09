@@ -21,6 +21,7 @@ export const SHELL_PAGE_MAP = {
   users: () => import('../pages/UsersPage.vue'),
   roles: () => import('../pages/RolesPage.vue'),
   menus: () => import('../pages/MenusPage.vue'),
+  permissionDemo: () => import('../pages/PermissionDemoPage.vue'),
   settings: () => import('../pages/SettingsPage.vue'),
   files: () => import('../pages/FilesPage.vue'),
   notifications: () => import('../pages/NotificationsPage.vue'),

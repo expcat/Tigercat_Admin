@@ -23,6 +23,7 @@ export const SHELL_PAGE_MAP = {
   users: lazy(() => import('../pages/UsersPage')),
   roles: lazy(() => import('../pages/RolesPage')),
   menus: lazy(() => import('../pages/MenusPage')),
+  permissionDemo: lazy(() => import('../pages/PermissionDemoPage')),
   settings: lazy(() => import('../pages/SettingsPage')),
   files: lazy(() => import('../pages/FilesPage')),
   notifications: lazy(() => import('../pages/NotificationsPage')),

@@ -144,6 +144,12 @@ const pageNodes: Record<string, MockMenuSchemaNode> = {
     permission: 'menu:view',
     path: '/menus',
   },
+  permissionDemo: {
+    key: 'permissionDemo',
+    label: '按钮权限',
+    icon: 'lock',
+    path: '/permission-demo',
+  },
   settings: {
     key: 'settings',
     label: '系统设置',
@@ -229,6 +235,7 @@ export const MOCK_MENU_SCHEMA_ITEMS: MockMenuSchemaNode[] = [
       pageNodes.users,
       pageNodes.roles,
       pageNodes.menus,
+      pageNodes.permissionDemo,
       pageNodes.settings,
       pageNodes.files,
       pageNodes.notifications,

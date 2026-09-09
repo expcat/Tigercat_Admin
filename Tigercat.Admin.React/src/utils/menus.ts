@@ -16,6 +16,7 @@ export const MENU_ROOT_BOTTOM = '__root:bottomItems__';
 
 export const MENU_ICON_OPTIONS = [
   { label: '菜单', value: 'menu' },
+  { label: '锁', value: 'lock' },
   { label: '仪表盘', value: 'dashboard' },
   { label: '用户', value: 'users' },
   { label: '盾牌', value: 'shield' },

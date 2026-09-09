@@ -22,6 +22,22 @@ export interface CreateCalendarEventPayload {
   location: string;
 }
 
+export const CALENDAR_EVENT_COLORS: Record<CalendarEventType, string> = {
+  meeting: '#2563eb',
+  review: '#d97706',
+  release: '#dc2626',
+  reminder: '#0284c7',
+};
+
+export function toCalendarCellEvents(events: CalendarEvent[]) {
+  return events.map((item) => ({
+    key: item.id,
+    title: item.title,
+    date: item.date,
+    color: CALENDAR_EVENT_COLORS[item.type],
+  }));
+}
+
 const pad = (n: number) => String(n).padStart(2, '0');
 
 export function formatCalendarDate(value: Date): string {

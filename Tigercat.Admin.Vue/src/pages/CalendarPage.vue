@@ -17,10 +17,13 @@ import { TimePicker } from '@expcat/tigercat-vue/TimePicker'
 import { RadioGroup } from '@expcat/tigercat-vue/RadioGroup'
 import { Radio } from '@expcat/tigercat-vue/Radio'
 import { Input } from '@expcat/tigercat-vue/Input'
-import type {
-  ListItem,
-  DatePickerModelValue,
-  TimePickerModelValue,
+import {
+  calendarDateCellDotClasses,
+  calendarDateCellExtraClasses,
+  getCalendarEventDotStyle,
+  type DatePickerModelValue,
+  type ListItem,
+  type TimePickerModelValue,
 } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import MutedPanel from '../components/MutedPanel.vue'
@@ -30,6 +33,7 @@ import {
   createCalendarEvent,
   fetchCalendarEvents,
   formatCalendarDate,
+  toCalendarCellEvents,
   type CalendarEvent,
   type CalendarEventType,
 } from '../utils/calendar'
@@ -78,6 +82,8 @@ const countdownTarget = computed(() =>
 function handleCountdownFinish() {
   Message.info({ content: '有一个日程已到开始时间（演示）', duration: 2600 })
 }
+
+const cellEvents = computed(() => toCalendarCellEvents(events.value))
 
 const upcomingList = computed<ListItem[]>(() =>
   upcoming.value
@@ -222,13 +228,32 @@ onMounted(() => {
           :model-value="selectedDate"
           mode="month"
           :fullscreen="true"
+          :events="cellEvents"
           @update:model-value="onDateChange"
           @change="onDateChange"
-        />
+        >
+          <template #dateCell="{ extra }">
+            <span
+              v-if="extra.events.length"
+              :class="[calendarDateCellExtraClasses, 'flex-col']"
+              aria-hidden="true"
+            >
+              <span :class="calendarDateCellExtraClasses">
+                <span
+                  v-for="(event, index) in extra.events.slice(0, 3)"
+                  :key="event.key ?? `${extra.iso}-${index}`"
+                  :class="calendarDateCellDotClasses"
+                  :style="getCalendarEventDotStyle(event.color)"
+                />
+              </span>
+              <span class="text-[10px] leading-none">{{ extra.events.length }}</span>
+            </span>
+          </template>
+        </Calendar>
         <MutedPanel
           compact
           class="mt-3"
-          description="点击日期查看当天日程；事件按类型在右侧列表中以标记区分。"
+          description="格子内用色点和数量标记当天事件；点击日期查看右侧详情。不要另画一套格内事件层。"
         />
       </Card>
 

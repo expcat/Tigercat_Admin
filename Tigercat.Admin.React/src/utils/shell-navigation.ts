@@ -27,6 +27,7 @@ export type ShellPageKey =
   | 'users'
   | 'roles'
   | 'menus'
+  | 'permissionDemo'
   | 'settings'
   | 'files'
   | 'notifications'
@@ -152,6 +153,12 @@ const pageNodes: Record<ShellPageKey, MenuSchemaNode> = {
     permission: 'menu:view',
     path: '/menus',
   },
+  permissionDemo: {
+    key: 'permissionDemo',
+    label: '按钮权限',
+    icon: 'lock',
+    path: '/permission-demo',
+  },
   settings: {
     key: 'settings',
     label: '系统设置',
@@ -244,6 +251,7 @@ export const SHELL_MENU_SCHEMA: MenuSchema = [
       pageNodes.users,
       pageNodes.roles,
       pageNodes.menus,
+      pageNodes.permissionDemo,
       pageNodes.settings,
       pageNodes.files,
       pageNodes.notifications,
@@ -280,6 +288,7 @@ export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   users: '/users',
   roles: '/roles',
   menus: '/menus',
+  permissionDemo: '/permission-demo',
   settings: '/settings',
   files: '/files',
   notifications: '/notifications',

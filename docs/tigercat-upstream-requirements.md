@@ -43,7 +43,7 @@
 - **现状：** 类型未暴露按日期格的渲染插槽；Admin 用右侧「当日日程」+ `Badge`/`Popover` 近似。
 - **对标：** Ant Design Calendar `dateCellRender` / Vben 日程格内标记。
 - **建议 API：** `dateCellRender?(date, extra)` 或具名插槽 `#dateCell="{ date, events }"`；格子 `aria-label` 含当天事件数。React/Vue 对称。
-- **Admin 落地：** 上游补齐后替换右侧列表近似，不改日历 API 契约。
+- **Admin 落地：** `/calendar` 已用 `events` + React `dateCellRender` / Vue `#dateCell` 在格子内标色点与数量；右侧列表只保留选中日详情，不再当格内事件的唯一展示。
 
 ### 1.2 Text 可复制 — P1（已在 v2.2.0 落地）
 

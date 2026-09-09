@@ -257,40 +257,34 @@ function ProtectedLayout({
   );
 }
 
-function SchemaBusinessRoutes({
-  routes,
-}: {
-  routes: ReturnType<typeof buildReactSchemaRoutes>;
-}) {
-  return (
-    <>
-      {routes.map((route) => {
-        const Page = route.component as ComponentType<{
-          src?: string;
-          title?: string;
-        }>;
-        const element = route.usesIframe ? (
-          <Page src={route.iframeSrc} title={route.meta.title} />
-        ) : (
-          <Page />
-        );
-        const pageRoute = (
-          <Route key={route.key} path={route.path} element={element} />
-        );
-        const permission = routeGuardPermission(route.key, route.permission);
-        if (permission) {
-          return (
-            <Route
-              key={`${route.key}-guard`}
-              element={<PermissionRoute code={permission} />}>
-              {pageRoute}
-            </Route>
-          );
-        }
-        return pageRoute;
-      })}
-    </>
-  );
+function renderSchemaBusinessRoutes(
+  routes: ReturnType<typeof buildReactSchemaRoutes>,
+) {
+  return routes.map((route) => {
+    const Page = route.component as ComponentType<{
+      src?: string;
+      title?: string;
+    }>;
+    const element = route.usesIframe ? (
+      <Page src={route.iframeSrc} title={route.meta.title} />
+    ) : (
+      <Page />
+    );
+    const pageRoute = (
+      <Route key={route.key} path={route.path} element={element} />
+    );
+    const permission = routeGuardPermission(route.key, route.permission);
+    if (permission) {
+      return (
+        <Route
+          key={`${route.key}-guard`}
+          element={<PermissionRoute code={permission} />}>
+          {pageRoute}
+        </Route>
+      );
+    }
+    return pageRoute;
+  });
 }
 
 function App() {
@@ -600,7 +594,7 @@ function App() {
               onRouteLanded={finishRouteBar}
             />
           }>
-          <SchemaBusinessRoutes routes={boundRoutes} />
+          {renderSchemaBusinessRoutes(boundRoutes)}
           <Route path="/projects/:id" element={<ProjectDetailPage />} />
           <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
         </Route>
