@@ -18,7 +18,7 @@ import {
   type ApprovalActionBody,
   type ApprovalInstance,
 } from './approvals';
-import { listMockContacts } from './contacts';
+import { findContactUser, listMockContacts } from './contacts';
 
 type ApiResponse<T = unknown> = {
   code: number;
@@ -1406,22 +1406,35 @@ function requireMenuPermission(
   return null;
 }
 
+function headerValue(request: Request | null, init: RequestInit, name: string): string {
+  if (request?.headers.get(name)) return request.headers.get(name) ?? '';
+  if (init.headers instanceof Headers) return init.headers.get(name) ?? '';
+  if (Array.isArray(init.headers)) {
+    const found = init.headers.find(([key]) => key.toLowerCase() === name.toLowerCase());
+    return found?.[1] ?? '';
+  }
+  const record = init.headers as Record<string, string> | undefined;
+  if (!record) return '';
+  const match = Object.entries(record).find(([key]) => key.toLowerCase() === name.toLowerCase());
+  return match?.[1] ?? '';
+}
+
 function sessionUsername(request: Request | null, init: RequestInit): string {
   const authHeader =
-    request?.headers.get('Authorization') ||
-    request?.headers.get('X-Token') ||
-    (init.headers instanceof Headers
-      ? init.headers.get('Authorization') || init.headers.get('X-Token')
-      : Array.isArray(init.headers)
-        ? init.headers.find(([key]) =>
-            ['authorization', 'x-token'].includes(key.toLowerCase()),
-          )?.[1]
-        : (init.headers as Record<string, string> | undefined)?.Authorization ||
-          (init.headers as Record<string, string> | undefined)?.['X-Token']);
+    headerValue(request, init, 'Authorization') || headerValue(request, init, 'X-Token');
   const token = String(authHeader ?? '').replace(/^Bearer\s+/i, '');
   if (token.startsWith(`${DEMO_TOKEN}:`)) return token.slice(DEMO_TOKEN.length + 1);
   if (token === DEMO_TOKEN) return 'admin';
   return '';
+}
+
+function approvalActor(request: Request | null, init: RequestInit): string {
+  const demo = headerValue(request, init, 'X-Demo-Actor').trim();
+  if (demo) {
+    const user = findContactUser(demo);
+    if (user) return user.username;
+  }
+  return sessionUsername(request, init);
 }
 
 function issueSession(username: string) {
@@ -2237,7 +2250,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   const COMMENT_TARGETS: CommentTargetType[] = ['ticket', 'project'];
 
   if (path === '/api/approvals' && method === 'GET') {
-    const username = sessionUsername(request, init);
+    const username = approvalActor(request, init);
     if (!username) return makeError('未授权', 401);
     const listed = listApprovals(
       state.approvals,
@@ -2250,13 +2263,13 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/approvals/contacts' && method === 'GET') {
-    const username = sessionUsername(request, init);
+    const username = approvalActor(request, init);
     if (!username) return makeError('未授权', 401);
     return makeJson(listMockContacts());
   }
 
   if (path === '/api/approvals/resolve' && method === 'POST') {
-    const username = sessionUsername(request, init);
+    const username = approvalActor(request, init);
     if (!username) return makeError('未授权', 401);
     const payload = (body ?? {}) as {
       source?: unknown;
@@ -2272,7 +2285,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/approvals' && method === 'POST') {
-    const username = sessionUsername(request, init);
+    const username = approvalActor(request, init);
     if (!username) return makeError('未授权', 401);
     const created = createApproval(
       state.approvals,
@@ -2300,7 +2313,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
 
   const approvalActionMatch = path.match(/^\/api\/approvals\/([^/]+)\/actions$/);
   if (approvalActionMatch && method === 'POST') {
-    const username = sessionUsername(request, init);
+    const username = approvalActor(request, init);
     if (!username) return makeError('未授权', 401);
     const result = applyApprovalAction(
       state.approvals,
@@ -2323,7 +2336,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
 
   const approvalMatch = path.match(/^\/api\/approvals\/([^/]+)$/);
   if (approvalMatch && method === 'GET') {
-    const username = sessionUsername(request, init);
+    const username = approvalActor(request, init);
     if (!username) return makeError('未授权', 401);
     const detail = getApproval(state.approvals, decodeURIComponent(approvalMatch[1]));
     return detail ? makeJson(detail) : makeError('审批实例不存在', 404);

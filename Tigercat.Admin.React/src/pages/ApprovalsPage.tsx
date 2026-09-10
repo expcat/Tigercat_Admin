@@ -9,9 +9,11 @@ import { Segmented } from '@expcat/tigercat-react/Segmented';
 import { Tag } from '@expcat/tigercat-react/Tag';
 import type { FormHandle, FormValues, TableColumn } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
+import { ApprovalActorSwitcher } from '../components/ApprovalActorSwitcher';
 import { CheckCircleIcon } from '../components/Icons';
 import {
   APPROVAL_CREATE_SCHEMA,
+  APPROVAL_DEMO_ACTOR_EVENT,
   APPROVAL_LANES,
   APPROVAL_PAGE_SIZE,
   APPROVAL_STATUS_META,
@@ -56,6 +58,14 @@ function ApprovalsPage() {
 
   useEffect(() => {
     void loadList();
+  }, [loadList]);
+
+  useEffect(() => {
+    const reload = () => {
+      void loadList();
+    };
+    window.addEventListener(APPROVAL_DEMO_ACTOR_EVENT, reload);
+    return () => window.removeEventListener(APPROVAL_DEMO_ACTOR_EVENT, reload);
   }, [loadList]);
 
   const openDetail = (id: string) => {
@@ -183,7 +193,7 @@ function ApprovalsPage() {
     <div className="space-y-4">
       <PageHeader
         title="审批中心"
-        subtitle="待办 / 已办 / 抄送 / 我发起的。同意、驳回、转交写回 mock 实例，不接 Flowable。"
+        subtitle="待办 / 已办 / 抄送 / 我发起的。详情壳接全量 ActionBar 与字段权限，不接 Flowable。"
         icon={<CheckCircleIcon size={22} />}
         tags={[{ label: 'Mock 流转', variant: 'info' }]}
       />
@@ -199,7 +209,10 @@ function ApprovalsPage() {
             setPage(1);
           }}
         />
-        <Button onClick={() => setCreateOpen(true)}>发起审批</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <ApprovalActorSwitcher />
+          <Button onClick={() => setCreateOpen(true)}>发起审批</Button>
+        </div>
       </div>
 
       <DataTableWithToolbar

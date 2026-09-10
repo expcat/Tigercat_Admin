@@ -148,8 +148,19 @@ public class ApprovalsEndpoints : IEndpointDefinition
             statusCode: 404);
 
     private static string CurrentUsername(HttpContext httpContext)
-        => httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var operatorObj) &&
-           operatorObj is string operatorName
+    {
+        if (httpContext.Request.Headers.TryGetValue("X-Demo-Actor", out var demoActor))
+        {
+            var user = MockDirectory.FindUser(demoActor.ToString());
+            if (user is not null)
+            {
+                return user.Username;
+            }
+        }
+
+        return httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var operatorObj) &&
+               operatorObj is string operatorName
             ? operatorName
             : "unknown";
+    }
 }

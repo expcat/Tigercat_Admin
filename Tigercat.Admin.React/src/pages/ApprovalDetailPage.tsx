@@ -1,37 +1,60 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Affix } from '@expcat/tigercat-react/Affix';
+import { applyWorkflowFieldPermissions } from '@expcat/tigercat-core';
 import { Button } from '@expcat/tigercat-react/Button';
-import { Card } from '@expcat/tigercat-react/Card';
-import { Descriptions } from '@expcat/tigercat-react/Descriptions';
 import { Empty } from '@expcat/tigercat-react/Empty';
 import { Form } from '@expcat/tigercat-react/Form';
 import { FormItem } from '@expcat/tigercat-react/FormItem';
 import { Message } from '@expcat/tigercat-react/Message';
 import { Modal } from '@expcat/tigercat-react/Modal';
-import { Select } from '@expcat/tigercat-react/Select';
+import { Radio } from '@expcat/tigercat-react/Radio';
+import { RadioGroup } from '@expcat/tigercat-react/RadioGroup';
+import { SchemaForm } from '@expcat/tigercat-react/SchemaForm';
 import { TabPane } from '@expcat/tigercat-react/TabPane';
 import { Tabs } from '@expcat/tigercat-react/Tabs';
+import { Tag } from '@expcat/tigercat-react/Tag';
 import { Text } from '@expcat/tigercat-react/Text';
 import { Textarea } from '@expcat/tigercat-react/Textarea';
+import { WorkflowDetailShell } from '@expcat/tigercat-react/WorkflowDetailShell';
 import { WorkflowViewer } from '@expcat/tigercat-react/WorkflowViewer';
 import { WorkflowActionBar, WorkflowTimeline } from '@expcat/tigercat-react/WorkflowTimeline';
-import type { DescriptionsItem, WorkflowActionBarItem, WorkflowActionPayload } from '@expcat/tigercat-core';
+import type {
+  FieldPermission,
+  FormValues,
+  WorkflowActionBarItem,
+  WorkflowActionPayload,
+  WorkflowAssigneePickerContext,
+  WorkflowTask,
+} from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
+import { ApprovalActorSwitcher } from '../components/ApprovalActorSwitcher';
 import { CheckCircleIcon } from '../components/Icons';
 import { normalizeInput } from '../utils';
 import { ApiError } from '../utils/request';
 import {
   actionSuccessMessage,
   applyApprovalAction,
+  APPROVAL_DEMO_ACTOR_EVENT,
+  APPROVAL_DETAIL_SCHEMA,
   APPROVAL_STATUS_META,
-  APPROVAL_TRANSFER_OPTIONS,
-  APPROVAL_WORKFLOW_ACTIONS,
+  actorHasOpenTask,
+  approvalButtonPolicy,
+  approvalFieldMode,
+  approvalFormModel,
+  approvalIsStarter,
+  approvalReturnTargets,
+  approvalViewerRole,
+  contactActorOf,
+  currentApprovalStep,
+  FALLBACK_APPROVAL_CONTACTS,
   fetchApproval,
+  fetchApprovalContacts,
+  getApprovalDemoActor,
   isApprovalTerminal,
   toWorkflowSteps,
+  workflowActionToPayload,
 } from '../utils/approvals';
-import type { ApprovalAction, ApprovalDetail, ApprovalStatus } from '../utils/types';
+import type { ApprovalAction, ApprovalContactUser, ApprovalDetail, ApprovalStatus } from '../utils/types';
 
 function readErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
@@ -45,10 +68,21 @@ function ApprovalDetailPage() {
   const [missing, setMissing] = useState(false);
   const [detail, setDetail] = useState<ApprovalDetail | null>(null);
   const [acting, setActing] = useState(false);
-  const [transferOpen, setTransferOpen] = useState(false);
-  const [transferTo, setTransferTo] = useState('demo');
-  const [transferComment, setTransferComment] = useState('');
   const [activeTab, setActiveTab] = useState('progress');
+  const [actorId, setActorId] = useState(getApprovalDemoActor);
+  const [contacts, setContacts] = useState<ApprovalContactUser[]>(FALLBACK_APPROVAL_CONTACTS);
+  const [formModel, setFormModel] = useState<FormValues>({});
+  const [commentOpen, setCommentOpen] = useState(false);
+  const [commentDraft, setCommentDraft] = useState('');
+
+  const loadContacts = useCallback(async () => {
+    try {
+      const payload = await fetchApprovalContacts();
+      if (payload.data.users?.length) setContacts(payload.data.users);
+    } catch {
+      setContacts(FALLBACK_APPROVAL_CONTACTS);
+    }
+  }, []);
 
   const loadDetail = useCallback(async () => {
     if (!id) {
@@ -61,6 +95,7 @@ function ApprovalDetailPage() {
     try {
       const payload = await fetchApproval(id);
       setDetail(payload.data);
+      setFormModel(approvalFormModel(payload.data));
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 404) {
         setMissing(true);
@@ -78,26 +113,50 @@ function ApprovalDetailPage() {
     void loadDetail();
   }, [loadDetail]);
 
+  useEffect(() => {
+    void loadContacts();
+    const sync = () => {
+      setActorId(getApprovalDemoActor());
+      void loadDetail();
+    };
+    window.addEventListener(APPROVAL_DEMO_ACTOR_EVENT, sync);
+    return () => window.removeEventListener(APPROVAL_DEMO_ACTOR_EVENT, sync);
+  }, [loadContacts, loadDetail]);
+
   const statusMeta = detail
     ? (APPROVAL_STATUS_META[detail.status as ApprovalStatus] ?? APPROVAL_STATUS_META.pending)
     : APPROVAL_STATUS_META.pending;
   const steps = useMemo(() => toWorkflowSteps(detail), [detail]);
-  const descriptions: DescriptionsItem[] = (detail?.formFields ?? []).map((field) => ({
-    label: field.label,
-    content: field.value,
-  }));
+  const currentStep = currentApprovalStep(detail);
+  const fieldMode = approvalFieldMode(detail, actorId);
+  const formSchema = useMemo(
+    () =>
+      applyWorkflowFieldPermissions(
+        APPROVAL_DETAIL_SCHEMA,
+        currentStep?.fieldPermissions as Record<string, FieldPermission> | undefined,
+        fieldMode,
+      ),
+    [currentStep?.fieldPermissions, fieldMode],
+  );
   const actionsDisabled = acting || isApprovalTerminal(detail?.status);
+  const viewerRole = approvalViewerRole(detail, actorId);
+  const isStarter = approvalIsStarter(detail, actorId);
+  const buttonPolicy = approvalButtonPolicy(detail);
+  const returnTargets = approvalReturnTargets(detail);
+  const currentSignMode =
+    currentStep?.signMode === 'countersign' || currentStep?.signMode === 'orsign'
+      ? currentStep.signMode
+      : 'sequential';
+  const pickerContacts = contacts.filter((user) => user.id !== actorId && user.username !== actorId);
+  const canAct = actorHasOpenTask(detail, actorId) || (currentStep?.kind === 'start' && isStarter);
 
-  const runAction = async (action: ApprovalAction, extra?: { comment?: string; transferTo?: string }) => {
+  const runAction = async (action: ApprovalAction, payload?: WorkflowActionPayload) => {
     if (!detail) return;
     setActing(true);
     try {
-      const payload = await applyApprovalAction(detail.id, {
-        action,
-        comment: extra?.comment,
-        transferTo: extra?.transferTo,
-      });
-      setDetail(payload.data);
+      const result = await applyApprovalAction(detail.id, workflowActionToPayload(action, payload, formModel));
+      setDetail(result.data);
+      setFormModel(approvalFormModel(result.data));
       Message.success({ content: actionSuccessMessage(action), duration: 2200 });
     } catch (error: unknown) {
       Message.error({ content: readErrorMessage(error, '审批动作失败'), duration: 3000 });
@@ -107,38 +166,59 @@ function ApprovalDetailPage() {
   };
 
   const handleWorkflowAction = (item: WorkflowActionBarItem, payload?: WorkflowActionPayload) => {
-    if (item.action === 'transfer') {
-      setTransferTo(detail?.assignee === 'admin' ? 'demo' : 'admin');
-      setTransferComment('');
-      setTransferOpen(true);
+    if (item.action === 'comment' && !payload?.comment?.trim()) {
+      setCommentDraft('');
+      setCommentOpen(true);
       return;
     }
-    if (item.action === 'approve' || item.action === 'reject') {
-      const comment = payload?.comment?.trim();
-      void runAction(item.action, { comment: comment || undefined });
-    }
+    void runAction(item.action as ApprovalAction, payload);
   };
 
-  const confirmTransfer = async () => {
-    const target = transferTo.trim();
-    if (!target) {
-      Message.warning({ content: '请选择转交对象', duration: 2000 });
+  const confirmComment = async () => {
+    const comment = commentDraft.trim();
+    if (!comment) {
+      Message.warning({ content: '评论内容不能为空', duration: 2000 });
       return;
     }
-    await runAction('transfer', { transferTo: target, comment: transferComment.trim() || undefined });
-    setTransferOpen(false);
+    await runAction('comment', { comment });
+    setCommentOpen(false);
+  };
+
+  const renderAssigneePicker = (ctx: WorkflowAssigneePickerContext) => {
+    const selected = ctx.value?.id ?? ctx.value?.name;
+    return (
+      <div className="space-y-1">
+        <Text size="sm" weight="medium">
+          {ctx.action === 'addsign' ? '加签给' : '转交给'}
+        </Text>
+        <RadioGroup
+          size="sm"
+          value={selected}
+          aria-label={ctx.action === 'addsign' ? '加签对象' : '转交对象'}
+          onChange={(value) => {
+            const user = pickerContacts.find((item) => item.id === String(value) || item.username === String(value));
+            ctx.onChange(user ? contactActorOf(user) : undefined);
+          }}>
+          {pickerContacts.map((user) => (
+            <Radio key={user.id} value={user.id}>
+              {user.name}（{user.username}）
+            </Radio>
+          ))}
+        </RadioGroup>
+      </div>
+    );
   };
 
   return (
     <div className="min-w-0 space-y-4">
       <PageHeader
         title={detail?.title ?? '审批详情'}
-        subtitle="表单 + 审批进度 Timeline / 流程结构 Viewer + 底栏 ActionBar。动作写回 mock 实例。"
+        subtitle="DetailShell：字段权限表单 + Timeline / Viewer + 全量 ActionBar。动作写回 mock 实例。"
         icon={<CheckCircleIcon size={22} />}
         tags={[{ label: statusMeta.label, variant: statusMeta.variant }]}
       />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" onClick={() => navigate('/approvals')}>
           返回列表
         </Button>
@@ -147,6 +227,7 @@ function ApprovalDetailPage() {
             打开关联工单 {detail.ticketId}
           </Button>
         ) : null}
+        <ApprovalActorSwitcher />
       </div>
 
       {missing ? (
@@ -154,67 +235,102 @@ function ApprovalDetailPage() {
       ) : loading && !detail ? (
         <Text color="secondary">正在加载审批详情…</Text>
       ) : detail ? (
-        <div className="min-w-0 space-y-4">
-          <Card header={<Text weight="bold">申请表单</Text>} className="min-w-0">
-            <Descriptions items={descriptions} column={1} />
-          </Card>
-          <Card className="min-w-0">
+        <WorkflowDetailShell
+          ariaLabel="审批详情"
+          className="h-[min(42rem,calc(100dvh-11rem))]"
+          showActions
+          header={
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <Text weight="bold">{detail.id}</Text>
+              <Tag size="sm" variant={statusMeta.variant}>
+                {statusMeta.label}
+              </Tag>
+              <Text size="sm" color="secondary">
+                当前步骤 {currentStep?.title ?? '—'}
+              </Text>
+              <Text size="sm" color="secondary">
+                处理人 {detail.assignee}
+              </Text>
+              {!canAct && !actionsDisabled ? (
+                <Text size="sm" color="secondary">
+                  当前身份无待办任务
+                </Text>
+              ) : null}
+            </div>
+          }
+          form={
+            <>
+              <Text weight="bold" className="mb-3 block">
+                申请表单
+              </Text>
+              <SchemaForm
+                schema={formSchema}
+                model={formModel}
+                showActions={false}
+                labelWidth={96}
+                ariaLabel="申请表单"
+                onChange={setFormModel}
+              />
+            </>
+          }
+          tabs={
             <Tabs activeKey={activeTab} onActiveKeyChange={(key) => setActiveTab(String(key))}>
               <TabPane tabKey="progress" label="审批进度">
                 <div className="min-w-0 overflow-x-auto">
-                  <WorkflowTimeline steps={steps} />
+                  <WorkflowTimeline steps={steps} tasks={detail.tasks as WorkflowTask[] | undefined} />
                 </div>
               </TabPane>
               <TabPane tabKey="structure" label="流程结构">
                 <div className="min-w-0 overflow-x-auto">
-                  <WorkflowViewer steps={steps} />
+                  <WorkflowViewer steps={steps} tasks={detail.tasks as WorkflowTask[] | undefined} />
                 </div>
               </TabPane>
             </Tabs>
-          </Card>
-          <Affix target="#main-content-scroll" offsetBottom={0} zIndex={20}>
-            <Card className="min-w-0">
-              <div className="min-w-0">
-                <WorkflowActionBar
-                  items={APPROVAL_WORKFLOW_ACTIONS}
-                  confirm
-                  disabled={actionsDisabled}
-                  ariaLabel="审批操作"
-                  onAction={handleWorkflowAction}
-                />
-              </div>
+          }
+          action={
+            <>
+              <WorkflowActionBar
+                confirm
+                buttonPolicy={buttonPolicy}
+                returnTargets={returnTargets}
+                addsignPositions={['before', 'after']}
+                currentSignMode={currentSignMode}
+                isStarter={isStarter}
+                viewerRole={viewerRole}
+                disabled={actionsDisabled}
+                renderAssigneePicker={renderAssigneePicker}
+                ariaLabel="审批操作"
+                onAction={handleWorkflowAction}
+              />
               <Text size="sm" color="secondary" className="mt-2 block">
-                同意 / 拒绝 / 转交会写回当前实例；关联工单时同步工单状态。不接审批引擎。
+                同意 / 拒绝 / 转交 / 加签 / 退回 / 撤回 / 评论会写回当前实例。金额仅财务节点可编。不接审批引擎。
               </Text>
-            </Card>
-          </Affix>
-        </div>
+            </>
+          }
+        />
       ) : null}
 
       <Modal
-        open={transferOpen}
-        title="转交审批"
-        onClose={() => setTransferOpen(false)}
+        open={commentOpen}
+        title="添加评论"
+        onClose={() => setCommentOpen(false)}
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setTransferOpen(false)}>
+            <Button variant="outline" onClick={() => setCommentOpen(false)}>
               取消
             </Button>
-            <Button loading={acting} onClick={() => void confirmTransfer()}>
-              确认转交
+            <Button loading={acting} onClick={() => void confirmComment()}>
+              提交评论
             </Button>
           </div>
         }>
-        <Form labelWidth={96}>
-          <FormItem label="转交给" required>
-            <Select value={transferTo} options={APPROVAL_TRANSFER_OPTIONS} onChange={(value) => setTransferTo(String(value))} />
-          </FormItem>
-          <FormItem label="说明">
+        <Form labelWidth={72}>
+          <FormItem label="意见" required>
             <Textarea
-              value={transferComment}
+              value={commentDraft}
               rows={3}
-              placeholder="可选转交意见"
-              onChange={(value) => setTransferComment(normalizeInput(value))}
+              placeholder="请输入审批意见"
+              onChange={(value) => setCommentDraft(normalizeInput(value))}
             />
           </FormItem>
         </Form>

@@ -358,6 +358,41 @@ export interface ApprovalStep {
     fromNodeKey?: string;
     fromTaskId?: string;
   };
+  buttonPolicy?: ApprovalButtonPolicy;
+  fieldPermissions?: Record<string, string>;
+}
+
+export interface ApprovalButtonConfig {
+  action: string;
+  enabled?: boolean;
+  label?: string;
+  commentRequired?: boolean;
+  placement?: string;
+}
+
+export interface ApprovalButtonPolicy {
+  buttons?: ApprovalButtonConfig[];
+  addsign?: { positions?: string[] };
+  returnResume?: string;
+}
+
+export interface ApprovalReturnTarget {
+  key: string;
+  title?: string;
+  kind?: string;
+  actorName?: string;
+  status?: string;
+}
+
+export interface ApprovalContactUser {
+  id: string;
+  name: string;
+  username: string;
+  deptId: string;
+  deptName: string;
+  roleKeys: string[];
+  groupKeys: string[];
+  managerId?: string | null;
 }
 
 export interface ApprovalFormField {
@@ -409,6 +444,8 @@ export interface ApprovalDetail extends ApprovalListItem {
   tasks?: ApprovalTask[];
   history?: ApprovalHistoryEntry[];
   resumeToNodeKey?: string;
+  returnTargets?: ApprovalReturnTarget[];
+  formValues?: Record<string, unknown>;
 }
 
 export interface CreateApprovalPayload {
@@ -432,6 +469,9 @@ export interface ApprovalActionPayload {
   targetNodeKey?: string;
   resume?: 'resequence' | 'direct';
   addsignTo?: string[];
+  assignee?: ApprovalActor;
+  assignees?: ApprovalActor[];
+  formValues?: Record<string, unknown>;
 }
 
 export interface CreateCommentPayload {

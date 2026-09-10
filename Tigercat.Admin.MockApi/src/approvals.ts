@@ -88,6 +88,17 @@ export type ApprovalStep = {
   };
   tasks?: ApprovalTask[];
   fieldPermissions?: Record<string, string>;
+  buttonPolicy?: {
+    buttons?: Array<{
+      action: string;
+      enabled?: boolean;
+      label?: string;
+      commentRequired?: boolean;
+      placement?: string;
+    }>;
+    addsign?: { positions?: string[] };
+    returnResume?: string;
+  };
 };
 
 export type ApprovalFormField = {
@@ -150,6 +161,7 @@ export type ApprovalDetail = ApprovalListItem & {
   history?: ApprovalHistoryEntry[];
   resumeToNodeKey?: string;
   returnTargets?: ApprovalReturnTarget[];
+  formValues?: Record<string, unknown>;
 };
 
 export type ApprovalMutation =
@@ -170,6 +182,7 @@ export type ApprovalActionBody = {
   assignee?: ApprovalActor;
   assignees?: ApprovalActor[];
   addsignTo?: string[];
+  formValues?: Record<string, unknown>;
 };
 
 const LANES: ApprovalLane[] = ['todo', 'done', 'cc', 'started'];
@@ -211,6 +224,13 @@ const cloneStep = (step: ApprovalStep): ApprovalStep => ({
   children: step.children?.map(cloneStep),
   tasks: step.tasks?.map((item) => ({ ...item, assignee: { ...item.assignee } })),
   fieldPermissions: step.fieldPermissions ? { ...step.fieldPermissions } : step.fieldPermissions,
+  buttonPolicy: step.buttonPolicy
+    ? {
+        ...step.buttonPolicy,
+        buttons: step.buttonPolicy.buttons?.map((button) => ({ ...button })),
+        addsign: step.buttonPolicy.addsign ? { ...step.buttonPolicy.addsign } : step.buttonPolicy.addsign,
+      }
+    : step.buttonPolicy,
   approverPolicy: Array.isArray(step.approverPolicy)
     ? step.approverPolicy.map((source) => ({ ...source }))
     : step.approverPolicy
@@ -296,7 +316,70 @@ export function toDetail(item: ApprovalInstance): ApprovalDetail {
     history: item.history?.map((entry) => ({ ...entry })),
     resumeToNodeKey: item.resumeToNodeKey,
     returnTargets: returnTargets(item),
+    formValues: buildFormValues(item),
   };
+}
+
+const fullButtonPolicy = (): NonNullable<ApprovalStep['buttonPolicy']> => ({
+  buttons: [
+    { action: 'approve', enabled: true, placement: 'bar' },
+    { action: 'reject', enabled: true, placement: 'bar', commentRequired: true },
+    { action: 'transfer', enabled: true, placement: 'more' },
+    { action: 'addsign', enabled: true, placement: 'more' },
+    { action: 'return', enabled: true, placement: 'more', commentRequired: true },
+    { action: 'cancel', enabled: true, placement: 'bar' },
+    { action: 'comment', enabled: true, placement: 'bar' },
+    { action: 'request_changes', enabled: true, placement: 'more', commentRequired: true },
+  ],
+  addsign: { positions: ['before', 'after'] },
+  returnResume: 'resequence',
+});
+
+const fieldPerms = (amountEditable: boolean, initiate = false): Record<string, string> => {
+  const rest = initiate ? 'editable' : 'readonly';
+  return {
+    title: rest,
+    category: rest,
+    reason: rest,
+    amount: amountEditable ? 'editable' : rest,
+    ticketId: rest,
+    starter: 'readonly',
+  };
+};
+
+const buildFormValues = (item: ApprovalInstance): Record<string, unknown> => ({
+  ...(item.formValues ?? {}),
+  title: item.title,
+  category: item.category,
+  starter: item.starter,
+  reason: item.reason,
+  amount: item.amount ?? item.formValues?.amount ?? '',
+  ticketId: item.ticketId ?? item.formValues?.ticketId ?? '',
+});
+
+const isFieldEditable = (name: string, step?: ApprovalStep | null) => {
+  const mapped = step?.fieldPermissions?.[name];
+  if (mapped === 'editable') return true;
+  if (mapped === 'readonly' || mapped === 'hidden') return false;
+  return step?.kind === 'start';
+};
+
+function applySubmittedFormValues(
+  item: ApprovalInstance,
+  submitted: Record<string, unknown> | undefined,
+  step?: ApprovalStep | null,
+) {
+  if (!submitted) return;
+  item.formValues = { ...(item.formValues ?? {}) };
+  for (const [key, value] of Object.entries(submitted)) {
+    if (!isFieldEditable(key, step)) continue;
+    const next = value == null ? '' : String(value);
+    item.formValues[key] = next;
+    if (key === 'amount') item.amount = next.trim() ? clamp(next, 32, next) : null;
+    if (key === 'reason') item.reason = clamp(next, 2000, item.reason);
+    if (key === 'title' && next.trim()) item.title = next.slice(0, 120);
+    if (key === 'category' && next.trim()) item.category = clamp(next, 40, next);
+  }
 }
 
 const startStep = (name: string, time: string, order: number): ApprovalStep => ({
@@ -309,6 +392,8 @@ const startStep = (name: string, time: string, order: number): ApprovalStep => (
   comment: '请协助处理。',
   time,
   order,
+  buttonPolicy: fullButtonPolicy(),
+  fieldPermissions: fieldPerms(true, true),
 });
 
 const managerActors = (status: string): ApprovalActor[] => [
@@ -332,6 +417,8 @@ const managerStep = (
   actor: actor(name ?? 'admin'),
   actors: managerActors(status),
   approverPolicy: [{ type: 'role', key: 'manager' }],
+  buttonPolicy: fullButtonPolicy(),
+  fieldPermissions: fieldPerms(false),
   comment,
   time,
   order,
@@ -357,6 +444,8 @@ const archiveStep = (status: string, time: string | undefined, order: number, co
   comment,
   time,
   order,
+  buttonPolicy: fullButtonPolicy(),
+  fieldPermissions: fieldPerms(false),
 });
 
 const pendingTicketSteps = (starter: string, assignee: string, time: string): ApprovalStep[] => [
@@ -369,6 +458,8 @@ const pendingTicketSteps = (starter: string, assignee: string, time: string): Ap
     signMode: 'sequential',
     actor: actor(assignee),
     approverPolicy: [{ type: 'fixed', actors: [{ id: assignee, name: findContactUser(assignee)?.name ?? assignee }] }],
+    buttonPolicy: fullButtonPolicy(),
+    fieldPermissions: fieldPerms(false),
     order: 2,
   },
   managerStep('pending', null, undefined, 3),
@@ -398,6 +489,8 @@ const countersignPendingSteps = (starter: string, actors: ApprovalActor[], time:
     actor: actors[0],
     actors,
     approverPolicy: [{ type: 'fixed', actors: actors.map((item) => ({ id: String(item.id), name: item.name })) }],
+    buttonPolicy: fullButtonPolicy(),
+    fieldPermissions: fieldPerms(false),
     order: 2,
   },
 ];
@@ -460,6 +553,8 @@ export function seedApprovals(): ApprovalInstance[] {
           signMode: 'sequential',
           action: 'approve',
           actor: actor('admin'),
+          buttonPolicy: fullButtonPolicy(),
+          fieldPermissions: fieldPerms(false),
           comment: '已核实续期问题。',
           time: '2026-06-26 17:40',
           order: 2,
@@ -491,6 +586,8 @@ export function seedApprovals(): ApprovalInstance[] {
           kind: 'approve',
           signMode: 'sequential',
           actor: actor('demo'),
+          buttonPolicy: fullButtonPolicy(),
+          fieldPermissions: fieldPerms(false),
           order: 2,
         },
         {
@@ -529,6 +626,8 @@ export function seedApprovals(): ApprovalInstance[] {
           kind: 'approve',
           signMode: 'sequential',
           actor: actor('demo'),
+          buttonPolicy: fullButtonPolicy(),
+          fieldPermissions: fieldPerms(false),
           order: 2,
         },
         {
@@ -538,6 +637,8 @@ export function seedApprovals(): ApprovalInstance[] {
           kind: 'approve',
           signMode: 'orsign',
           actor: actor('admin'),
+          buttonPolicy: fullButtonPolicy(),
+          fieldPermissions: fieldPerms(true),
           order: 3,
           children: [
             { key: 'cc-finance', title: '抄送财务', status: 'pending', kind: 'cc', actor: actor('demo') },
@@ -570,6 +671,8 @@ export function seedApprovals(): ApprovalInstance[] {
           signMode: 'sequential',
           action: 'reject',
           actor: actor('admin'),
+          buttonPolicy: fullButtonPolicy(),
+          fieldPermissions: fieldPerms(false),
           comment: '本迭代不做，先记需求池。',
           time: '2026-06-28 09:15',
           rollbackPoint: true,
@@ -605,8 +708,86 @@ export function seedApprovals(): ApprovalInstance[] {
           taskId: countersignTasks[0]?.id,
         },
       ],
+      formValues: { amount: '8600', reason: '按人会签演示：管理员已同意，待 demo / 王经理。' },
     },
+    seedFinancePurchaseDemo(),
   ];
+}
+
+function seedFinancePurchaseDemo(): ApprovalInstance {
+  const submit = '2026-09-10 10:00';
+  const managerDone = '2026-09-10 10:20';
+  const financeActors: ApprovalActor[] = [
+    { id: 'chen', name: '陈财务', status: 'pending' },
+    { id: 'zhao', name: '赵主管', status: 'pending' },
+  ];
+  const finance: ApprovalStep = {
+    key: 'finance',
+    title: '财务会签',
+    status: 'active',
+    kind: 'approve',
+    signMode: 'countersign',
+    actor: financeActors[0],
+    actors: financeActors,
+    approverPolicy: [{ type: 'group', key: 'finance' }],
+    buttonPolicy: fullButtonPolicy(),
+    fieldPermissions: fieldPerms(true),
+    order: 3,
+  };
+  const tasks = seedTasksForNode(finance).map((task) => ({ ...task, status: 'active' }));
+  return {
+    id: 'AP-1007',
+    title: '采购：显示器与扩展坞',
+    category: '采购',
+    starter: 'admin',
+    assignee: 'chen',
+    cc: ['fang'],
+    status: 'pending',
+    currentStepKey: 'finance',
+    reason: '金额字段仅财务节点可编。经理已过，待陈财务 / 赵主管会签。',
+    amount: '4800',
+    actedBy: ['admin', 'wang'],
+    createdAt: submit,
+    updatedAt: managerDone,
+    steps: [
+      startStep('admin', submit, 1),
+      {
+        key: 'manager',
+        title: '经理或签',
+        status: 'approved',
+        kind: 'approve',
+        signMode: 'orsign',
+        action: 'approve',
+        actor: actor('wang'),
+        actors: [actor('wang'), actor('li')],
+        approverPolicy: [{ type: 'role', key: 'manager' }],
+        buttonPolicy: fullButtonPolicy(),
+        fieldPermissions: fieldPerms(false),
+        comment: '规格可以，交给财务。',
+        time: managerDone,
+        order: 2,
+      },
+      finance,
+      {
+        key: 'cc-hr',
+        title: '抄送人事',
+        status: 'pending',
+        kind: 'cc',
+        actor: actor('fang'),
+        order: 4,
+      },
+      archiveStep('pending', undefined, 5),
+    ],
+    tasks,
+    history: [
+      { at: submit, actorId: 'admin', action: 'approve', comment: '提交申请', nodeKey: 'start' },
+      { at: managerDone, actorId: 'wang', action: 'approve', comment: '规格可以，交给财务。', nodeKey: 'manager' },
+    ],
+    formValues: {
+      amount: '4800',
+      reason: '金额字段仅财务节点可编。经理已过，待陈财务 / 赵主管会签。',
+    },
+  };
 }
 
 const inTodo = (item: ApprovalInstance, username: string) => {
@@ -871,6 +1052,9 @@ export function applyApprovalAction(
     tempNodeKey: body.tempNodeKey,
   };
 
+  const formStep =
+    item.steps.find((step) => step.key === item.currentStepKey) ??
+    item.steps.find((step) => step.status === 'active');
   const before = toWorkflowInstance(item);
   const next = reduceWorkflowAction(before, runtime);
   if (next === before) {
@@ -890,6 +1074,7 @@ export function applyApprovalAction(
   }
 
   applyReduced(item, next);
+  applySubmittedFormValues(item, body.formValues, formStep);
   if (action !== 'comment') remember(item, actorName);
   else {
     const active = item.steps.find((step) => step.status === 'active') ?? item.steps.find((step) => step.key === item.currentStepKey);

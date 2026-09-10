@@ -172,6 +172,7 @@ public class ApprovalDetailResponse
     public ApprovalHistoryEntryResponse[]? History { get; set; }
     public string? ResumeToNodeKey { get; set; }
     public ApprovalReturnTargetResponse[]? ReturnTargets { get; set; }
+    public Dictionary<string, string>? FormValues { get; set; }
 }
 
 public class ApprovalContactUserResponse
@@ -233,7 +234,8 @@ public record ApprovalActionRequest(
     string? TempNodeKey = null,
     ApprovalActorResponse? Assignee = null,
     ApprovalActorResponse[]? Assignees = null,
-    string[]? AddsignTo = null);
+    string[]? AddsignTo = null,
+    Dictionary<string, string>? FormValues = null);
 
 public record ResolveApproversRequest(
     ApproverSourceDto? Source,

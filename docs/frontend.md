@@ -287,22 +287,21 @@ LLM 生成新页面或复刻页面时，至少满足：
 | 层 | 职责 | 本仓库落点 |
 | -- | ---- | ---------- |
 | Tigercat `^2.5.0` | 2.4.2 扫读 + `ApproverSource` / `tasks` / `reduceWorkflowAction` / 完整 ActionBar 契约 | 包组件与纯函数；不要在页面重写第二套 Timeline |
-| Admin | 路由、**Mock 通讯录 `resolveApprovers`**、ApprovalStore 全动作写回（加签/退回/会签按人/转交/撤回）、详情 IA、Designer 演示种子 | `ApprovalStore` / MockApi `contacts.ts`；详情页 ActionBar 全动作见后续切片 |
+| Admin | 路由、**Mock 通讯录 `resolveApprovers`**、ApprovalStore 全动作写回、**详情壳**（DetailShell + 字段权限 SchemaForm + 全量 ActionBar）、Designer 演示种子 | `ApprovalStore` / MockApi `contacts.ts`；详情页用库 `WorkflowDetailShell`，不要自贴第二套 sticky |
 
 ### 详情 IA
 
 ```text
 [PageHeader 标题/状态]
-[申请表单 Card — Descriptions(formFields)；不要做表单设计器]
-[Tabs]
-   默认「审批进度」= WorkflowTimeline（flatten，不带内嵌 ActionBar）
-   「流程结构」= WorkflowViewer（全树 + path + 图例）
-[sticky 底栏] WorkflowActionBar confirm
-   Affix target="#main-content-scroll"（先例：Vue HelpPage）
-   Content 已有 pb-28，避开右下 FloatButton
+[演示身份 switcher — 申请人 / 审批人 A/B/C / 抄送，写 X-Demo-Actor]
+[WorkflowDetailShell 限定高度]
+   header — 单号 / 状态 / 当前步骤
+   form — SchemaForm(applyWorkflowFieldPermissions)；金额仅财务节点 editable
+   tabs — 默认「审批进度」WorkflowTimeline；「流程结构」WorkflowViewer（同一份 steps + tasks）
+   action — sticky WorkflowActionBar：同意/拒绝/撤回/评论 + 更多(转交/加签 before|after/退回/退回修改)
 ```
 
-默认不要同时堆 Viewer + Timeline。会签人在 `actors[]`（可选 `status`），`children` 只表示并行 / 抄送 / 条件。有 `tasks[]` 时同意写到当前用户任务（会签按人累计）；无 `tasks` 时仍是 2.4.2 节点级。Tickets 页保持 Timeline + ActionBar，不要改成完整审批壳。
+默认不要同时堆 Viewer + Timeline。会签人在 `actors[]` / `tasks[]`，`children` 只表示并行 / 抄送 / 条件。有 `tasks[]` 时同意写到当前用户任务（会签按人累计）；无 `tasks` 时仍是 2.4.2 节点级。Tickets 页保持 Timeline + ActionBar，不要改成完整审批壳。
 
 ### Designer
 

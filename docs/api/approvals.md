@@ -42,6 +42,7 @@
 | `history` | array? | 动作历史 `{ at, actorId, action, comment?, nodeKey?, taskId? }` |
 | `resumeToNodeKey` | string? | `direct` 退回后，目标完成时跳回的节点 |
 | `returnTargets` | array? | 当前可退回节点（`start` + 路径上已通过的 `approve`，排除进行中的临时加签） |
+| `formValues` | object? | 详情 SchemaForm 模型（`title` / `category` / `reason` / `amount` 等） |
 
 `steps[]` 关键字段：`key`、`title`、`status`（`pending` / `active` / `approved` / `rejected` / `canceled`）、`actor`、`actors`、`action`、`comment`、`time`、`order`、`children`、`kind`（`start` / `approve` / `cc` / `condition` / `end`）、`signMode`、`rollbackPoint`、`temporary`、`origin`（加签来源）、`approverPolicy`、`returnTarget`。
 
@@ -81,6 +82,7 @@
 | `targetNodeKey` | 退回目标；`return` 必填 |
 | `resume` | `resequence`（默认，从目标重走）/ `direct`（目标完成后直达退回点） |
 | `taskId` / `nodeKey` | 可选，定位当前任务 |
+| `formValues` | 可选。只接受当前节点 `fieldPermissions=editable` 的路径（金额仅财务节点） |
 
 语义：
 
@@ -96,4 +98,6 @@
 | `cancel` / `withdraw` | 发起人结束本实例为 `canceled` |
 | `comment` | 只追加 `history`（及当前步意见），不推进 |
 
-种子数据（admin 登录可见）：`AP-1001` 待办且挂 `TK-2048`；`AP-1002` 已通过；`AP-1003` 抄送；`AP-1004` 我发起（处理人为 demo）；`AP-1005` 已驳回（含 rollbackPoint）；`AP-1006` 会签 1/3（`tasks[]`：admin 已签，demo / 王经理待办）。
+演示身份：审批接口认 `X-Demo-Actor`（Mock 通讯录 id / username / 姓名）。只切换车道与写回操作人，不改登录会话。
+
+种子数据（admin 登录可见）：`AP-1001` 待办且挂 `TK-2048`；`AP-1002` 已通过；`AP-1003` 抄送；`AP-1004` 我发起（处理人为 demo）；`AP-1005` 已驳回（含 rollbackPoint）；`AP-1006` 会签 1/3（`tasks[]`：admin 已签，demo / 王经理待办）；`AP-1007` 采购财务会签（金额仅财务可编，待 `chen` / `zhao`）。

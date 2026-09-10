@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, ref, watch } from 'vue'
+import { computed, h, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { DataTableWithToolbar } from '@expcat/tigercat-vue/DataTableWithToolbar'
@@ -10,8 +10,10 @@ import { Segmented } from '@expcat/tigercat-vue/Segmented'
 import { Tag } from '@expcat/tigercat-vue/Tag'
 import type { FormHandle, FormValues, TableColumn } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
+import ApprovalActorSwitcher from '../components/ApprovalActorSwitcher.vue'
 import {
   APPROVAL_CREATE_SCHEMA,
+  APPROVAL_DEMO_ACTOR_EVENT,
   APPROVAL_LANES,
   APPROVAL_PAGE_SIZE,
   APPROVAL_STATUS_META,
@@ -65,6 +67,14 @@ async function loadList() {
 watch([lane, keyword, page, pageSize], () => {
   void loadList()
 }, { immediate: true })
+
+onMounted(() => {
+  window.addEventListener(APPROVAL_DEMO_ACTOR_EVENT, loadList)
+})
+
+onUnmounted(() => {
+  window.removeEventListener(APPROVAL_DEMO_ACTOR_EVENT, loadList)
+})
 
 function handleCreateModelChange(values: FormValues) {
   createForm.value = values
@@ -191,13 +201,16 @@ function handlePageSizeChange(next: { current: number; pageSize: number }) {
     <PageHeader
       icon="checkCircle"
       title="审批中心"
-      subtitle="待办 / 已办 / 抄送 / 我发起的。同意、驳回、转交写回 mock 实例，不接 Flowable。"
+      subtitle="待办 / 已办 / 抄送 / 我发起的。详情壳接全量 ActionBar 与字段权限，不接 Flowable。"
       :tags="[{ label: 'Mock 流转', variant: 'info' }]"
     />
 
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <Segmented :model-value="lane" :options="APPROVAL_LANES" @update:model-value="handleLaneChange" />
-      <Button @click="createOpen = true">发起审批</Button>
+      <div class="flex flex-wrap items-center gap-2">
+        <ApprovalActorSwitcher />
+        <Button @click="createOpen = true">发起审批</Button>
+      </div>
     </div>
 
     <DataTableWithToolbar

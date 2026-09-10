@@ -390,6 +390,31 @@ public abstract class ApprovalsEndpointsTests<TFixture> : IClassFixture<TFixture
     }
 
     [Fact]
+    public async Task FinancePurchaseSeed_DemoActorAndAmountWriteBack()
+    {
+        var token = await LoginAsAdminAsync();
+        var detailResponse = await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/approvals/AP-1007", token));
+        detailResponse.EnsureSuccessStatusCode();
+        var detail = await detailResponse.ReadApiResponseAsync<ApprovalDetailResponse>();
+        Assert.NotNull(detail?.Data);
+        var finance = detail.Data.Steps.First(step => step.Key == "finance");
+        Assert.Equal("editable", finance.FieldPermissions?["amount"]);
+        Assert.Equal("readonly", finance.FieldPermissions?["title"]);
+        Assert.Equal("4800", detail.Data.Amount);
+        Assert.Equal("chen", detail.Data.Assignee);
+
+        var adminTodo = await ListAsync(token, "todo");
+        Assert.DoesNotContain(adminTodo.Items, item => item.Id == "AP-1007");
+
+        var chenTodoRequest = AuthRequest(HttpMethod.Get, "/api/approvals?lane=todo", token);
+        chenTodoRequest.Headers.Add("X-Demo-Actor", "chen");
+        var chenTodoResponse = await _client.SendAsync(chenTodoRequest);
+        chenTodoResponse.EnsureSuccessStatusCode();
+        var chenTodo = await chenTodoResponse.ReadApiResponseAsync<PagedResponse<ApprovalListItemResponse>>();
+        Assert.Contains(chenTodo!.Data!.Items, item => item.Id == "AP-1007");
+    }
+
+    [Fact]
     public async Task CountersignTasks_RequireEachActorAndCompleteAtThree()
     {
         var token = await LoginAsAdminAsync();

@@ -261,10 +261,14 @@ internal sealed class ApprovalStore
                 return Fail(400, "请选择退回节点");
             }
 
+            var formStep = WorkflowRuntime.FindStep(item.Steps, item.CurrentStepKey)
+                ?? WorkflowRuntime.FindActive(item.Steps);
             if (!WorkflowRuntime.TryApply(item, runtimeAction, out var error))
             {
                 return Fail(400, error ?? "当前动作无法执行");
             }
+
+            ApplySubmittedFormValues(item, request.FormValues, formStep);
 
             var now = runtimeAction.At!;
             if (actionName is not "comment")
@@ -437,6 +441,7 @@ internal sealed class ApprovalStore
             History = item.History?.Select(CloneHistory).ToArray(),
             ResumeToNodeKey = item.ResumeToNodeKey,
             ReturnTargets = WorkflowRuntime.ReturnTargets(item),
+            FormValues = BuildFormValues(item),
         };
 
     private static string? CurrentTitle(ApprovalInstance item)
@@ -770,6 +775,7 @@ internal sealed class ApprovalStore
                 Steps = RejectedTicketSteps("admin", "2026-06-27 16:40", "2026-06-28 09:15"),
             },
             SeedCountersignDemo(),
+            SeedFinancePurchaseDemo(),
         ];
     }
 
@@ -823,6 +829,121 @@ internal sealed class ApprovalStore
                     TaskId = tasks[0].Id,
                 },
             ],
+            FormValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["amount"] = "8600",
+                ["reason"] = "按人会签演示：管理员已同意，待 demo / 王经理。",
+            },
+        };
+    }
+
+    private static ApprovalInstance SeedFinancePurchaseDemo()
+    {
+        var submit = "2026-09-10 10:00";
+        var managerDone = "2026-09-10 10:20";
+        var financeActors = new[]
+        {
+            MockDirectory.ActorFromId("chen"),
+            MockDirectory.ActorFromId("zhao"),
+        };
+        financeActors[0].Status = "pending";
+        financeActors[1].Status = "pending";
+        var finance = new ApprovalStepResponse
+        {
+            Key = "finance",
+            Title = "财务会签",
+            Status = "active",
+            Kind = "approve",
+            SignMode = "countersign",
+            Actor = financeActors[0],
+            Actors = financeActors,
+            ApproverPolicy =
+            [
+                new ApproverSourceDto { Type = "group", Key = "finance" },
+            ],
+            ButtonPolicy = FullButtonPolicy(),
+            FieldPermissions = DemoFieldPermissions(amountEditable: true),
+            Order = 3,
+        };
+        var tasks = WorkflowRuntime.SeedTasksForNode(finance);
+        foreach (var task in tasks)
+        {
+            task.Status = "active";
+        }
+
+        return new ApprovalInstance
+        {
+            Id = "AP-1007",
+            Title = "采购：显示器与扩展坞",
+            Category = "采购",
+            TicketId = null,
+            Starter = "admin",
+            Assignee = "chen",
+            Cc = ["fang"],
+            Status = "pending",
+            CurrentStepKey = "finance",
+            Reason = "金额字段仅财务节点可编。经理已过，待陈财务 / 赵主管会签。",
+            Amount = "4800",
+            ActedBy = ["admin", "wang"],
+            CreatedAt = submit,
+            UpdatedAt = managerDone,
+            Steps =
+            [
+                StartStep("admin", submit, 1),
+                new()
+                {
+                    Key = "manager",
+                    Title = "经理或签",
+                    Status = "approved",
+                    Kind = "approve",
+                    SignMode = "orsign",
+                    Action = "approve",
+                    Actor = Actor("wang"),
+                    Actors = [Actor("wang"), Actor("li")],
+                    ApproverPolicy = [new ApproverSourceDto { Type = "role", Key = "manager" }],
+                    ButtonPolicy = FullButtonPolicy(),
+                    FieldPermissions = DemoFieldPermissions(amountEditable: false),
+                    Comment = "规格可以，交给财务。",
+                    Time = managerDone,
+                    Order = 2,
+                },
+                finance,
+                new()
+                {
+                    Key = "cc-hr",
+                    Title = "抄送人事",
+                    Status = "pending",
+                    Kind = "cc",
+                    Actor = Actor("fang"),
+                    Order = 4,
+                },
+                ArchiveStep("pending", null, 5),
+            ],
+            Tasks = tasks,
+            History =
+            [
+                new ApprovalHistoryEntryResponse
+                {
+                    At = submit,
+                    ActorId = "admin",
+                    Action = "approve",
+                    Comment = "提交申请",
+                    NodeKey = "start",
+                },
+                new ApprovalHistoryEntryResponse
+                {
+                    At = managerDone,
+                    ActorId = "wang",
+                    Action = "approve",
+                    Comment = "规格可以，交给财务。",
+                    NodeKey = "manager",
+                },
+            ],
+            FormValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["amount"] = "4800",
+                ["reason"] = "金额字段仅财务节点可编。经理已过，待陈财务 / 赵主管会签。",
+            },
         };
     }
 
@@ -839,6 +960,8 @@ internal sealed class ApprovalStore
                 SignMode = "sequential",
                 Actor = Actor(assignee),
                 ApproverPolicy = [new ApproverSourceDto { Type = "fixed", Actors = [Actor(assignee)] }],
+                ButtonPolicy = FullButtonPolicy(),
+                FieldPermissions = DemoFieldPermissions(amountEditable: false),
                 Order = 2,
             },
             ManagerStep("pending", null, null, 3),
@@ -863,6 +986,7 @@ internal sealed class ApprovalStore
                     new ApproverSourceDto { Type = "fixed", Actors = actors },
                 ],
                 ButtonPolicy = FullButtonPolicy(),
+                FieldPermissions = DemoFieldPermissions(amountEditable: false),
                 Order = 2,
             },
         ];
@@ -925,6 +1049,8 @@ internal sealed class ApprovalStore
                 Kind = "approve",
                 SignMode = "sequential",
                 Actor = Actor(assignee),
+                ButtonPolicy = FullButtonPolicy(),
+                FieldPermissions = DemoFieldPermissions(amountEditable: false),
                 Order = 2,
             },
             new()
@@ -961,6 +1087,8 @@ internal sealed class ApprovalStore
                 Kind = "approve",
                 SignMode = "sequential",
                 Actor = Actor(assignee),
+                ButtonPolicy = FullButtonPolicy(),
+                FieldPermissions = DemoFieldPermissions(amountEditable: false),
                 Order = 2,
             },
             new()
@@ -971,6 +1099,8 @@ internal sealed class ApprovalStore
                 Kind = "approve",
                 SignMode = "orsign",
                 Actor = Actor("admin"),
+                ButtonPolicy = FullButtonPolicy(),
+                FieldPermissions = DemoFieldPermissions(amountEditable: true),
                 Order = 3,
                 Children =
                 [
@@ -1007,6 +1137,8 @@ internal sealed class ApprovalStore
                 SignMode = "sequential",
                 Action = "approve",
                 Actor = Actor(actor),
+                ButtonPolicy = FullButtonPolicy(),
+                FieldPermissions = DemoFieldPermissions(amountEditable: false),
                 Comment = "已核实续期问题。",
                 Time = leadTime,
                 Order = 2,
@@ -1028,6 +1160,8 @@ internal sealed class ApprovalStore
                 SignMode = "sequential",
                 Action = "reject",
                 Actor = Actor(actor),
+                ButtonPolicy = FullButtonPolicy(),
+                FieldPermissions = DemoFieldPermissions(amountEditable: false),
                 Comment = "本迭代不做，先记需求池。",
                 Time = rejectTime,
                 RollbackPoint = true,
@@ -1049,6 +1183,8 @@ internal sealed class ApprovalStore
             Comment = "请协助处理。",
             Time = time,
             Order = order,
+            ButtonPolicy = FullButtonPolicy(),
+            FieldPermissions = DemoFieldPermissions(amountEditable: true, initiate: true),
         };
 
     private static ApprovalStepResponse ManagerStep(
@@ -1071,6 +1207,8 @@ internal sealed class ApprovalStore
             [
                 new ApproverSourceDto { Type = "role", Key = "manager" },
             ],
+            ButtonPolicy = FullButtonPolicy(),
+            FieldPermissions = DemoFieldPermissions(amountEditable: false),
             Comment = comment,
             Time = time,
             Order = order,
@@ -1107,7 +1245,103 @@ internal sealed class ApprovalStore
             Comment = comment,
             Time = time,
             Order = order,
+            ButtonPolicy = FullButtonPolicy(),
+            FieldPermissions = DemoFieldPermissions(amountEditable: false),
         };
+
+    private static Dictionary<string, string> DemoFieldPermissions(bool amountEditable, bool initiate = false)
+    {
+        var rest = initiate ? "editable" : "readonly";
+        return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["title"] = rest,
+            ["category"] = rest,
+            ["reason"] = rest,
+            ["amount"] = amountEditable ? "editable" : rest,
+            ["ticketId"] = rest,
+            ["starter"] = "readonly",
+        };
+    }
+
+    private static Dictionary<string, string> BuildFormValues(ApprovalInstance item)
+    {
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["title"] = item.Title,
+            ["category"] = item.Category,
+            ["starter"] = item.Starter,
+            ["reason"] = item.Reason,
+            ["amount"] = item.Amount ?? "",
+            ["ticketId"] = item.TicketId ?? "",
+        };
+        if (item.FormValues is null)
+        {
+            return values;
+        }
+
+        foreach (var pair in item.FormValues)
+        {
+            values[pair.Key] = pair.Value;
+        }
+
+        values["title"] = item.Title;
+        values["category"] = item.Category;
+        values["starter"] = item.Starter;
+        values["reason"] = item.Reason;
+        values["amount"] = item.Amount ?? values.GetValueOrDefault("amount") ?? "";
+        values["ticketId"] = item.TicketId ?? values.GetValueOrDefault("ticketId") ?? "";
+        return values;
+    }
+
+    private static void ApplySubmittedFormValues(
+        ApprovalInstance item,
+        Dictionary<string, string>? submitted,
+        ApprovalStepResponse? step)
+    {
+        if (submitted is null || submitted.Count == 0)
+        {
+            return;
+        }
+
+        var initiate = string.Equals(step?.Kind, "start", StringComparison.OrdinalIgnoreCase);
+        item.FormValues ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in submitted)
+        {
+            if (!IsFieldEditable(pair.Key, step?.FieldPermissions, initiate))
+            {
+                continue;
+            }
+
+            var value = pair.Value?.Trim() ?? "";
+            item.FormValues[pair.Key] = value;
+            if (string.Equals(pair.Key, "amount", StringComparison.OrdinalIgnoreCase))
+            {
+                item.Amount = string.IsNullOrWhiteSpace(value) ? null : Clamp(value, AmountMaxLength, value);
+            }
+            else if (string.Equals(pair.Key, "reason", StringComparison.OrdinalIgnoreCase))
+            {
+                item.Reason = Clamp(value, ReasonMaxLength, item.Reason);
+            }
+            else if (string.Equals(pair.Key, "title", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(value))
+            {
+                item.Title = Clamp(value, TitleMaxLength, item.Title);
+            }
+            else if (string.Equals(pair.Key, "category", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(value))
+            {
+                item.Category = Clamp(value, CategoryMaxLength, item.Category);
+            }
+        }
+    }
+
+    private static bool IsFieldEditable(string name, Dictionary<string, string>? permissions, bool initiate)
+    {
+        if (permissions is not null && permissions.TryGetValue(name, out var mapped))
+        {
+            return string.Equals(mapped, "editable", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return initiate;
+    }
 
     private static ApprovalButtonPolicyDto FullButtonPolicy()
         => new()
