@@ -237,15 +237,16 @@ test.describe('阶段 2 — 协作沟通', () => {
     await expect(page.getByLabel('审批人 1')).toHaveValue('李四');
     await expect(page.getByLabel('审批人 2')).toHaveValue('钱七');
 
-    await expect(page.getByText('当前 4 个节点')).toBeVisible();
+    await expect(page.getByText('当前 7 个节点')).toBeVisible();
     await expect(page.getByRole('button', { name: '恢复默认' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '发布' })).toBeVisible();
     await page.getByRole('button', { name: '添加步骤' }).click();
-    await expect(page.getByText('当前 5 个节点')).toBeVisible();
+    await expect(page.getByText('当前 8 个节点')).toBeVisible();
 
     await page.getByRole('button', { name: '恢复默认' }).click();
-    await expect(page.getByText('当前 4 个节点')).toBeVisible();
+    await expect(page.getByText('当前 7 个节点')).toBeVisible();
     await designer.getByRole('button', { name: '在后方插入 (主管会签)' }).click();
-    await expect(page.getByText('当前 5 个节点')).toBeVisible();
+    await expect(page.getByText('当前 8 个节点')).toBeVisible();
   });
 
   test('团队日历可展示日程并打开新建事件', async ({ page }) => {

@@ -100,4 +100,6 @@
 
 演示身份：审批接口认 `X-Demo-Actor`（Mock 通讯录 id / username / 姓名）。只切换车道与写回操作人，不改登录会话。
 
-种子数据（admin 登录可见）：`AP-1001` 待办且挂 `TK-2048`；`AP-1002` 已通过；`AP-1003` 抄送；`AP-1004` 我发起（处理人为 demo）；`AP-1005` 已驳回（含 rollbackPoint）；`AP-1006` 会签 1/3（`tasks[]`：admin 已签，demo / 王经理待办）；`AP-1007` 采购财务会签（金额仅财务可编，待 `chen` / `zhao`）。
+种子数据（admin 登录可见）：`AP-1001` 待办且挂 `TK-2048`；`AP-1002` 已通过；`AP-1003` 抄送；`AP-1004` 我发起（处理人为 demo）；`AP-1005` 已驳回（含 rollbackPoint）；`AP-1006` 会签 1/3（`tasks[]`：admin 已签，demo / 王经理待办）；`AP-1007` 采购财务会签（金额仅财务可编，`ticketId` 在财务节点 `hidden`，待 `chen` / `zhao`）。
+
+流程设计页 `/workflow-designer` 不走本组接口：本地 JSON 树 + 库 `validateWorkflowDesigner` 发布校验，草稿写入 `localStorage` 键 `tigercat-admin:workflow-designer-draft`，不写回引擎。

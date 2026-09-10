@@ -862,7 +862,7 @@ internal sealed class ApprovalStore
                 new ApproverSourceDto { Type = "group", Key = "finance" },
             ],
             ButtonPolicy = FullButtonPolicy(),
-            FieldPermissions = DemoFieldPermissions(amountEditable: true),
+            FieldPermissions = DemoFieldPermissions(amountEditable: true, hideTicketId: true),
             Order = 3,
         };
         var tasks = WorkflowRuntime.SeedTasksForNode(finance);
@@ -1249,7 +1249,10 @@ internal sealed class ApprovalStore
             FieldPermissions = DemoFieldPermissions(amountEditable: false),
         };
 
-    private static Dictionary<string, string> DemoFieldPermissions(bool amountEditable, bool initiate = false)
+    private static Dictionary<string, string> DemoFieldPermissions(
+        bool amountEditable,
+        bool initiate = false,
+        bool hideTicketId = false)
     {
         var rest = initiate ? "editable" : "readonly";
         return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -1258,7 +1261,7 @@ internal sealed class ApprovalStore
             ["category"] = rest,
             ["reason"] = rest,
             ["amount"] = amountEditable ? "editable" : rest,
-            ["ticketId"] = rest,
+            ["ticketId"] = hideTicketId ? "hidden" : rest,
             ["starter"] = "readonly",
         };
     }

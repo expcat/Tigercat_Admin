@@ -731,7 +731,7 @@ function seedFinancePurchaseDemo(): ApprovalInstance {
     actors: financeActors,
     approverPolicy: [{ type: 'group', key: 'finance' }],
     buttonPolicy: fullButtonPolicy(),
-    fieldPermissions: fieldPerms(true),
+    fieldPermissions: { ...fieldPerms(true), ticketId: 'hidden' },
     order: 3,
   };
   const tasks = seedTasksForNode(finance).map((task) => ({ ...task, status: 'active' }));
