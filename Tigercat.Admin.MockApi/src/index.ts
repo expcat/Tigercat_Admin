@@ -11,11 +11,14 @@ import {
   createApproval,
   getApproval,
   listApprovals,
+  resolveHostApprovers,
   restoreApprovals,
   seedApprovals,
   shouldAdvanceTicketStatus,
+  type ApprovalActionBody,
   type ApprovalInstance,
 } from './approvals';
+import { listMockContacts } from './contacts';
 
 type ApiResponse<T = unknown> = {
   code: number;
@@ -2246,6 +2249,28 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     return makeJson(pageItems(listed.items, url, 50));
   }
 
+  if (path === '/api/approvals/contacts' && method === 'GET') {
+    const username = sessionUsername(request, init);
+    if (!username) return makeError('未授权', 401);
+    return makeJson(listMockContacts());
+  }
+
+  if (path === '/api/approvals/resolve' && method === 'POST') {
+    const username = sessionUsername(request, init);
+    if (!username) return makeError('未授权', 401);
+    const payload = (body ?? {}) as {
+      source?: unknown;
+      sources?: unknown;
+      starter?: string;
+      formValues?: Record<string, unknown>;
+      starterPick?: string[];
+    };
+    const source = payload.sources ?? payload.source;
+    return makeJson({
+      actors: resolveHostApprovers(source, payload.starter ?? username, payload.formValues, payload.starterPick),
+    });
+  }
+
   if (path === '/api/approvals' && method === 'POST') {
     const username = sessionUsername(request, init);
     if (!username) return makeError('未授权', 401);
@@ -2261,6 +2286,9 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
         ticketId?: string;
         assignee?: string;
         cc?: string[];
+        useTasks?: boolean;
+        template?: string;
+        starterPick?: string[];
       },
       nowTicketLabel(),
     );
@@ -2278,7 +2306,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
       state.approvals,
       decodeURIComponent(approvalActionMatch[1]),
       username,
-      body as { action?: string; comment?: string; transferTo?: string },
+      body as ApprovalActionBody,
       nowTicketLabel(),
     );
     if (!result.ok) return makeError(result.message, result.status);

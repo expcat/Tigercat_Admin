@@ -80,7 +80,7 @@ Monitor / Chat SignalR（`/hubs/monitor`、`/hubs/chat`）使用同一套会话 
 | 实时监控 | [api/monitor.md](api/monitor.md) | `/api/monitor/snapshot`，SignalR `/hubs/monitor`（REST 保留） |
 | 任务面板 | [api/tasks.md](api/tasks.md) | `/api/tasks`、流转、完成 |
 | 工单 | [api/tickets.md](api/tickets.md) | `/api/tickets`、状态流转、工单消息 |
-| 审批 Mock | [api/approvals.md](api/approvals.md) | `/api/approvals`、四条列表车道、动作写回实例（可选 `actors` / 同步工单状态） |
+| 审批 Mock | [api/approvals.md](api/approvals.md) | `/api/approvals`、通讯录 `/contacts`、`/resolve`、全动作写回（`tasks` / 加签 / 退回 / 撤回） |
 | 聊天坞 | [api/chat.md](api/chat.md) | `/api/chat/messages`，SignalR `/hubs/chat`（发送仍走 POST） |
 | 评论 | [api/comments.md](api/comments.md) | `/api/comments`（`targetType=ticket\|project`） |
 | 项目 | [api/projects.md](api/projects.md) | `/api/projects`、`/api/projects/{id}` |

@@ -17,6 +17,14 @@ public class ApprovalsEndpoints : IEndpointDefinition
             .RequireLogin()
             .WithName("GetApprovals");
 
+        group.MapGet("/contacts", GetApprovalContacts)
+            .RequireLogin()
+            .WithName("GetApprovalContacts");
+
+        group.MapPost("/resolve", ResolveApprovers)
+            .RequireLogin()
+            .WithName("ResolveApprovers");
+
         group.MapGet("/{id}", GetApproval)
             .RequireLogin()
             .WithName("GetApproval");
@@ -29,6 +37,16 @@ public class ApprovalsEndpoints : IEndpointDefinition
             .RequireLogin()
             .WithName("ApplyApprovalAction");
     }
+
+    private static IResult GetApprovalContacts(ApprovalStore store)
+        => Results.Json(
+            ApiResult.Ok(store.ListContacts()),
+            AppJsonContext.Default.ApiResponseApprovalContactsResponse);
+
+    private static IResult ResolveApprovers(ResolveApproversRequest request, ApprovalStore store)
+        => Results.Json(
+            ApiResult.Ok(store.ResolveApprovers(request)),
+            AppJsonContext.Default.ApiResponseResolveApproversResponse);
 
     private static IResult GetApprovals(
         string? lane,

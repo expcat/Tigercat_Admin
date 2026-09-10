@@ -1,4 +1,4 @@
-# 工作流 + 动态菜单中台 — 递进 Roadmap（2.3.x → 2.4.2）
+# 工作流 + 动态菜单中台 — 递进 Roadmap（2.3.x → 2.5.0）
 
 - **基线**: Tigercat `v2.4.2` + Admin `^2.4.2`
 - **日期**: 2026-09-09
@@ -19,6 +19,7 @@
 | 2.3.2 | M1：WorkflowViewer + MenuSchema 元数据；Admin 菜单轻页 / 审批 Mock |
 | 2.4.0 | M4：WorkflowDesigner（simple）+ SchemaForm；Admin 设计页与发起弹层 |
 | 2.4.2 | **M242 完成**：Viewer 扫读 / 会签 `actors` / ActionBar 确认+意见 / Designer 摘要+兄弟 `+`；Admin 详情 IA + Designer 页跟上 |
+| 2.5.0 | **M5 已规划**：一流完整版（见仓库外 `/workspace/m250-upgrade-plan.md`） |
 
 ---
 
@@ -39,10 +40,12 @@
 - 详情 IA：表单 + Tab（默认 Timeline 进度 / Viewer 结构）+ sticky ActionBar
 - 与工单等现有域挂一条演示链路
 
-### L3 配置与引擎边界
-- WorkflowDesigner（simple JSON 树，摘要卡 + 选中编辑 + 兄弟 `+`）— 2.4.2 已交付；仍无引擎
-- 字段权限 / 超时提醒的展示约定（仍无引擎，有产品信号再开）
-- 明确不做进主包：BPMN 设计器、Flowable/Camunda 运行时、加签/组织解析/表单设计器
+### L3 配置与引擎边界 → **M5 / 2.5.0 一流完整版（已规划）**
+- WorkflowDesigner：画布摘要 + Inspector 四 Tab（审批人 / 操作按钮 / 表单权限 / 高级）；调色板与节点间插入 — **2.5.0**
+- 字段权限矩阵 × SchemaForm；按人 `tasks`；加签 / 退回选节点 / 转交 / `request_changes` — **2.5.0**
+- `ApproverSource` 可插拔（Admin Mock 通讯录解析）；可选 DetailShell
+- 明确不做进主包：BPMN 设计器、Flowable/Camunda 运行时、组织/字典组件、表单设计器、宜搭脚本/连接器节点
+
 
 ---
 
@@ -113,17 +116,27 @@
 
 **验收**: 见 Tigercat `CHANGELOG` `## v2.4.2`；Admin `docs/frontend.md`「审批工作流（v2.4.2）」与 `docs/api/approvals.md`。
 
+### M5 — 2.5.0（工作流一流完整版）— **已规划**
+
+权威：`/workspace/m250-upgrade-plan.md`（禁止按 2.4.2 补丁方式交付）。
+
+**Tigercat `2.5.0`**: Inspector Designer；完整 ActionBar；按人会签；字段权限；ApproverSource 契约；MIGRATION-2.5。
+**Admin `^2.5.0`**: Runtime 状态机 + 详情全动作 + Designer 页 + e2e（加签/退回/会签/权限）。
+**切片**: m250-p0, s1…s9。
+
 ## 4. 跨仓节奏
 
 1. **Tigercat 先发**：库内只做 schema / helpers / 展示组件与文档/示例/测试。
 2. **Admin 后跟**：升依赖到对应 `^x.y.z` 后再做路由、Mock 流转、管理页与真机 Review。
 3. **切片**：单里程碑内可再拆 PR；不跨仓同时大改同一语义。
 4. **回写**：发版后同步 CHANGELOG / 本 roadmap；上游缺口只登记到 Admin 上游清单。
-5. **门禁**：M1→M2→M3 递进；M4（2.4.0）已开；**M242（2.4.2）已完成**。
+5. **门禁**：M1→M2→M3 递进；M4（2.4.0）已开；M242（2.4.2）已完成；**M5（2.5.0）已规划**。
 
 ## 5. 明确不做（全里程碑）
 - Flowable / Camunda / Activiti 嵌入
 - BPMN 2.0 设计器进主包
 - 第二套 Menu / Timeline 渲染系统
-- 租户 / 部门 / 岗位 / 字典作为 Tigercat 组件
-- 运行时加签 / 组织解析 / 表单设计器 / Asana「Request changes」
+- 租户 / 部门 / 岗位 / 字典作为 Tigercat 组件（仅 ApproverSource + 宿主 resolve）
+- 表单设计器；宜搭执行人/连接器/脚本节点；手写签名/IM 快捷批产品化
+
+> 运行时加签 / 退回选节点 / 字段权限 / 节点按钮配置 / Request changes → **改列为 M5 / 2.5.0 正式目标**。

@@ -319,7 +319,16 @@ export type ApprovalLane = 'todo' | 'done' | 'cc' | 'started';
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'canceled';
 
-export type ApprovalAction = 'approve' | 'reject' | 'transfer' | 'comment';
+export type ApprovalAction =
+  | 'approve'
+  | 'reject'
+  | 'transfer'
+  | 'addsign'
+  | 'return'
+  | 'cancel'
+  | 'withdraw'
+  | 'comment'
+  | 'request_changes';
 
 export interface ApprovalActor {
   id?: string;
@@ -341,6 +350,14 @@ export interface ApprovalStep {
   kind?: string;
   signMode?: string;
   rollbackPoint?: boolean;
+  temporary?: boolean;
+  returnTarget?: boolean;
+  origin?: {
+    type?: string;
+    position?: string;
+    fromNodeKey?: string;
+    fromTaskId?: string;
+  };
 }
 
 export interface ApprovalFormField {
@@ -363,12 +380,35 @@ export interface ApprovalListItem {
   updatedAt: string;
 }
 
+export interface ApprovalTask {
+  id: string;
+  nodeKey: string;
+  assignee: ApprovalActor;
+  status: string;
+  action?: string;
+  comment?: string;
+  actedAt?: string;
+  origin?: string;
+}
+
+export interface ApprovalHistoryEntry {
+  at: string;
+  actorId: string;
+  action: string;
+  comment?: string;
+  nodeKey?: string;
+  taskId?: string;
+}
+
 export interface ApprovalDetail extends ApprovalListItem {
   reason: string;
   amount?: string | null;
   formFields: ApprovalFormField[];
   steps: ApprovalStep[];
   actedBy: string[];
+  tasks?: ApprovalTask[];
+  history?: ApprovalHistoryEntry[];
+  resumeToNodeKey?: string;
 }
 
 export interface CreateApprovalPayload {
@@ -385,6 +425,13 @@ export interface ApprovalActionPayload {
   action: ApprovalAction;
   comment?: string;
   transferTo?: string;
+  taskId?: string;
+  nodeKey?: string;
+  position?: 'before' | 'after';
+  signMode?: string;
+  targetNodeKey?: string;
+  resume?: 'resequence' | 'direct';
+  addsignTo?: string[];
 }
 
 export interface CreateCommentPayload {

@@ -1,11 +1,59 @@
+import type {
+  ApproverSource,
+  WorkflowHistoryEntry,
+  WorkflowInstance,
+  WorkflowRuntimeAction,
+  WorkflowTask,
+  WorkflowTimelineActor,
+  WorkflowTimelineStep,
+} from '@expcat/tigercat-core';
+import { listWorkflowReturnTargets, reduceWorkflowAction } from '@expcat/tigercat-core';
+import {
+  contactActorFromId,
+  findContactUser,
+  isApproverSourceLike,
+  resolveApprovers,
+} from './contacts';
+
 export type ApprovalLane = 'todo' | 'done' | 'cc' | 'started';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'canceled';
-export type ApprovalAction = 'approve' | 'reject' | 'transfer' | 'comment';
+export type ApprovalAction =
+  | 'approve'
+  | 'reject'
+  | 'transfer'
+  | 'addsign'
+  | 'return'
+  | 'cancel'
+  | 'withdraw'
+  | 'comment'
+  | 'request_changes';
 
 export type ApprovalActor = {
   id?: string;
   name?: string;
   status?: string;
+};
+
+type StepStatus = 'pending' | 'active' | 'approved' | 'rejected' | 'canceled';
+
+export type ApprovalTask = {
+  id: string;
+  nodeKey: string;
+  assignee: ApprovalActor;
+  status: string;
+  action?: string;
+  comment?: string;
+  actedAt?: string;
+  origin?: string;
+};
+
+export type ApprovalHistoryEntry = {
+  at: string;
+  actorId: string;
+  action: string;
+  comment?: string;
+  nodeKey?: string;
+  taskId?: string;
 };
 
 export type ApprovalStep = {
@@ -22,6 +70,24 @@ export type ApprovalStep = {
   kind?: string;
   signMode?: string;
   rollbackPoint?: boolean;
+  temporary?: boolean;
+  returnTarget?: boolean;
+  origin?: {
+    type?: string;
+    position?: string;
+    fromNodeKey?: string;
+    fromTaskId?: string;
+  };
+  approverPolicy?: ApproverSource | ApproverSource[];
+  pendingAfterAddsign?: {
+    assignees: ApprovalActor[];
+    signMode?: string;
+    comment?: string;
+    fromTaskId?: string;
+    tempNodeKey?: string;
+  };
+  tasks?: ApprovalTask[];
+  fieldPermissions?: Record<string, string>;
 };
 
 export type ApprovalFormField = {
@@ -45,6 +111,10 @@ export type ApprovalInstance = {
   createdAt: string;
   updatedAt: string;
   steps: ApprovalStep[];
+  tasks?: ApprovalTask[];
+  history?: ApprovalHistoryEntry[];
+  resumeToNodeKey?: string;
+  formValues?: Record<string, unknown>;
 };
 
 export type ApprovalListItem = {
@@ -62,20 +132,58 @@ export type ApprovalListItem = {
   updatedAt: string;
 };
 
+export type ApprovalReturnTarget = {
+  key: string;
+  title?: string;
+  kind?: string;
+  actorName?: string;
+  status?: string;
+};
+
 export type ApprovalDetail = ApprovalListItem & {
   reason: string;
   amount?: string | null;
   formFields: ApprovalFormField[];
   steps: ApprovalStep[];
   actedBy: string[];
+  tasks?: ApprovalTask[];
+  history?: ApprovalHistoryEntry[];
+  resumeToNodeKey?: string;
+  returnTargets?: ApprovalReturnTarget[];
 };
 
 export type ApprovalMutation =
   | { ok: true; status: number; detail: ApprovalDetail; ticketId?: string | null; ticketStatus?: string | null }
   | { ok: false; status: number; message: string };
 
+export type ApprovalActionBody = {
+  action?: string;
+  comment?: string;
+  transferTo?: string;
+  taskId?: string;
+  nodeKey?: string;
+  position?: string;
+  signMode?: string;
+  targetNodeKey?: string;
+  resume?: string;
+  tempNodeKey?: string;
+  assignee?: ApprovalActor;
+  assignees?: ApprovalActor[];
+  addsignTo?: string[];
+};
+
 const LANES: ApprovalLane[] = ['todo', 'done', 'cc', 'started'];
-const ACTIONS: ApprovalAction[] = ['approve', 'reject', 'transfer', 'comment'];
+const ACTIONS: ApprovalAction[] = [
+  'approve',
+  'reject',
+  'transfer',
+  'addsign',
+  'return',
+  'cancel',
+  'withdraw',
+  'comment',
+  'request_changes',
+];
 
 const sameUser = (left?: string | null, right?: string | null) =>
   Boolean(left && right && left.trim().toLowerCase() === right.trim().toLowerCase());
@@ -85,13 +193,41 @@ const clamp = (value: string | undefined, max: number, fallback: string) => {
   return next.length <= max ? next : next.slice(0, max);
 };
 
-const actor = (name: string): ApprovalActor => ({ id: name, name });
+const actor = (name: string): ApprovalActor => {
+  const next = contactActorFromId(name);
+  return { id: String(next.id ?? name), name: next.name ?? name };
+};
+
+const asTimelineActor = (item: ApprovalActor): WorkflowTimelineActor => ({
+  id: item.id,
+  name: item.name,
+  status: item.status as StepStatus | undefined,
+});
 
 const cloneStep = (step: ApprovalStep): ApprovalStep => ({
   ...step,
   actor: step.actor ? { ...step.actor } : undefined,
   actors: step.actors?.map((item) => ({ ...item })),
   children: step.children?.map(cloneStep),
+  tasks: step.tasks?.map((item) => ({ ...item, assignee: { ...item.assignee } })),
+  fieldPermissions: step.fieldPermissions ? { ...step.fieldPermissions } : step.fieldPermissions,
+  approverPolicy: Array.isArray(step.approverPolicy)
+    ? step.approverPolicy.map((source) => ({ ...source }))
+    : step.approverPolicy
+      ? { ...step.approverPolicy }
+      : step.approverPolicy,
+  origin: step.origin ? { ...step.origin } : step.origin,
+  pendingAfterAddsign: step.pendingAfterAddsign
+    ? {
+        ...step.pendingAfterAddsign,
+        assignees: step.pendingAfterAddsign.assignees.map((item) => ({ ...item })),
+      }
+    : step.pendingAfterAddsign,
+});
+
+const cloneTask = (task: ApprovalTask): ApprovalTask => ({
+  ...task,
+  assignee: { ...task.assignee },
 });
 
 const cloneInstance = (item: ApprovalInstance): ApprovalInstance => ({
@@ -99,6 +235,9 @@ const cloneInstance = (item: ApprovalInstance): ApprovalInstance => ({
   cc: [...item.cc],
   actedBy: [...item.actedBy],
   steps: item.steps.map(cloneStep),
+  tasks: item.tasks?.map(cloneTask),
+  history: item.history?.map((entry) => ({ ...entry })),
+  formValues: item.formValues ? { ...item.formValues } : item.formValues,
 });
 
 const currentTitle = (item: ApprovalInstance) =>
@@ -118,6 +257,15 @@ const formFields = (item: ApprovalInstance): ApprovalFormField[] => {
   if (item.cc.length) fields.push({ label: '抄送', value: item.cc.join('、') });
   return fields;
 };
+
+const returnTargets = (item: ApprovalInstance): ApprovalReturnTarget[] =>
+  listWorkflowReturnTargets(item.steps as WorkflowTimelineStep[], item.currentStepKey).map((target) => ({
+    key: target.key,
+    title: target.title,
+    kind: target.kind,
+    actorName: target.actorName,
+    status: target.status,
+  }));
 
 export function toListItem(item: ApprovalInstance): ApprovalListItem {
   return {
@@ -144,6 +292,10 @@ export function toDetail(item: ApprovalInstance): ApprovalDetail {
     formFields: formFields(item),
     steps: item.steps.map(cloneStep),
     actedBy: [...item.actedBy],
+    tasks: item.tasks?.map(cloneTask),
+    history: item.history?.map((entry) => ({ ...entry })),
+    resumeToNodeKey: item.resumeToNodeKey,
+    returnTargets: returnTargets(item),
   };
 }
 
@@ -179,6 +331,7 @@ const managerStep = (
   action: status === 'approved' ? 'approve' : undefined,
   actor: actor(name ?? 'admin'),
   actors: managerActors(status),
+  approverPolicy: [{ type: 'role', key: 'manager' }],
   comment,
   time,
   order,
@@ -215,13 +368,57 @@ const pendingTicketSteps = (starter: string, assignee: string, time: string): Ap
     kind: 'approve',
     signMode: 'sequential',
     actor: actor(assignee),
+    approverPolicy: [{ type: 'fixed', actors: [{ id: assignee, name: findContactUser(assignee)?.name ?? assignee }] }],
     order: 2,
   },
   managerStep('pending', null, undefined, 3),
   archiveStep('pending', undefined, 4),
 ];
 
+const seedTasksForNode = (node: ApprovalStep, origin: WorkflowTask['origin'] = 'definition'): ApprovalTask[] => {
+  const actors = node.actors && node.actors.length > 0 ? node.actors : node.actor ? [node.actor] : [];
+  const signMode = node.signMode ?? 'sequential';
+  return actors.map((item, index) => ({
+    id: `${node.key}:${item.id ?? index}`,
+    nodeKey: node.key,
+    assignee: { ...item },
+    status: signMode === 'sequential' && index === 0 ? 'active' : 'pending',
+    origin,
+  }));
+};
+
+const countersignPendingSteps = (starter: string, actors: ApprovalActor[], time: string): ApprovalStep[] => [
+  startStep(starter, time, 1),
+  {
+    key: 'countersign',
+    title: '会签审批',
+    status: 'active',
+    kind: 'approve',
+    signMode: 'countersign',
+    actor: actors[0],
+    actors,
+    approverPolicy: [{ type: 'fixed', actors: actors.map((item) => ({ id: String(item.id), name: item.name })) }],
+    order: 2,
+  },
+];
+
 export function seedApprovals(): ApprovalInstance[] {
+  const countersignActors: ApprovalActor[] = [
+    { id: 'admin', name: '管理员', status: 'approved' },
+    { id: 'demo', name: '演示用户', status: 'pending' },
+    { id: 'wang', name: '王经理', status: 'pending' },
+  ];
+  const countersignSteps = countersignPendingSteps('admin', countersignActors, '2026-09-10 09:00');
+  const countersignNode = countersignSteps.find((step) => step.key === 'countersign')!;
+  const countersignTasks = seedTasksForNode(countersignNode);
+  countersignTasks[0] = {
+    ...countersignTasks[0]!,
+    status: 'approved',
+    action: 'approve',
+    actedAt: '2026-09-10 09:00',
+    comment: '先签一票',
+  };
+
   return [
     {
       id: 'AP-1001',
@@ -382,8 +579,47 @@ export function seedApprovals(): ApprovalInstance[] {
         archiveStep('pending', undefined, 4),
       ],
     },
+    {
+      id: 'AP-1006',
+      title: '会签演示：采购权限开通 1/3',
+      category: '采购',
+      starter: 'admin',
+      assignee: 'demo',
+      cc: ['fang'],
+      status: 'pending',
+      currentStepKey: 'countersign',
+      reason: '按人会签演示：管理员已同意，待 demo / 王经理。',
+      amount: '8600',
+      actedBy: ['admin'],
+      createdAt: '2026-09-10 09:00',
+      updatedAt: '2026-09-10 09:00',
+      steps: countersignSteps,
+      tasks: countersignTasks,
+      history: [
+        {
+          at: '2026-09-10 09:00',
+          actorId: 'admin',
+          action: 'approve',
+          comment: '先签一票',
+          nodeKey: 'countersign',
+          taskId: countersignTasks[0]?.id,
+        },
+      ],
+    },
   ];
 }
+
+const inTodo = (item: ApprovalInstance, username: string) => {
+  if (item.status !== 'pending') return false;
+  if (item.tasks) {
+    return item.tasks.some(
+      (task) =>
+        (task.status === 'pending' || task.status === 'active') &&
+        (sameUser(task.assignee.id, username) || sameUser(task.assignee.name, username)),
+    );
+  }
+  return sameUser(item.assignee, username);
+};
 
 export function listApprovals(
   items: ApprovalInstance[],
@@ -397,7 +633,7 @@ export function listApprovals(
   }
 
   let next = items.filter((item) => {
-    if (normalized === 'todo') return item.status === 'pending' && sameUser(item.assignee, username);
+    if (normalized === 'todo') return inTodo(item, username);
     if (normalized === 'done') return item.actedBy.some((actorName) => sameUser(actorName, username));
     if (normalized === 'cc') return item.cc.some((actorName) => sameUser(actorName, username));
     return sameUser(item.starter, username);
@@ -418,57 +654,6 @@ export function getApproval(items: ApprovalInstance[], id: string): ApprovalDeta
   const item = items.find((entry) => entry.id.toLowerCase() === id.toLowerCase());
   return item ? toDetail(item) : null;
 }
-
-export function createApproval(
-  items: ApprovalInstance[],
-  nextNumber: number,
-  username: string,
-  body: {
-    title?: string;
-    category?: string;
-    reason?: string;
-    amount?: string;
-    ticketId?: string;
-    assignee?: string;
-    cc?: string[];
-  },
-  now: string,
-): { error?: string; nextNumber: number; detail?: ApprovalDetail } {
-  const title = (body.title ?? '').trim();
-  if (!title) return { error: '审批标题不能为空', nextNumber };
-  const starter = username.trim() || 'unknown';
-  const assignee = clamp(body.assignee, 40, 'admin');
-  const instance: ApprovalInstance = {
-    id: `AP-${nextNumber}`,
-    title: title.slice(0, 120),
-    category: clamp(body.category, 40, '工单'),
-    ticketId: body.ticketId?.trim() || null,
-    starter,
-    assignee,
-    cc: [...new Set((body.cc ?? []).map((item) => clamp(item, 40, item)).filter(Boolean))],
-    status: 'pending',
-    currentStepKey: 'lead',
-    reason: clamp(body.reason, 2000, '（无说明）'),
-    amount: body.amount?.trim() ? clamp(body.amount, 32, '') : null,
-    actedBy: [],
-    createdAt: now,
-    updatedAt: now,
-    steps: pendingTicketSteps(starter, assignee, now),
-  };
-  items.unshift(instance);
-  return { nextNumber: nextNumber + 1, detail: toDetail(instance) };
-}
-
-const findActive = (steps: ApprovalStep[]) => steps.find((step) => step.status === 'active');
-
-const markChildren = (step: ApprovalStep, status: string) => {
-  step.children?.forEach((child) => {
-    child.status = status;
-    if (status === 'approved' || status === 'rejected' || status === 'active') {
-      child.time = child.time ?? step.time;
-    }
-  });
-};
 
 const remember = (item: ApprovalInstance, username: string) => {
   if (!item.actedBy.some((actorName) => sameUser(actorName, username))) {
@@ -491,7 +676,17 @@ export function shouldAdvanceTicketStatus(current: string, next: string): boolea
 
 const ticketStatusFor = (item: ApprovalInstance, action: ApprovalAction): string | null => {
   if (!item.ticketId) return null;
-  if (action === 'transfer' || action === 'comment') return null;
+  if (
+    action === 'transfer' ||
+    action === 'comment' ||
+    action === 'addsign' ||
+    action === 'return' ||
+    action === 'cancel' ||
+    action === 'withdraw' ||
+    action === 'request_changes'
+  ) {
+    return null;
+  }
   if (item.status === 'approved') return 'resolved';
   if (item.status === 'rejected') return 'closed';
   if (item.status === 'pending') {
@@ -500,80 +695,210 @@ const ticketStatusFor = (item: ApprovalInstance, action: ApprovalAction): string
   return null;
 };
 
-const advance = (item: ApprovalInstance, now: string) => {
-  const remaining = [...item.steps]
-    .sort((a, b) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER))
-    .find((step) => step.status === 'pending' || !step.status);
-  if (!remaining) {
-    item.status = 'approved';
-    item.currentStepKey = item.steps[item.steps.length - 1]?.key;
-    item.updatedAt = now;
-    return;
+function toWorkflowInstance(item: ApprovalInstance): WorkflowInstance {
+  const inst: WorkflowInstance = {
+    id: item.id,
+    status: item.status === 'pending' ? 'active' : item.status,
+    steps: item.steps as WorkflowTimelineStep[],
+    cursor: item.currentStepKey ? { nodeKey: item.currentStepKey } : undefined,
+    history: item.history as WorkflowHistoryEntry[] | undefined,
+    formValues: item.formValues,
+    starter: { id: item.starter, name: item.starter },
+    resumeToNodeKey: item.resumeToNodeKey,
+  };
+  if (item.tasks) inst.tasks = item.tasks as WorkflowTask[];
+  return inst;
+}
+
+function actorIdOf(value?: ApprovalActor | WorkflowTimelineActor | null): string | undefined {
+  if (!value) return undefined;
+  if (value.id != null && String(value.id).trim()) return String(value.id);
+  if (value.name && value.name.trim()) return value.name.trim();
+  return undefined;
+}
+
+function deriveAssignee(item: ApprovalInstance): string {
+  if (item.tasks) {
+    const open = item.tasks.find((task) => task.status === 'pending' || task.status === 'active');
+    const id = actorIdOf(open?.assignee);
+    if (id) return id;
   }
-  remaining.status = 'active';
-  if (remaining.kind === 'cc' || (remaining.children && remaining.children.length > 0)) {
-    markChildren(remaining, 'active');
+  const current = item.steps.find((step) => step.key === item.currentStepKey) ?? item.steps.find((step) => step.status === 'active');
+  return actorIdOf(current?.actor) ?? item.assignee;
+}
+
+function applyReduced(item: ApprovalInstance, next: WorkflowInstance) {
+  item.steps = next.steps as ApprovalStep[];
+  item.tasks = next.tasks as ApprovalTask[] | undefined;
+  item.history = next.history as ApprovalHistoryEntry[] | undefined;
+  item.currentStepKey = next.cursor?.nodeKey;
+  item.resumeToNodeKey = next.resumeToNodeKey;
+  item.status = next.status === 'active' || next.status === 'pending' ? 'pending' : ((next.status as ApprovalStatus) ?? item.status);
+  item.assignee = deriveAssignee(item);
+}
+
+function resolveActionAssignees(body: ApprovalActionBody): WorkflowTimelineActor[] {
+  if (body.assignees && body.assignees.length > 0) {
+    return body.assignees.map((item) => asTimelineActor(contactActorFromId(String(item.id ?? item.name ?? '')) as ApprovalActor));
   }
-  item.assignee = remaining.actor?.id || remaining.actor?.name || item.assignee;
-  item.currentStepKey = remaining.key;
-  item.updatedAt = now;
-};
+  return (body.addsignTo ?? []).map((id) => asTimelineActor(actor(id)));
+}
+
+export function createApproval(
+  items: ApprovalInstance[],
+  nextNumber: number,
+  username: string,
+  body: {
+    title?: string;
+    category?: string;
+    reason?: string;
+    amount?: string;
+    ticketId?: string;
+    assignee?: string;
+    cc?: string[];
+    useTasks?: boolean;
+    template?: string;
+    starterPick?: string[];
+  },
+  now: string,
+): { error?: string; nextNumber: number; detail?: ApprovalDetail } {
+  const title = (body.title ?? '').trim();
+  if (!title) return { error: '审批标题不能为空', nextNumber };
+  const starter = username.trim() || 'unknown';
+  const assignee = clamp(body.assignee, 40, 'admin');
+  const template = (body.template ?? 'ticket').trim().toLowerCase();
+  const useTasks = body.useTasks === true || template === 'countersign';
+  const starterPick = (body.starterPick ?? []).map((item) => item.trim()).filter(Boolean);
+  const formValues: Record<string, unknown> = {};
+  if (starterPick.length) formValues.starterPick = starterPick;
+  if (body.amount?.trim()) formValues.amount = body.amount.trim();
+
+  let steps = pendingTicketSteps(starter, assignee, now);
+  let tasks: ApprovalTask[] | undefined;
+  let currentStepKey = 'lead';
+  let resolvedAssignee = assignee;
+
+  if (template === 'countersign') {
+    const names = starterPick.length >= 2 ? starterPick : ['admin', 'demo', 'wang'];
+    const actors = names.map((name) => actor(name));
+    steps = countersignPendingSteps(starter, actors, now);
+    const node = steps.find((step) => step.key === 'countersign')!;
+    tasks = useTasks ? seedTasksForNode(node) : undefined;
+    currentStepKey = 'countersign';
+    resolvedAssignee = String(actors[0]?.id ?? assignee);
+  } else if (useTasks) {
+    const lead = steps.find((step) => step.key === 'lead')!;
+    tasks = seedTasksForNode(lead);
+  }
+
+  const instance: ApprovalInstance = {
+    id: `AP-${nextNumber}`,
+    title: title.slice(0, 120),
+    category: clamp(body.category, 40, '工单'),
+    ticketId: body.ticketId?.trim() || null,
+    starter,
+    assignee: resolvedAssignee,
+    cc: [...new Set((body.cc ?? []).map((item) => clamp(item, 40, item)).filter(Boolean))],
+    status: 'pending',
+    currentStepKey,
+    reason: clamp(body.reason, 2000, '（无说明）'),
+    amount: body.amount?.trim() ? clamp(body.amount, 32, '') : null,
+    actedBy: [],
+    createdAt: now,
+    updatedAt: now,
+    steps,
+    tasks,
+    history: [{ at: now, actorId: starter, action: 'approve', comment: '提交申请', nodeKey: 'start' }],
+    formValues: Object.keys(formValues).length ? formValues : undefined,
+  };
+  items.unshift(instance);
+  return { nextNumber: nextNumber + 1, detail: toDetail(instance) };
+}
 
 export function applyApprovalAction(
   items: ApprovalInstance[],
   id: string,
   username: string,
-  body: { action?: string; comment?: string; transferTo?: string },
+  body: ApprovalActionBody,
   now: string,
 ): ApprovalMutation {
-  const action = (body.action ?? '').trim().toLowerCase() as ApprovalAction;
-  if (!ACTIONS.includes(action)) {
+  const raw = (body.action ?? '').trim().toLowerCase();
+  const action = (raw === 'withdraw' ? 'cancel' : raw) as ApprovalAction;
+  if (!ACTIONS.includes(raw as ApprovalAction) && action !== 'cancel') {
     return { ok: false, status: 400, message: '无效的审批动作' };
   }
   const item = items.find((entry) => entry.id.toLowerCase() === id.toLowerCase());
   if (!item) return { ok: false, status: 404, message: '审批实例不存在' };
   if (item.status === 'approved' || item.status === 'rejected' || item.status === 'canceled') {
-    return { ok: false, status: 400, message: '当前审批已结束，不能再操作' };
+    if (action !== 'comment') return { ok: false, status: 400, message: '当前审批已结束，不能再操作' };
   }
-  const active = findActive(item.steps);
-  if (!active) return { ok: false, status: 400, message: '当前没有可处理的审批步骤' };
 
   const actorName = username.trim() || 'unknown';
   const comment = body.comment == null ? undefined : clamp(body.comment, 500, '');
+  if (action === 'comment' && !comment) return { ok: false, status: 400, message: '评论内容不能为空' };
 
-  if (action === 'approve' || action === 'reject') {
-    active.status = action === 'approve' ? 'approved' : 'rejected';
-    active.action = action;
-    active.time = now;
-    active.rollbackPoint = action === 'reject';
-    if (comment) active.comment = comment;
-    else if (action === 'reject') active.comment = '驳回';
-    active.actor = actor(actorName);
-    markChildren(active, active.status);
-    remember(item, actorName);
-    if (action === 'reject') {
-      item.status = 'rejected';
-      item.updatedAt = now;
-    } else {
-      advance(item, now);
-    }
-  } else if (action === 'transfer') {
-    const target = (body.transferTo ?? '').trim();
-    if (!target) return { ok: false, status: 400, message: '转交对象不能为空' };
-    const next = clamp(target, 40, target);
-    active.actor = actor(next);
-    active.comment = comment || `转交给 ${next}`;
-    active.time = now;
-    active.action = 'transfer';
-    item.assignee = next;
-    remember(item, actorName);
-    item.updatedAt = now;
-  } else {
-    if (!comment) return { ok: false, status: 400, message: '评论内容不能为空' };
-    active.comment = active.comment ? `${active.comment}\n${comment}` : comment;
-    active.time = now;
-    item.updatedAt = now;
+  const transferTo = (body.transferTo ?? '').trim();
+  const assignee = body.assignee
+    ? contactActorFromId(String(body.assignee.id ?? body.assignee.name ?? ''))
+    : transferTo
+      ? contactActorFromId(clamp(transferTo, 40, transferTo))
+      : undefined;
+  if (action === 'transfer' && !assignee) return { ok: false, status: 400, message: '转交对象不能为空' };
+
+  const assignees = resolveActionAssignees(body);
+  if (action === 'addsign' && assignees.length === 0) {
+    return { ok: false, status: 400, message: '加签对象不能为空' };
   }
+  if (action === 'return' && !(body.targetNodeKey ?? '').trim()) {
+    return { ok: false, status: 400, message: '请选择退回节点' };
+  }
+
+  const runtime: WorkflowRuntimeAction = {
+    action: action === 'withdraw' ? 'cancel' : action,
+    actorId: actorName,
+    taskId: body.taskId,
+    nodeKey: body.nodeKey,
+    comment,
+    at: now,
+    assignee,
+    assignees: assignees.length ? assignees : undefined,
+    position: body.position === 'after' ? 'after' : body.position === 'before' ? 'before' : undefined,
+    signMode: body.signMode === 'countersign' || body.signMode === 'orsign' || body.signMode === 'sequential'
+      ? body.signMode
+      : undefined,
+    targetNodeKey: body.targetNodeKey,
+    resume: body.resume === 'direct' || body.resume === 'resequence' ? body.resume : undefined,
+    tempNodeKey: body.tempNodeKey,
+  };
+
+  const before = toWorkflowInstance(item);
+  const next = reduceWorkflowAction(before, runtime);
+  if (next === before) {
+    const message =
+      action === 'transfer'
+        ? '转交对象不能为空'
+        : action === 'addsign'
+          ? '加签对象不能为空'
+          : action === 'return' || action === 'request_changes'
+            ? '没有可退回的节点'
+            : action === 'cancel'
+              ? '只有发起人可以撤回'
+              : action === 'approve' || action === 'reject'
+                ? '当前用户没有可处理的审批任务'
+                : '当前动作无法执行';
+    return { ok: false, status: 400, message };
+  }
+
+  applyReduced(item, next);
+  if (action !== 'comment') remember(item, actorName);
+  else {
+    const active = item.steps.find((step) => step.status === 'active') ?? item.steps.find((step) => step.key === item.currentStepKey);
+    if (active) {
+      active.comment = active.comment ? `${active.comment}\n${comment}` : comment;
+      active.time = now;
+    }
+  }
+  item.updatedAt = now;
 
   return {
     ok: true,
@@ -582,6 +907,22 @@ export function applyApprovalAction(
     ticketId: item.ticketId,
     ticketStatus: ticketStatusFor(item, action),
   };
+}
+
+export function resolveHostApprovers(
+  source: unknown,
+  starter?: string,
+  formValues?: Record<string, unknown>,
+  starterPick?: string[],
+) {
+  const values = { ...(formValues ?? {}) };
+  if (starterPick?.length) values.starterPick = starterPick;
+  const list = Array.isArray(source) ? source : [source];
+  const typed = list.filter(isApproverSourceLike) as ApproverSource[];
+  return resolveApprovers(typed, {
+    starter: contactActorFromId(starter),
+    formValues: values,
+  });
 }
 
 export function restoreApprovals(raw: unknown, fallback: ApprovalInstance[]): ApprovalInstance[] {

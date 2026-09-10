@@ -134,5 +134,8 @@ export function actionSuccessMessage(action: ApprovalAction) {
   if (action === 'approve') return '已同意，实例状态已写回';
   if (action === 'reject') return '已驳回，实例状态已写回';
   if (action === 'transfer') return '已转交，实例状态已写回';
+  if (action === 'addsign') return '已加签，实例状态已写回';
+  if (action === 'return' || action === 'request_changes') return '已退回，实例状态已写回';
+  if (action === 'cancel' || action === 'withdraw') return '已撤回，实例状态已写回';
   return '已记录评论';
 }
