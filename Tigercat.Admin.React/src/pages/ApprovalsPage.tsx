@@ -176,7 +176,7 @@ function ApprovalsPage() {
     () => ({
       searchMode: 'remote' as const,
       searchValue: keyword,
-      searchPlaceholder: '搜索标题、单号或处理人',
+      searchPlaceholder: '搜索标题或单号',
       onSearchChange: (value: string) => {
         setKeyword(value);
         setPage(1);
@@ -193,7 +193,7 @@ function ApprovalsPage() {
     <div className="space-y-4">
       <PageHeader
         title="审批中心"
-        subtitle="待办 / 已办 / 抄送 / 我发起的。详情壳接全量 ActionBar 与字段权限，不接 Flowable。"
+        subtitle="待办、已办、抄送与我发起的申请。可按身份切换当前处理人。"
         icon={<CheckCircleIcon size={22} />}
         tags={[{ label: 'Mock 流转', variant: 'info' }]}
       />

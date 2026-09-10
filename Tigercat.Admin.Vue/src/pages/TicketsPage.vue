@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Input } from '@expcat/tigercat-vue/Input'
@@ -14,7 +15,6 @@ import { CommentThread } from '@expcat/tigercat-vue/CommentThread'
 import { Mentions } from '@expcat/tigercat-vue/Mentions'
 import { Descriptions } from '@expcat/tigercat-vue/Descriptions'
 import { Rate } from '@expcat/tigercat-vue/Rate'
-import { Badge } from '@expcat/tigercat-vue/Badge'
 import { Drawer } from '@expcat/tigercat-vue/Drawer'
 import { Upload } from '@expcat/tigercat-vue/Upload'
 import { Popover } from '@expcat/tigercat-vue/Popover'
@@ -107,6 +107,12 @@ const statusFilters: { value: 'all' | TicketStatus; label: string }[] = [
 
 const filteredTickets = computed(() => tickets.value)
 
+const route = useRoute()
+const requestedTicketId = computed(() => {
+  const raw = route.query.ticket
+  const value = Array.isArray(raw) ? raw[0] : raw
+  return value ? String(value) : ''
+})
 const selectedId = ref<string | null>(null)
 const selected = computed(() => tickets.value.find((t) => t.id === selectedId.value) ?? null)
 
@@ -142,7 +148,9 @@ async function loadTickets() {
       toTicketView(item, prevNotes.get(item.id) ?? []),
     )
     tickets.value = items
-    if (!selectedId.value || !items.some((item) => item.id === selectedId.value)) {
+    if (requestedTicketId.value && items.some((item) => item.id === requestedTicketId.value)) {
+      selectedId.value = requestedTicketId.value
+    } else if (!selectedId.value || !items.some((item) => item.id === selectedId.value)) {
       selectedId.value = items[0]?.id ?? null
     }
     if (selectedId.value) {
@@ -168,12 +176,12 @@ const selectedDescriptions = computed<DescriptionsItem[]>(() => {
   const t = selected.value
   if (!t) return []
   return [
-    { label: '工单号', content: t.id },
-    { label: '提交人', content: t.requester },
-    { label: '分类', content: t.category },
-    { label: '优先级', content: PRIORITY_META[t.priority].label },
-    { label: '创建时间', content: t.createdAt },
-    { label: '更新时间', content: t.updatedAt },
+    { label: '工单号', content: t.id, labelClassName: 'whitespace-nowrap' },
+    { label: '提交人', content: t.requester, labelClassName: 'whitespace-nowrap' },
+    { label: '分类', content: t.category, labelClassName: 'whitespace-nowrap' },
+    { label: '优先级', content: PRIORITY_META[t.priority].label, labelClassName: 'whitespace-nowrap' },
+    { label: '创建时间', content: t.createdAt, labelClassName: 'whitespace-nowrap' },
+    { label: '更新时间', content: t.updatedAt, labelClassName: 'whitespace-nowrap' },
   ]
 })
 
@@ -360,7 +368,7 @@ const chatStatus = computed(() =>
     <PageHeader
       icon="ticket"
       title="工单中心"
-      subtitle="左右主从布局，跟进工单生命周期、对话与内部协作"
+      subtitle="跟进工单状态、对话和内部备注，并处理关联审批。"
       :tags="[
         { label: '协作', variant: 'primary' },
         { label: '演示数据', variant: 'info' },
@@ -370,7 +378,7 @@ const chatStatus = computed(() =>
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2">
         <Text weight="bold">工单列表</Text>
-        <Badge :content="openCount" :show-zero="true" variant="primary" standalone />
+        <Text weight="bold" class="tabular-nums text-[var(--tiger-primary,#2563eb)]">{{ openCount }}</Text>
         <Text size="sm" color="secondary">个待跟进</Text>
       </div>
       <Button @click="openDrawer">
@@ -420,8 +428,8 @@ const chatStatus = computed(() =>
               @click="selectTicket(t.id)"
             >
               <div class="flex items-center justify-between gap-2">
-                <Text weight="medium" class="truncate">{{ t.title }}</Text>
-                <Tag :variant="PRIORITY_META[t.priority].variant" size="sm">
+                <Text weight="medium" class="min-w-0 truncate">{{ t.title }}</Text>
+                <Tag :variant="PRIORITY_META[t.priority].variant" size="sm" class="shrink-0">
                   {{ PRIORITY_META[t.priority].label }}
                 </Tag>
               </div>

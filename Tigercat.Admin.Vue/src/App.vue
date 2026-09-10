@@ -64,24 +64,34 @@ const authHeaders = computed<Record<string, string>>(() => {
   return headers
 })
 
+function normalizeReturnPath(value: string): string {
+  let next = value.trim()
+  if (next.startsWith('#/')) next = next.slice(1)
+  const hashIdx = next.indexOf('#/')
+  if (hashIdx >= 0) next = next.slice(hashIdx + 1)
+  if (!next.startsWith('/')) next = `/${next}`
+  return next
+}
+
 function getSafeReturnTo(value: unknown): string {
-  if (typeof value !== 'string' || !value.startsWith('/')) {
+  if (typeof value !== 'string' || value.length === 0) {
     return '/dashboard'
   }
 
-  if (value.startsWith('//') || value === '/login' || value === '/register') {
+  const path = normalizeReturnPath(value)
+  if (!path.startsWith('/') || path.startsWith('//') || path === '/login' || path === '/register') {
     return '/dashboard'
   }
 
-  if (value === '/forgot-password' || value === '/register-success') {
+  if (path === '/forgot-password' || path === '/register-success') {
     return '/dashboard'
   }
 
-  if (value === '/403' || value === '/404' || value === '/500') {
+  if (path === '/403' || path === '/404' || path === '/500') {
     return '/dashboard'
   }
 
-  return value
+  return path
 }
 
 const persistSession = (nextSession: Session | null) => {
@@ -139,8 +149,10 @@ function handleStorage(event: StorageEvent) {
 }
 
 function handleSessionExpired() {
-  const redirect = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  const onGuest = Boolean(route.meta.requiresGuest) || route.name === 'login'
+  const redirect = route.fullPath
   clearAuthenticatedState()
+  if (onGuest) return
   Message.warning({
     content: '会话已过期，请重新登录',
     duration: 3000

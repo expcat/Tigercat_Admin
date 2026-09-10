@@ -111,7 +111,7 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
 </script>
 
 <template>
-  <Header height="auto" class="p2-main-header flex min-h-16 flex-wrap items-center justify-between gap-2 px-3 py-2 z-10 sm:gap-3 sm:px-4 md:flex-nowrap md:px-6">
+  <Header height="auto" class="p2-main-header flex min-h-16 flex-nowrap items-center justify-between gap-2 px-3 py-2 z-10 sm:gap-3 sm:px-4 md:px-6">
     <div class="flex min-w-0 flex-1 flex-col gap-1 py-2">
       <div class="flex min-w-0 items-center gap-2">
         <Button
@@ -125,9 +125,9 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
         >
           <Icon :name="props.sidebarOpen ? 'x' : 'menu'" :size="18" />
         </Button>
-        <Text size="lg" weight="bold" class="p2-header-title whitespace-nowrap">管理中心</Text>
+        <Text size="lg" weight="bold" class="p2-header-title min-w-0 truncate">管理中心</Text>
       </div>
-      <Breadcrumb class-name="min-w-0 max-w-full overflow-hidden text-sm text-(--tiger-text-secondary,#64748b)" :max-items="4">
+      <Breadcrumb class-name="hidden min-w-0 max-w-full overflow-hidden text-sm text-(--tiger-text-secondary,#64748b) sm:block" :max-items="3">
         <BreadcrumbItem>管理中心</BreadcrumbItem>
         <BreadcrumbItem
           v-for="(item, index) in (props.breadcrumbItems.length ? props.breadcrumbItems : [props.pageTitle])"
@@ -144,7 +144,7 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
       <Tag
         v-if="props.demoMode"
         variant="warning"
-        class="p2-header-demo-tag hidden rounded-full px-3 font-medium sm:inline-flex"
+        class="p2-header-demo-tag !hidden rounded-full px-3 font-medium sm:!inline-flex"
       >
         演示模式
       </Tag>
@@ -153,7 +153,7 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
         data-testid="shell-fullscreen-toggle"
         :aria-label="fullscreen ? '退出全屏' : '进入全屏'"
         :title="fullscreen ? '退出全屏' : '进入全屏'"
-        class="flex h-10 w-10 items-center justify-center rounded-lg text-(--tiger-text,#1f2937) transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9)"
+        class="hidden h-10 w-10 items-center justify-center rounded-lg text-(--tiger-text,#1f2937) transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9) sm:flex"
         @click="handleToggleFullscreen"
       >
         <TigerIcon :icon="fullscreenIcon" size="md" />

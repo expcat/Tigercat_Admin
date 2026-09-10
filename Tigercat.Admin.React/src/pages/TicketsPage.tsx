@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Input } from '@expcat/tigercat-react/Input';
@@ -13,7 +14,6 @@ import { CommentThread } from '@expcat/tigercat-react/CommentThread';
 import { Mentions } from '@expcat/tigercat-react/Mentions';
 import { Descriptions } from '@expcat/tigercat-react/Descriptions';
 import { Rate } from '@expcat/tigercat-react/Rate';
-import { Badge } from '@expcat/tigercat-react/Badge';
 import { Drawer } from '@expcat/tigercat-react/Drawer';
 import { Upload } from '@expcat/tigercat-react/Upload';
 import { Popover } from '@expcat/tigercat-react/Popover';
@@ -108,6 +108,8 @@ function TicketsPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | TicketStatus>('all');
+  const [searchParams] = useSearchParams();
+  const requestedTicketId = searchParams.get('ticket') ?? '';
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [noteDraft, setNoteDraft] = useState('');
@@ -177,6 +179,9 @@ function TicketsPage() {
       });
       const nextSelected =
         (selectId && items.some((item) => item.id === selectId) && selectId) ||
+        (requestedTicketId && items.some((item) => item.id === requestedTicketId)
+          ? requestedTicketId
+          : null) ||
         (selectedId && items.some((item) => item.id === selectedId) ? selectedId : items[0]?.id ?? null);
       setSelectedId(nextSelected);
       if (nextSelected) {
@@ -187,7 +192,7 @@ function TicketsPage() {
     } finally {
       setLoading(false);
     }
-  }, [keyword, loadTicketDetail, selectedId, statusFilter]);
+  }, [keyword, loadTicketDetail, requestedTicketId, selectedId, statusFilter]);
 
   useEffect(() => {
     void loadTickets();
@@ -213,12 +218,12 @@ function TicketsPage() {
 
   const descriptions: DescriptionsItem[] = selected
     ? [
-        { label: '工单号', content: selected.id },
-        { label: '提交人', content: selected.requester },
-        { label: '分类', content: selected.category },
-        { label: '优先级', content: PRIORITY_META[selected.priority].label },
-        { label: '创建时间', content: selected.createdAt },
-        { label: '更新时间', content: selected.updatedAt },
+        { label: '工单号', content: selected.id, labelClassName: 'whitespace-nowrap' },
+        { label: '提交人', content: selected.requester, labelClassName: 'whitespace-nowrap' },
+        { label: '分类', content: selected.category, labelClassName: 'whitespace-nowrap' },
+        { label: '优先级', content: PRIORITY_META[selected.priority].label, labelClassName: 'whitespace-nowrap' },
+        { label: '创建时间', content: selected.createdAt, labelClassName: 'whitespace-nowrap' },
+        { label: '更新时间', content: selected.updatedAt, labelClassName: 'whitespace-nowrap' },
       ]
     : [];
 
@@ -369,7 +374,7 @@ function TicketsPage() {
       <PageHeader
         icon={<TicketIcon size={24} />}
         title="工单中心"
-        subtitle="左右主从布局，跟进工单生命周期、对话与内部协作"
+        subtitle="跟进工单状态、对话和内部备注，并处理关联审批。"
         tags={[
           { label: '协作', variant: 'primary' },
           { label: '演示数据', variant: 'info' },
@@ -379,7 +384,9 @@ function TicketsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Text weight="bold">工单列表</Text>
-          <Badge content={openCount} showZero variant="primary" standalone />
+          <Text weight="bold" className="tabular-nums text-[var(--tiger-primary,#2563eb)]">
+            {openCount}
+          </Text>
           <Text size="sm" color="secondary">
             个待跟进
           </Text>
@@ -425,10 +432,10 @@ function TicketsPage() {
                   }`}
                   onClick={() => selectTicket(t.id)}>
                   <div className="flex items-center justify-between gap-2">
-                    <Text weight="medium" className="truncate">
+                    <Text weight="medium" className="min-w-0 truncate">
                       {t.title}
                     </Text>
-                    <Tag variant={PRIORITY_META[t.priority].variant} size="sm">
+                    <Tag variant={PRIORITY_META[t.priority].variant} size="sm" className="shrink-0">
                       {PRIORITY_META[t.priority].label}
                     </Tag>
                   </div>

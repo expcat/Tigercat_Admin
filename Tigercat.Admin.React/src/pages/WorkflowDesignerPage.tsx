@@ -47,16 +47,16 @@ function WorkflowDesignerPage() {
       <PageHeader
         icon={<GitBranchIcon size={22} />}
         title="流程设计"
-        subtitle="画布摘要卡 + 右侧 Inspector（审批人 / 操作按钮 / 表单权限 / 高级）。发布前走库校验。不接 Flowable / BPMN。"
+        subtitle="配置审批节点、审批人、按钮和表单权限。发布前会校验阻塞项。"
         tags={[
           { label: '演示', variant: 'primary' },
-          { label: 'v2.5.0', variant: 'info' },
+          { label: 'v2.5.2', variant: 'info' },
         ]}
       />
 
       <MutedPanel
         compact
-        description="请假/采购种子：条件分支 + 会签 + 抄送 + 金额仅财务可编。点选节点打开 Inspector 四 Tab；保存/发布拦阻塞项。预览 Viewer 读同一份 steps。"
+        description="点选节点可编辑审批人、操作按钮、表单权限。保存草稿或发布前会拦截阻塞项。"
       />
 
       <div className="flex flex-wrap items-center gap-2">

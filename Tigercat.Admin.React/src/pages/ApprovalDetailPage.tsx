@@ -213,7 +213,7 @@ function ApprovalDetailPage() {
     <div className="min-w-0 space-y-4">
       <PageHeader
         title={detail?.title ?? '审批详情'}
-        subtitle="DetailShell：字段权限表单 + Timeline / Viewer + 全量 ActionBar。动作写回 mock 实例。"
+        subtitle="查看申请内容、审批进度，并在底部完成同意、拒绝或其他操作。"
         icon={<CheckCircleIcon size={22} />}
         tags={[{ label: statusMeta.label, variant: statusMeta.variant }]}
       />
@@ -223,7 +223,11 @@ function ApprovalDetailPage() {
           返回列表
         </Button>
         {detail?.ticketId ? (
-          <Button variant="ghost" onClick={() => navigate('/tickets')}>
+          <Button
+            variant="ghost"
+            onClick={() =>
+              navigate(`/tickets?ticket=${encodeURIComponent(detail.ticketId ?? '')}`)
+            }>
             打开关联工单 {detail.ticketId}
           </Button>
         ) : null}
@@ -237,7 +241,7 @@ function ApprovalDetailPage() {
       ) : detail ? (
         <WorkflowDetailShell
           ariaLabel="审批详情"
-          className="h-[min(42rem,calc(100dvh-11rem))]"
+          className="h-[calc(100dvh-20rem)] min-h-[24rem]"
           showActions
           header={
             <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -268,6 +272,7 @@ function ApprovalDetailPage() {
                 model={formModel}
                 showActions={false}
                 labelWidth={96}
+                className="max-sm:[&_.tiger-form-item--label-left]:flex-col max-sm:[&_.tiger-form-item__label]:!w-full max-sm:[&_.tiger-form-item__label]:!pt-0"
                 ariaLabel="申请表单"
                 onChange={setFormModel}
               />
@@ -303,7 +308,7 @@ function ApprovalDetailPage() {
                 onAction={handleWorkflowAction}
               />
               <Text size="sm" color="secondary" className="mt-2 block">
-                同意 / 拒绝 / 转交 / 加签 / 退回 / 撤回 / 评论会写回当前实例。金额仅财务节点可编。不接审批引擎。
+                同意、拒绝、转交、加签、退回、撤回和评论会写回当前申请。
               </Text>
             </>
           }

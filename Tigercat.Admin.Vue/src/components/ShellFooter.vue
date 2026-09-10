@@ -15,7 +15,7 @@ import { Text } from '@expcat/tigercat-vue/Text'
       <Space size="sm" align="center" wrap>
         <Icon name="dashboard" size="sm" />
         <Text size="sm" color="secondary">Tigercat Admin</Text>
-        <Tag size="sm" variant="default">UI 2.3.2</Tag>
+        <Tag size="sm" variant="default">UI 2.5.2</Tag>
       </Space>
       <Text size="sm" color="secondary">演示蓝本 · 非生产数据</Text>
     </div>

@@ -166,7 +166,7 @@ const columns = computed<TableColumn<ApprovalListItem>[]>(() => [
 const tableToolbar = computed(() => ({
   searchMode: 'remote' as const,
   searchValue: keyword.value,
-  searchPlaceholder: '搜索标题、单号或处理人',
+  searchPlaceholder: '搜索标题或单号',
   onSearchChange: (value: string) => {
     keyword.value = value
     page.value = 1
@@ -201,7 +201,7 @@ function handlePageSizeChange(next: { current: number; pageSize: number }) {
     <PageHeader
       icon="checkCircle"
       title="审批中心"
-      subtitle="待办 / 已办 / 抄送 / 我发起的。详情壳接全量 ActionBar 与字段权限，不接 Flowable。"
+      subtitle="待办、已办、抄送与我发起的申请。可按身份切换当前处理人。"
       :tags="[{ label: 'Mock 流转', variant: 'info' }]"
     />
 

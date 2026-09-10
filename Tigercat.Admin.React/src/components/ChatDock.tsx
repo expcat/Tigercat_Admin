@@ -84,6 +84,7 @@ export function ChatDock({ open, onOpenChange }: ChatDockProps) {
         offset={24}
         type="primary"
         size="lg"
+        className="max-sm:!hidden"
         data-tour="chat-dock"
         aria-label={open ? '关闭在线客服' : '联系在线客服'}
         tooltip={open ? '关闭在线客服' : '联系在线客服'}

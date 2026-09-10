@@ -235,13 +235,17 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
     <PageHeader
       icon="checkCircle"
       :title="detail?.title ?? '审批详情'"
-      subtitle="DetailShell：字段权限表单 + Timeline / Viewer + 全量 ActionBar。动作写回 mock 实例。"
+      subtitle="查看申请内容、审批进度，并在底部完成同意、拒绝或其他操作。"
       :tags="[{ label: statusMeta.label, variant: statusMeta.variant }]"
     />
 
     <div class="flex flex-wrap items-center gap-2">
       <Button variant="outline" @click="router.push('/approvals')">返回列表</Button>
-      <Button v-if="detail?.ticketId" variant="ghost" @click="router.push('/tickets')">
+      <Button
+        v-if="detail?.ticketId"
+        variant="ghost"
+        @click="router.push({ path: '/tickets', query: { ticket: detail.ticketId } })"
+      >
         打开关联工单 {{ detail.ticketId }}
       </Button>
       <ApprovalActorSwitcher />
@@ -252,7 +256,7 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
     <WorkflowDetailShell
       v-else-if="detail"
       aria-label="审批详情"
-      class-name="h-[min(42rem,calc(100dvh-11rem))]"
+      class-name="h-[calc(100dvh-20rem)] min-h-[24rem]"
       :show-actions="true"
     >
       <template #header>
@@ -271,6 +275,7 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
           :model="formModel"
           :show-actions="false"
           :label-width="96"
+          class="max-sm:[&_.tiger-form-item--label-left]:flex-col max-sm:[&_.tiger-form-item__label]:!w-full max-sm:[&_.tiger-form-item__label]:!pt-0"
           aria-label="申请表单"
           @update:model="handleFormChange"
         />
@@ -304,7 +309,7 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
           @action="handleWorkflowAction"
         />
         <Text size="sm" color="secondary" class="mt-2 block">
-          同意 / 拒绝 / 转交 / 加签 / 退回 / 撤回 / 评论会写回当前实例。金额仅财务节点可编。不接审批引擎。
+          同意、拒绝、转交、加签、退回、撤回和评论会写回当前申请。
         </Text>
       </template>
     </WorkflowDetailShell>

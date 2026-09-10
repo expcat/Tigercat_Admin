@@ -73,7 +73,7 @@ export const APPROVAL_DETAIL_SCHEMA: SchemaFormSchema = {
     { name: 'title', label: '标题' },
     { name: 'category', label: '类型' },
     { name: 'starter', label: '发起人' },
-    { name: 'amount', label: '金额 / 天数', extra: '仅财务节点可编辑' },
+    { name: 'amount', label: '金额 / 天数（财务节点可编）' },
     { name: 'ticketId', label: '关联工单' },
     { name: 'reason', label: '说明', type: 'textarea' },
   ],

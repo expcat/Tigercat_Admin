@@ -29,6 +29,7 @@ export function ShellQuickActions() {
         trigger="click"
         placement="bottom-right"
         offset={{ y: '6.5rem' }}
+        className="max-sm:!hidden"
         triggerNode={
           <FloatButton type="primary" size="lg" aria-label="快捷操作" tooltip="快捷操作">
             <PlusIcon size={22} />

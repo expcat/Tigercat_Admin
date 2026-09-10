@@ -110,6 +110,7 @@ onUnmounted(() => {
     :offset="24"
     type="primary"
     size="lg"
+    class="max-sm:!hidden"
     data-tour="chat-dock"
     :aria-label="props.open ? '关闭在线客服' : '联系在线客服'"
     :tooltip="props.open ? '关闭在线客服' : '联系在线客服'"

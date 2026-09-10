@@ -115,7 +115,7 @@ export function MainHeader({
   }, []);
 
   return (
-    <Header height="auto" className="p2-main-header flex min-h-16 flex-wrap items-center justify-between gap-2 px-3 py-2 z-10 sm:gap-3 sm:px-4 md:flex-nowrap md:px-6">
+    <Header height="auto" className="p2-main-header flex min-h-16 flex-nowrap items-center justify-between gap-2 px-3 py-2 z-10 sm:gap-3 sm:px-4 md:px-6">
       <div className="flex min-w-0 flex-1 flex-col gap-1 py-2">
         <div className="flex min-w-0 items-center gap-2">
           {showSidebarToggle && (
@@ -129,13 +129,13 @@ export function MainHeader({
               {sidebarOpen ? <XIcon size={18} /> : <MenuIcon size={18} />}
             </Button>
           )}
-          <Text size="lg" weight="bold" className="p2-header-title whitespace-nowrap">
+          <Text size="lg" weight="bold" className="p2-header-title min-w-0 truncate">
             管理中心
           </Text>
         </div>
         <Breadcrumb
-          className="min-w-0 max-w-full overflow-hidden text-sm text-(--tiger-text-secondary,#64748b)"
-          maxItems={4}>
+          className="hidden min-w-0 max-w-full overflow-hidden text-sm text-(--tiger-text-secondary,#64748b) sm:block"
+          maxItems={3}>
           <BreadcrumbItem>管理中心</BreadcrumbItem>
           {currentBreadcrumbItems.map((item, index) => (
             <BreadcrumbItem
@@ -150,7 +150,7 @@ export function MainHeader({
       {/* 右侧操作区 */}
       <div className="flex shrink-0 items-center gap-1 sm:gap-3">
         {demoMode && (
-          <Tag variant="warning" className="p2-header-demo-tag hidden rounded-full px-3 font-medium sm:inline-flex">
+          <Tag variant="warning" className="p2-header-demo-tag !hidden rounded-full px-3 font-medium sm:!inline-flex">
             演示模式
           </Tag>
         )}
@@ -159,7 +159,7 @@ export function MainHeader({
           data-testid="shell-fullscreen-toggle"
           aria-label={fullscreen ? '退出全屏' : '进入全屏'}
           title={fullscreen ? '退出全屏' : '进入全屏'}
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-(--tiger-text,#1f2937) transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9)"
+          className="hidden h-10 w-10 items-center justify-center rounded-lg text-(--tiger-text,#1f2937) transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9) sm:flex"
           onClick={() => {
             void toggleDocumentFullscreen().catch(() => undefined);
           }}>
