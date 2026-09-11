@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue'
 import { Alert } from '@expcat/tigercat-vue/Alert'
 import { Button } from '@expcat/tigercat-vue/Button'
-import { Card } from '@expcat/tigercat-vue/Card'
 import { Message } from '@expcat/tigercat-vue/Message'
 import { Text } from '@expcat/tigercat-vue/Text'
 import { WorkflowDesigner } from '@expcat/tigercat-vue/WorkflowDesigner'
@@ -51,16 +50,16 @@ function publishDesigner() {
     <PageHeader
       icon="gitBranch"
       title="流程设计"
-      subtitle="配置审批节点、审批人、按钮和表单权限。发布前会校验阻塞项。"
+      subtitle="纵向摘要卡流程画布 + 右侧 Inspector。点选节点编辑审批人、按钮和表单权限。"
       :tags="[
         { label: '演示', variant: 'primary' },
-        { label: 'v2.5.4', variant: 'info' },
+        { label: 'v2.6.0', variant: 'info' },
       ]"
     />
 
     <MutedPanel
       compact
-      description="点选节点可编辑审批人、操作按钮、表单权限。保存草稿或发布前会拦截阻塞项。"
+      description="左侧是纵向流程画布（轨道与插入点）。点选节点后右侧 Inspector 四 Tab 编辑；保存或发布前拦截阻塞项。"
     />
 
     <div class="flex flex-wrap items-center gap-2">
@@ -77,19 +76,14 @@ function publishDesigner() {
       :description="issueMessages.join('；')"
     />
 
-    <div class="grid min-w-0 gap-4">
-      <Card class="min-w-0">
-        <template #header><Text weight="bold">设计器</Text></template>
-        <div class="min-w-0 overflow-x-auto">
-          <WorkflowDesigner v-model="steps" :schema="DESIGNER_FORM_SCHEMA" />
-        </div>
-      </Card>
-      <Card class="min-w-0">
-        <template #header><Text weight="bold">预览</Text></template>
-        <div class="min-w-0 overflow-x-auto">
-          <WorkflowViewer :steps="steps" />
-        </div>
-      </Card>
+    <div class="min-w-0 overflow-x-auto">
+      <WorkflowDesigner v-model="steps" :schema="DESIGNER_FORM_SCHEMA" />
     </div>
+    <details class="min-w-0 rounded-md border border-[var(--tiger-border,#e5e7eb)] px-3 py-2">
+      <summary class="cursor-pointer text-sm font-medium">流程预览</summary>
+      <div class="min-w-0 overflow-x-auto pt-3">
+        <WorkflowViewer :steps="steps" />
+      </div>
+    </details>
   </div>
 </template>

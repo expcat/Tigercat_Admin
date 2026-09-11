@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Alert } from '@expcat/tigercat-react/Alert';
 import { Button } from '@expcat/tigercat-react/Button';
-import { Card } from '@expcat/tigercat-react/Card';
 import { Message } from '@expcat/tigercat-react/Message';
 import { Text } from '@expcat/tigercat-react/Text';
 import { WorkflowDesigner } from '@expcat/tigercat-react/WorkflowDesigner';
@@ -47,16 +46,16 @@ function WorkflowDesignerPage() {
       <PageHeader
         icon={<GitBranchIcon size={22} />}
         title="流程设计"
-        subtitle="配置审批节点、审批人、按钮和表单权限。发布前会校验阻塞项。"
+        subtitle="纵向摘要卡流程画布 + 右侧 Inspector。点选节点编辑审批人、按钮和表单权限。"
         tags={[
           { label: '演示', variant: 'primary' },
-          { label: 'v2.5.4', variant: 'info' },
+          { label: 'v2.6.0', variant: 'info' },
         ]}
       />
 
       <MutedPanel
         compact
-        description="点选节点可编辑审批人、操作按钮、表单权限。保存草稿或发布前会拦截阻塞项。"
+        description="左侧是纵向流程画布（轨道与插入点）。点选节点后右侧 Inspector 四 Tab 编辑；保存或发布前拦截阻塞项。"
       />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -76,18 +75,15 @@ function WorkflowDesignerPage() {
         <Alert type="error" title={DESIGNER_PUBLISH_BLOCKED} description={issueMessages.join('；')} />
       ) : null}
 
-      <div className="grid min-w-0 gap-4">
-        <Card header={<Text weight="bold">设计器</Text>} className="min-w-0">
-          <div className="min-w-0 overflow-x-auto">
-            <WorkflowDesigner value={steps} schema={DESIGNER_FORM_SCHEMA} onChange={setSteps} />
-          </div>
-        </Card>
-        <Card header={<Text weight="bold">预览</Text>} className="min-w-0">
-          <div className="min-w-0 overflow-x-auto">
-            <WorkflowViewer steps={steps} />
-          </div>
-        </Card>
+      <div className="min-w-0 overflow-x-auto">
+        <WorkflowDesigner value={steps} schema={DESIGNER_FORM_SCHEMA} onChange={setSteps} />
       </div>
+      <details className="min-w-0 rounded-md border border-[var(--tiger-border,#e5e7eb)] px-3 py-2">
+        <summary className="cursor-pointer text-sm font-medium">流程预览</summary>
+        <div className="min-w-0 overflow-x-auto pt-3">
+          <WorkflowViewer steps={steps} />
+        </div>
+      </details>
     </div>
   );
 }

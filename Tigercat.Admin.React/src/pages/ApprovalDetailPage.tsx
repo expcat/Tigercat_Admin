@@ -210,15 +210,17 @@ function ApprovalDetailPage() {
   };
 
   return (
-    <div className="min-w-0 space-y-4">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-4">
+      <div className="shrink-0">
       <PageHeader
         title={detail?.title ?? '审批详情'}
         subtitle="查看申请内容、审批进度，并在底部完成同意、拒绝或其他操作。"
         icon={<CheckCircleIcon size={22} />}
         tags={[{ label: statusMeta.label, variant: statusMeta.variant }]}
       />
+      </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
         <Button variant="outline" onClick={() => navigate('/approvals')}>
           返回列表
         </Button>
@@ -241,7 +243,7 @@ function ApprovalDetailPage() {
       ) : detail ? (
         <WorkflowDetailShell
           ariaLabel="审批详情"
-          className="h-[calc(100dvh-20rem)] min-h-[24rem]"
+          className="min-h-0 flex-1"
           showActions
           header={
             <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -272,7 +274,7 @@ function ApprovalDetailPage() {
                 model={formModel}
                 showActions={false}
                 labelWidth={96}
-                className="max-sm:[&_.tiger-form-item--label-left]:flex-col max-sm:[&_.tiger-form-item__label]:!w-full max-sm:[&_.tiger-form-item__label]:!pt-0"
+                className="max-sm:[&_.tiger-form-item--label-left]:flex-col max-sm:[&_.tiger-form-item__label]:!w-full max-sm:[&_.tiger-form-item__label]:!pt-0 max-sm:[&_.tiger-form-item__label]:!text-start"
                 ariaLabel="申请表单"
                 onChange={setFormModel}
               />
@@ -307,9 +309,6 @@ function ApprovalDetailPage() {
                 ariaLabel="审批操作"
                 onAction={handleWorkflowAction}
               />
-              <Text size="sm" color="secondary" className="mt-2 block">
-                同意、拒绝、转交、加签、退回、撤回和评论会写回当前申请。
-              </Text>
             </>
           }
         />

@@ -1,6 +1,6 @@
 # 工作流 + 动态菜单中台 — 递进 Roadmap（2.3.x → 2.5.0）
 
-- **基线**: Tigercat `v2.5.0` + Admin `^2.5.0`
+- **基线**: Tigercat `v2.6.0` + Admin `^2.6.0`
 - **日期**: 2026-09-09
 - **原则**: 库做 schema / helpers / 展示组件；应用做路由、Mock 流转、管理页。不接 Flowable/Camunda；禁止与现有 Menu / Timeline 双轨。小切片交付，上游发版后再回灌 Admin。
 
@@ -125,13 +125,18 @@
 **Admin `^2.5.0`**: Runtime 状态机 + 详情全动作 + Designer Inspector 页 + 发布校验 + e2e（加签/退回/会签/字段隐藏/designer tabs）。
 **切片**: m250-p0, s1…s9 已收口。
 
+### M6 — 2.6.0（体验完善）— **完成**
+
+**Tigercat `2.6.0`**（`2.6.1` 同内容补发 core tarball）：DetailShell 一流粘底（宿主给有界高度，勿 magic rem）；Designer 纵向摘要卡流程画布 + Inspector 同屏；ActionBar 窄屏 nowrap。不是 BPMN。
+**Admin `^2.6.0`**：详情壳 `flex-1` 填满 main；Designer 页画布为主舞台；e2e 覆盖首屏主按钮可见。
+
 ## 4. 跨仓节奏
 
 1. **Tigercat 先发**：库内只做 schema / helpers / 展示组件与文档/示例/测试。
 2. **Admin 后跟**：升依赖到对应 `^x.y.z` 后再做路由、Mock 流转、管理页与真机 Review。
 3. **切片**：单里程碑内可再拆 PR；不跨仓同时大改同一语义。
 4. **回写**：发版后同步 CHANGELOG / 本 roadmap；上游缺口只登记到 Admin 上游清单。
-5. **门禁**：M1→M2→M3 递进；M4（2.4.0）已开；M242（2.4.2）已完成；**M5（2.5.0）已完成**。
+5. **门禁**：M1→M2→M3 递进；M4（2.4.0）已开；M242（2.4.2）已完成；**M5（2.5.0）已完成**；**M6（2.6.0 体验完善）已完成**（DetailShell 一流粘底 + Designer 纵向流程画布，仍非 BPMN）。
 
 ## 5. 明确不做（全里程碑）
 - Flowable / Camunda / Activiti 嵌入

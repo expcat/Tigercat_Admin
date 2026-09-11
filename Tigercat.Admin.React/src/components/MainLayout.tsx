@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Content } from '@expcat/tigercat-react/Content';
 import { Drawer } from '@expcat/tigercat-react/Drawer';
 import { Layout } from '@expcat/tigercat-react/Layout';
@@ -59,6 +60,8 @@ export function MainLayout({
   activeMenu,
   onNavigate,
 }: MainLayoutProps) {
+  const location = useLocation();
+  const fillMain = /^\/approvals\/.+/.test(location.pathname);
   const compactMode = themePrefs.compactMode;
   const [collapsed, setCollapsed] = useState(compactMode);
   const [isMobile, setIsMobile] = useState(false);
@@ -232,9 +235,12 @@ export function MainLayout({
             onCloseOthers={tagsView.closeOthers}
             onCloseAll={tagsView.closeAll}
           />
-          <Content id="main-content-scroll" className="min-h-0 flex-1 overflow-auto p-3 pb-28 pe-24 scroll-smooth sm:p-4 sm:pb-28 sm:pe-24 md:p-6 md:pb-32 md:pe-28">
-            <div className="mx-auto max-w-7xl animate-fade-in">
-              {children}
+          <Content id="main-content-scroll" className="min-h-0 flex-1 overflow-auto p-3 pb-28 pe-4 scroll-smooth sm:p-4 sm:pb-28 md:p-6 md:pb-32 md:pe-28">
+            <div
+              className={`mx-auto max-w-7xl animate-fade-in${
+                fillMain ? ' flex h-full min-h-0 w-full flex-col' : ''
+              }`}>
+              <div className={fillMain ? 'min-h-0 min-w-0 flex-1' : undefined}>{children}</div>
               <ShellFooter />
             </div>
           </Content>

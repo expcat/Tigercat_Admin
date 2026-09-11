@@ -87,7 +87,7 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
     await loginAsAdmin(page, testInfo);
 
     await page.goto(appPath(testInfo, '/approvals'));
-    await expect(page.getByText('审批中心', { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: '发起审批' })).toBeVisible();
     await page.getByRole('button', { name: '查看' }).first().click();
 
     await expect(page.getByText('申请表单', { exact: true })).toBeVisible();
@@ -104,7 +104,6 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
     await loginAsAdmin(page, testInfo);
 
     await page.goto(appPath(testInfo, '/workflow-designer'));
-    await expect(page.getByText('流程设计').first()).toBeVisible();
     const designer = page.getByRole('region', { name: '流程设计器' });
     await expect(designer).toBeVisible();
     await expect(designer.getByRole('group', { name: '主管会签' })).toBeVisible();

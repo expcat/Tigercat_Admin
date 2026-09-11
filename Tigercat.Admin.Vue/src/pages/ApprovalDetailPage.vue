@@ -231,15 +231,17 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
 </script>
 
 <template>
-  <div class="min-w-0 space-y-4">
+  <div class="flex h-full min-h-0 min-w-0 flex-col gap-4">
+    <div class="shrink-0">
     <PageHeader
       icon="checkCircle"
       :title="detail?.title ?? '审批详情'"
       subtitle="查看申请内容、审批进度，并在底部完成同意、拒绝或其他操作。"
       :tags="[{ label: statusMeta.label, variant: statusMeta.variant }]"
     />
+    </div>
 
-    <div class="flex flex-wrap items-center gap-2">
+    <div class="flex shrink-0 flex-wrap items-center gap-2">
       <Button variant="outline" @click="router.push('/approvals')">返回列表</Button>
       <Button
         v-if="detail?.ticketId"
@@ -256,7 +258,7 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
     <WorkflowDetailShell
       v-else-if="detail"
       aria-label="审批详情"
-      class-name="h-[calc(100dvh-20rem)] min-h-[24rem]"
+      class-name="min-h-0 flex-1"
       :show-actions="true"
     >
       <template #header>
@@ -275,7 +277,7 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
           :model="formModel"
           :show-actions="false"
           :label-width="96"
-          class="max-sm:[&_.tiger-form-item--label-left]:flex-col max-sm:[&_.tiger-form-item__label]:!w-full max-sm:[&_.tiger-form-item__label]:!pt-0"
+          class="max-sm:[&_.tiger-form-item--label-left]:flex-col max-sm:[&_.tiger-form-item__label]:!w-full max-sm:[&_.tiger-form-item__label]:!pt-0 max-sm:[&_.tiger-form-item__label]:!text-start"
           aria-label="申请表单"
           @update:model="handleFormChange"
         />
@@ -308,9 +310,6 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
           aria-label="审批操作"
           @action="handleWorkflowAction"
         />
-        <Text size="sm" color="secondary" class="mt-2 block">
-          同意、拒绝、转交、加签、退回、撤回和评论会写回当前申请。
-        </Text>
       </template>
     </WorkflowDetailShell>
 

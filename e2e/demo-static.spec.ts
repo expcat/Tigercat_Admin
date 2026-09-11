@@ -225,15 +225,18 @@ test.describe('阶段 2 — 协作沟通', () => {
     await expect(designer).toBeVisible();
     await expect(designer.getByRole('group', { name: '主管会签' })).toBeVisible();
     await expect(designer.getByText('李四, 钱七')).toBeVisible();
-    await expect(page.getByRole('region', { name: '节点设置' })).toHaveCount(0);
+    await expect(page.getByRole('region', { name: '节点设置' })).toHaveTextContent('选中节点后在此编辑');
     await expect(designer.getByRole('button', { name: '在后方插入 (主管会签)' })).toBeVisible();
 
+    await page.getByText('流程预览').click();
     const preview = page.getByLabel('审批流程');
     await expect(preview.getByText('李四', { exact: true })).toBeVisible();
     await expect(preview.getByText('钱七', { exact: true })).toBeVisible();
 
     await designer.getByRole('group', { name: '主管会签' }).getByText('李四, 钱七').click();
-    await expect(page.getByRole('region', { name: '节点设置' })).toBeVisible();
+    await expect(page.getByRole('region', { name: '节点设置' }).getByLabel('标题')).toHaveValue(
+      '主管会签',
+    );
     await expect(page.getByLabel('审批人 1')).toHaveValue('李四');
     await expect(page.getByLabel('审批人 2')).toHaveValue('钱七');
 

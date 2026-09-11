@@ -65,7 +65,13 @@ test.describe('审批中心 mock 流转', () => {
     await expect(page.getByLabel('审批流程')).toBeHidden();
     await expect(page.getByRole('group', { name: '路径图例' })).toBeHidden();
     await expect(page.getByRole('toolbar', { name: '审批操作' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '同意' })).toBeVisible();
+    const approve = page.getByRole('button', { name: '同意' });
+    await expect(approve).toBeVisible();
+    const approveBox = await approve.boundingBox();
+    const viewport = page.viewportSize();
+    expect(approveBox).toBeTruthy();
+    expect(viewport).toBeTruthy();
+    expect((approveBox?.y ?? 0) + (approveBox?.height ?? 0)).toBeLessThanOrEqual(viewport!.height);
     await expect(page.getByRole('button', { name: '拒绝' })).toBeVisible();
     await expect(page.getByRole('button', { name: '撤回' })).toBeVisible();
     await expect(page.getByRole('button', { name: '评论' })).toBeVisible();

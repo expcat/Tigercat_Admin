@@ -7,6 +7,6 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@expcat/tigercat-core": "^2.5.4"
+    "@expcat/tigercat-core": "^2.6.0"
   }
 }

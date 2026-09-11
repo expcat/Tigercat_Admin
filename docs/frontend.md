@@ -63,7 +63,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。
 - 消息铃铛 toast：点击 Popover 内单条通知时用 `notification.*({ title, description, actions, onClick })`。`actions` 渲染「查看」按钮（`closeOnClick: true`），整条 `onClick` 仍跳转 `/notifications`；不要只靠整条点击、也不要自绘 toast 按钮。
 - 回到顶部：`BackTop` 的 `target` 指向 `#main-content-scroll`（页面滚在 `Content` 而非 `window`）。容器滚动时显式传 `position="fixed"`、`placement="bottom-left"`、`offset={24}`（Vue `:offset="24"`），不要再用 `!fixed !bottom-*` 覆盖内置 sticky 类。
 - 右下悬浮：独立客服 `FloatButton` 传 `floating` + `placement="bottom-right"` + `offset={24}`，未读 `Badge` 用 `standalone` 绝对定位叠在按钮内，不要再包一层 `fixed` 容器。`FloatButtonGroup` 用同一套 `placement` / `offset`（本项目 `offset.y: '6.5rem'`）避开客服坞，不要写 `style.bottom`。
-- Content：`min-h-0 overflow-auto p-3 sm:p-4 md:p-6`，底部再留 `pb-28` / `md:pb-32`，右侧再留 `pe-24` / `md:pe-28`，避免表格操作列和列表状态 Tag 被右下角客服与快捷按钮挡住；内部最大宽度 `max-w-7xl`。
+- Content：`min-h-0 overflow-auto p-3 sm:p-4 md:p-6`，底部再留 `pb-28` / `md:pb-32`；窄屏 `pe-4`、`md:pe-28`，避免审批壳被挤成 255px，桌面仍给右下角客服留位；内部 `h-full min-h-0` 以便 DetailShell `flex-1` 钉底。
 - 访客页：登录、注册、忘记密码与注册成功使用居中 Guest shell，不进入后台布局；表单卡片用 `Card variant="transparent"`（v1.2.39+），不再用 `className` 手写透明/无边框/无阴影样式。由于 transparent 变体仍保留组件 size 内边距，Guest 页继续保留 `className="p-0"` / `class="p-0"`。
 
 路由与菜单（下表为本仓库示例；新项目按 [guide/new-project.md](guide/new-project.md) 复制结构、替换条目）：
@@ -249,7 +249,7 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 ## 已对齐的上游能力
 
-本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `^2.5.4`。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 Captcha 仍跳过（登录无明示需求）。
+本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `^2.6.0`（2.6.0 体验完善：DetailShell 一流粘底 + Designer 纵向流程画布）。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 Captcha 仍跳过（登录无明示需求）。
 
 | 组件 | 平台 | 上游现状 | 本项目保留的布局 glue |
 | ---- | ---- | -------- | --------------------- |
@@ -286,7 +286,7 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 | 层 | 职责 | 本仓库落点 |
 | -- | ---- | ---------- |
-| Tigercat `^2.5.4` | 扫读 + `ApproverSource` / `tasks` / `reduceWorkflowAction` / 完整 ActionBar / Inspector Designer / `validateWorkflowDesigner` / 字段权限 helpers | 包组件与纯函数；不要在页面重写第二套 Timeline 或半套 Inspector |
+| Tigercat `^2.6.0` | 扫读 + `ApproverSource` / `tasks` / `reduceWorkflowAction` / 完整 ActionBar / 纵向流程画布 Designer / `validateWorkflowDesigner` / 字段权限 helpers / DetailShell `h-full` 粘底配方 | 包组件与纯函数；不要在页面重写第二套 Timeline 或半套 Inspector；详情壳宿主给有界高度，勿 magic rem |
 | Admin | 路由、**Mock 通讯录 `resolveApprovers`**、ApprovalStore 全动作写回、**详情壳**（DetailShell + 字段权限 SchemaForm + 全量 ActionBar）、**Designer 页**（Inspector + 发布校验） | `ApprovalStore` / MockApi `contacts.ts`；详情页用库 `WorkflowDetailShell`；设计页直接吃库 `WorkflowDesigner` |
 
 ### 详情 IA
@@ -294,7 +294,7 @@ LLM 生成新页面或复刻页面时，至少满足：
 ```text
 [PageHeader 标题/状态]
 [演示身份 switcher — 申请人 / 审批人 A/B/C / 抄送，写 X-Demo-Actor]
-[WorkflowDetailShell 限定高度]
+[WorkflowDetailShell flex-1 填满 main，body 自滚、ActionBar 钉底]
    header — 单号 / 状态 / 当前步骤
    form — SchemaForm(applyWorkflowFieldPermissions)；金额仅财务节点 editable
    tabs — 默认「审批进度」WorkflowTimeline；「流程结构」WorkflowViewer（同一份 steps + tasks）
