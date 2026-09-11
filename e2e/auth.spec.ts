@@ -8,6 +8,29 @@ test.describe('认证与受保护路由烟测', () => {
     await expect(page.getByRole('heading', { name: '欢迎回来' })).toBeVisible();
   });
 
+  test('直接打开登录页不提示会话已过期', async ({ page }) => {
+    await page.goto('/login');
+    await expect(page.getByRole('heading', { name: '欢迎回来' })).toBeVisible();
+    await expect(page.getByText('会话已过期，请重新登录')).toHaveCount(0);
+  });
+
+  test('过期 token 打开登录页不提示会话已过期', async ({ page }) => {
+    await page.addInitScript((key) => {
+      window.localStorage.setItem(
+        key,
+        JSON.stringify({
+          token: 'expired-token',
+          username: 'admin',
+          expiresAt: new Date(Date.now() - 60_000).toISOString(),
+        }),
+      );
+    }, SESSION_KEY);
+
+    await page.goto('/login');
+    await expect(page.getByRole('heading', { name: '欢迎回来' })).toBeVisible();
+    await expect(page.getByText('会话已过期，请重新登录')).toHaveCount(0);
+  });
+
   test('登录后会话可恢复并可访问用户页', async ({
     page,
     loginAsAdmin,

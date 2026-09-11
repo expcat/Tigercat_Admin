@@ -50,7 +50,7 @@ function WorkflowDesignerPage() {
         subtitle="配置审批节点、审批人、按钮和表单权限。发布前会校验阻塞项。"
         tags={[
           { label: '演示', variant: 'primary' },
-          { label: 'v2.5.2', variant: 'info' },
+          { label: 'v2.5.4', variant: 'info' },
         ]}
       />
 

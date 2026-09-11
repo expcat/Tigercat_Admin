@@ -61,7 +61,7 @@ function handleSelect(event: MouseEvent, key: ShellPageKey) {
     <div
       role="tablist"
       aria-label="已打开的页面"
-      class="p2-tags-view-list flex min-w-0 flex-1 items-center gap-1 overflow-x-auto overscroll-x-contain"
+      class="p2-tags-view-list flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:thin]"
     >
       <span
         v-for="key in props.keys"
@@ -88,6 +88,7 @@ function handleSelect(event: MouseEvent, key: ShellPageKey) {
           {{ tabTitle(key) }}
         </Tag>
       </span>
+      <span class="inline-block w-1 shrink-0" aria-hidden="true" />
     </div>
     <Dropdown trigger="click" placement="bottom-end" :show-arrow="false">
       <template #trigger>

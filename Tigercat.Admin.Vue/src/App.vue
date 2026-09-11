@@ -16,6 +16,8 @@ import {
   applyTheme,
   watchSystemTheme,
   resetShellMenuSchema,
+  isBrowserOnGuestAuthPage,
+  isGuestAuthPath,
   type Session,
   type ThemeMode,
   type ThemePreferences,
@@ -149,7 +151,12 @@ function handleStorage(event: StorageEvent) {
 }
 
 function handleSessionExpired() {
-  const onGuest = Boolean(route.meta.requiresGuest) || route.name === 'login'
+  const onGuest =
+    Boolean(route.meta.requiresGuest) ||
+    route.name === 'login' ||
+    isGuestAuthPath(route.path) ||
+    isGuestAuthPath(route.fullPath) ||
+    isBrowserOnGuestAuthPage()
   const redirect = route.fullPath
   clearAuthenticatedState()
   if (onGuest) return

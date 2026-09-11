@@ -46,6 +46,7 @@ import {
 } from './utils/schema-routes';
 import {
   SESSION_KEY,
+  GUEST_AUTH_PATHS,
   safeParse,
   apiRequest,
   normalizeInput,
@@ -56,6 +57,8 @@ import {
   saveThemePreferences,
   applyTheme,
   watchSystemTheme,
+  isBrowserOnGuestAuthPage,
+  isGuestAuthPath,
   type ThemeMode,
   type ThemePreferences,
 } from './utils';
@@ -81,12 +84,7 @@ type LocationState = {
   returnTo?: string;
 };
 
-const GUEST_PATHS = new Set([
-  '/login',
-  '/register',
-  '/forgot-password',
-  '/register-success',
-]);
+const GUEST_PATHS = new Set<string>(GUEST_AUTH_PATHS);
 const EXCEPTION_PATHS = new Set(['/403', '/404', '/500']);
 
 function isProtectedAppPath(pathname: string) {
@@ -462,8 +460,11 @@ function App() {
     };
 
     const handleSessionExpired = () => {
-      const onGuest = location.pathname === '/login' || location.pathname === '/register'
-        || location.pathname === '/forgot-password' || location.pathname === '/register-success';
+      const onGuest =
+        GUEST_PATHS.has(location.pathname) ||
+        isGuestAuthPath(location.pathname) ||
+        isGuestAuthPath(`${location.pathname}${location.hash}`) ||
+        isBrowserOnGuestAuthPage();
       const returnTo = `${location.pathname}${location.search}`;
       clearAuthenticatedState();
       if (onGuest) return;

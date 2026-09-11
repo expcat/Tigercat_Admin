@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Button } from '@expcat/tigercat-vue/Button'
+import { Empty } from '@expcat/tigercat-vue/Empty'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Input } from '@expcat/tigercat-vue/Input'
 import { Message } from '@expcat/tigercat-vue/Message'
@@ -45,6 +46,7 @@ import {
   updateTicket,
 } from '../utils/tickets'
 import { createComment, fetchComments } from '../utils/comments'
+import { fetchRelatedApproval } from '../utils/approvals'
 import type { CommentItem, Ticket, TicketPriority, TicketStatus } from '../utils/types'
 
 interface TicketView extends Ticket {
@@ -108,6 +110,7 @@ const statusFilters: { value: 'all' | TicketStatus; label: string }[] = [
 const filteredTickets = computed(() => tickets.value)
 
 const route = useRoute()
+const router = useRouter()
 const requestedTicketId = computed(() => {
   const raw = route.query.ticket
   const value = Array.isArray(raw) ? raw[0] : raw
@@ -115,6 +118,28 @@ const requestedTicketId = computed(() => {
 })
 const selectedId = ref<string | null>(null)
 const selected = computed(() => tickets.value.find((t) => t.id === selectedId.value) ?? null)
+const relatedApprovalId = ref<string | null>(null)
+const hasActiveTicketFilters = computed(
+  () => Boolean(keyword.value.trim()) || statusFilter.value !== 'all',
+)
+
+function clearTicketFilters() {
+  keyword.value = ''
+  statusFilter.value = 'all'
+}
+
+watch(
+  selectedId,
+  async (id) => {
+    relatedApprovalId.value = null
+    if (!id) return
+    const related = await fetchRelatedApproval(id)
+    if (selectedId.value === id) {
+      relatedApprovalId.value = related?.id ?? null
+    }
+  },
+  { immediate: true },
+)
 
 async function loadTicketDetail(id: string) {
   detailLoading.value = true
@@ -448,11 +473,22 @@ const chatStatus = computed(() =>
               compact
               description="正在加载工单…"
             />
-            <MutedPanel
+            <Empty
               v-else-if="filteredTickets.length === 0"
-              compact
+              preset="no-results"
               description="没有符合条件的工单，试试调整筛选或搜索关键词。"
-            />
+            >
+              <template #extra>
+                <Button
+                  v-if="hasActiveTicketFilters"
+                  size="sm"
+                  variant="outline"
+                  @click="clearTicketFilters"
+                >
+                  清除筛选
+                </Button>
+              </template>
+            </Empty>
           </div>
         </div>
 
@@ -466,14 +502,24 @@ const chatStatus = computed(() =>
                   {{ STATUS_META[selected.status].label }}
                 </Tag>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                :disabled="selected.status === 'closed'"
-                @click="requestClose"
-              >
-                关闭工单
-              </Button>
+              <div class="flex flex-wrap items-center gap-2">
+                <Button
+                  v-if="relatedApprovalId"
+                  variant="ghost"
+                  size="sm"
+                  @click="router.push(`/approvals/${encodeURIComponent(relatedApprovalId)}`)"
+                >
+                  打开审批 {{ relatedApprovalId }}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  :disabled="selected.status === 'closed'"
+                  @click="requestClose"
+                >
+                  关闭工单
+                </Button>
+              </div>
             </div>
 
             <div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -602,8 +648,11 @@ const chatStatus = computed(() =>
           </template>
 
           <div v-else class="flex h-full items-center justify-center">
-            <MutedPanel
-              :description="loading ? '正在加载工单…' : '请选择左侧工单查看详情、对话与内部协作。'"
+            <MutedPanel v-if="loading" description="正在加载工单…" />
+            <Empty
+              v-else
+              preset="no-data"
+              description="请选择左侧工单查看详情、对话与内部协作。"
             />
           </div>
         </div>

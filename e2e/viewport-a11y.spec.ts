@@ -73,7 +73,7 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
     const actionBar = page.getByRole('toolbar', { name: '审批操作' });
     await actionBar.scrollIntoViewIfNeeded();
     await expect(actionBar).toBeVisible();
-    await expect(page.getByRole('button', { name: '通过' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '同意' })).toBeVisible();
 
     const chat = page.locator('#main-content-scroll [data-tiger-chat-window]').first();
     await chat.scrollIntoViewIfNeeded();

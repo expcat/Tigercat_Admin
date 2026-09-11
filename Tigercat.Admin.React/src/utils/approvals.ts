@@ -251,6 +251,25 @@ export function fetchApprovals(query: {
   });
 }
 
+export async function fetchRelatedApproval(ticketId: string): Promise<ApprovalListItem | null> {
+  const id = ticketId.trim();
+  if (!id) return null;
+  try {
+    const results = await Promise.all(
+      APPROVAL_LANES.map((lane) =>
+        fetchApprovals({ lane: lane.value, keyword: id, page: 1, pageSize: 50 }),
+      ),
+    );
+    for (const payload of results) {
+      const match = (payload.data.items ?? []).find((item) => item.ticketId === id);
+      if (match) return match;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export function fetchApproval(id: string) {
   return apiRequest<ApprovalDetail>(`/api/approvals/${encodeURIComponent(id)}`, {
     headers: approvalAuthHeaders(),

@@ -3,6 +3,6 @@ packages:
   - 'Tigercat.Admin.React'
   - 'Tigercat.Admin.MockApi'
 minimumReleaseAgeExclude:
-  - '@expcat/tigercat-core@2.4.0 || 2.4.2 || 2.5.0 || 2.5.2'
-  - '@expcat/tigercat-react@2.4.0 || 2.4.2 || 2.5.0 || 2.5.2'
-  - '@expcat/tigercat-vue@2.4.0 || 2.4.2 || 2.5.0 || 2.5.2'
+  - '@expcat/tigercat-core@2.4.0 || 2.4.2 || 2.5.0 || 2.5.2 || 2.5.4'
+  - '@expcat/tigercat-react@2.4.0 || 2.4.2 || 2.5.0 || 2.5.2 || 2.5.4'
+  - '@expcat/tigercat-vue@2.4.0 || 2.4.2 || 2.5.0 || 2.5.2 || 2.5.4'

@@ -170,8 +170,18 @@ router.beforeEach(async (to, _from, next) => {
     return;
   }
 
-  if (requiresGuest && isAuthed) {
-    next({ name: 'dashboard' });
+  if (requiresGuest && isAuthed && session?.token) {
+    if (!permission.loaded.value) {
+      await permission.load(session.token);
+    }
+    const stillAuthed = Boolean(
+      safeParse<Session>(localStorage.getItem(SESSION_KEY))?.token,
+    ) && permission.loaded.value;
+    if (stillAuthed) {
+      next({ name: 'dashboard' });
+      return;
+    }
+    next();
     return;
   }
 

@@ -185,7 +185,7 @@ test.describe('阶段 2 — 协作沟通', () => {
     await expect(page.getByText('工单信息', { exact: true })).toBeVisible();
     await expect(page.getByText('审批进度', { exact: true })).toBeVisible();
     await expect(page.getByRole('toolbar', { name: '审批操作' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '通过' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: '同意' })).toBeEnabled();
     const chat = page.locator('#main-content-scroll [data-tiger-chat-window]').first();
     await chat.scrollIntoViewIfNeeded();
     await expect(chat).toBeVisible();

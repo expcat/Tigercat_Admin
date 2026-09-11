@@ -44,7 +44,7 @@ export function TagsView({
       <div
         role="tablist"
         aria-label="已打开的页面"
-        className="p2-tags-view-list flex min-w-0 flex-1 items-center gap-1 overflow-x-auto overscroll-x-contain">
+        className="p2-tags-view-list flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:thin]">
         {keys.map((key) => {
           const title = getShellPageTitle(key);
           const isActive = key === activeKey;
@@ -88,6 +88,7 @@ export function TagsView({
             </span>
           );
         })}
+        <span className="inline-block w-1 shrink-0" aria-hidden="true" />
       </div>
       <Dropdown
         trigger="click"

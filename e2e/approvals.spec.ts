@@ -257,4 +257,37 @@ test.describe('审批中心 mock 流转', () => {
     await expect(page.getByText('当前 7 个节点')).toBeVisible();
     await expect(page.getByText('存在阻塞项，无法发布')).toHaveCount(0);
   });
+
+  test('审批操作条没有无名 0×0 确认 trigger', async ({ page }) => {
+    await page.goto('/approvals/AP-1001');
+    const actionBar = page.getByRole('toolbar', { name: '审批操作' });
+    await expect(actionBar).toBeVisible();
+    const nameless = await actionBar.locator('button').evaluateAll((buttons) =>
+      buttons.filter((button) => {
+        const rect = button.getBoundingClientRect();
+        const name = (button.textContent || button.getAttribute('aria-label') || '').trim();
+        return !name && (button as HTMLButtonElement).disabled && rect.width < 1 && rect.height < 1;
+      }).length,
+    );
+    expect(nameless).toBe(0);
+  });
+
+  test('工单空搜展示 Empty 并可清除筛选，详情可打开关联审批', async ({ page }) => {
+    await page.goto('/tickets');
+    await expect(page.getByText('工单中心').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: '打开审批 AP-1001' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '同意' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '拒绝' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '撤回' })).toBeVisible();
+
+    await page.getByPlaceholder('搜索标题 / 提交人 / 工单号').fill('zzz-no-match');
+    await expect(page.getByText('没有符合条件的工单，试试调整筛选或搜索关键词。')).toBeVisible();
+    await expect(page.getByRole('button', { name: '清除筛选' })).toBeVisible();
+    await page.getByRole('button', { name: '清除筛选' }).click();
+    await expect(page.getByText('导出报表时偶发 500 错误').first()).toBeVisible();
+
+    await page.getByRole('button', { name: '打开审批 AP-1001' }).click();
+    await expect(page).toHaveURL(/\/approvals\/AP-1001$/);
+    await expect(page.getByText('申请表单', { exact: true })).toBeVisible();
+  });
 });

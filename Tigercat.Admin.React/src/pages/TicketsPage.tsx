@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@expcat/tigercat-react/Button';
+import { Empty } from '@expcat/tigercat-react/Empty';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Input } from '@expcat/tigercat-react/Input';
 import { Message } from '@expcat/tigercat-react/Message';
@@ -46,6 +47,7 @@ import {
   updateTicket,
 } from '../utils/tickets';
 import { createComment, fetchComments } from '../utils/comments';
+import { fetchRelatedApproval } from '../utils/approvals';
 import type { CommentItem, Ticket, TicketPriority, TicketStatus } from '../utils/types';
 
 interface TicketView extends Ticket {
@@ -109,8 +111,10 @@ function TicketsPage() {
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | TicketStatus>('all');
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const requestedTicketId = searchParams.get('ticket') ?? '';
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [relatedApprovalId, setRelatedApprovalId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [noteDraft, setNoteDraft] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -199,6 +203,24 @@ function TicketsPage() {
     // Intentionally reload when filters change; loadTickets already closes over them.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyword, statusFilter]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setRelatedApprovalId(null);
+    if (!selectedId) return;
+    void fetchRelatedApproval(selectedId).then((item) => {
+      if (!cancelled) setRelatedApprovalId(item?.id ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
+
+  const hasActiveTicketFilters = Boolean(keyword.trim()) || statusFilter !== 'all';
+  const clearTicketFilters = () => {
+    setKeyword('');
+    setStatusFilter('all');
+  };
 
   const selectTicket = (id: string) => {
     setSelectedId(id);
@@ -454,7 +476,17 @@ function TicketsPage() {
                 <MutedPanel compact description="正在加载工单…" />
               ) : (
                 filteredTickets.length === 0 && (
-                  <MutedPanel compact description="没有符合条件的工单，试试调整筛选或搜索关键词。" />
+                  <Empty
+                    preset="no-results"
+                    description="没有符合条件的工单，试试调整筛选或搜索关键词。"
+                    extra={
+                      hasActiveTicketFilters ? (
+                        <Button size="sm" variant="outline" onClick={clearTicketFilters}>
+                          清除筛选
+                        </Button>
+                      ) : null
+                    }
+                  />
                 )
               )}
             </div>
@@ -473,13 +505,25 @@ function TicketsPage() {
                       {STATUS_META[selected.status].label}
                     </Tag>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={selected.status === 'closed'}
-                    onClick={requestClose}>
-                    关闭工单
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {relatedApprovalId ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          navigate(`/approvals/${encodeURIComponent(relatedApprovalId)}`)
+                        }>
+                        打开审批 {relatedApprovalId}
+                      </Button>
+                    ) : null}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={selected.status === 'closed'}
+                      onClick={requestClose}>
+                      关闭工单
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -575,9 +619,11 @@ function TicketsPage() {
               </>
             ) : (
               <div className="flex h-full items-center justify-center">
-                <MutedPanel
-                  description={loading ? '正在加载工单…' : '请选择左侧工单查看详情、对话与内部协作。'}
-                />
+                {loading ? (
+                  <MutedPanel description="正在加载工单…" />
+                ) : (
+                  <Empty preset="no-data" description="请选择左侧工单查看详情、对话与内部协作。" />
+                )}
               </div>
             )}
           </div>
