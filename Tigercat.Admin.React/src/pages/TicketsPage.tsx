@@ -492,11 +492,13 @@ function TicketsPage() {
             </div>
           </div>
 
-          {/* 右：详情 */}
-          <div className="flex h-full min-w-0 flex-col overflow-y-auto pl-1">
+          {/* 右：详情。body 内滚，ActionBar 钉在窗格底（首屏可见，不必右栏内滚）。 */}
+          <div
+            className="flex h-full min-w-0 flex-col overflow-hidden pl-1"
+            data-ticket-detail-pane="">
             {selected ? (
               <>
-                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Text size="lg" weight="bold">
                       {selected.title}
@@ -526,7 +528,8 @@ function TicketsPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                   <Card header={<Text weight="bold">工单信息</Text>}>
                     <Descriptions items={descriptions} column={1} bordered colon />
                     <div className="mt-3 flex items-center gap-2">
@@ -564,14 +567,6 @@ function TicketsPage() {
                 <Card header={<Text weight="bold">审批进度</Text>} className="mt-4 min-w-0">
                   <div className="min-w-0 overflow-x-auto">
                     <WorkflowTimeline steps={workflowSteps} />
-                  </div>
-                  <div className="mt-3 min-w-0">
-                    <WorkflowActionBar
-                      items={TICKET_WORKFLOW_ACTIONS}
-                      disabled={workflowActionsDisabled}
-                      ariaLabel="审批操作"
-                      onAction={handleWorkflowAction}
-                    />
                   </div>
                   <Text size="sm" color="secondary" className="mt-2 block">
                     工单详情动作会写回工单状态；完整待办/已办/抄送实例见审批中心。
@@ -616,6 +611,18 @@ function TicketsPage() {
                     </Button>
                   </div>
                 </Card>
+                </div>
+
+                <div
+                  className="sticky bottom-0 z-10 mt-auto shrink-0 border-t border-[var(--tiger-border,#e5e7eb)] bg-[var(--tiger-bg,#fff)] px-1 py-3"
+                  data-ticket-detail-action="">
+                  <WorkflowActionBar
+                    items={TICKET_WORKFLOW_ACTIONS}
+                    disabled={workflowActionsDisabled}
+                    ariaLabel="审批操作"
+                    onAction={handleWorkflowAction}
+                  />
+                </div>
               </>
             ) : (
               <div className="flex h-full items-center justify-center">

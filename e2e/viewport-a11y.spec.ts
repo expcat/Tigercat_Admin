@@ -5,6 +5,7 @@ import {
   expectDarkSchemeApplied,
   expectInViewport,
   expectNoPageHorizontalOverflow,
+  expectTicketActionBarFirstScreen,
   isDemoProject,
   loginAsAdmin,
   loginAsDemo,
@@ -65,14 +66,12 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
     await loginAsAdmin(page, testInfo);
 
     await page.goto(appPath(testInfo, '/tickets'));
-    await expect(page.getByText('工单中心').first()).toBeVisible();
+    await expect(page.getByText('工单列表')).toBeVisible();
     await expect(page.locator('[data-direction="vertical"]').first()).toBeVisible();
     await expect(page.getByText('工单生命周期', { exact: true })).toBeVisible();
     await expect(page.getByText('工单信息', { exact: true })).toBeVisible();
 
-    const actionBar = page.getByRole('toolbar', { name: '审批操作' });
-    await actionBar.scrollIntoViewIfNeeded();
-    await expect(actionBar).toBeVisible();
+    await expectTicketActionBarFirstScreen(page);
     await expect(page.getByRole('button', { name: '同意' })).toBeVisible();
 
     const chat = page.locator('#main-content-scroll [data-tiger-chat-window]').first();
@@ -255,11 +254,9 @@ test.describe('dark colorScheme coverage', { tag: '@dark' }, () => {
     await expect(page.getByText('Admin').first()).toBeVisible();
 
     await page.goto(appPath(testInfo, '/tickets'));
-    await expect(page.getByText('工单中心').first()).toBeVisible();
+    await expect(page.getByText('工单列表')).toBeVisible();
     await expect(page.getByText('工单生命周期', { exact: true })).toBeVisible();
-    const ticketBar = page.getByRole('toolbar', { name: '审批操作' });
-    await ticketBar.scrollIntoViewIfNeeded();
-    await expect(ticketBar).toBeVisible();
+    await expectTicketActionBarFirstScreen(page);
     const chat = page.locator('#main-content-scroll [data-tiger-chat-window]').first();
     await chat.scrollIntoViewIfNeeded();
     await expect(chat).toBeVisible();

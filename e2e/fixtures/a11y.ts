@@ -57,6 +57,21 @@ export async function expectInViewport(locator: Locator): Promise<void> {
   expect(isInViewport).toBe(true);
 }
 
+/** Ticket detail ActionBar is pinned to the pane (no inner scroll to reach 同意/拒绝). */
+export async function expectTicketActionBarFirstScreen(page: Page): Promise<void> {
+  const action = page.locator('[data-ticket-detail-action]').first();
+  await expect(action).toBeVisible();
+  const fullyInPane = await page.evaluate(() => {
+    const paneEl = document.querySelector('[data-ticket-detail-pane]');
+    const actionEl = document.querySelector('[data-ticket-detail-action]');
+    if (!paneEl || !actionEl) return false;
+    const pr = paneEl.getBoundingClientRect();
+    const ar = actionEl.getBoundingClientRect();
+    return ar.top >= pr.top - 1 && ar.bottom <= pr.bottom + 1;
+  });
+  expect(fullyInPane).toBe(true);
+}
+
 /**
  * Vue overlay-host insertBefore used to leave `#app` as an empty ConfigProvider
  * after leaving Shell for 403/404. Require real page chrome, not just host roots.

@@ -492,10 +492,13 @@ const chatStatus = computed(() =>
           </div>
         </div>
 
-        <!-- 右：详情 -->
-        <div class="flex h-full min-w-0 flex-col overflow-y-auto pl-1">
+        <!-- 右：详情。body 内滚，ActionBar 钉在窗格底（首屏可见，不必右栏内滚）。 -->
+        <div
+          class="flex h-full min-w-0 flex-col overflow-hidden pl-1"
+          data-ticket-detail-pane
+        >
           <template v-if="selected">
-            <div class="flex min-w-0 flex-wrap items-center justify-between gap-2">
+            <div class="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-2">
               <div class="flex items-center gap-2">
                 <Text size="lg" weight="bold">{{ selected.title }}</Text>
                 <Tag :variant="STATUS_META[selected.status].variant" size="sm">
@@ -522,7 +525,8 @@ const chatStatus = computed(() =>
               </div>
             </div>
 
-            <div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <div class="mt-4 min-h-0 flex-1 overflow-y-auto">
+            <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
               <Card>
                 <template #header><Text weight="bold">工单信息</Text></template>
                 <Descriptions :items="selectedDescriptions" :column="1" bordered colon />
@@ -561,14 +565,6 @@ const chatStatus = computed(() =>
               <template #header><Text weight="bold">审批进度</Text></template>
               <div class="min-w-0 overflow-x-auto">
                 <WorkflowTimeline :steps="workflowSteps" />
-              </div>
-              <div class="mt-3 min-w-0">
-                <WorkflowActionBar
-                  :items="TICKET_WORKFLOW_ACTIONS"
-                  :disabled="workflowActionsDisabled"
-                  aria-label="审批操作"
-                  @action="handleWorkflowAction"
-                />
               </div>
               <Text size="sm" color="secondary" class="mt-2 block">
                 工单详情动作会写回工单状态；完整待办/已办/抄送实例见审批中心。
@@ -645,6 +641,19 @@ const chatStatus = computed(() =>
                 </Button>
               </div>
             </Card>
+            </div>
+
+            <div
+              class="sticky bottom-0 z-10 mt-auto shrink-0 border-t border-[var(--tiger-border,#e5e7eb)] bg-[var(--tiger-bg,#fff)] px-1 py-3"
+              data-ticket-detail-action
+            >
+              <WorkflowActionBar
+                :items="TICKET_WORKFLOW_ACTIONS"
+                :disabled="workflowActionsDisabled"
+                aria-label="审批操作"
+                @action="handleWorkflowAction"
+              />
+            </div>
           </template>
 
           <div v-else class="flex h-full items-center justify-center">
