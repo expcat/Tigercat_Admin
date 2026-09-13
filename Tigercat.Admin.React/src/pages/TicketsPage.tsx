@@ -541,7 +541,7 @@ function TicketsPage() {
                         trigger="hover"
                         placement="top"
                         width={240}
-                        contentContent={
+                        content={
                           <div className="p-3 text-sm">满意度为提交人对本次服务的评分（演示数据）。</div>
                         }>
                         <span className="inline-flex h-5 w-5 items-center justify-center rounded-full text-(--tiger-text-secondary,#64748b)">

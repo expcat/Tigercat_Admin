@@ -196,7 +196,7 @@ export function NotificationBell() {
       trigger="click"
       placement="bottom-end"
       width={360}
-      contentContent={panel}
+      content={panel}
     >
       <button
         type="button"

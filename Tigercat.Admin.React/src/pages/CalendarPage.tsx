@@ -294,7 +294,7 @@ function CalendarPage() {
                     trigger="hover"
                     placement="left"
                     width={260}
-                    contentContent={
+                    content={
                       <div className="space-y-1 p-3 text-sm">
                         <Text weight="bold" className="block">
                           {e.title}
