@@ -165,7 +165,7 @@ function submitFeedback() {
       <template #header><Text weight="bold">章节快速跳转</Text></template>
       <ScrollSpy
         :items="SPY_ITEMS"
-        direction="horizontal"
+        orientation="horizontal"
         :sticky="false"
         :offset-top="16"
         :get-container="getScrollContainer"

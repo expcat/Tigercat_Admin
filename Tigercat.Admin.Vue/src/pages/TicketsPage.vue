@@ -414,7 +414,7 @@ const chatStatus = computed(() =>
 
     <Card class="min-w-0 overflow-hidden">
       <Splitter
-        :direction="splitDirection"
+        :orientation="splitDirection"
         :min="220"
         :gutter-size="8"
         :style="splitStyle"
@@ -550,7 +550,7 @@ const chatStatus = computed(() =>
 
               <Card>
                 <template #header><Text weight="bold">工单生命周期</Text></template>
-                <Steps :current="STATUS_META[selected.status].step" direction="vertical" size="sm">
+                <Steps :current="STATUS_META[selected.status].step" orientation="vertical" size="sm">
                   <StepsItem
                     v-for="(label, idx) in LIFECYCLE"
                     :key="label"

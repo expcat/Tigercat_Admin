@@ -156,7 +156,7 @@ function HelpPage() {
       <Card header={<Text weight="bold">章节快速跳转</Text>}>
         <ScrollSpy
           items={SPY_ITEMS}
-          direction="horizontal"
+          orientation="horizontal"
           sticky={false}
           offsetTop={16}
           getContainer={getScrollContainer}

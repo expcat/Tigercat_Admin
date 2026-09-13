@@ -246,7 +246,7 @@ const {
   isDragging,
 } = useDrag({
   containerId: 'performance-queue',
-  config: { direction: 'vertical', dragClass: 'opacity-50' },
+  config: { axis: 'vertical', dragClass: 'opacity-50' },
 })
 
 const kanbanCardCount = computed(() => countKanbanCards(kanbanColumns.value))

@@ -67,7 +67,7 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
 
     await page.goto(appPath(testInfo, '/tickets'));
     await expect(page.getByText('工单列表')).toBeVisible();
-    await expect(page.locator('[data-direction="vertical"]').first()).toBeVisible();
+    await expect(page.locator('[data-orientation="vertical"]').first()).toBeVisible();
     await expect(page.getByText('工单生命周期', { exact: true })).toBeVisible();
     await expect(page.getByText('工单信息', { exact: true })).toBeVisible();
 

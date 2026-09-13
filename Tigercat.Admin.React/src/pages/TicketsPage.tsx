@@ -422,7 +422,7 @@ function TicketsPage() {
       </div>
 
       <Card className="min-w-0 overflow-hidden">
-        <Splitter direction={splitDirection} min={220} gutterSize={8} style={splitStyle}>
+        <Splitter orientation={splitDirection} min={220} gutterSize={8} style={splitStyle}>
           {/* 左：列表 */}
           <div className="flex h-full min-w-0 flex-col gap-3 overflow-hidden pr-1">
             <Input value={keyword} onChange={setKeyword} placeholder="搜索标题 / 提交人 / 工单号" clearable />
@@ -552,7 +552,7 @@ function TicketsPage() {
                   </Card>
 
                   <Card header={<Text weight="bold">工单生命周期</Text>}>
-                    <Steps current={STATUS_META[selected.status].step} direction="vertical" size="sm">
+                    <Steps current={STATUS_META[selected.status].step} orientation="vertical" size="sm">
                       {LIFECYCLE.map((label, idx) => (
                         <StepsItem
                           key={label}
