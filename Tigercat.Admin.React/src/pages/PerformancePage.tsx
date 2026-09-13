@@ -8,10 +8,10 @@ import { Tabs } from '@expcat/tigercat-react/Tabs';
 import { TabPane } from '@expcat/tigercat-react/TabPane';
 import { VirtualList } from '@expcat/tigercat-react/VirtualList';
 import { VirtualTable } from '@expcat/tigercat-react/VirtualTable';
-import { Kanban } from '@expcat/tigercat-react/Kanban';
+import { TaskBoard } from '@expcat/tigercat-react/TaskBoard';
 import type {
   DragItem,
-  KanbanSwimlane,
+  TaskBoardSwimlane,
   TableColumn,
   TagVariant,
   TaskBoardCardMoveEvent,
@@ -97,7 +97,7 @@ const TABLE_COLUMNS: TableColumn<PerformanceRow>[] = [
   { key: 'time', title: '时间', width: 160 },
 ];
 
-const KANBAN_SWIMLANES: KanbanSwimlane[] = [
+const KANBAN_SWIMLANES: TaskBoardSwimlane[] = [
   { id: 'frontend', label: '前端', color: 'var(--tiger-info)' },
   { id: 'backend', label: '后端', color: 'var(--tiger-success)' },
 ];
@@ -469,7 +469,7 @@ function PerformancePage() {
               {lastKanbanMove}
             </Text>
             <div className="overflow-x-auto">
-              <Kanban
+              <TaskBoard
                 columns={kanbanColumns}
                 draggable
                 columnDraggable={false}

@@ -9,7 +9,6 @@ import { Segmented } from '@expcat/tigercat-vue/Segmented'
 import { Image } from '@expcat/tigercat-vue/Image'
 import { ImageGroup } from '@expcat/tigercat-vue/ImageGroup'
 import { ImagePreview } from '@expcat/tigercat-vue/ImagePreview'
-import { ImageViewer } from '@expcat/tigercat-vue/ImageViewer'
 import { ImageAnnotation, ImageCropper } from '../utils/lazyTigercat'
 import { Carousel } from '@expcat/tigercat-vue/Carousel'
 import { Masonry } from '@expcat/tigercat-vue/Masonry'
@@ -236,7 +235,7 @@ function applyCrop() {
     </Card>
 
     <!-- 大图查看 -->
-    <ImageViewer
+    <ImagePreview
       :images="filteredSrcs"
       :open="viewerOpen"
       :current-index="viewerIndex"

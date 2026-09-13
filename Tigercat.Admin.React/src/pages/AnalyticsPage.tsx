@@ -13,7 +13,7 @@ import { Skeleton } from '@expcat/tigercat-react/Skeleton';
 import { DatePicker } from '@expcat/tigercat-react/DatePicker';
 import {
   AreaChart,
-  DonutChart,
+  PieChart,
   FunnelChart,
   GaugeChart,
   HeatmapChart,
@@ -351,7 +351,7 @@ function AnalyticsPage() {
           {loading ? (
             <Skeleton rows={4} />
           ) : (
-            <DonutChart data={donutData} height={240} responsive centerValue={donutTotal} centerLabel="总访问" showLegend />
+            <PieChart data={donutData} height={240} responsive innerRadiusRatio={0.6} centerValue={donutTotal} centerLabel="总访问" showLegend />
           )}
         </Card>
 

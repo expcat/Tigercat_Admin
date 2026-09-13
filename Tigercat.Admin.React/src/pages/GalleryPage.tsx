@@ -8,7 +8,6 @@ import { Segmented } from '@expcat/tigercat-react/Segmented';
 import { Image } from '@expcat/tigercat-react/Image';
 import { ImageGroup } from '@expcat/tigercat-react/ImageGroup';
 import { ImagePreview } from '@expcat/tigercat-react/ImagePreview';
-import { ImageViewer } from '@expcat/tigercat-react/ImageViewer';
 import type { ImageCropperRef } from '@expcat/tigercat-react/ImageCropper';
 import { ImageAnnotation, ImageCropper } from '../utils/lazyTigercat';
 import { Carousel } from '@expcat/tigercat-react/Carousel';
@@ -247,7 +246,7 @@ function GalleryPage() {
         />
       </Card>
 
-      <ImageViewer
+      <ImagePreview
         images={filteredSrcs}
         open={viewerOpen}
         currentIndex={viewerIndex}

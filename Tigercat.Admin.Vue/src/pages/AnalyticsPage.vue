@@ -14,7 +14,7 @@ import { Skeleton } from '@expcat/tigercat-vue/Skeleton'
 import { DatePicker } from '@expcat/tigercat-vue/DatePicker'
 import {
   AreaChart,
-  DonutChart,
+  PieChart,
   FunnelChart,
   GaugeChart,
   HeatmapChart,
@@ -327,11 +327,12 @@ function handlePageChange(value: number) {
       <Card>
         <template #header><Text weight="bold">流量构成</Text></template>
         <Skeleton v-if="loading" :rows="4" />
-        <DonutChart
+        <PieChart
           v-else
           :data="donutData"
           :height="240"
           responsive
+          :inner-radius-ratio="0.6"
           :center-value="donutTotal"
           center-label="总访问"
           :show-legend="true"

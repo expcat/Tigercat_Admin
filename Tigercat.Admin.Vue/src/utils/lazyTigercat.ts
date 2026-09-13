@@ -36,9 +36,9 @@ export const AreaChart = lazyNamed(
   () => import('@expcat/tigercat-vue/AreaChart'),
   'AreaChart',
 )
-export const DonutChart = lazyNamed(
-  () => import('@expcat/tigercat-vue/DonutChart'),
-  'DonutChart',
+export const PieChart = lazyNamed(
+  () => import('@expcat/tigercat-vue/PieChart'),
+  'PieChart',
 )
 export const FunnelChart = lazyNamed(
   () => import('@expcat/tigercat-vue/FunnelChart'),

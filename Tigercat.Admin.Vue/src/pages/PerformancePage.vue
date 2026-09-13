@@ -9,10 +9,10 @@ import { Tabs } from '@expcat/tigercat-vue/Tabs'
 import { TabPane } from '@expcat/tigercat-vue/TabPane'
 import { VirtualList } from '@expcat/tigercat-vue/VirtualList'
 import { VirtualTable } from '@expcat/tigercat-vue/VirtualTable'
-import { Kanban } from '@expcat/tigercat-vue/Kanban'
+import { TaskBoard } from '@expcat/tigercat-vue/TaskBoard'
 import type {
   DragItem,
-  KanbanSwimlane,
+  TaskBoardSwimlane,
   TableColumn,
   TagVariant,
   TaskBoardCardMoveEvent,
@@ -91,7 +91,7 @@ const TABLE_COLUMNS: TableColumn[] = [
   { key: 'time', title: '时间', width: 160 },
 ]
 
-const KANBAN_SWIMLANES: KanbanSwimlane[] = [
+const KANBAN_SWIMLANES: TaskBoardSwimlane[] = [
   { id: 'frontend', label: '前端', color: 'var(--tiger-info)' },
   { id: 'backend', label: '后端', color: 'var(--tiger-success)' },
 ]
@@ -457,7 +457,7 @@ function logLine(index: number): PerformanceLog {
             {{ lastKanbanMove }}
           </Text>
           <div class="overflow-x-auto">
-            <Kanban
+            <TaskBoard
               :columns="kanbanColumns"
               :draggable="true"
               :column-draggable="false"
