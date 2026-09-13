@@ -1019,7 +1019,7 @@ function UsersPage() {
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}>
         <div className="p2-modal-scroll">
-        <Form model={formData} labelWidth={88}>
+        <Form value={formData} labelWidth={88}>
           <FormItem label="用户名" name="username">
             <Input
               value={formData.username}

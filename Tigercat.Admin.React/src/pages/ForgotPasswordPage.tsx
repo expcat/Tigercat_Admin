@@ -194,7 +194,7 @@ function ForgotPasswordPage() {
 
         <Card variant="transparent" className="p-0">
           {current === 0 && (
-            <Form model={{ target, code }} labelWidth={72} className="min-w-0">
+            <Form value={{ target, code }} labelWidth={72} className="min-w-0">
               <FormItem name="target" label="账号">
                 {usePhoneMask ? (
                   <div data-testid="forgot-phone-mask">
@@ -281,7 +281,7 @@ function ForgotPasswordPage() {
           )}
 
           {current === 1 && (
-            <Form model={{ password, confirmPassword }} labelWidth={88}>
+            <Form value={{ password, confirmPassword }} labelWidth={88}>
               <FormItem name="password" label="新密码">
                 <Input
                   value={password}

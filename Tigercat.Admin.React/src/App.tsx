@@ -240,7 +240,7 @@ function ProtectedLayout({
         cancelText="取消"
         onOk={onChangePasswordSubmit}
         onCancel={onCloseChangeModal}>
-        <Form model={changeForm} labelWidth={88}>
+        <Form value={changeForm} labelWidth={88}>
           <FormItem name="oldPassword" label="旧密码">
             <Input
               value={changeForm.oldPassword}

@@ -274,12 +274,12 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
         <Text weight="bold" class="mb-3 block">申请表单</Text>
         <SchemaForm
           :schema="formSchema"
-          :model="formModel"
+          :model-value="formModel"
           :show-actions="false"
           :label-width="96"
           class="max-sm:[&_.tiger-form-item--label-left]:flex-col max-sm:[&_.tiger-form-item__label]:!w-full max-sm:[&_.tiger-form-item__label]:!pt-0 max-sm:[&_.tiger-form-item__label]:!text-start"
           aria-label="申请表单"
-          @update:model="handleFormChange"
+          @update:model-value="handleFormChange"
         />
       </template>
       <template #tabs>

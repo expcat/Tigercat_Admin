@@ -271,7 +271,7 @@ function ApprovalDetailPage() {
               </Text>
               <SchemaForm
                 schema={formSchema}
-                model={formModel}
+                value={formModel}
                 showActions={false}
                 labelWidth={96}
                 className="max-sm:[&_.tiger-form-item--label-left]:flex-col max-sm:[&_.tiger-form-item__label]:!w-full max-sm:[&_.tiger-form-item__label]:!pt-0 max-sm:[&_.tiger-form-item__label]:!text-start"

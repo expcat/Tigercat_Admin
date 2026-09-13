@@ -633,7 +633,7 @@ onMounted(() => {
       @cancel="modalVisible = false"
     >
       <div class="p2-modal-scroll">
-      <Form :model="formData" :label-width="88">
+      <Form :model-value="formData" :label-width="88">
         <FormItem label="角色名称" name="name">
           <Input
             v-model="formData.name"

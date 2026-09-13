@@ -106,7 +106,7 @@ const goToLogin = () => {
       </div>
 
       <Card variant="transparent" class="p-0">
-        <Form :model="form" :label-width="88">
+        <Form :model-value="form" :label-width="88">
           <FormItem prop="username" label="用户名">
             <Input
               :model-value="form.username"

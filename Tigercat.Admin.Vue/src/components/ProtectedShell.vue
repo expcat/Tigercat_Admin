@@ -48,7 +48,7 @@ const updateTheme = inject<(prefs: ThemePreferences) => void>('updateTheme')!
       @ok="handleChangePassword"
       @cancel="changeOpen = false"
     >
-      <Form :model="changeForm" :label-width="88">
+      <Form :model-value="changeForm" :label-width="88">
         <FormItem name="oldPassword" label="旧密码">
           <Input
             v-model="changeForm.oldPassword"

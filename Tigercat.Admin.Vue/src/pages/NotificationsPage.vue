@@ -389,7 +389,7 @@ onMounted(loadNotifications)
       @cancel="createOpen = false"
     >
       <div class="p2-modal-scroll">
-        <Form :model="createForm" :label-width="88">
+        <Form :model-value="createForm" :label-width="88">
           <FormItem label="标题" name="title">
             <Input v-model="createForm.title" placeholder="请输入通知标题" />
           </FormItem>

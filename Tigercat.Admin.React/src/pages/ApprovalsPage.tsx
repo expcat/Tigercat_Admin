@@ -260,7 +260,7 @@ function ApprovalsPage() {
         <SchemaForm
           ref={createFormRef}
           schema={APPROVAL_CREATE_SCHEMA}
-          model={createForm}
+          value={createForm}
           showActions={false}
           labelWidth={96}
           ariaLabel="发起审批表单"

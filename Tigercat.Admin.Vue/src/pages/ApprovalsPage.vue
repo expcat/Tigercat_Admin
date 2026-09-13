@@ -240,11 +240,11 @@ function handlePageSizeChange(next: { current: number; pageSize: number }) {
       <SchemaForm
         ref="createFormRef"
         :schema="APPROVAL_CREATE_SCHEMA"
-        :model="createForm"
+        :model-value="createForm"
         :show-actions="false"
         :label-width="96"
         aria-label="发起审批表单"
-        @update:model="handleCreateModelChange"
+        @update:model-value="handleCreateModelChange"
       />
     </Modal>
   </div>

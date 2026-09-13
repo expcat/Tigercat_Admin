@@ -232,7 +232,7 @@ const handleVerify = debounce(async () => {
       </div>
 
       <Card variant="transparent" class="p-0">
-        <Form v-if="step === 'login'" :model="form" :label-width="88">
+        <Form v-if="step === 'login'" :model-value="form" :label-width="88">
           <FormItem name="username" label="用户名">
             <Input
               :model-value="form.username || ''"

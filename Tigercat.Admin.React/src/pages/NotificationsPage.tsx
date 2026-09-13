@@ -436,7 +436,7 @@ function NotificationsPage() {
         onOk={() => void submitCreate()}
         onCancel={() => setCreateOpen(false)}>
         <div className="p2-modal-scroll">
-          <Form model={createForm as Record<string, unknown>} labelWidth={88}>
+          <Form value={createForm as Record<string, unknown>} labelWidth={88}>
             <FormItem label="标题" name="title">
               <Input
                 value={createForm.title}
