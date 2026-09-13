@@ -202,7 +202,7 @@ function goToLogin() {
 
       <Card variant="transparent" class="p-0">
         <div class="mb-6 overflow-x-auto">
-          <Steps :current="current" size="small">
+          <Steps :current="current" size="sm">
             <StepsItem title="验证身份" description="邮箱 / 手机号" />
             <StepsItem title="设置新密码" description="不少于 6 位" />
             <StepsItem title="完成" description="返回登录" />

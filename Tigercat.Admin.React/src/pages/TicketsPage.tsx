@@ -552,7 +552,7 @@ function TicketsPage() {
                   </Card>
 
                   <Card header={<Text weight="bold">工单生命周期</Text>}>
-                    <Steps current={STATUS_META[selected.status].step} direction="vertical" size="small">
+                    <Steps current={STATUS_META[selected.status].step} direction="vertical" size="sm">
                       {LIFECYCLE.map((label, idx) => (
                         <StepsItem
                           key={label}

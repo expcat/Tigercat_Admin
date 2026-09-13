@@ -185,7 +185,7 @@ function ForgotPasswordPage() {
         </div>
 
         <div className="mb-6 overflow-x-auto">
-          <Steps current={current} size="small">
+          <Steps current={current} size="sm">
             <StepsItem title="验证身份" />
             <StepsItem title="设置新密码" />
             <StepsItem title="完成" />

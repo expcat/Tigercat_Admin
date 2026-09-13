@@ -550,7 +550,7 @@ const chatStatus = computed(() =>
 
               <Card>
                 <template #header><Text weight="bold">工单生命周期</Text></template>
-                <Steps :current="STATUS_META[selected.status].step" direction="vertical" size="small">
+                <Steps :current="STATUS_META[selected.status].step" direction="vertical" size="sm">
                   <StepsItem
                     v-for="(label, idx) in LIFECYCLE"
                     :key="label"

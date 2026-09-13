@@ -311,7 +311,7 @@ onMounted(() => {
             <Text v-if="selected" size="sm" color="secondary">{{ selected.name }}</Text>
           </div>
         </template>
-        <Steps v-if="selected" :current="selected.phase" direction="vertical" size="small">
+        <Steps v-if="selected" :current="selected.phase" direction="vertical" size="sm">
           <StepsItem
             v-for="(label, idx) in RUN_PHASES"
             :key="label"

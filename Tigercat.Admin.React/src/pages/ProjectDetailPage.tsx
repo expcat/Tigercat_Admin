@@ -282,7 +282,7 @@ function ProjectDetailContent({
                   <Descriptions items={overviewItems} column={{ xs: 1, sm: 2 }} bordered colon />
                 </Card>
                 <Card header={<Text weight="bold">里程碑</Text>}>
-                  <Steps current={project.milestone} size="small">
+                  <Steps current={project.milestone} size="sm">
                     {PROJECT_MILESTONES.map((label, index) => (
                       <StepsItem
                         key={label}

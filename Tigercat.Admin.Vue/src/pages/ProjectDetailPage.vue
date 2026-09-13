@@ -245,7 +245,7 @@ function getScrollContainer(): HTMLElement | Window {
               </Card>
               <Card>
                 <template #header><Text weight="bold">里程碑</Text></template>
-                <Steps :current="project.milestone" size="small">
+                <Steps :current="project.milestone" size="sm">
                   <StepsItem
                     v-for="(label, index) in PROJECT_MILESTONES"
                     :key="label"

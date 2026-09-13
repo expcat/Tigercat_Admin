@@ -325,7 +325,7 @@ function JobsPage() {
             </div>
           }>
           {selected ? (
-            <Steps current={selected.phase} direction="vertical" size="small">
+            <Steps current={selected.phase} direction="vertical" size="sm">
               {RUN_PHASES.map((label, idx) => (
                 <StepsItem
                   key={label}
