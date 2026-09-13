@@ -354,7 +354,7 @@ function ImportPage() {
           <FormWizard
             steps={STEPS}
             current={current}
-            onChange={(next) => setCurrent(next)}
+            onStepChange={(next) => setCurrent(next)}
             nextText="下一步"
             prevText="上一步"
             finishText="开始导入"

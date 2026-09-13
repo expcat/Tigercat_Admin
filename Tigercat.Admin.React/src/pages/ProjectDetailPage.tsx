@@ -275,7 +275,7 @@ function ProjectDetailContent({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_220px]">
         <div className="min-w-0 space-y-4">
-          <Tabs activeKey={activeTab} onActiveKeyChange={onTabChange}>
+          <Tabs activeKey={activeTab} onChange={onTabChange}>
             <TabPane tabKey="overview" label="概览">
               <div id="project-overview" className="space-y-4">
                 <Card header={<Text weight="bold">项目概要</Text>}>

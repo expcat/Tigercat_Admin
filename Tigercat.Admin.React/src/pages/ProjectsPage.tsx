@@ -179,7 +179,7 @@ function ProjectsPage() {
           <>
             <Input
               value={keyword}
-              onChange={(event) => handleKeywordChange(event.target.value)}
+              onChange={handleKeywordChange}
               placeholder="搜索名称 / 负责人 / 编号"
               clearable
               className="w-full sm:w-64"

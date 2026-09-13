@@ -386,7 +386,7 @@ function ProfilePage() {
                 </Text>
                 <Textarea
                   value={bio}
-                  onChange={(e) => setBio(e.target.value)}
+                  onChange={setBio}
                   rows={4}
                   maxLength={200}
                   showCount

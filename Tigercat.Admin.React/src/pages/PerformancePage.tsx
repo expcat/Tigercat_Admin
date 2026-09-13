@@ -347,7 +347,7 @@ function PerformancePage() {
         description="四个演示都在本页内存生成。VirtualList / VirtualTable 用子路径导入；拖拽使用包入口的 useDrag（v1.5.0 没有 /Drag 组件）；看板使用低层 Kanban，区别于「任务面板」的 TaskBoard。"
       />
 
-      <Tabs activeKey={activeTab} lazy onActiveKeyChange={handleTabChange}>
+      <Tabs activeKey={activeTab} lazy onChange={handleTabChange}>
         <TabPane tabKey="list" label="万级日志流">
           <div className="space-y-4" data-testid="performance-virtual-list">
             <MutedPanel

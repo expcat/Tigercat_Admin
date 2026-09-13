@@ -425,7 +425,7 @@ function TicketsPage() {
         <Splitter direction={splitDirection} min={220} gutterSize={8} style={splitStyle}>
           {/* 左：列表 */}
           <div className="flex h-full min-w-0 flex-col gap-3 overflow-hidden pr-1">
-            <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="搜索标题 / 提交人 / 工单号" clearable />
+            <Input value={keyword} onChange={setKeyword} placeholder="搜索标题 / 提交人 / 工单号" clearable />
             <div className="flex flex-wrap gap-2">
               {statusFilters.map((f) => (
                 <button

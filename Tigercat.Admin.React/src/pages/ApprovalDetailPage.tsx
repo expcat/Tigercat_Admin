@@ -281,7 +281,7 @@ function ApprovalDetailPage() {
             </>
           }
           tabs={
-            <Tabs activeKey={activeTab} onActiveKeyChange={(key) => setActiveTab(String(key))}>
+            <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(String(key))}>
               <TabPane tabKey="progress" label="审批进度">
                 <div className="min-w-0 overflow-x-auto">
                   <WorkflowTimeline steps={steps} tasks={detail.tasks as WorkflowTask[] | undefined} />
