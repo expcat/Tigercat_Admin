@@ -252,7 +252,6 @@ function GalleryPage() {
         currentIndex={viewerIndex}
         onOpenChange={setViewerOpen}
         onCurrentIndexChange={setViewerIndex}
-        onClose={() => setViewerOpen(false)}
       />
 
       <ImagePreview images={filteredSrcs} open={previewOpen} onOpenChange={setPreviewOpen} />

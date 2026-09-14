@@ -451,8 +451,8 @@ function NotificationsPage() {
                 value={createForm.description}
                 rows={4}
                 placeholder="请输入通知描述（选填）"
-                onChange={(e) =>
-                  setCreateForm((prev) => ({ ...prev, description: e.target.value }))
+                onChange={(v) =>
+                  setCreateForm((prev) => ({ ...prev, description: String(v) }))
                 }
               />
             </FormItem>

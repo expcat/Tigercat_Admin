@@ -20,5 +20,9 @@ export const debounce = <T extends (...args: any[]) => any>(
 };
 
 export const normalizeInput = (next: any): string => {
-  return typeof next === 'object' && next?.target ? next.target.value : next;
+  if (typeof next === 'object' && next != null && 'target' in next) {
+    return String(next.target?.value ?? '');
+  }
+  if (next == null) return '';
+  return String(next);
 };

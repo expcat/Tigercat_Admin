@@ -344,7 +344,7 @@ function SettingsPage() {
                             onChange={(val) =>
                               setEditValues((prev) => ({
                                 ...prev,
-                                [item.key]: val,
+                                [item.key]: val ?? '',
                               }))
                             }
                             disabled={!canEdit}

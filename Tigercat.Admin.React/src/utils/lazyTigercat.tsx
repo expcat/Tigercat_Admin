@@ -47,10 +47,6 @@ export const AreaChart = lazyNamed(
   () => import('@expcat/tigercat-react/AreaChart'),
   'AreaChart',
 );
-export const PieChart = lazyNamed(
-  () => import('@expcat/tigercat-react/PieChart'),
-  'PieChart',
-);
 export const FunnelChart = lazyNamed(
   () => import('@expcat/tigercat-react/FunnelChart'),
   'FunnelChart',

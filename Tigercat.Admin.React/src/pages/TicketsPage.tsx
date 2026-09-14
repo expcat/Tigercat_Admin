@@ -425,7 +425,7 @@ function TicketsPage() {
         <Splitter orientation={splitDirection} min={220} gutterSize={8} style={splitStyle}>
           {/* 左：列表 */}
           <div className="flex h-full min-w-0 flex-col gap-3 overflow-hidden pr-1">
-            <Input value={keyword} onChange={setKeyword} placeholder="搜索标题 / 提交人 / 工单号" clearable />
+            <Input value={keyword} onChange={(v) => setKeyword(String(v))} placeholder="搜索标题 / 提交人 / 工单号" clearable />
             <div className="flex flex-wrap gap-2">
               {statusFilters.map((f) => (
                 <button
@@ -652,7 +652,7 @@ function TicketsPage() {
             <Text weight="medium" className="mb-1 block">
               标题
             </Text>
-            <Input value={form.title} onChange={(e) => setForm((s) => ({ ...s, title: e.target.value }))} placeholder="简要描述问题或需求" />
+            <Input value={form.title} onChange={(v) => setForm((s) => ({ ...s, title: String(v) }))} placeholder="简要描述问题或需求" />
           </div>
           <div>
             <Text weight="medium" className="mb-1 block">
@@ -682,7 +682,7 @@ function TicketsPage() {
             </Text>
             <Textarea
               value={form.description}
-              onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
+              onChange={(v) => setForm((s) => ({ ...s, description: String(v) }))}
               rows={4}
               placeholder="补充复现步骤或背景信息"
             />

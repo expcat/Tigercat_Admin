@@ -110,8 +110,8 @@ function ProjectsPage() {
     };
   }, []);
 
-  const handleKeywordChange = (value: string) => {
-    setKeyword(value);
+  const handleKeywordChange = (value: string | number) => {
+    setKeyword(String(value));
     setPage(1);
   };
 

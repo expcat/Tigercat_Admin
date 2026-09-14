@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Alert } from '@expcat/tigercat-react/Alert';
 import { Button } from '@expcat/tigercat-react/Button';
@@ -262,8 +262,8 @@ function AuditLogsPage() {
     }
   }, [loadAuditLogs]);
 
-  const handleKeywordChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const next = normalizeInput(event.target.value);
+  const handleKeywordChange = (value: string | number) => {
+    const next = normalizeInput(value);
     setKeyword(next);
     saveWorkbenchState('audit-logs', {
       queryState: { keyword: next, category },

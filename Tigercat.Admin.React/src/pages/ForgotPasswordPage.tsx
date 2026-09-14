@@ -217,8 +217,7 @@ function ForgotPasswordPage() {
                     status={targetError ? 'error' : undefined}
                     errorMessage={targetError}
                     onChange={(value) => {
-                      const next = typeof value === 'string' ? value : value.target.value;
-                      setTarget(next);
+                      setTarget(String(value));
                       if (targetError) setTargetError('');
                     }}
                   />
@@ -288,8 +287,7 @@ function ForgotPasswordPage() {
                   type="password"
                   placeholder="请输入新密码"
                   onChange={(value) => {
-                    const next = typeof value === 'string' ? value : value.target.value;
-                    setPassword(next);
+                    setPassword(String(value));
                     if (passwordError) setPasswordError('');
                   }}
                   status={passwordError ? 'error' : undefined}
@@ -302,8 +300,7 @@ function ForgotPasswordPage() {
                   type="password"
                   placeholder="请再次输入新密码"
                   onChange={(value) => {
-                    const next = typeof value === 'string' ? value : value.target.value;
-                    setConfirmPassword(next);
+                    setConfirmPassword(String(value));
                     if (confirmError) setConfirmError('');
                   }}
                   status={confirmError ? 'error' : undefined}

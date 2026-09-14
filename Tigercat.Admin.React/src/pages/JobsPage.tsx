@@ -356,7 +356,7 @@ function JobsPage() {
             </Text>
             <Input
               value={form.name}
-              onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
+              onChange={(v) => setForm((s) => ({ ...s, name: String(v) }))}
               placeholder="例如：每日对账批处理"
             />
           </div>
@@ -364,7 +364,7 @@ function JobsPage() {
             <Text weight="medium" className="mb-1 block">
               调度表达式
             </Text>
-            <CronEditor value={form.cron} onChange={(value) => setForm((s) => ({ ...s, cron: value }))} presets={CRON_PRESETS} />
+            <CronEditor value={form.cron} onChange={(value) => setForm((s) => ({ ...s, cron: value ?? '' }))} presets={CRON_PRESETS} />
           </div>
           <div>
             <Text weight="medium" className="mb-1 block">
@@ -377,7 +377,7 @@ function JobsPage() {
               超时时间
             </Text>
             <InputGroup>
-              <Input value={form.timeout} onChange={(e) => setForm((s) => ({ ...s, timeout: e.target.value }))} placeholder="60" />
+              <Input value={form.timeout} onChange={(v) => setForm((s) => ({ ...s, timeout: String(v) }))} placeholder="60" />
               <InputGroupAddon>秒</InputGroupAddon>
             </InputGroup>
           </div>

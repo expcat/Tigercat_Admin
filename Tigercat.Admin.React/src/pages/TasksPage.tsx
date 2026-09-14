@@ -308,7 +308,7 @@ function TasksPage() {
     [columns],
   );
 
-  const renderCard = useCallback((card: TaskBoardCard) => {
+  const renderCard = useCallback(({ card }: { card: TaskBoardCard; column: TaskBoardColumn; isDragging: boolean }) => {
     const currentCard = card as unknown as {
       assignee?: string;
       priority?: 'low' | 'medium' | 'high';

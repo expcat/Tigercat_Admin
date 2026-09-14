@@ -353,7 +353,7 @@ function CalendarPage() {
             <Text weight="medium" className="mb-1 block">
               标题
             </Text>
-            <Input value={form.title} onChange={(e) => setForm((s) => ({ ...s, title: e.target.value }))} placeholder="例如：迭代评审会" />
+            <Input value={form.title} onChange={(v) => setForm((s) => ({ ...s, title: String(v) }))} placeholder="例如：迭代评审会" />
           </div>
           <div>
             <Text weight="medium" className="mb-1 block">
@@ -390,7 +390,7 @@ function CalendarPage() {
             <Text weight="medium" className="mb-1 block">
               地点
             </Text>
-            <Input value={form.location} onChange={(e) => setForm((s) => ({ ...s, location: e.target.value }))} placeholder="会议室 / 线上链接（选填）" />
+            <Input value={form.location} onChange={(v) => setForm((s) => ({ ...s, location: String(v) }))} placeholder="会议室 / 线上链接（选填）" />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setDrawerOpen(false)}>
