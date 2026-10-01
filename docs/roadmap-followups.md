@@ -183,7 +183,7 @@
 
 - [ ] **造数为页面内存态**：日志 12,000 行、表格 10,000 行、拖拽队列与看板卡片均为页面内生成（未接 MockApi / 真实端点），刷新后重置。
 - [ ] **Drag 以 `useDrag` 演示**：Tigercat v1.5.0 没有 `/Drag` 子路径组件，排序演示走包入口 `useDrag`（React `getDragItemProps` / Vue `getDragItemAttrs`）；若上游后续提供独立 Drag 组件，再评估是否替换。
-- [ ] **Kanban 区别于 TaskBoard**：本页使用低层 `Kanban`（含泳道），`/tasks` 仍走 `TaskBoard` 接任务工作流。统一核验时确认两侧文案与交互不会被当成同一块。
+- [ ] **泳道看板区别于任务流**：`/performance` 用 `TaskBoard` 泳道（3.0 已无 `Kanban`），`/tasks` 仍走 `TaskBoard` 接任务工作流。统一核验时确认两侧文案与交互不会被当成同一块。
 - [ ] **万级数据首次进入**：VirtualList / VirtualTable 在选项卡首次激活时挂载（`lazy`）；统一核验时确认切到「万行多列」后表头吸顶与滚动窗口稳定。
 
 ---

@@ -197,11 +197,12 @@ function FilesPage() {
     }
   };
 
-  const confirmDelete = async (forceOverride = forceDelete) => {
+  const confirmDelete = async (forceOverride?: boolean) => {
     if (selectedIds.length === 0) return;
+    const shouldForce = typeof forceOverride === 'boolean' ? forceOverride : forceDelete;
     try {
       setDeleting(true);
-      const res = await batchDeleteMedia(selectedIds, forceOverride);
+      const res = await batchDeleteMedia(selectedIds, shouldForce);
       Message.success({
         content: res.data.message || '已删除选中文件',
         duration: 3000,
@@ -438,7 +439,9 @@ function FilesPage() {
         showDefaultFooter
         okText={deleting ? '删除中…' : '确认删除'}
         cancelText="取消"
-        onOk={confirmDelete}
+        onOk={() => {
+          void confirmDelete();
+        }}
         onCancel={() => setDeleteOpen(false)}>
         <div className="space-y-3">
           <Text>将删除 {selectedIds.length} 个媒体资源。被引用的文件会被后端阻止删除。</Text>

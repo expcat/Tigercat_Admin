@@ -11,7 +11,7 @@ import { Progress } from '@expcat/tigercat-react/Progress';
 import { Steps, StepsItem } from '@expcat/tigercat-react/Steps';
 import { Drawer } from '@expcat/tigercat-react/Drawer';
 import { CronEditor } from '@expcat/tigercat-react/CronEditor';
-import { Stepper } from '@expcat/tigercat-react/Stepper';
+import { InputNumber } from '@expcat/tigercat-react/InputNumber';
 import { InputGroup, InputGroupAddon } from '@expcat/tigercat-react/InputGroup';
 import { NumberKeyboard } from '@expcat/tigercat-react/NumberKeyboard';
 import { Gantt } from '../utils/lazyTigercat';
@@ -370,7 +370,18 @@ function JobsPage() {
             <Text weight="medium" className="mb-1 block">
               并发数
             </Text>
-            <Stepper value={form.concurrency} onChange={(value) => setForm((s) => ({ ...s, concurrency: value }))} min={1} max={20} step={1} />
+            <InputNumber
+              value={form.concurrency}
+              min={1}
+              max={20}
+              step={1}
+              controlsPosition="both"
+              onChange={(value) => {
+                const next = typeof value === 'number' ? value : Number(value);
+                if (!Number.isFinite(next)) return;
+                setForm((s) => ({ ...s, concurrency: next }));
+              }}
+            />
           </div>
           <div>
             <Text weight="medium" className="mb-1 block">

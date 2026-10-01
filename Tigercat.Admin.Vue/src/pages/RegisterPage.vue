@@ -131,7 +131,7 @@ const goToLogin = () => {
               variant="primary"
               block
               :loading="loading"
-              html-type="button"
+              type="button"
               @click="handleRegister"
             >
               注册

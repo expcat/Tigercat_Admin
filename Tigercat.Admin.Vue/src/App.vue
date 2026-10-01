@@ -15,6 +15,7 @@ import {
   saveThemePreferences,
   applyTheme,
   watchSystemTheme,
+  resolveEffectiveMode,
   resetShellMenuSchema,
   isBrowserOnGuestAuthPage,
   isGuestAuthPath,
@@ -41,6 +42,12 @@ const changeOpen = ref(false)
 /* ── Theme ────────────────────────────────────── */
 const themePrefs = ref<ThemePreferences>(getThemePreferences())
 
+const systemTick = ref(0)
+const colorScheme = computed(() => {
+  void systemTick.value
+  return resolveEffectiveMode(themePrefs.value.mode)
+})
+
 const updateTheme = (prefs: ThemePreferences) => {
   themePrefs.value = prefs
   saveThemePreferences(prefs)
@@ -57,7 +64,20 @@ const toggleThemeMode = () => {
 // Apply theme immediately during setup (before first render)
 applyTheme(themePrefs.value)
 
-const unwatchSystem = watchSystemTheme(() => themePrefs.value)
+watch(
+  [themePrefs, colorScheme],
+  () => {
+    applyTheme(themePrefs.value)
+  },
+  { flush: 'post' },
+)
+
+const unwatchSystem = watchSystemTheme(
+  () => themePrefs.value,
+  () => {
+    systemTick.value += 1
+  },
+)
 onUnmounted(() => unwatchSystem())
 
 const authHeaders = computed<Record<string, string>>(() => {
@@ -231,7 +251,7 @@ provide('updateTheme', updateTheme)
 </script>
 
 <template>
-  <ConfigProvider :locale="appLocale">
+  <ConfigProvider :locale="appLocale" theme="modern" :color-scheme="colorScheme">
     <div id="tiger-loading-bar-container-root"></div>
     <div id="tiger-message-container-root"></div>
     <div class="min-h-screen">

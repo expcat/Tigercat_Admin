@@ -219,7 +219,7 @@ const ANNOUNCEMENTS = [
     />
 
     <Marquee
-      direction="left"
+      direction="start"
       :duration="28000"
       :pause-on-hover="true"
       :gap="24"

@@ -355,7 +355,7 @@ const columns = computed<TableColumn[]>(() => {
       title: '操作',
       width: 180,
       align: 'center',
-      fixed: 'right',
+      fixed: 'end',
       render: (record: any) => {
         const role = record as RoleItem
         const buttons: any[] = []

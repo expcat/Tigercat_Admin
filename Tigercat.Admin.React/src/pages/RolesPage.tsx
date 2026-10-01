@@ -513,7 +513,7 @@ function RolesPage() {
         title: '操作',
         width: 180,
         align: 'center',
-        fixed: 'right',
+        fixed: 'end',
         render: (record) => (
           <div className="flex items-center justify-center gap-2">
             {canEdit && (

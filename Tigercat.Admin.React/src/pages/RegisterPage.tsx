@@ -134,7 +134,7 @@ function RegisterPage() {
                 variant="primary"
                 block
                 loading={loading}
-                htmlType="button"
+                type="button"
                 onClick={handleRegister}
               >
                 注册

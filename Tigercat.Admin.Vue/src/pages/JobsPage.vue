@@ -12,7 +12,7 @@ import { Progress } from '@expcat/tigercat-vue/Progress'
 import { Steps, StepsItem } from '@expcat/tigercat-vue/Steps'
 import { Drawer } from '@expcat/tigercat-vue/Drawer'
 import { CronEditor } from '@expcat/tigercat-vue/CronEditor'
-import { Stepper } from '@expcat/tigercat-vue/Stepper'
+import { InputNumber } from '@expcat/tigercat-vue/InputNumber'
 import { InputGroup, InputGroupAddon } from '@expcat/tigercat-vue/InputGroup'
 import { NumberKeyboard } from '@expcat/tigercat-vue/NumberKeyboard'
 import { Gantt } from '../utils/lazyTigercat'
@@ -102,6 +102,11 @@ const form = ref({
 })
 
 const drawerTitle = computed(() => (editingId.value ? '编辑任务' : '新建任务'))
+
+function setConcurrency(value: number | string | null) {
+  const next = typeof value === 'number' ? value : Number(value)
+  if (Number.isFinite(next)) form.value.concurrency = next
+}
 
 let drawerTrigger: HTMLElement | null = null
 function captureDrawerTrigger() {
@@ -345,7 +350,14 @@ onMounted(() => {
         </div>
         <div>
           <Text weight="medium" class="mb-1 block">并发数</Text>
-          <Stepper v-model="form.concurrency" :min="1" :max="20" :step="1" />
+          <InputNumber
+            :model-value="form.concurrency"
+            :min="1"
+            :max="20"
+            :step="1"
+            controls-position="both"
+            @update:model-value="setConcurrency"
+          />
         </div>
         <div>
           <Text weight="medium" class="mb-1 block">超时时间</Text>

@@ -1,9 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, HashRouter } from 'react-router-dom';
-import { ConfigProvider } from '@expcat/tigercat-react/ConfigProvider';
-import { MessageContainer } from '@expcat/tigercat-react/MessageContainer';
-import { appLocale } from './utils/tigercatText';
 import {
   installTigercatMockApi,
   isTigercatDemoEnabled,
@@ -23,12 +20,9 @@ const routerBase = import.meta.env.VITE_TIGERCAT_ROUTER_BASE ?? basePath;
 installTigercatMockApi({ enabled: demoEnabled });
 
 const app = (
-  <ConfigProvider locale={appLocale}>
-    <PermissionProvider>
-      <App />
-      <MessageContainer />
-    </PermissionProvider>
-  </ConfigProvider>
+  <PermissionProvider>
+    <App />
+  </PermissionProvider>
 );
 
 createRoot(rootElement).render(

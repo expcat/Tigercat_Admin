@@ -264,7 +264,7 @@ function LoginPage({ onSuccess }: LoginPageProps) {
                     variant="primary"
                     block
                     loading={loading}
-                    htmlType="button"
+                    type="button"
                     onClick={handleLogin}
                   >
                     登录
@@ -336,7 +336,7 @@ function LoginPage({ onSuccess }: LoginPageProps) {
                   block
                   loading={loading}
                   disabled={otpCode.length !== OTP_LENGTH}
-                  htmlType="button"
+                  type="button"
                   onClick={handleVerify}
                 >
                   验证

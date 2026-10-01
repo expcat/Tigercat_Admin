@@ -26,8 +26,11 @@ import { FormItem } from '@expcat/tigercat-react/FormItem';
 import { Input } from '@expcat/tigercat-react/Input';
 import { Message } from '@expcat/tigercat-react/Message';
 import { Modal } from '@expcat/tigercat-react/Modal';
+import { ConfigProvider } from '@expcat/tigercat-react/ConfigProvider';
 import { LoadingBar } from '@expcat/tigercat-react/LoadingBar';
 import { LoadingBarContainer } from '@expcat/tigercat-react/LoadingBarContainer';
+import { MessageContainer } from '@expcat/tigercat-react/MessageContainer';
+import { appLocale } from './utils/tigercatText';
 import { MainLayout } from './components/MainLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { GuestRoute } from './components/GuestRoute';
@@ -57,6 +60,7 @@ import {
   saveThemePreferences,
   applyTheme,
   watchSystemTheme,
+  resolveEffectiveMode,
   isBrowserOnGuestAuthPage,
   isGuestAuthPath,
   type ThemeMode,
@@ -344,6 +348,11 @@ function App() {
   /* ── Theme ────────────────────────────────────── */
   const [themePrefs, setThemePrefs] =
     useState<ThemePreferences>(getThemePreferences);
+  const [systemTick, setSystemTick] = useState(0);
+  const colorScheme = useMemo(() => {
+    void systemTick;
+    return resolveEffectiveMode(themePrefs.mode);
+  }, [systemTick, themePrefs.mode]);
 
   const updateTheme = useCallback((next: ThemePreferences) => {
     saveThemePreferences(next);
@@ -365,14 +374,17 @@ function App() {
     });
   }, []);
 
-  // Apply theme before paint to avoid FOUC
+  // Runs after ConfigProvider writes inline theme vars, so primary and the
+  // app dark palette stay on top of the preset.
   useLayoutEffect(() => {
     applyTheme(themePrefs);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [themePrefs, colorScheme]);
 
   useEffect(() => {
-    return watchSystemTheme(() => themePrefs);
+    return watchSystemTheme(
+      () => themePrefs,
+      () => setSystemTick((tick) => tick + 1),
+    );
   }, [themePrefs]);
 
   const authHeaders = useMemo(() => {
@@ -551,7 +563,7 @@ function App() {
   );
 
   return (
-    <>
+    <ConfigProvider locale={appLocale} theme="modern" colorScheme={colorScheme}>
       <div id="tiger-loading-bar-container-root" />
       <Routes>
       <Route element={<GuestRoute />}>
@@ -644,7 +656,8 @@ function App() {
       />
       <Route path="*" element={<Navigate to="/404" replace />} />
     </Routes>
-    </>
+      <MessageContainer />
+    </ConfigProvider>
   );
 }
 

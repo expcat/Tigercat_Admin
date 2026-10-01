@@ -323,7 +323,7 @@ function HomePage() {
       )}
 
       <Marquee
-        direction="left"
+        direction="start"
         duration={28000}
         pauseOnHover
         gap={24}

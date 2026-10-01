@@ -337,14 +337,14 @@ function PerformancePage() {
         <MetricCard
           title="看板卡片"
           value={kanbanCardCount}
-          description="低层 Kanban，非 TaskBoard"
+          description="TaskBoard 泳道，无任务流"
           icon={<ClipboardIcon size={20} />}
         />
       </MetricGrid>
 
       <PageActionPanel
         title="页面内造数，不走后端"
-        description="四个演示都在本页内存生成。VirtualList / VirtualTable 用子路径导入；拖拽使用包入口的 useDrag（v1.5.0 没有 /Drag 组件）；看板使用低层 Kanban，区别于「任务面板」的 TaskBoard。"
+        description="四个演示都在本页内存生成。VirtualList / VirtualTable 用子路径导入；拖拽使用包入口的 useDrag（v1.5.0 没有 /Drag 组件）；看板用 TaskBoard 泳道，区别于「任务面板」接后端任务流的那一块。"
       />
 
       <Tabs activeKey={activeTab} lazy onChange={handleTabChange}>
@@ -462,8 +462,8 @@ function PerformancePage() {
         <TabPane tabKey="kanban" label="低层看板">
           <div className="space-y-4" data-testid="performance-kanban">
             <MutedPanel
-              title="Kanban"
-              description="低层看板组件，带列、卡片和前后端泳道。可拖拽卡片跨列，场景与「任务面板」TaskBoard 不同：这里没有后端任务工作流。"
+              title="泳道看板"
+              description="低层看板组件，带列、卡片和前后端泳道。可拖拽卡片跨列。这里用 TaskBoard 泳道演示，没有「任务面板」那套后端任务工作流。"
             />
             <Text size="sm" color="secondary">
               {lastKanbanMove}

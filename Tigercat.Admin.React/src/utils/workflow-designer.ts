@@ -1,10 +1,11 @@
-import type { FieldPermission, WorkflowDesignerIssue, WorkflowTimelineStep } from '@expcat/tigercat-core';
+import type { FieldPermission, WorkflowTimelineStep } from '@expcat/tigercat-core';
+import { createFullWorkflowButtonPolicy } from '@expcat/tigercat-core';
 import {
-  createFullWorkflowButtonPolicy,
   validateWorkflowDesigner,
   workflowDesignerBlockingIssues,
   workflowDesignerIssueMessage,
-} from '@expcat/tigercat-core';
+  type WorkflowDesignerIssue,
+} from '@expcat/tigercat-core/workflow-designer';
 import { APPROVAL_DETAIL_SCHEMA } from './approvals';
 
 export const DESIGNER_STORAGE_KEY = 'tigercat-admin:workflow-designer-draft';
@@ -18,6 +19,7 @@ export const DESIGNER_VALIDATION_LABELS = {
   validationEmptyApprovers: '该审批节点没有审批人',
   validationMissingBranches: '该条件节点没有分支',
   validationButtonsAllDisabled: '所有操作按钮均已关闭',
+  validationDuplicateKey: '步骤标识重复',
 };
 
 const readonlyFields: Record<string, FieldPermission> = {
@@ -85,7 +87,7 @@ const DEFAULT_DESIGNER_STEPS: WorkflowTimelineStep[] = [
         kind: 'approve',
         title: '财务会签',
         signMode: 'countersign',
-        expression: 'amount > 1000',
+        condition: { field: 'amount', operator: 'gt', value: 1000 },
         actors: [
           { id: 'chen', name: '陈财务' },
           { id: 'zhao', name: '赵主管' },
@@ -98,7 +100,7 @@ const DEFAULT_DESIGNER_STEPS: WorkflowTimelineStep[] = [
         key: 'skip-finance',
         kind: 'approve',
         title: '无需财务',
-        expression: 'amount <= 1000',
+        condition: { field: 'amount', operator: 'lte', value: 1000 },
         actors: [{ id: 'self', name: '发起人' }],
         approverPolicy: { type: 'self' },
         buttonPolicy: demoButtons(),

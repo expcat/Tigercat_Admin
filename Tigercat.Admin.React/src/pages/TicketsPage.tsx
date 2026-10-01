@@ -614,7 +614,7 @@ function TicketsPage() {
                 </div>
 
                 <div
-                  className="sticky bottom-0 z-10 mt-auto shrink-0 border-t border-[var(--tiger-border,#e5e7eb)] bg-[var(--tiger-bg,#fff)] px-1 py-3"
+                  className="sticky bottom-0 z-10 mt-auto shrink-0 border-t border-[var(--tiger-border,#e5e7eb)] bg-[var(--tiger-bg-card,#fff)] px-1 py-3"
                   data-ticket-detail-action="">
                   <WorkflowActionBar
                     items={TICKET_WORKFLOW_ACTIONS}

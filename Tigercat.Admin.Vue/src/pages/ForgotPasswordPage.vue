@@ -251,7 +251,7 @@ function goToLogin() {
                   variant="outline"
                   size="sm"
                   :loading="codeLoading"
-                  html-type="button"
+                  type="button"
                   @click="sendCode"
                 >
                   获取验证码
@@ -268,7 +268,7 @@ function goToLogin() {
             </div>
           </div>
           <div class="mt-8 flex flex-col gap-3">
-            <Button variant="primary" block html-type="button" @click="submitIdentity">下一步</Button>
+            <Button variant="primary" block type="button" @click="submitIdentity">下一步</Button>
             <button type="button" class="text-center text-sm font-medium text-[var(--tiger-primary,#3b82f6)] hover:underline" @click="goToLogin">返回登录</button>
           </div>
         </Form>
@@ -295,8 +295,8 @@ function goToLogin() {
             />
           </FormItem>
           <div class="mt-8 flex flex-col gap-3">
-            <Button variant="primary" block :loading="loading" html-type="button" @click="submitPassword">重置密码</Button>
-            <Button variant="outline" block html-type="button" @click="current = 0">上一步</Button>
+            <Button variant="primary" block :loading="loading" type="button" @click="submitPassword">重置密码</Button>
+            <Button variant="outline" block type="button" @click="current = 0">上一步</Button>
           </div>
         </Form>
 

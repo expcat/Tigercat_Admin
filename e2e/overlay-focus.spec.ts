@@ -412,7 +412,7 @@ test.describe('内容编辑 / 媒体图库浮层焦点', () => {
     await expectOutsideClickClosesOverlay(page, cascaderTrigger, cascaderDropdown, pageTitle);
   });
 
-  test('/gallery ImageViewer / ImagePreview 与标注裁剪 Drawer Esc 后焦点回到触发器', async ({
+  test('/gallery ImagePreview 与标注裁剪 Drawer Esc 后焦点回到触发器', async ({
     page,
   }, testInfo) => {
     test.setTimeout(60_000);

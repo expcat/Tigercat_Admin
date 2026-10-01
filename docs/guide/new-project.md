@@ -19,7 +19,7 @@ pnpm create vite my-admin --template react-ts   # React
 pnpm create vite my-admin --template vue-ts     # Vue
 ```
 
-依赖清单（版本以蓝本 [Tigercat.Admin.React/package.json](../../Tigercat.Admin.React/package.json) / [Tigercat.Admin.Vue/package.json](../../Tigercat.Admin.Vue/package.json) 为准，当前蓝本为 Tigercat `^2.6.0`）：
+依赖清单（版本以蓝本 [Tigercat.Admin.React/package.json](../../Tigercat.Admin.React/package.json) / [Tigercat.Admin.Vue/package.json](../../Tigercat.Admin.Vue/package.json) 为准，当前蓝本为 Tigercat `3.0.0-preview.7`）：
 
 | 类别 | React 端 | Vue 端 | 说明 |
 | ---- | -------- | ------ | ---- |
@@ -60,11 +60,13 @@ pnpm add -D @tailwindcss/postcss
 
 ```css
 @import "tailwindcss";
-@plugin "@expcat/tigercat-core/tailwind/modern";
+@plugin "./tigercat-modern-plugin.js";
 
 @source "../node_modules/@expcat/tigercat-react/dist/**/*.{js,mjs}";
 @source "../node_modules/@expcat/tigercat-core/dist/**/*.{js,mjs}";
 ```
+
+`tigercat-modern-plugin.js` 与 CSS 同目录，默认导出 `createTigercatPlugin({ preset: modernTheme })`（`createTigercatPlugin` 来自 `@expcat/tigercat-core/tailwind`，`modernTheme` 来自 `@expcat/tigercat-core`）。3.0 没有 `tailwind/modern` 子路径。根 `ConfigProvider` 同时写 `theme="modern"`。
 
 - Vue 端把第一个 `@source` 的 `tigercat-react` 换成 `tigercat-vue`。
 - `.dark` 暗色 token 块和 `p2-*` 页面辅助类随文件一并复制（视觉规则见 [frontend.md「视觉与布局规则」](../frontend.md#视觉与布局规则)）。
@@ -100,7 +102,7 @@ pnpm add -D @tailwindcss/postcss
 
 - [frontend.md「App Shell 蓝图」](../frontend.md#app-shell-蓝图) 中的菜单-路由-权限表是**本仓库示例**；新项目复制其结构，把条目替换为自己的页面。
 - 权限码沿用 `资源:动作` 命名约定（如 `user:view`、`role:edit`），菜单和按钮按权限隐藏。
-- 主题与暗色模式：`utils/theme.ts` 切换根节点 `.dark` class，Tigercat token 自动生效；不要在页面内写孤立深色配色。`compactMode` 另加根节点 `.compact` 收紧内容区内边距。
+- 主题与暗色模式：根 `ConfigProvider` 使用 `theme="modern"`，`colorScheme` 传 `utils/theme.ts` 解析出的 `light` / `dark`。`applyTheme` 仍切换根节点 `.compact`、写入用户主色，并在深色时盖回文本/边框/阴影。不要在页面内写孤立深色配色。
 
 ## 4. 页面生成模式
 
@@ -139,5 +141,5 @@ pnpm add -D @tailwindcss/postcss
 - `package.json` 与代码中无 `@tigercat-admin/mock-api`、无 `workspace:*` 残留（方案 C 除外）。
 - `pnpm-lock.yaml` 在新项目内独立生成，不沿用本仓库 lockfile。
 - 开发期 `/api` 代理指向真实后端，或部署期由反向代理转发 `/api`。
-- CSS 入口完整：`@plugin "@expcat/tigercat-core/tailwind/modern"` + 双 `@source`（指向所用框架包）。
+- CSS 入口完整：`@plugin "./tigercat-modern-plugin.js"`（`createTigercatPlugin({ preset: modernTheme })`）+ 双 `@source`（指向所用框架包），根 `ConfigProvider` 为 `theme="modern"`。
 - `@expcat/tigercat-core` 与 `@expcat/tigercat-react` / `-vue` 版本号一致。

@@ -254,7 +254,7 @@ function ForgotPasswordPage() {
                         variant="outline"
                         size="sm"
                         loading={codeLoading}
-                        htmlType="button"
+                        type="button"
                         onClick={sendCode}
                       >
                         获取验证码
@@ -267,7 +267,7 @@ function ForgotPasswordPage() {
                 <p className="p2-text-secondary mb-3 text-xs">验证码已发送至 {sentTo}</p>
               ) : null}
               <div className="mt-6 flex flex-col gap-3">
-                <Button variant="primary" block htmlType="button" onClick={submitIdentity}>
+                <Button variant="primary" block type="button" onClick={submitIdentity}>
                   下一步
                 </Button>
                 <div className="text-center">
@@ -308,10 +308,10 @@ function ForgotPasswordPage() {
                 />
               </FormItem>
               <div className="mt-6 flex flex-col gap-3">
-                <Button variant="primary" block loading={loading} htmlType="button" onClick={submitPassword}>
+                <Button variant="primary" block loading={loading} type="button" onClick={submitPassword}>
                   重置密码
                 </Button>
-                <Button variant="outline" block htmlType="button" onClick={() => setCurrent(0)}>
+                <Button variant="outline" block type="button" onClick={() => setCurrent(0)}>
                   上一步
                 </Button>
               </div>

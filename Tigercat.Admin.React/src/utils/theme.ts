@@ -62,6 +62,17 @@ export function resolveEffectiveMode(mode: ThemeMode): 'light' | 'dark' {
   return mode;
 }
 
+/**
+ * App dark palette. ConfigProvider writes preset tokens as inline styles, which
+ * outrank the `.dark` block, so these are reapplied after that write.
+ */
+const DARK_TOKEN_OVERRIDES: Record<string, string> = {
+  '--tiger-text': '#f0f6fc',
+  '--tiger-text-secondary': '#8b949f',
+  '--tiger-border': '#304050',
+  '--tiger-shadow': '0 1px 3px rgba(0,0,0,0.4)',
+};
+
 /** Apply the given theme preferences to the document. */
 export function applyTheme(prefs: ThemePreferences): void {
   const effective = resolveEffectiveMode(prefs.mode);
@@ -76,18 +87,33 @@ export function applyTheme(prefs: ThemePreferences): void {
   const { light, dark } = deriveDarkVariant(prefs.primaryColor);
   root.style.setProperty('--tiger-primary-light', light);
   root.style.setProperty('--tiger-primary-dark', dark);
+
+  if (effective === 'dark') {
+    for (const [name, value] of Object.entries(DARK_TOKEN_OVERRIDES)) {
+      root.style.setProperty(name, value);
+    }
+  } else {
+    for (const name of Object.keys(DARK_TOKEN_OVERRIDES)) {
+      root.style.removeProperty(name);
+    }
+  }
 }
 
 /**
  * Watch system preference changes and auto-apply when mode is 'system'.
- * Returns an unsubscribe function.
+ * Returns an unsubscribe function. `onChange` runs after apply so callers can
+ * refresh a resolved `colorScheme`.
  */
-export function watchSystemTheme(prefs: () => ThemePreferences): () => void {
+export function watchSystemTheme(
+  prefs: () => ThemePreferences,
+  onChange?: () => void,
+): () => void {
   const mql = window.matchMedia('(prefers-color-scheme: dark)');
   const handler = () => {
     const current = prefs();
     if (current.mode === 'system') {
       applyTheme(current);
+      onChange?.();
     }
   };
 

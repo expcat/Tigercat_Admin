@@ -266,7 +266,7 @@ const handleVerify = debounce(async () => {
               variant="primary"
               block
               :loading="loading"
-              html-type="button"
+              type="button"
               @click="handleLogin"
             >
               登录
@@ -319,7 +319,7 @@ const handleVerify = debounce(async () => {
             block
             :loading="loading"
             :disabled="otpCode.length !== OTP_LENGTH"
-            html-type="button"
+            type="button"
             @click="handleVerify"
           >
             验证
