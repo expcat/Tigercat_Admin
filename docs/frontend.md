@@ -115,7 +115,7 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 - 弹层内容长时使用 `p2-modal-scroll`，确认类操作优先用 Tigercat `Modal`、`Popconfirm`、`Message`。
 - 表格工具栏、批量操作、列开关和导出字段必须保证移动端可换行、不遮挡、不溢出。
 - 暗色模式通过根节点 `.dark` 和 Tigercat token 生效，不在页面内写孤立深色配色。
-- 多标签条在当前标签或打开列表变化后，将 `[data-active="true"]` 用 `scrollIntoView({ block: 'nearest', inline: 'nearest' })` 滚入可见区域。溢出标签「更多」目前通过 `tigercatText.ts` 的 `navLabels.moreTabs` 中文化。
+- 多标签条在当前标签或打开列表变化后，将 `[data-active="true"]` 用 `scrollIntoView({ block: 'nearest', inline: 'nearest' })` 滚入可见区域。Tabs 溢出菜单文案读取 `locale.tabs.moreTabs`，由 `appLocale` 中的官方 `zhCN` 提供「更多」；单个实例可用 `labels.moreTabs` 覆盖。
 - 个人中心头像角标明确 `standalone={false}` / `:standalone="false"`，让 Avatar 作为 Badge 子内容显示。项目卡片本身承接点击与键盘导航，页脚仅显示「查看详情 →」，避免在可操作卡片内部嵌套 Button；Upload 已有按钮触发器时，其子内容也只放文本/图标。
 
 ## 组件选择矩阵
@@ -267,9 +267,9 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 ## 已对齐的上游能力
 
-本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `3.0.0-preview.7`（3.0 不向前兼容：modern 预设走 `createTigercatPlugin` / `ConfigProvider theme`，`Stepper` / `Kanban` / `DonutChart` / `ImageViewer` 已从调用面移除）。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 Captcha 仍跳过（登录无明示需求）。
+本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `3.0.0-preview.8`（3.0 不向前兼容：modern 预设走 `createTigercatPlugin` / `ConfigProvider theme`，`Stepper` / `Kanban` / `DonutChart` / `ImageViewer` 已从调用面移除）。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 Captcha 仍跳过（登录无明示需求）。
 
-`3.0.0-preview.7` 的运行时修复通过根 `pnpm-workspace.yaml` 的 `patchedDependencies` 和 `patches/` 保存，不依赖手改 node_modules。React patch 将 OverlayPortal 注册移到 layout effect，修复 StrictMode 下浮层丢失；浮层定位重试改为可取消的 animation frame，等待 outlet 挂载。双端 patch 给 WorkflowActionBar 确认触发器铺满定位区域，修正「更多」确认层的锚点。Vue patch 在 Spotlight 输入节点挂载后补焦点。升级 UI 包时先对照上游复验这四项，再决定是否移除相应补丁。
+`3.0.0-preview.8` 已由上游修复 React OverlayPortal 的 StrictMode 生命周期与可取消定位等待、双端 WorkflowActionBar 的真实「更多」按钮锚点，以及 Spotlight 的初始聚焦与焦点恢复。本仓库直接使用 npm 发布包，已移除双端本地补丁和 `patchedDependencies`。浮层与焦点回归见 [e2e/overlay-focus.spec.ts](../e2e/overlay-focus.spec.ts)，审批确认与提交路径见 [e2e/approvals.spec.ts](../e2e/approvals.spec.ts)。
 
 | 组件 | 平台 | 上游现状 | 本项目保留的布局 glue |
 | ---- | ---- | -------- | --------------------- |
@@ -306,7 +306,7 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 | 层 | 职责 | 本仓库落点 |
 | -- | ---- | ---------- |
-| Tigercat `3.0.0-preview.7` | 扫读 + `ApproverSource` / `tasks` / `reduceWorkflowAction` / 完整 ActionBar / 纵向流程画布 Designer / `validateWorkflowDesigner`（`@expcat/tigercat-core/workflow-designer`）/ 字段权限 helpers / DetailShell `h-full` 粘底配方 | 包组件与纯函数；不要在页面重写第二套 Timeline 或半套 Inspector；详情壳桌面给有界高度，窄屏随主区滚动并留可操作的最小高度 |
+| Tigercat `3.0.0-preview.8` | 扫读 + `ApproverSource` / `tasks` / `reduceWorkflowAction` / 完整 ActionBar / 纵向流程画布 Designer / `validateWorkflowDesigner`（`@expcat/tigercat-core/workflow-designer`）/ 字段权限 helpers / DetailShell `h-full` 粘底配方 | 包组件与纯函数；不要在页面重写第二套 Timeline 或半套 Inspector；详情壳桌面给有界高度，窄屏随主区滚动并留可操作的最小高度 |
 | Admin | 路由、**Mock 通讯录 `resolveApprovers`**、ApprovalStore 全动作写回、**详情壳**（DetailShell + 字段权限 SchemaForm + 全量 ActionBar）、**Designer 页**（Inspector + 发布校验） | `ApprovalStore` / MockApi `contacts.ts`；详情页用库 `WorkflowDetailShell`；设计页直接吃库 `WorkflowDesigner` |
 
 ### 详情 IA

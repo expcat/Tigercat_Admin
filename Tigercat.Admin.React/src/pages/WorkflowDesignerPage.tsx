@@ -49,7 +49,7 @@ function WorkflowDesignerPage() {
         subtitle="纵向摘要卡流程画布 + 右侧 Inspector。点选节点编辑审批人、按钮和表单权限。"
         tags={[
           { label: '演示', variant: 'primary' },
-          { label: 'v3.0.0-preview.7', variant: 'info' },
+          { label: 'v3.0.0-preview.8', variant: 'info' },
         ]}
       />
 

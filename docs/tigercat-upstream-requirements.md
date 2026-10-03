@@ -1,6 +1,6 @@
 # Tigercat 上游组件需求
 
-面向 Tigercat 组件库开发。本仓库目标包版本 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `3.0.0-preview.7`。
+面向 Tigercat 组件库开发。本仓库目标包版本 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `3.0.0-preview.8`。
 
 **单一事实源：** 这里记录「Admin 场景需要、但包侧尚未提供或能力不够」的上游需求；已落地的条目从本文删除，用法只写在 [frontend.md](frontend.md)。当前仍开放、需要立刻跟进的短清单在 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)，该文件只做索引，不复写本文细节。
 
@@ -56,17 +56,7 @@
 - **现状：** 点到为止，像素坐标预映射，Tooltip 未与轴精细联动。
 - **建议：** 高层图已够用；基元若要生产级，补 axis↔tooltip 共享 scale 示例，而不是逼 Admin 自绘。
 
-## 3. 运行时缺陷（本地 patch 期间跟踪）
-
-`3.0.0-preview.7` 的以下缺陷由根 `patches/` 修复（声明见 `pnpm-workspace.yaml`），上游修复发布后移除对应补丁并从本节删除条目：
-
-- React `OverlayPortal` 在 StrictMode 下注册时机过晚导致浮层丢失；定位重试需可取消并等待 outlet 挂载。
-- 双端 `WorkflowActionBar` 确认触发器未铺满定位区域，「更多」确认层锚点偏移。
-- Vue `Spotlight` 输入节点挂载后未自动聚焦。
-
-另：Tabs 溢出菜单文案 `navLabels.moreTabs` 未接入 locale，Admin 在 `utils/tigercatText.ts` 直接改写；上游进语言包后移除该赋值。
-
-## 4. 明确不做（Admin 侧也不发明）
+## 3. 明确不做（Admin 侧也不发明）
 
 - 动态后端菜单管理、部门/岗位/字典/租户/工作流等新产品域。
 - 运行时 i18n 语言包切换（本仓库只加载 `zhCN` + `appText`）。

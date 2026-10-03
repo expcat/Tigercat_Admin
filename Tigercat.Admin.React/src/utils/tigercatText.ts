@@ -1,8 +1,5 @@
-import { defineText, mergeTigerLocale, navLabels } from '@expcat/tigercat-core';
+import { defineText, mergeTigerLocale } from '@expcat/tigercat-core';
 import { zhCN } from '@expcat/tigercat-core/locales/zh-CN';
-
-// Tabs 的溢出标签当前使用独立的导航文案，尚未接入 locale。
-navLabels.moreTabs = '更多';
 
 /**
  * 应用级文案 overlay。v2.1.3 起 `defineText` 只返回传入的键，缺省回落 en-US。
