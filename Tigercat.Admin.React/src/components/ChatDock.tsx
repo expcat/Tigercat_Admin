@@ -11,6 +11,7 @@ import { MessageIcon, XIcon } from './Icons';
 
 interface ChatDockProps {
   open: boolean;
+  floating?: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
@@ -25,7 +26,7 @@ function mapChatMessages(items: ChatMessage[] | undefined): ChatMessage[] {
   }));
 }
 
-export function ChatDock({ open, onOpenChange }: ChatDockProps) {
+export function ChatDock({ open, floating = true, onOpenChange }: ChatDockProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [unread, setUnread] = useState(1);
@@ -79,12 +80,12 @@ export function ChatDock({ open, onOpenChange }: ChatDockProps) {
   return (
     <>
       <FloatButton
-        floating
+        floating={floating}
         placement="bottom-right"
         offset={24}
         type="primary"
-        size="lg"
-        className="max-sm:!hidden"
+        size={floating ? 'lg' : 'sm'}
+        className={floating ? undefined : 'relative shrink-0'}
         data-tour="chat-dock"
         aria-label={open ? '关闭在线客服' : '联系在线客服'}
         tooltip={open ? '关闭在线客服' : '联系在线客服'}

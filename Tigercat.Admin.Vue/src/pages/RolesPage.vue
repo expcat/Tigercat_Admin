@@ -16,7 +16,6 @@ import { Modal } from '@expcat/tigercat-vue/Modal'
 import { Popconfirm } from '@expcat/tigercat-vue/Popconfirm'
 import { Select } from '@expcat/tigercat-vue/Select'
 import { Tag } from '@expcat/tigercat-vue/Tag'
-import { Tooltip } from '@expcat/tigercat-vue/Tooltip'
 import { Tree } from '@expcat/tigercat-vue/Tree'
 import type { TableColumn, TableCardLayoutItem, SortState } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
@@ -361,27 +360,24 @@ const columns = computed<TableColumn[]>(() => {
         const buttons: any[] = []
         if (canEdit.value) {
           buttons.push(
-            h(Tooltip, { content: '更多操作' }, {
-              default: () =>
-                h(Dropdown, { trigger: 'click', placement: 'bottom-end' }, {
-                  trigger: () =>
-                    h(Button, {
-                      size: 'sm',
-                      variant: 'ghost',
-                    }, () => '操作'),
+            h(Dropdown, { trigger: 'click', placement: 'bottom-end' }, {
+              trigger: () =>
+                h(Button, {
+                  size: 'sm',
+                  variant: 'ghost',
+                }, () => '操作'),
+              default: () => [
+                h(DropdownMenu, null, {
                   default: () => [
-                    h(DropdownMenu, null, {
-                      default: () => [
-                        h(DropdownItem, {
-                          onClick: () => openEditModal(role),
-                        }, () => '编辑角色'),
-                        h(DropdownItem, {
-                          onClick: () => openPermModal(role),
-                        }, () => '权限配置')
-                      ],
-                    }),
+                    h(DropdownItem, {
+                      onClick: () => openEditModal(role),
+                    }, () => '编辑角色'),
+                    h(DropdownItem, {
+                      onClick: () => openPermModal(role),
+                    }, () => '权限配置')
                   ],
                 }),
+              ],
             })
           )
         }

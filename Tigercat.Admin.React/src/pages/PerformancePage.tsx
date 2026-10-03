@@ -257,11 +257,11 @@ function PerformancePage() {
     getDragItemProps,
     getDropZoneProps,
     reorder,
-    drop,
     isDragging,
   } = useDrag({
     containerId: 'performance-queue',
     config: { axis: 'vertical', dragClass: 'opacity-50' },
+    onDrop: handleDragDrop,
   });
 
   const kanbanCardCount = countKanbanCards(kanbanColumns);
@@ -273,9 +273,8 @@ function PerformancePage() {
     }
   };
 
-  const handleDragDrop = (event: React.DragEvent<HTMLDivElement>) => {
+  function handleDragDrop() {
     const result = reorder(dragItems);
-    drop(event);
     if (!result || result.fromIndex === result.toIndex) {
       return;
     }
@@ -285,7 +284,7 @@ function PerformancePage() {
     setLastReorder(
       `${title}：第 ${result.fromIndex + 1} 位 → 第 ${result.toIndex + 1} 位`,
     );
-  };
+  }
 
   const resetDragItems = () => {
     setDragItems(createSeedDragItems());
@@ -426,8 +425,7 @@ function PerformancePage() {
             </div>
             <div
               className="grid gap-3"
-              {...dropZoneProps}
-              onDrop={handleDragDrop}>
+              {...dropZoneProps}>
               {dragItems.map((item) => {
                 const itemProps = asDivProps(getDragItemProps(item));
                 return (

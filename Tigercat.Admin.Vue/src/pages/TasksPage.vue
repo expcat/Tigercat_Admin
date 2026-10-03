@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type {
+  DismissActionEvent,
   InputType,
   TaskBoardCardMoveEvent,
   TaskBoardColumn,
@@ -202,7 +203,8 @@ const closeTaskDetail = () => {
   void router.replace('/tasks')
 }
 
-const handleCompleteTask = async () => {
+const handleCompleteTask = async (event: DismissActionEvent) => {
+  event.preventDefault()
   if (!selectedTask.value) return
 
   if (selectedTask.value.blocked || selectedTask.value.status === 'done') {
@@ -286,23 +288,29 @@ watch([filterText, assigneeFilter, blockedFilter, dueFrom, dueTo], () => {
           <Input
             :value="filterText"
             placeholder="搜索任务标题或说明"
+            class="w-full sm:w-64"
             @change="(value) => filterText = String(value ?? '')"
           />
           <Input
             :value="assigneeFilter"
             placeholder="负责人"
+            class="w-full sm:w-40"
             @change="(value) => assigneeFilter = String(value ?? '')"
           />
           <Input
             :value="dueFrom"
             :type="dateInputType"
             placeholder="开始日期"
+            aria-label="开始日期"
+            class="w-full sm:w-44"
             @change="(value) => dueFrom = String(value ?? '')"
           />
           <Input
             :value="dueTo"
             :type="dateInputType"
             placeholder="结束日期"
+            aria-label="结束日期"
+            class="w-full sm:w-44"
             @change="(value) => dueTo = String(value ?? '')"
           />
           <Select
@@ -313,6 +321,7 @@ watch([filterText, assigneeFilter, blockedFilter, dueFrom, dueTo], () => {
               { label: '未阻塞', value: 'false' }
             ]"
             :clearable="false"
+            class="w-full sm:w-44"
             @change="(value) => blockedFilter = String(value ?? '')"
           />
           <Button variant="outline" @click="handleResetBoard">

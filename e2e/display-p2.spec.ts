@@ -277,7 +277,7 @@ test.describe('P4 可访问性与响应式门禁', () => {
 
     for (const item of protectedPages) {
       await page.goto(item.path);
-      await expect(page.getByText(item.text).first()).toBeVisible();
+      await expect(page.locator('#main-content-scroll').getByText(item.text, { exact: item.path !== '/dashboard' }).first()).toBeVisible();
       await expectNoPageHorizontalOverflow(page);
     }
   });
@@ -321,7 +321,7 @@ test.describe('P4 可访问性与响应式门禁', () => {
     await getSidebarMenuItem(page, '用户管理').click();
     await expect(page).toHaveURL(/\/users$/);
     await expect(page.getByRole('button', { name: '打开导航菜单' })).toBeVisible();
-    await expect(page.getByText('用户管理').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^用户管理/ })).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
 
     const accountTrigger = page.getByRole('banner').getByRole('button', { name: 'admin', exact: true });
@@ -334,7 +334,7 @@ test.describe('P4 可访问性与响应式门禁', () => {
 
     for (const item of protectedPages) {
       await page.goto(item.path);
-      await expect(page.getByText(item.text).first()).toBeVisible();
+      await expect(page.locator('#main-content-scroll').getByText(item.text, { exact: item.path !== '/dashboard' }).first()).toBeVisible();
       await expectNoPageHorizontalOverflow(page);
     }
   });
@@ -346,7 +346,7 @@ test.describe('P4 可访问性与响应式门禁', () => {
     await page.setViewportSize(MOBILE_VIEWPORT);
     await loginAsAdmin();
     await page.goto('/users');
-    await expect(page.getByText('用户管理').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^用户管理/ })).toBeVisible();
 
     await expectColumnToggleReachable(page, '用户名');
 
@@ -385,7 +385,7 @@ test.describe('P4 可访问性与响应式门禁', () => {
     await page.setViewportSize(MOBILE_VIEWPORT);
     await loginAsAdmin();
     await page.goto('/roles');
-    await expect(page.getByText('角色管理').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^角色管理/ })).toBeVisible();
 
     await expectColumnToggleReachable(page, '角色名称');
 
@@ -418,7 +418,7 @@ test.describe('P4 可访问性与响应式门禁', () => {
     const media = await uploadTestMedia(page);
     try {
       await page.goto('/files');
-      await expect(page.getByText('文件管理').first()).toBeVisible();
+      await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^文件管理/ })).toBeVisible();
 
       const typeFilter = page.getByRole('combobox').filter({ hasText: /筛选类型|全部类型/ }).first();
       await typeFilter.click();
@@ -445,7 +445,7 @@ test.describe('P4 可访问性与响应式门禁', () => {
       await expectNoPageHorizontalOverflow(page);
 
       await page.goto('/settings');
-      await expect(page.getByText('系统设置').first()).toBeVisible();
+      await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^系统设置/ })).toBeVisible();
       await expect(page.getByText(/暂无 Logo|当前持久化值/).first()).toBeVisible();
       await expectNoPageHorizontalOverflow(page);
 

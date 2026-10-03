@@ -193,6 +193,7 @@ function handlePrint() {
           @error="(error: unknown) => handleDataExportError(error, format, onExport, (message) => Message.error({ content: message, duration: 3000 }))"
         />
         <CheckboxGroup
+          orientation="horizontal"
           :model-value="exportFields"
           class-name="flex w-full flex-wrap gap-x-4 gap-y-2 sm:w-auto"
           @update:model-value="setExportFields"
@@ -204,8 +205,9 @@ function handlePrint() {
       </template>
     </PageActionPanel>
 
-    <Card class="overflow-hidden">
+    <Card class="overflow-x-auto print:overflow-visible">
       <PrintLayout
+        class="p2-print-paper"
         page-size="A4"
         orientation="portrait"
         show-header

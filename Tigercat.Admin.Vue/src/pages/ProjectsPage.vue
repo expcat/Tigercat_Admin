@@ -3,7 +3,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Avatar } from '@expcat/tigercat-vue/Avatar'
 import { AvatarGroup } from '@expcat/tigercat-vue/AvatarGroup'
-import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Input } from '@expcat/tigercat-vue/Input'
 import { Message } from '@expcat/tigercat-vue/Message'
@@ -230,13 +229,7 @@ function statusMeta(project: ProjectRecord) {
         </div>
         <template #footer>
           <div class="flex justify-end">
-            <Button
-              size="sm"
-              variant="outline"
-              @click.stop="openProject(project.id)"
-            >
-              查看详情
-            </Button>
+            <Text size="sm" color="primary">查看详情 →</Text>
           </div>
         </template>
       </Card>

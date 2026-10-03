@@ -316,14 +316,14 @@ function App() {
 
   const finishRouteBar = useCallback(() => {
     if (routeBarStartedRef.current) {
-      LoadingBar.finish();
+      queueMicrotask(() => LoadingBar.finish());
       routeBarStartedRef.current = false;
     }
   }, []);
 
   useLayoutEffect(() => {
     if (isProtectedAppPath(location.pathname)) {
-      LoadingBar.start();
+      queueMicrotask(() => LoadingBar.start());
       routeBarStartedRef.current = true;
     } else {
       finishRouteBar();

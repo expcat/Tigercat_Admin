@@ -188,6 +188,7 @@ function handleSessionExpired() {
 }
 
 onMounted(() => {
+  applyTheme(themePrefs.value)
   window.addEventListener('storage', handleStorage)
   window.addEventListener('tigercat:session-expired', handleSessionExpired)
 })

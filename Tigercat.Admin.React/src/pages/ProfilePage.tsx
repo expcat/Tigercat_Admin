@@ -183,7 +183,7 @@ function ProfilePage() {
             <Card>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
-                  <Badge type="dot" variant="success">
+                  <Badge type="dot" variant="success" standalone={false}>
                     <Avatar
                       size="xl"
                       className="font-bold bg-gradient-to-tr from-(--tiger-primary,#3b82f6) to-blue-400 text-white">

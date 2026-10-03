@@ -14,7 +14,7 @@ import { ActivityFeed } from '@expcat/tigercat-vue/ActivityFeed'
 import type {
   ActivityItem,
   LineChartDatum,
-  ProgressStatus,
+  ProgressVariant,
   SegmentedOption,
   TagVariant,
 } from '@expcat/tigercat-core'
@@ -98,14 +98,20 @@ function healthFromLoad(cpu: number, memory: number): MonitorNodeStatus {
   return 'healthy'
 }
 
-function progressStatus(value: number): ProgressStatus {
-  if (value >= 85) return 'exception'
-  if (value >= 70) return 'paused'
+function progressVariant(value: number): ProgressVariant {
+  if (value >= 85) return 'danger'
+  if (value >= 70) return 'warning'
   return 'success'
 }
 
 function pushWindow(series: LineChartDatum[], point: LineChartDatum): LineChartDatum[] {
   return [...series, point].slice(-WINDOW_SIZE)
+}
+
+function chartTimeTicks(series: LineChartDatum[]) {
+  const middle = Math.floor((series.length - 1) / 2)
+  return series.filter((_, index) => index === 0 || index === middle || index === series.length - 1)
+    .map(({ x }) => x)
 }
 
 function seedWindow(values: number[], now: Date, intervalMs: number): LineChartDatum[] {
@@ -395,7 +401,7 @@ function formatTickLabel(value: string | number) {
         <div class="mt-3">
           <Progress
             :percentage="gauge.value"
-            :status="progressStatus(gauge.value)"
+            :variant="progressVariant(gauge.value)"
             :format="formatGaugeProgress(gauge.label)"
           />
         </div>
@@ -406,7 +412,14 @@ function formatTickLabel(value: string | number) {
       <Card>
         <Statistic title="QPS" :value="snapshot.qps" suffix="req/s" group-separator />
         <div v-if="snapshot.qpsSeries.length" class="mt-3">
-          <AreaChart :data="snapshot.qpsSeries" :height="140" responsive :x-ticks="6" />
+          <AreaChart
+            :data="snapshot.qpsSeries"
+            :height="140"
+            responsive
+            :x-tick-values="chartTimeTicks(snapshot.qpsSeries)"
+            :y-ticks="3"
+            hoverable
+          />
         </div>
         <ChartEmptyState v-else description="暂无 QPS 滚动数据" height-class="h-36" />
       </Card>
@@ -417,7 +430,9 @@ function formatTickLabel(value: string | number) {
             :data="snapshot.latencySeries"
             :height="140"
             responsive
-            :x-ticks="6"
+            :x-tick-values="chartTimeTicks(snapshot.latencySeries)"
+            :y-ticks="3"
+            hoverable
             :show-area="false"
             :show-points="false"
             :include-zero="true"
@@ -453,12 +468,12 @@ function formatTickLabel(value: string | number) {
             </div>
             <Progress
               :percentage="node.cpu"
-              :status="progressStatus(node.cpu)"
+              :variant="progressVariant(node.cpu)"
               :format="formatCpuProgress"
             />
             <Progress
               :percentage="node.memory"
-              :status="progressStatus(node.memory)"
+              :variant="progressVariant(node.memory)"
               :format="formatMemoryProgress"
             />
           </div>

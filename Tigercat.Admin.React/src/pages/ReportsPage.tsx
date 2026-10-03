@@ -192,6 +192,7 @@ function ReportsPage() {
               />
             ))}
             <CheckboxGroup
+              orientation="horizontal"
               value={exportFields}
               className="flex w-full flex-wrap gap-x-4 gap-y-2 sm:w-auto"
               onChange={(value) => setExportFields(value.map(String))}>
@@ -205,8 +206,9 @@ function ReportsPage() {
         }
       />
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-x-auto print:overflow-visible">
         <PrintLayout
+          className="p2-print-paper"
           pageSize="A4"
           orientation="portrait"
           showHeader

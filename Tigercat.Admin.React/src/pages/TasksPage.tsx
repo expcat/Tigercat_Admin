@@ -241,7 +241,8 @@ function TasksPage() {
     navigate('/tasks', { replace: true });
   }, [navigate]);
 
-  const handleCompleteTask = useCallback(async () => {
+  const handleCompleteTask = useCallback(async (event: { preventDefault(): void }) => {
+    event.preventDefault();
     if (!selectedTask) {
       return;
     }
@@ -387,23 +388,29 @@ function TasksPage() {
             <Input
               value={filterText}
               placeholder="搜索任务标题或说明"
+              className="w-full sm:w-64"
               onChange={(event) => setFilterText(normalizeInput(event))}
             />
             <Input
               value={assigneeFilter}
               placeholder="负责人"
+              className="w-full sm:w-40"
               onChange={(event) => setAssigneeFilter(normalizeInput(event))}
             />
             <Input
               value={dueFrom}
               type={'date' as unknown as InputType}
               placeholder="开始日期"
+              aria-label="开始日期"
+              className="w-full sm:w-44"
               onChange={(event) => setDueFrom(normalizeInput(event))}
             />
             <Input
               value={dueTo}
               type={'date' as unknown as InputType}
               placeholder="结束日期"
+              aria-label="结束日期"
+              className="w-full sm:w-44"
               onChange={(event) => setDueTo(normalizeInput(event))}
             />
             <Select
@@ -414,6 +421,7 @@ function TasksPage() {
                 { label: '未阻塞', value: 'false' },
               ]}
               clearable={false}
+              className="w-full sm:w-44"
               onChange={(value) => setBlockedFilter(String(value ?? ''))}
             />
             <Button variant="outline" onClick={handleResetBoard}>

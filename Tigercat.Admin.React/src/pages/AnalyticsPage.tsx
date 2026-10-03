@@ -127,7 +127,6 @@ const legendItems: ChartLegendItem[] = [{ index: 0, label: '月度转化', color
 const CANVAS_W = 560;
 const CANVAS_H = 240;
 const CANVAS_PAD = 32;
-const innerW = CANVAS_W - CANVAS_PAD * 2;
 const innerH = CANVAS_H - CANVAS_PAD * 2;
 const customLabels = ['1月', '2月', '3月', '4月', '5月', '6月'];
 
@@ -253,10 +252,12 @@ function AnalyticsPage() {
     [factor],
   );
 
+  const [canvasWidth, setCanvasWidth] = useState(CANVAS_W);
+  const innerW = Math.max(0, canvasWidth - CANVAS_PAD * 2);
   const customValues = useMemo(() => [30, 52, 41, 67, 58, 72].map((v) => Math.round(v * factor)), [factor]);
   const xScale = useMemo(
     () => createBandScale(customLabels, [0, innerW], { paddingInner: 0.3, paddingOuter: 0.2 }),
-    [],
+    [innerW],
   );
   const yScale = useMemo(() => createLinearScale([0, Math.max(...customValues, 1)], [innerH, 0]), [customValues]);
   const seriesPoints: ChartSeriesPoint[] = useMemo(
@@ -411,12 +412,24 @@ function AnalyticsPage() {
           <Skeleton rows={4} />
         ) : (
           <>
-            <div className="overflow-auto">
-              <ChartCanvas width={CANVAS_W} height={CANVAS_H} padding={CANVAS_PAD}>
+            <div className="h-60">
+              <ChartCanvas
+                width={CANVAS_W}
+                height={CANVAS_H}
+                padding={CANVAS_PAD}
+                title="月度转化趋势"
+                onResolvedSizeChange={({ width }) => setCanvasWidth(width)}>
                 <ChartGrid xScale={xScale} yScale={yScale} />
-                <ChartAxis orientation="bottom" scale={xScale} />
+                <ChartAxis orientation="bottom" scale={xScale} y={innerH} />
                 <ChartAxis orientation="left" scale={yScale} />
-                <ChartSeries data={seriesPoints} type="line" color="var(--tiger-primary)" />
+                <ChartSeries data={seriesPoints} name="月度转化" type="line" color="var(--tiger-primary)">
+                  <polyline points={seriesPoints.map(({ x, y }) => `${x},${y}`).join(' ')} strokeWidth={2} />
+                  {seriesPoints.map((point) => (
+                    <circle key={point.label} cx={point.x} cy={point.y} r={3} fill="var(--tiger-primary)">
+                      <title>{point.label}：{point.value}</title>
+                    </circle>
+                  ))}
+                </ChartSeries>
                 <ChartTooltip content="月度转化趋势" open={false} />
               </ChartCanvas>
             </div>

@@ -23,7 +23,6 @@ import { Modal } from '@expcat/tigercat-react/Modal';
 import { Popconfirm } from '@expcat/tigercat-react/Popconfirm';
 import { Select } from '@expcat/tigercat-react/Select';
 import { Tag } from '@expcat/tigercat-react/Tag';
-import { Tooltip } from '@expcat/tigercat-react/Tooltip';
 import {
   ContextMenu,
   ContextMenuItem,
@@ -716,22 +715,20 @@ function UsersPage() {
         render: (record) => (
           <div className="flex items-center justify-center gap-2">
             {canEdit && (
-              <Tooltip content="更多操作">
-                <Dropdown
-                  trigger="click"
-                  placement="bottom-end"
-                  renderTrigger={() => (
-                    <Button size="sm" variant="ghost">
-                      操作
-                    </Button>
-                  )}>
-                  <DropdownMenu className="w-28 max-w-[calc(100vw-2rem)]">
-                    <DropdownItem onClick={() => openEditModal(record)}>
-                      编辑用户
-                    </DropdownItem>
-                  </DropdownMenu>
-                </Dropdown>
-              </Tooltip>
+              <Dropdown
+                trigger="click"
+                placement="bottom-end"
+                renderTrigger={() => (
+                  <Button size="sm" variant="ghost">
+                    操作
+                  </Button>
+                )}>
+                <DropdownMenu className="w-28 max-w-[calc(100vw-2rem)]">
+                  <DropdownItem onClick={() => openEditModal(record)}>
+                    编辑用户
+                  </DropdownItem>
+                </DropdownMenu>
+              </Dropdown>
             )}
             {canDelete && (
               <Popconfirm
@@ -949,7 +946,7 @@ function UsersPage() {
         {serverPaginationHint}
       </div>
 
-      <ContextMenu>
+      <ContextMenu asChild>
         <div onContextMenuCapture={onUsersContextMenu}>
           <DataTableWithToolbar
             columns={columns as unknown as TableColumn<Record<string, unknown>>[]}

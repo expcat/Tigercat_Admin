@@ -1,0 +1,73 @@
+diff --git a/dist/chunk-35FXE3NF.mjs b/dist/chunk-35FXE3NF.mjs
+index 83a25c0130b0ef04957940a7a97906d2b027ab83..01a52d79e568890a2b58ff9399849a59df7b6256 100644
+--- a/dist/chunk-35FXE3NF.mjs
++++ b/dist/chunk-35FXE3NF.mjs
+@@ -3,7 +3,7 @@ import {
+ } from "./chunk-4YNI7WKN.mjs";
+ 
+ // src/utils/overlay-outlet.tsx
+-import React, { useContext, useEffect, useId, useRef, useSyncExternalStore } from "react";
++import React, { useContext, useEffect, useLayoutEffect, useId, useRef, useSyncExternalStore } from "react";
+ import { createPortal } from "react-dom";
+ import { createRenderOutlet, isBrowser } from "@expcat/tigercat-core";
+ import { Fragment, jsx, jsxs } from "react/jsx-runtime";
+@@ -36,6 +36,10 @@ function OverlayPortal({
+   const insideOutlet = useContext(OutletRenderContext);
+   const nestInHost = insideOutlet || isNestedOverlayTarget(target);
+   const id = useId();
++  useLayoutEffect(() => {
++    if (disabled || !outlet || nestInHost) return;
++    outlet.upsert(id, children);
++  }, [disabled, outlet, id, nestInHost, children]);
+   useEffect(() => {
+     if (disabled || !outlet || nestInHost) return;
+     return () => outlet.remove(id);
+@@ -44,7 +48,6 @@ function OverlayPortal({
+     return /* @__PURE__ */ jsx(Fragment, { children: renderOverlayPortal(children, target, false) });
+   }
+   if (outlet && !disabled) {
+-    outlet.upsert(id, children);
+     return null;
+   }
+   if (!disabled && isBrowser() && !target) return createPortal(children, document.body);
+diff --git a/dist/chunk-4YNI7WKN.mjs b/dist/chunk-4YNI7WKN.mjs
+index 265a7dd335334cf973ed26755fb89db1da59e5e8..ea504b98b918fe81b04d910aefeb9f4fa18f82ba 100644
+--- a/dist/chunk-4YNI7WKN.mjs
++++ b/dist/chunk-4YNI7WKN.mjs
+@@ -239,6 +239,7 @@ function useFloating(options) {
+     updateRequestRef.current += 1;
+     let stopped = false;
+     let attempts = 0;
++    let retryFrame;
+     let cleanupAuto;
+     const attach = () => {
+       if (stopped) return;
+@@ -247,7 +248,7 @@ function useFloating(options) {
+       if (!enabled || !reference || !floating) {
+         if (enabled && attempts < 8) {
+           attempts += 1;
+-          queueMicrotask(attach);
++          retryFrame = requestAnimationFrame(attach);
+           return;
+         }
+         setIsPositioned(false);
+@@ -259,6 +260,7 @@ function useFloating(options) {
+     attach();
+     return () => {
+       stopped = true;
++      if (retryFrame !== void 0) cancelAnimationFrame(retryFrame);
+       updateRequestRef.current += 1;
+       cleanupAuto?.();
+     };
+diff --git a/dist/chunk-HCZ36TZL.mjs b/dist/chunk-HCZ36TZL.mjs
+index 0eeb5be746ebe7649eb7fda00c6645455b9e15ac..4e4b1cfdc821d2be11f312818b60af603f0f3afa 100644
+--- a/dist/chunk-HCZ36TZL.mjs
++++ b/dist/chunk-HCZ36TZL.mjs
+@@ -472,6 +472,7 @@ var WorkflowActionBar = ({
+               onConfirm: (event) => {
+                 if (emitReadyAction(moreItem, event)) setMoreItem(null);
+               },
++              className: "absolute! inset-0 w-full! pointer-events-none",
+               children: /* @__PURE__ */ jsx("span", { className: "pointer-events-none absolute inset-0", "aria-hidden": "true" })
+             }
+           ) : null

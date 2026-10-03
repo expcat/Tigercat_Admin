@@ -82,9 +82,12 @@ export function applyTheme(prefs: ThemePreferences): void {
   root.classList.toggle('dark', effective === 'dark');
   root.classList.toggle('compact', prefs.compactMode);
 
-  // Apply primary color CSS variable
-  root.style.setProperty('--tiger-primary', prefs.primaryColor);
-  const { light, dark } = deriveDarkVariant(prefs.primaryColor);
+  // Dark surfaces need a lighter primary, matching the preset's dark foreground.
+  const primary = effective === 'dark'
+    ? deriveDarkVariant(prefs.primaryColor).light
+    : prefs.primaryColor;
+  root.style.setProperty('--tiger-primary', primary);
+  const { light, dark } = deriveDarkVariant(primary);
   root.style.setProperty('--tiger-primary-light', light);
   root.style.setProperty('--tiger-primary-dark', dark);
 

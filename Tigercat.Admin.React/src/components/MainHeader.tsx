@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Avatar } from '@expcat/tigercat-react/Avatar';
 import { Icon } from '@expcat/tigercat-react/Icon';
 import type { IconDefinition } from '@expcat/tigercat-core/icons/registry';
@@ -67,6 +67,7 @@ interface MainHeaderProps {
   onLockScreen: () => void;
   onToggleSidebar?: () => void;
   demoMode?: boolean;
+  chatDock?: ReactNode;
 }
 
 function ThemeIcon({ mode }: { mode: ThemeMode }) {
@@ -99,6 +100,7 @@ export function MainHeader({
   onLockScreen,
   onToggleSidebar,
   demoMode,
+  chatDock,
 }: MainHeaderProps) {
   const [themeDrawerOpen, setThemeDrawerOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -115,7 +117,7 @@ export function MainHeader({
   }, []);
 
   return (
-    <Header height="auto" className="p2-main-header flex min-h-16 flex-nowrap items-center justify-between gap-2 px-3 py-2 z-10 sm:gap-3 sm:px-4 md:px-6">
+    <Header role="banner" height="auto" className="p2-main-header flex min-h-16 flex-nowrap items-center justify-between gap-2 px-3 py-2 z-10 sm:gap-3 sm:px-4 md:px-6">
       <div className="flex min-w-0 flex-1 flex-col gap-1 py-2">
         <div className="flex min-w-0 items-center gap-2">
           {showSidebarToggle && (
@@ -177,6 +179,7 @@ export function MainHeader({
           onClick={() => setThemeDrawerOpen(true)}>
           <PaletteIcon size={20} />
         </button>
+        {chatDock}
         <NotificationBell />
         <Dropdown
           trigger="click"

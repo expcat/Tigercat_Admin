@@ -13,9 +13,11 @@ import Icon from './Icon.vue'
 const props = withDefaults(
   defineProps<{
     open?: boolean
+    floating?: boolean
   }>(),
   {
     open: false,
+    floating: true,
   },
 )
 
@@ -105,12 +107,12 @@ onUnmounted(() => {
 
 <template>
   <FloatButton
-    floating
+    :floating="props.floating"
     placement="bottom-right"
     :offset="24"
     type="primary"
-    size="lg"
-    class="max-sm:!hidden"
+    :size="props.floating ? 'lg' : 'sm'"
+    :class="props.floating ? undefined : 'relative shrink-0'"
     data-tour="chat-dock"
     :aria-label="props.open ? '关闭在线客服' : '联系在线客服'"
     :tooltip="props.open ? '关闭在线客服' : '联系在线客服'"

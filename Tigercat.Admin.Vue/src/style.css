@@ -31,6 +31,20 @@
 }
 
 @layer components {
+  .p2-print-paper {
+    --tiger-text: #0f172a;
+    --tiger-text-secondary: #475569;
+    --tiger-secondary: #475569;
+    --tiger-success: #15803d;
+    --tiger-border: #cbd5e1;
+    --tiger-bg-card: #ffffff;
+    --tiger-bg-hover: #f8fafc;
+    --tiger-surface: #ffffff;
+    --tiger-surface-muted: #f8fafc;
+    color: var(--tiger-text);
+    color-scheme: light;
+  }
+
   .p2-text-primary {
     color: var(--tiger-text, #1f2937);
   }

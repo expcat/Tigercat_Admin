@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import { Button } from '@expcat/tigercat-react/Button';
 import {
   Dropdown,
@@ -31,6 +32,12 @@ export function TagsView({
   onCloseOthers,
   onCloseAll,
 }: TagsViewProps) {
+  const tabListRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    tabListRef.current?.querySelector<HTMLElement>('[data-active="true"]')
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [activeKey, keys]);
+
   const canCloseCurrent = activeKey !== TAGS_VIEW_HOME_KEY;
   const canCloseOthers = keys.some(
     (key) => key !== TAGS_VIEW_HOME_KEY && key !== activeKey,
@@ -42,6 +49,7 @@ export function TagsView({
       data-testid="shell-tags-view"
       className="p2-tags-view flex min-w-0 w-full shrink-0 items-center gap-1 border-b border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-card,#ffffff) px-3 py-1.5 md:px-6">
       <div
+        ref={tabListRef}
         role="tablist"
         aria-label="已打开的页面"
         className="p2-tags-view-list flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:thin]">

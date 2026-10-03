@@ -53,7 +53,7 @@ function toFileItem(item: MediaItem): FileItem {
     type: 'file',
     extension: item.extension ?? undefined,
     size: item.sizeBytes,
-    modified: item.createdAt,
+    modified: new Date(item.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }),
     mimeType: item.contentType,
     url: item.url,
     referenceCount: item.referenceCount,

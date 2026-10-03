@@ -210,12 +210,13 @@ const orgData: OrgChartNode = {
 const CANVAS_W = 560
 const CANVAS_H = 240
 const CANVAS_PAD = 32
-const innerW = CANVAS_W - CANVAS_PAD * 2
+const canvasWidth = ref(CANVAS_W)
+const innerW = computed(() => Math.max(0, canvasWidth.value - CANVAS_PAD * 2))
 const innerH = CANVAS_H - CANVAS_PAD * 2
 const customLabels = ['1月', '2月', '3月', '4月', '5月', '6月']
 const customValues = computed(() => [30, 52, 41, 67, 58, 72].map((v) => Math.round(v * factor.value)))
 const xScale = computed(() =>
-  createBandScale(customLabels, [0, innerW], { paddingInner: 0.3, paddingOuter: 0.2 }),
+  createBandScale(customLabels, [0, innerW.value], { paddingInner: 0.3, paddingOuter: 0.2 }),
 )
 const yScale = computed(() => createLinearScale([0, Math.max(...customValues.value, 1)], [innerH, 0]))
 const seriesPoints = computed<ChartSeriesPoint[]>(() =>
@@ -403,12 +404,23 @@ function handlePageChange(value: number) {
         <template #header><Text weight="bold">自定义图表（图表基元组合）</Text></template>
       <Skeleton v-if="loading" :rows="4" />
       <template v-else>
-        <div class="overflow-auto">
-          <ChartCanvas :width="CANVAS_W" :height="CANVAS_H" :padding="CANVAS_PAD">
+        <div class="h-60">
+          <ChartCanvas
+            :width="CANVAS_W"
+            :height="CANVAS_H"
+            :padding="CANVAS_PAD"
+            title="月度转化趋势"
+            @resolved-size-change="canvasWidth = $event.width"
+          >
             <ChartGrid :x-scale="xScale" :y-scale="yScale" />
-            <ChartAxis orientation="bottom" :scale="xScale" />
+            <ChartAxis orientation="bottom" :scale="xScale" :y="innerH" />
             <ChartAxis orientation="left" :scale="yScale" />
-            <ChartSeries :data="seriesPoints" type="line" color="var(--tiger-primary)" />
+            <ChartSeries :data="seriesPoints" name="月度转化" type="line" color="var(--tiger-primary)">
+              <polyline :points="seriesPoints.map(({ x, y }) => `${x},${y}`).join(' ')" :stroke-width="2" />
+              <circle v-for="point in seriesPoints" :key="point.label" :cx="point.x" :cy="point.y" :r="3" fill="var(--tiger-primary)">
+                <title>{{ point.label }}：{{ point.value }}</title>
+              </circle>
+            </ChartSeries>
             <ChartTooltip content="月度转化趋势" :open="false" />
           </ChartCanvas>
         </div>

@@ -154,7 +154,6 @@ async function expectOutsideClickClosesOverlay(
   page: import('@playwright/test').Page,
   trigger: import('@playwright/test').Locator,
   overlay: import('@playwright/test').Locator,
-  outside: import('@playwright/test').Locator,
 ) {
   await trigger.scrollIntoViewIfNeeded();
   await trigger.evaluate((element) => {
@@ -162,7 +161,11 @@ async function expectOutsideClickClosesOverlay(
   });
   await trigger.click();
   await expect(overlay).toBeVisible();
-  await outside.click({ force: true });
+  await overlay.click({ trial: true });
+  // Modal pickers make the background inert; click its visible position as a user would.
+  const outsideBox = await page.getByRole('banner').locator('.p2-header-title').boundingBox();
+  if (!outsideBox) throw new Error('Outside target is not visible');
+  await page.mouse.click(outsideBox.x + outsideBox.width / 2, outsideBox.y + outsideBox.height / 2);
   await expect(overlay).toBeHidden();
 }
 
@@ -296,11 +299,10 @@ test.describe('日历 / 导入 / 任务剩余弹层', () => {
     await page.goto(appPath(testInfo, '/import'));
     await expect(page.getByText('数据导入').first()).toBeVisible();
 
-    const pageTitle = page.getByText('数据导入').first();
     const cascaderTrigger = page.getByRole('combobox').filter({ hasText: '人力资源 / 员工表' });
     const cascaderDropdown = page.locator('[data-tiger-cascader-dropdown]');
     await expectEscClosesOverlay(page, cascaderTrigger, cascaderDropdown);
-    await expectOutsideClickClosesOverlay(page, cascaderTrigger, cascaderDropdown, pageTitle);
+    await expectOutsideClickClosesOverlay(page, cascaderTrigger, cascaderDropdown);
   });
 
   test('/jobs 新建任务 Drawer 内 CronEditor 可见且 Esc 关闭 Drawer', async ({
@@ -355,7 +357,6 @@ test.describe('个人中心 / 数据分析浮层焦点', () => {
       page,
       dateTrigger,
       datePanel,
-      page.getByText('界面密度', { exact: true }),
     );
 
     const timeTrigger = page.getByRole('button', { name: '打开时间选择器' });
@@ -365,7 +366,6 @@ test.describe('个人中心 / 数据分析浮层焦点', () => {
       page,
       timeTrigger,
       timePanel,
-      page.getByText('界面密度', { exact: true }),
     );
   });
 
@@ -381,7 +381,6 @@ test.describe('个人中心 / 数据分析浮层焦点', () => {
       page,
       dateTrigger,
       datePanel,
-      page.getByText('数据分析').first(),
     );
   });
 });
@@ -395,21 +394,20 @@ test.describe('内容编辑 / 媒体图库浮层焦点', () => {
     await page.goto(appPath(testInfo, '/content'));
     await expect(page.getByText('内容编辑').first()).toBeVisible();
 
-    const pageTitle = page.getByText('内容编辑').first();
     const titleInput = page.getByPlaceholder('请输入内容标题');
     const autoCompleteDropdown = page.locator('[data-tiger-autocomplete-dropdown]');
     await expectEscClosesOverlay(page, titleInput, autoCompleteDropdown);
-    await expectOutsideClickClosesOverlay(page, titleInput, autoCompleteDropdown, pageTitle);
+    await expectOutsideClickClosesOverlay(page, titleInput, autoCompleteDropdown);
 
     const treeTrigger = page.getByRole('combobox').filter({ hasText: /^前端$/ });
     const treeDropdown = page.locator('[data-tiger-treeselect-dropdown]');
     await expectEscClosesOverlay(page, treeTrigger, treeDropdown, { extraEscapes: 2 });
-    await expectOutsideClickClosesOverlay(page, treeTrigger, treeDropdown, pageTitle);
+    await expectOutsideClickClosesOverlay(page, treeTrigger, treeDropdown);
 
     const cascaderTrigger = page.getByRole('combobox').filter({ hasText: '文档 / 指南' });
     const cascaderDropdown = page.locator('[data-tiger-cascader-dropdown]');
     await expectEscClosesOverlay(page, cascaderTrigger, cascaderDropdown);
-    await expectOutsideClickClosesOverlay(page, cascaderTrigger, cascaderDropdown, pageTitle);
+    await expectOutsideClickClosesOverlay(page, cascaderTrigger, cascaderDropdown);
   });
 
   test('/gallery ImagePreview 与标注裁剪 Drawer Esc 后焦点回到触发器', async ({

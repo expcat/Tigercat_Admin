@@ -212,12 +212,12 @@ function ApprovalDetailPage() {
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col gap-4">
       <div className="shrink-0">
-      <PageHeader
-        title={detail?.title ?? '审批详情'}
-        subtitle="查看申请内容、审批进度，并在底部完成同意、拒绝或其他操作。"
-        icon={<CheckCircleIcon size={22} />}
-        tags={[{ label: statusMeta.label, variant: statusMeta.variant }]}
-      />
+        <PageHeader
+          title={detail?.title ?? '审批详情'}
+          subtitle="查看申请内容、审批进度，并在底部完成同意、拒绝或其他操作。"
+          icon={<CheckCircleIcon size={22} />}
+          tags={detail ? [{ label: statusMeta.label, variant: statusMeta.variant }] : []}
+        />
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -243,7 +243,7 @@ function ApprovalDetailPage() {
       ) : detail ? (
         <WorkflowDetailShell
           ariaLabel="审批详情"
-          className="min-h-0 flex-1"
+          className="min-h-[32rem] flex-1 md:min-h-0"
           showActions
           header={
             <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -273,8 +273,7 @@ function ApprovalDetailPage() {
                 schema={formSchema}
                 value={formModel}
                 showActions={false}
-                labelWidth={96}
-                className="max-sm:[&_.tiger-form-item--label-left]:flex-col max-sm:[&_.tiger-form-item__label]:!w-full max-sm:[&_.tiger-form-item__label]:!pt-0 max-sm:[&_.tiger-form-item__label]:!text-start"
+                labelPosition="top"
                 ariaLabel="申请表单"
                 onChange={setFormModel}
               />

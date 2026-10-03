@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Content } from '@expcat/tigercat-react/Content';
 import { Drawer } from '@expcat/tigercat-react/Drawer';
@@ -61,6 +61,13 @@ export function MainLayout({
   onNavigate,
 }: MainLayoutProps) {
   const location = useLocation();
+  useLayoutEffect(() => {
+    document.getElementById('main-content-scroll')?.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'instant',
+    });
+  }, [location.pathname]);
   const fillMain = /^\/approvals\/.+/.test(location.pathname);
   const compactMode = themePrefs.compactMode;
   const [collapsed, setCollapsed] = useState(compactMode);
@@ -152,7 +159,13 @@ export function MainLayout({
         inert={locked ? true : undefined}
         aria-hidden={locked || undefined}
       >
-    <Layout className="h-screen w-full overflow-hidden !flex-row">
+    <Layout className="h-screen w-full overflow-hidden !flex-row"
+      onClickCapture={(event) => {
+        if (!(event.target instanceof Element) || !event.target.closest('a[href="#tiger-main"]')) return;
+        // Keep the skip link from replacing the hash route.
+        event.preventDefault();
+        document.getElementById('main-content-scroll')?.focus();
+      }}>
       {/* Sidebar */}
       {isMobile ? (
         <Drawer
@@ -223,6 +236,7 @@ export function MainLayout({
           onLockScreen={lock}
           onToggleSidebar={handleSidebarToggle}
           demoMode={DEMO_MODE}
+          chatDock={isMobile ? <ChatDock open={chatOpen} floating={false} onOpenChange={setChatOpen} /> : undefined}
         />
 
         <div className={`relative ${SHELL_WATERMARK_PANE_CLASS}`}>
@@ -235,10 +249,10 @@ export function MainLayout({
             onCloseOthers={tagsView.closeOthers}
             onCloseAll={tagsView.closeAll}
           />
-          <Content id="main-content-scroll" className="min-h-0 flex-1 overflow-auto p-3 pb-28 pe-4 scroll-smooth sm:p-4 sm:pb-28 md:p-6 md:pb-32 md:pe-28">
+          <Content as="main" id="main-content-scroll" tabIndex={-1} className="min-h-0 flex-1 overflow-auto p-3 pb-28 pe-4 scroll-smooth sm:p-4 sm:pb-28 md:p-6 md:pb-32 md:pe-28">
             <div
               className={`mx-auto max-w-7xl animate-fade-in${
-                fillMain ? ' flex h-full min-h-0 w-full flex-col' : ''
+                fillMain ? ' flex min-h-full w-full flex-col md:h-full md:min-h-0' : ''
               }`}>
               <div className={fillMain ? 'min-h-0 min-w-0 flex-1' : undefined}>{children}</div>
               <ShellFooter />
@@ -268,7 +282,7 @@ export function MainLayout({
         onLogout={onLogout}
         onOpenChat={() => setChatOpen(true)}
       />
-      <ChatDock open={chatOpen} onOpenChange={setChatOpen} />
+      {!isMobile && <ChatDock open={chatOpen} onOpenChange={setChatOpen} />}
       <ShellQuickActions />
       <OnboardingTour />
     </Layout>

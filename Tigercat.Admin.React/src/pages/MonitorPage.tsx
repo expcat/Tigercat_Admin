@@ -13,7 +13,7 @@ import { ActivityFeed } from '@expcat/tigercat-react/ActivityFeed';
 import type {
   ActivityItem,
   LineChartDatum,
-  ProgressStatus,
+  ProgressVariant,
   SegmentedOption,
   TagVariant,
 } from '@expcat/tigercat-core';
@@ -105,9 +105,9 @@ function healthFromLoad(cpu: number, memory: number): MonitorNodeStatus {
   return 'healthy';
 }
 
-function progressStatus(value: number): ProgressStatus {
-  if (value >= 85) return 'exception';
-  if (value >= 70) return 'paused';
+function progressVariant(value: number): ProgressVariant {
+  if (value >= 85) return 'danger';
+  if (value >= 70) return 'warning';
   return 'success';
 }
 
@@ -116,6 +116,12 @@ function pushWindow(
   point: LineChartDatum,
 ): LineChartDatum[] {
   return [...series, point].slice(-WINDOW_SIZE);
+}
+
+function chartTimeTicks(series: LineChartDatum[]) {
+  const middle = Math.floor((series.length - 1) / 2);
+  return series.filter((_, index) => index === 0 || index === middle || index === series.length - 1)
+    .map(({ x }) => x);
 }
 
 function seedWindow(
@@ -386,7 +392,7 @@ function MonitorPage() {
             <div className="mt-3">
               <Progress
                 percentage={gauge.value}
-                status={progressStatus(gauge.value)}
+                variant={progressVariant(gauge.value)}
                 format={(value) => `${gauge.label} ${Math.round(value)}%`}
               />
             </div>
@@ -399,7 +405,14 @@ function MonitorPage() {
           <Statistic title="QPS" value={snapshot.qps} suffix="req/s" groupSeparator />
           {snapshot.qpsSeries.length ? (
             <div className="mt-3">
-              <AreaChart data={snapshot.qpsSeries} height={140} responsive xTicks={6} />
+              <AreaChart
+                data={snapshot.qpsSeries}
+                height={140}
+                responsive
+                xTickValues={chartTimeTicks(snapshot.qpsSeries)}
+                yTicks={3}
+                hoverable
+              />
             </div>
           ) : (
             <ChartEmptyState description="暂无 QPS 滚动数据" heightClassName="h-36" />
@@ -413,7 +426,9 @@ function MonitorPage() {
                 data={snapshot.latencySeries}
                 height={140}
                 responsive
-                xTicks={6}
+                xTickValues={chartTimeTicks(snapshot.latencySeries)}
+                yTicks={3}
+                hoverable
                 showArea={false}
                 showPoints={false}
                 includeZero={true}
@@ -455,12 +470,12 @@ function MonitorPage() {
                   </div>
                   <Progress
                     percentage={node.cpu}
-                    status={progressStatus(node.cpu)}
+                    variant={progressVariant(node.cpu)}
                     format={(value) => `CPU ${Math.round(value)}%`}
                   />
                   <Progress
                     percentage={node.memory}
-                    status={progressStatus(node.memory)}
+                    variant={progressVariant(node.memory)}
                     format={(value) => `内存 ${Math.round(value)}%`}
                   />
                 </div>

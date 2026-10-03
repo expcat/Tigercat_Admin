@@ -111,7 +111,7 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
 </script>
 
 <template>
-  <Header height="auto" class="p2-main-header flex min-h-16 flex-nowrap items-center justify-between gap-2 px-3 py-2 z-10 sm:gap-3 sm:px-4 md:px-6">
+  <Header role="banner" height="auto" class="p2-main-header flex min-h-16 flex-nowrap items-center justify-between gap-2 px-3 py-2 z-10 sm:gap-3 sm:px-4 md:px-6">
     <div class="flex min-w-0 flex-1 flex-col gap-1 py-2">
       <div class="flex min-w-0 items-center gap-2">
         <Button
@@ -169,6 +169,7 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
       >
         <Icon name="palette" :size="20" />
       </button>
+      <slot name="chat-dock" />
       <NotificationBell />
       <Dropdown trigger="click" placement="bottom-end" :show-arrow="false">
         <template #trigger="{ open }">

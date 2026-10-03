@@ -249,14 +249,14 @@ test.describe('审批中心 mock 流转', () => {
     await inspector.getByRole('tab', { name: '高级' }).click();
     await expect(inspector.getByLabel('自动通过/拒绝')).toBeVisible();
 
-    await page.getByRole('button', { name: '发布' }).click();
+    await page.locator('#main-content-scroll').getByRole('button', { name: '发布', exact: true }).first().click();
     await expect(page.getByText('已发布（演示，不写回引擎）').first()).toBeVisible();
 
     await page.getByRole('button', { name: '添加步骤' }).click();
     await expect(page.getByText('当前 8 个节点')).toBeVisible();
     await expect(page.getByText('存在阻塞项，无法发布').first()).toBeVisible();
     await expect(page.getByText('该审批节点没有审批人').first()).toBeVisible();
-    await page.getByRole('button', { name: '发布' }).click();
+    await page.locator('#main-content-scroll').getByRole('button', { name: '发布', exact: true }).first().click();
     await expect(page.getByText('存在阻塞项，无法发布').first()).toBeVisible();
 
     await page.getByRole('button', { name: '恢复默认' }).click();

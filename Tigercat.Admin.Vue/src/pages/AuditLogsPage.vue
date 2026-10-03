@@ -329,6 +329,7 @@ onMounted(async () => {
               @error="(error: unknown) => handleDataExportError(error, format, onExport, (message) => errorMessage = message)"
             />
             <CheckboxGroup
+              orientation="horizontal"
               :model-value="exportFields"
               class-name="flex w-full flex-wrap gap-x-4 gap-y-2 sm:w-auto"
               @update:model-value="setExportFields"

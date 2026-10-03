@@ -72,18 +72,10 @@ export const ChartCanvas = lazyNamed(
   () => import('@expcat/tigercat-vue/ChartCanvas'),
   'ChartCanvas',
 )
-export const ChartAxis = lazyNamed(
-  () => import('@expcat/tigercat-vue/ChartAxis'),
-  'ChartAxis',
-)
-export const ChartGrid = lazyNamed(
-  () => import('@expcat/tigercat-vue/ChartGrid'),
-  'ChartGrid',
-)
-export const ChartSeries = lazyNamed(
-  () => import('@expcat/tigercat-vue/ChartSeries'),
-  'ChartSeries',
-)
+// SVG 子组件异步解析后会丢失命名空间；画布内部的基元保持同步。
+export { ChartAxis } from '@expcat/tigercat-vue/ChartAxis'
+export { ChartGrid } from '@expcat/tigercat-vue/ChartGrid'
+export { ChartSeries } from '@expcat/tigercat-vue/ChartSeries'
 export const ChartLegend = lazyNamed(
   () => import('@expcat/tigercat-vue/ChartLegend'),
   'ChartLegend',

@@ -47,7 +47,7 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
     await loginAsAdmin(page, testInfo);
 
     await page.goto(appPath(testInfo, '/users'));
-    await expect(page.getByText('用户管理').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^用户管理/ })).toBeVisible();
     const usersCards = page.locator('[data-tiger-table-layout="card"]').first();
     await expect(usersCards).toBeVisible();
     // Header username is `hidden sm:inline`; assert the card row, not the chrome.
@@ -55,7 +55,7 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
     await expectNoPageHorizontalOverflow(page);
 
     await page.goto(appPath(testInfo, '/roles'));
-    await expect(page.getByText('角色管理').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^角色管理/ })).toBeVisible();
     const rolesCards = page.locator('[data-tiger-table-layout="card"]').first();
     await expect(rolesCards).toBeVisible();
     await expect(rolesCards.getByText('Admin').first()).toBeVisible();
@@ -130,18 +130,18 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
     await loginAsAdmin(page, testInfo);
 
     await page.goto(appPath(testInfo, '/analytics'));
-    await expect(page.getByText('数据分析').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^数据分析/ })).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
 
     await page.goto(appPath(testInfo, '/profile'));
-    await expect(page.getByText('个人中心').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^个人中心/ })).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
   });
 
   test('Calendar 月视图窄屏不溢出', async ({ page }, testInfo) => {
     await loginAsAdmin(page, testInfo);
     await page.goto(appPath(testInfo, '/calendar'));
-    await expect(page.getByText('团队日历').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^团队日历/ })).toBeVisible();
     await expect(page.getByRole('button', { name: '新建事件' })).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
   });
@@ -150,11 +150,11 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
     await loginAsAdmin(page, testInfo);
 
     await page.goto(appPath(testInfo, '/content'));
-    await expect(page.getByText('内容编辑').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^内容编辑/ })).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
 
     await page.goto(appPath(testInfo, '/gallery'));
-    await expect(page.getByText('媒体图库').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^媒体图库/ })).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
   });
 
@@ -167,7 +167,7 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
     await expectNoPageHorizontalOverflow(page);
 
     await page.goto(appPath(testInfo, '/import'));
-    await expect(page.getByText('数据导入').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^数据导入/ })).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
   });
 
@@ -175,18 +175,18 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
     await loginAsAdmin(page, testInfo);
 
     await page.goto(appPath(testInfo, '/help'));
-    await expect(page.getByText('帮助中心').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^帮助中心/ })).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
 
     await page.goto(appPath(testInfo, '/reports'));
-    await expect(page.getByText('报表打印').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^报表打印/ })).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
   });
 
   test('Performance 窄屏不溢出', async ({ page }, testInfo) => {
     await loginAsAdmin(page, testInfo);
     await page.goto(appPath(testInfo, '/performance'));
-    await expect(page.getByText('大数据演示').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^大数据演示/ })).toBeVisible();
     await expect(page.getByTestId('performance-virtual-list')).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
   });
@@ -246,11 +246,11 @@ test.describe('dark colorScheme coverage', { tag: '@dark' }, () => {
     await expectDarkSchemeApplied(page);
 
     await page.goto(appPath(testInfo, '/users'));
-    await expect(page.getByText('用户管理').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^用户管理/ })).toBeVisible();
     await expect(page.getByText('admin').first()).toBeVisible();
 
     await page.goto(appPath(testInfo, '/roles'));
-    await expect(page.getByText('角色管理').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^角色管理/ })).toBeVisible();
     await expect(page.getByText('Admin').first()).toBeVisible();
 
     await page.goto(appPath(testInfo, '/tickets'));
@@ -276,16 +276,16 @@ test.describe('dark colorScheme coverage', { tag: '@dark' }, () => {
     await expectDarkSchemeApplied(page);
 
     await page.goto(appPath(testInfo, '/analytics'));
-    await expect(page.getByText('数据分析').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^数据分析/ })).toBeVisible();
 
     await page.goto(appPath(testInfo, '/profile'));
-    await expect(page.getByText('个人中心').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^个人中心/ })).toBeVisible();
 
     await page.goto(appPath(testInfo, '/calendar'));
-    await expect(page.getByText('团队日历').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^团队日历/ })).toBeVisible();
 
     await page.goto(appPath(testInfo, '/content'));
-    await expect(page.getByText('内容编辑').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^内容编辑/ })).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
   });
 
@@ -304,7 +304,7 @@ test.describe('dark colorScheme coverage', { tag: '@dark' }, () => {
       ['/performance', '大数据演示'],
     ] as const) {
       await page.goto(appPath(testInfo, path));
-      await expect(page.getByText(title).first()).toBeVisible();
+      await expect(page.locator('#main-content-scroll').getByText(title, { exact: true }).first()).toBeVisible();
     }
 
     await expectNoPageHorizontalOverflow(page);

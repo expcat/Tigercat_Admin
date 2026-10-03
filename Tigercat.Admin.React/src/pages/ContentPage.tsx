@@ -391,12 +391,12 @@ function ContentPage() {
                     封面 / 附件
                   </Text>
                   <Upload autoUpload={false} accept="image/*" multiple>
-                    <Button variant="outline" size="sm">
+                    <span className="inline-flex items-center">
                       <span className="mr-1 inline-flex align-middle">
                         <UploadIcon size={14} />
                       </span>
                       选择文件
-                    </Button>
+                    </span>
                   </Upload>
                 </div>
               </div>

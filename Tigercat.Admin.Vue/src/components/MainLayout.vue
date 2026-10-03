@@ -56,6 +56,19 @@ defineEmits<{
 
 const route = useRoute()
 const router = useRouter()
+const handleSkipLink = (event: MouseEvent) => {
+  if (!(event.target instanceof Element) || !event.target.closest('a[href="#tiger-main"]')) return
+  // Keep the skip link from replacing the hash route.
+  event.preventDefault()
+  document.getElementById('main-content-scroll')?.focus()
+}
+watch(() => route.path, () => {
+  document.getElementById('main-content-scroll')?.scrollTo({
+    top: 0,
+    left: 0,
+    behavior: 'instant',
+  })
+}, { flush: 'post' })
 const fillMain = computed(() => /^\/approvals\/.+/.test(route.path))
 const menuSchema = useShellMenuSchema()
 const schemaNodes = computed(() => collectShellMenuNodes(menuSchema.value))
@@ -186,7 +199,7 @@ watch(
 <template>
   <div class="relative h-screen w-full">
     <div class="h-screen w-full" :inert="locked || undefined" :aria-hidden="locked || undefined">
-  <Layout class="h-screen w-full overflow-hidden !flex-row">
+  <Layout class="h-screen w-full overflow-hidden !flex-row" @click.capture="handleSkipLink">
     <!-- Sidebar -->
     <Drawer
       v-if="isMobile"
@@ -254,7 +267,11 @@ watch(
         @toggle-sidebar="handleSidebarToggle"
         @profile="router.push('/profile')"
         @lock-screen="lock"
-      />
+      >
+        <template #chat-dock>
+          <ChatDock v-if="isMobile" v-model:open="chatOpen" :floating="false" />
+        </template>
+      </MainHeader>
 
       <div class="relative" :class="SHELL_WATERMARK_PANE_CLASS">
         <TagsView
@@ -266,10 +283,10 @@ watch(
           @close-others="closeOthers"
           @close-all="closeAll"
         />
-        <Content id="main-content-scroll" class="min-h-0 flex-1 overflow-auto p-3 pb-28 pe-4 scroll-smooth sm:p-4 sm:pb-28 md:p-6 md:pb-32 md:pe-28">
+        <Content as="main" id="main-content-scroll" :tabindex="-1" class="min-h-0 flex-1 overflow-auto p-3 pb-28 pe-4 scroll-smooth sm:p-4 sm:pb-28 md:p-6 md:pb-32 md:pe-28">
           <div
             class="mx-auto max-w-7xl animate-fade-in"
-            :class="fillMain ? 'flex h-full min-h-0 w-full flex-col' : ''"
+            :class="fillMain ? 'flex min-h-full w-full flex-col md:h-full md:min-h-0' : ''"
           >
             <div :class="fillMain ? 'min-h-0 min-w-0 flex-1' : ''">
               <slot></slot>
@@ -300,7 +317,7 @@ watch(
       @logout="$emit('logout')"
       @open-chat="chatOpen = true"
     />
-    <ChatDock v-model:open="chatOpen" />
+    <ChatDock v-if="!isMobile" v-model:open="chatOpen" />
     <ShellQuickActions />
     <OnboardingTour />
   </Layout>

@@ -132,6 +132,7 @@ test.describe('阶段 1 — 个人中心与数据分析', () => {
     // Skeleton 结束后，图表与明细渲染成功（任一卡片崩溃都会导致整页空白）。
     await expect(page.getByText('直接访问').first()).toBeVisible();
     await expect(page.getByText('渠道明细', { exact: true })).toBeVisible();
+    await expect(page.getByRole('group', { name: '月度转化趋势', exact: true }).locator('polyline')).toBeVisible();
 
     // Segmented 切换时间范围后仍停留在分析页且内容可见。
     await page.getByText('近 7 天').click();
@@ -225,7 +226,7 @@ test.describe('阶段 2 — 协作沟通', () => {
     await expect(designer).toBeVisible();
     await expect(designer.getByRole('group', { name: '主管会签' })).toBeVisible();
     await expect(designer.getByText('李四, 钱七')).toBeVisible();
-    await expect(page.getByRole('region', { name: '节点设置' })).toHaveTextContent('选中节点后在此编辑');
+    await expect(page.getByRole('region', { name: '节点设置' })).toContainText('选中节点后在此编辑');
     await expect(designer.getByRole('button', { name: '在后方插入 (主管会签)' })).toBeVisible();
 
     await page.getByText('流程预览').click();
@@ -242,13 +243,15 @@ test.describe('阶段 2 — 协作沟通', () => {
 
     await expect(page.getByText('当前 7 个节点')).toBeVisible();
     await expect(page.getByRole('button', { name: '恢复默认' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '发布' })).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('button', { name: '发布', exact: true }).first()).toBeVisible();
     await page.getByRole('button', { name: '添加步骤' }).click();
     await expect(page.getByText('当前 8 个节点')).toBeVisible();
 
     await page.getByRole('button', { name: '恢复默认' }).click();
     await expect(page.getByText('当前 7 个节点')).toBeVisible();
     await designer.getByRole('button', { name: '在后方插入 (主管会签)' }).click();
+    await designer.getByRole('menu', { name: '插入节点', exact: true })
+      .getByRole('menuitem', { name: '审批', exact: true }).click();
     await expect(page.getByText('当前 8 个节点')).toBeVisible();
   });
 
@@ -493,6 +496,14 @@ test.describe('阶段 10 — 大数据演示', () => {
     await expect(page.getByTestId('performance-drag-list')).toBeVisible();
     await expect(page.getByText('日志检索超时排查').first()).toBeVisible();
     await expect(page.getByText('当前顺序').first()).toBeVisible();
+    const queue = page.getByTestId('performance-drag-list');
+    const sourceCard = queue.locator('[data-drag-id="queue-1"]');
+    const targetCard = queue.locator('[data-drag-id="queue-2"]');
+    await targetCard.scrollIntoViewIfNeeded();
+    await expect(sourceCard).toBeInViewport({ ratio: 1 });
+    await expect(targetCard).toBeInViewport({ ratio: 1 });
+    await sourceCard.dragTo(targetCard);
+    await expect(queue.getByText('日志检索超时排查：第 1 位 → 第 2 位', { exact: true })).toBeVisible();
 
     await page.getByRole('tab', { name: '低层看板' }).click();
     await expect(page.getByTestId('performance-kanban')).toBeVisible();
@@ -502,4 +513,3 @@ test.describe('阶段 10 — 大数据演示', () => {
     expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
   });
 });
-

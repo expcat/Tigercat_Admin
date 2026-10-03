@@ -381,6 +381,7 @@ function AuditLogsPage() {
                   />
                 ))}
                 <CheckboxGroup
+                  orientation="horizontal"
                   value={exportFields}
                   className="flex w-full flex-wrap gap-x-4 gap-y-2 sm:w-auto"
                   onChange={(value) => setExportFields(value.map(String))}>

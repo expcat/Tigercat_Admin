@@ -176,6 +176,7 @@ const handleSelect = (item: SpotlightItem) => {
     title="命令面板"
     placeholder="搜索页面或操作，按回车执行"
     empty-text="未找到匹配项"
+    :hotkey="true"
     :close-on-select="true"
     @select="handleSelect"
   />

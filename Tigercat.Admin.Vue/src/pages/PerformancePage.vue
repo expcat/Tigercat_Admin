@@ -242,11 +242,11 @@ const {
   getDragItemAttrs,
   getDropZoneAttrs,
   reorder,
-  drop,
   isDragging,
 } = useDrag({
   containerId: 'performance-queue',
   config: { axis: 'vertical', dragClass: 'opacity-50' },
+  onDrop: handleDragDrop,
 })
 
 const kanbanCardCount = computed(() => countKanbanCards(kanbanColumns.value))
@@ -260,9 +260,8 @@ function handleTabChange(key: string | number) {
   }
 }
 
-function handleDragDrop(event: DragEvent) {
+function handleDragDrop() {
   const result = reorder(dragItems.value)
-  drop(event)
   if (!result || result.fromIndex === result.toIndex) {
     return
   }
@@ -283,13 +282,6 @@ function handleKanbanColumnsChange(next: TaskBoardColumn[]) {
 
 function handleKanbanCardMove(event: TaskBoardCardMoveEvent) {
   lastKanbanMove.value = `卡片 ${event.cardId}：${event.fromColumnId} → ${event.toColumnId}`
-}
-
-function dropZoneBindings() {
-  return {
-    ...getDropZoneAttrs(),
-    onDrop: handleDragDrop,
-  }
 }
 
 function logLine(index: number): PerformanceLog {
@@ -420,7 +412,7 @@ function logLine(index: number): PerformanceLog {
               恢复顺序
             </Button>
           </div>
-          <div class="grid gap-3" v-bind="dropZoneBindings()">
+          <div class="grid gap-3" v-bind="getDropZoneAttrs()">
             <div
               v-for="item in dragItems"
               :key="item.id"

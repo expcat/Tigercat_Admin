@@ -155,7 +155,7 @@ function AboutPage() {
   const techStack = [
     {
       label: '前端框架',
-      value: 'React 18',
+      value: 'React 19',
       icon: <PackageIcon size={20} />,
       iconClassName: 'bg-(--tiger-success,#16a34a)/10 text-(--tiger-success,#16a34a)',
     },

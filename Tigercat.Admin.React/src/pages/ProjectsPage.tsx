@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar } from '@expcat/tigercat-react/Avatar';
 import { AvatarGroup } from '@expcat/tigercat-react/AvatarGroup';
-import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Input } from '@expcat/tigercat-react/Input';
 import { Message } from '@expcat/tigercat-react/Message';
@@ -246,16 +245,7 @@ function ProjectCard({
       onClick={() => onOpen(project.id)}
       footer={
         <div className="flex justify-end">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpen(project.id);
-            }}
-          >
-            查看详情
-          </Button>
+          <Text size="sm" color="primary">查看详情 →</Text>
         </div>
       }
     >

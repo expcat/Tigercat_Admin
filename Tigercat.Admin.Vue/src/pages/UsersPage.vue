@@ -17,7 +17,6 @@ import { Modal } from '@expcat/tigercat-vue/Modal'
 import { Popconfirm } from '@expcat/tigercat-vue/Popconfirm'
 import { Select } from '@expcat/tigercat-vue/Select'
 import { Tag } from '@expcat/tigercat-vue/Tag'
-import { Tooltip } from '@expcat/tigercat-vue/Tooltip'
 import { ContextMenu, ContextMenuItem, ContextMenuMenu, ContextMenuSub } from '@expcat/tigercat-vue/ContextMenu'
 import { CropUpload } from '../utils/lazyTigercat'
 import type { TableColumn, TableCardLayoutItem, SortState, TableToolbarFilterValue, TableToolbarAction } from '@expcat/tigercat-core'
@@ -500,24 +499,21 @@ const columns = computed<TableColumn[]>(() => {
         const buttons: any[] = []
         if (canEdit.value) {
           buttons.push(
-            h(Tooltip, { content: '更多操作' }, {
-              default: () =>
-                h(Dropdown, { trigger: 'click', placement: 'bottom-end' }, {
-                  trigger: () =>
-                    h(Button, {
-                      size: 'sm',
-                      variant: 'ghost',
-                    }, () => '操作'),
+            h(Dropdown, { trigger: 'click', placement: 'bottom-end' }, {
+              trigger: () =>
+                h(Button, {
+                  size: 'sm',
+                  variant: 'ghost',
+                }, () => '操作'),
+              default: () => [
+                h(DropdownMenu, null, {
                   default: () => [
-                    h(DropdownMenu, null, {
-                      default: () => [
-                        h(DropdownItem, {
-                          onClick: () => openEditModal(user),
-                        }, () => '编辑用户')
-                      ],
-                    }),
+                    h(DropdownItem, {
+                      onClick: () => openEditModal(user),
+                    }, () => '编辑用户')
                   ],
                 }),
+              ],
             })
           )
         }
@@ -806,7 +802,7 @@ onMounted(() => {
       {{ serverPaginationHint }}
     </div>
 
-    <ContextMenu>
+    <ContextMenu as-child>
       <div class="p2-table-toolbar-stack min-w-0" @contextmenu.capture="onUsersContextMenu">
         <DataTableWithToolbar
           :columns="columns"

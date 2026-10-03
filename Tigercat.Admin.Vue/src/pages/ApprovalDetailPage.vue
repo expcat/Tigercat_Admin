@@ -233,12 +233,12 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
 <template>
   <div class="flex h-full min-h-0 min-w-0 flex-col gap-4">
     <div class="shrink-0">
-    <PageHeader
-      icon="checkCircle"
-      :title="detail?.title ?? '审批详情'"
-      subtitle="查看申请内容、审批进度，并在底部完成同意、拒绝或其他操作。"
-      :tags="[{ label: statusMeta.label, variant: statusMeta.variant }]"
-    />
+      <PageHeader
+        icon="checkCircle"
+        :title="detail?.title ?? '审批详情'"
+        subtitle="查看申请内容、审批进度，并在底部完成同意、拒绝或其他操作。"
+        :tags="detail ? [{ label: statusMeta.label, variant: statusMeta.variant }] : []"
+      />
     </div>
 
     <div class="flex shrink-0 flex-wrap items-center gap-2">
@@ -258,7 +258,7 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
     <WorkflowDetailShell
       v-else-if="detail"
       aria-label="审批详情"
-      class-name="min-h-0 flex-1"
+      class-name="min-h-[32rem] flex-1 md:min-h-0"
       :show-actions="true"
     >
       <template #header>
@@ -276,8 +276,7 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
           :schema="formSchema"
           :model-value="formModel"
           :show-actions="false"
-          :label-width="96"
-          class="max-sm:[&_.tiger-form-item--label-left]:flex-col max-sm:[&_.tiger-form-item__label]:!w-full max-sm:[&_.tiger-form-item__label]:!pt-0 max-sm:[&_.tiger-form-item__label]:!text-start"
+          label-position="top"
           aria-label="申请表单"
           @update:model-value="handleFormChange"
         />

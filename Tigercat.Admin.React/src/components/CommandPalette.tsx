@@ -182,6 +182,7 @@ export function CommandPalette({
       title="命令面板"
       placeholder="搜索页面或操作，按回车执行"
       emptyText="未找到匹配项"
+      hotkey
       closeOnSelect
       onOpenChange={handleOpenChange}
       onQueryChange={setQuery}

@@ -161,7 +161,7 @@ test.describe('运维工作流后端化页面', () => {
 
     await page.getByText('发布窗口确认').first().click();
     await expect(page).toHaveURL(/\/tasks/);
-    await expect(page.getByRole('main').getByText('任务面板')).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('heading', { name: /^任务面板/ })).toBeVisible();
   });
 
   test('任务面板加载后端任务模型', async ({ page }) => {

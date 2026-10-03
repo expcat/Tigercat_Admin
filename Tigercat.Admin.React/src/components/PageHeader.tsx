@@ -23,7 +23,7 @@ export function PageHeader({ title, subtitle, icon, tags }: PageHeaderProps) {
       className="min-w-0 overflow-hidden"
       title={
         <div className="flex min-w-0 items-center gap-3">
-          <div className="p2-icon-chip flex h-12 w-12 shrink-0 items-center justify-center">
+          <div className="p2-icon-chip flex h-12 w-12 shrink-0 items-center justify-center [&_svg]:text-current">
             {icon}
           </div>
           <div className="min-w-0">

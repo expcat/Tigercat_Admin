@@ -384,10 +384,10 @@ const currentColumnText = computed(() => {
             <div>
               <Text weight="medium" class="mb-1 block">封面 / 附件</Text>
               <Upload :auto-upload="false" accept="image/*" :multiple="true">
-                <Button variant="outline" size="sm">
+                <span class="inline-flex items-center">
                   <Icon name="upload" :size="14" class="mr-1" />
                   选择文件
-                </Button>
+                </span>
               </Upload>
             </div>
           </div>

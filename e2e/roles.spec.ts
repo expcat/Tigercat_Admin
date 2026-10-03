@@ -92,13 +92,11 @@ async function deleteRole(page: Page, name: string) {
 async function confirmRoleDelete(page: Page, row: ReturnType<typeof roleRow>) {
   const deleteButton = row.getByRole('button', { name: '删除', exact: true });
   await expect(deleteButton).toBeVisible();
-  await deleteButton.evaluate((element) => (element as HTMLElement).click());
+  await deleteButton.click();
 
   const dialog = page.getByRole('dialog', { name: /确认删除角色/ });
   await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: '删除' }).evaluate((element) =>
-    (element as HTMLElement).click(),
-  );
+  await dialog.getByRole('button', { name: '删除' }).click();
 }
 
 test.describe('角色与权限主流程', () => {
@@ -155,9 +153,9 @@ test.describe('角色与权限主流程', () => {
 
     const dialog = page.getByRole('dialog', { name: /权限配置/ });
     await expect(dialog).toBeVisible();
-    await dialog
-      .getByRole('checkbox', { name: /查看仪表盘 \(dashboard:view\)/ })
-      .check({ force: true });
+    const permission = dialog.getByRole('treeitem', { name: /查看仪表盘 \(dashboard:view\)/ });
+    await permission.press('Space');
+    await expect(permission).toHaveAttribute('aria-checked', 'true');
     await dialog.getByRole('button', { name: '保存' }).click();
     await expect(dialog).toBeHidden();
     await expect(page.getByText('权限配置已保存').first()).toBeVisible();
