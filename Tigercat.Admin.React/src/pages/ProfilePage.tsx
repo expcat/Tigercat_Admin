@@ -251,6 +251,7 @@ function ProfilePage() {
                   </div>
                   <Switch
                     checked={security.twoFactor || twoFactorPending}
+                    aria-label="两步验证"
                     disabled={twoFactorLoading}
                     onChange={handleTwoFactorChange}
                   />
@@ -265,6 +266,7 @@ function ProfilePage() {
                   </div>
                   <Switch
                     checked={security.loginAlert}
+                    aria-label="登录提醒"
                     onChange={(v) => setSecurity((s) => ({ ...s, loginAlert: v }))}
                   />
                 </div>
@@ -278,6 +280,7 @@ function ProfilePage() {
                   </div>
                   <Switch
                     checked={security.remoteProtect}
+                    aria-label="异地登录保护"
                     onChange={(v) => setSecurity((s) => ({ ...s, remoteProtect: v }))}
                   />
                 </div>
@@ -401,7 +404,7 @@ function ProfilePage() {
                     每周发送一次工作摘要邮件
                   </Text>
                 </div>
-                <Switch checked={emailDigest} onChange={(v) => setEmailDigest(v)} />
+                <Switch aria-label="邮件摘要" checked={emailDigest} onChange={(v) => setEmailDigest(v)} />
               </div>
 
               <div className="flex justify-end">

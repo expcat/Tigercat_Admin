@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, ref, onMounted, watch, computed } from 'vue'
+import { inject, ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Alert } from '@expcat/tigercat-vue/Alert'
 import { Card } from '@expcat/tigercat-vue/Card'
@@ -54,6 +54,17 @@ let trendRequestId = 0
 
 // 时间范围（天数）
 const trendDays = ref<number>(7)
+const isNarrowTrend = ref(false)
+let narrowTrendQuery: MediaQueryList | null = null
+function syncNarrowTrend() {
+  isNarrowTrend.value = narrowTrendQuery?.matches ?? false
+}
+onMounted(() => {
+  narrowTrendQuery = window.matchMedia('(max-width: 639px)')
+  syncNarrowTrend()
+  narrowTrendQuery.addEventListener('change', syncNarrowTrend)
+})
+onBeforeUnmount(() => narrowTrendQuery?.removeEventListener('change', syncNarrowTrend))
 const exporting = ref(false)
 const exportColumns = computed(() => toExportColumns(OVERVIEW_EXPORT_FIELDS))
 const trendDaysOptions = [
@@ -88,7 +99,7 @@ const distributionChartData = computed(() => {
   ]
 })
 
-const trendXTicks = computed(() => (trendDays.value <= 14 ? Math.min(trendDays.value, 8) : 6))
+const trendXTicks = computed(() => isNarrowTrend.value ? 3 : trendDays.value <= 14 ? Math.min(trendDays.value, 8) : 6)
 const chartPrimary = 'var(--tiger-primary)'
 const chartError = 'var(--tiger-error, #dc2626)'
 const chartSuccess = 'var(--tiger-success, #16a34a)'

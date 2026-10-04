@@ -76,9 +76,7 @@ const upcoming = computed(() =>
     .sort((a, b) => a.ts - b.ts),
 )
 const nextEvent = computed(() => upcoming.value.find((e) => e.ts > Date.now()) ?? null)
-const countdownTarget = computed(() =>
-  nextEvent.value ? new Date(nextEvent.value.ts) : new Date(Date.now() + 45 * 60 * 1000),
-)
+const countdownTarget = computed(() => (nextEvent.value ? new Date(nextEvent.value.ts) : null))
 function handleCountdownFinish() {
   Message.info({ content: '有一个日程已到开始时间（演示）', duration: 2600 })
 }
@@ -199,16 +197,19 @@ onMounted(() => {
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
       <Card>
-        <Countdown
-          :value="countdownTarget"
-          format="DD 天 HH:mm:ss"
-          :title="nextEvent ? `距离「${nextEvent.title}」` : '暂无即将到来的日程'"
-          size="lg"
-          @finish="handleCountdownFinish"
-        />
-        <Text v-if="nextEvent" size="sm" color="secondary" class="mt-1 block">
-          {{ nextEvent.date }} {{ nextEvent.start }} · {{ TYPE_META[nextEvent.type].label }}
-        </Text>
+        <template v-if="nextEvent && countdownTarget">
+          <Countdown
+            :value="countdownTarget"
+            format="DD 天 HH:mm:ss"
+            :title="`距离「${nextEvent.title}」`"
+            size="lg"
+            @finish="handleCountdownFinish"
+          />
+          <Text size="sm" color="secondary" class="mt-1 block">
+            {{ nextEvent.date }} {{ nextEvent.start }} · {{ TYPE_META[nextEvent.type].label }}
+          </Text>
+        </template>
+        <Statistic v-else title="暂无即将到来的日程" value="—" />
       </Card>
       <Card><Statistic title="今日日程" :value="todayCount" suffix="项" /></Card>
       <Card><Statistic title="本月日程" :value="monthCount" suffix="项" /></Card>
@@ -253,7 +254,7 @@ onMounted(() => {
         <MutedPanel
           compact
           class="mt-3"
-          description="格子内用色点和数量标记当天事件；点击日期查看右侧详情。不要另画一套格内事件层。"
+          description="格子内的色点和数量表示当天事件；点击日期查看日程详情。"
         />
       </Card>
 

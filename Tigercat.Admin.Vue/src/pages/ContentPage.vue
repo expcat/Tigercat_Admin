@@ -249,7 +249,7 @@ const currentColumnText = computed(() => {
         <Space :size="'sm'" align="center" wrap>
           <div class="flex items-center gap-2">
             <Text size="sm" color="secondary">立即发布</Text>
-            <Switch :model-value="publishNow" @update:model-value="(v: boolean) => (publishNow = v)" />
+            <Switch aria-label="立即发布" :model-value="publishNow" @update:model-value="(v: boolean) => (publishNow = v)" />
           </div>
           <Button variant="outline" :disabled="loading || saving" @click="saveDraft">
             <Icon name="download" :size="16" class="mr-1" />

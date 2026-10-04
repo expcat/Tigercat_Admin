@@ -134,8 +134,16 @@ function tabFromHref(href: string): ProjectDetailTab {
   return 'overview'
 }
 
-function handleAnchorClick(_event: Event, href: string) {
+function handleAnchorClick(event: Event, href: string) {
+  event.preventDefault()
   activeTab.value = tabFromHref(href)
+}
+
+const anchorHref = computed(
+  () => PROJECT_DETAIL_TABS.find((item) => item.key === activeTab.value)?.href ?? '#project-overview',
+)
+function currentAnchor() {
+  return anchorHref.value
 }
 
 function getScrollContainer(): HTMLElement | Window {
@@ -337,6 +345,7 @@ function getScrollContainer(): HTMLElement | Window {
             :affix="false"
             :get-container="getScrollContainer"
             :offset-top="16"
+            :get-current-anchor="currentAnchor"
             @click="handleAnchorClick"
           >
             <AnchorLink
@@ -349,7 +358,7 @@ function getScrollContainer(): HTMLElement | Window {
           <MutedPanel
             compact
             class="mt-3"
-            description="点击目录切换概览、成员或动态，并滚动到对应区块。"
+            description="点击目录切换概览、成员或动态。"
           />
         </Card>
       </div>

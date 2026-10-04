@@ -112,6 +112,7 @@ export function MainSidebar({
   const [expandedKeys, setExpandedKeys] = useState<(string | number)[]>([
     'system',
   ]);
+  const [popupOpenKeys, setPopupOpenKeys] = useState<(string | number)[]>([]);
   const menuNavRef = useRef<HTMLElement | null>(null);
   const { has: hasPerm } = usePermission();
   const menuSchema = useShellMenuSchema();
@@ -152,6 +153,10 @@ export function MainSidebar({
 
   const displayCollapsed = showCollapseToggle ? collapsed : false;
 
+  useEffect(() => {
+    setPopupOpenKeys([]);
+  }, [displayCollapsed]);
+
   return (
     <Sidebar
       collapsed={displayCollapsed}
@@ -176,7 +181,7 @@ export function MainSidebar({
         <nav ref={menuNavRef} className="min-h-0 flex-1 overflow-y-auto py-2">
           <Menu
             selectedKeys={[activeMenu]}
-            openKeys={expandedKeys}
+            openKeys={displayCollapsed ? popupOpenKeys : expandedKeys}
             collapsed={displayCollapsed}
             popupPortal
             mode="inline"
@@ -186,7 +191,11 @@ export function MainSidebar({
             emptyText="没有匹配的菜单"
             className={`!min-w-0 ${displayCollapsed ? 'menu-collapsed' : ''}`}
             onSelect={handleSelect}
-            onOpenChange={(_key, info) => setExpandedKeys(info.openKeys)}
+            onOpenChange={(_key, info) =>
+              displayCollapsed
+                ? setPopupOpenKeys(info.openKeys)
+                : setExpandedKeys(info.openKeys)
+            }
           />
         </nav>
 
@@ -207,6 +216,9 @@ export function MainSidebar({
         {showCollapseToggle && (
           <div className="shrink-0 border-t border-(--tiger-border,#e2e8f0) p-3 overflow-hidden">
             <button
+              type="button"
+              aria-label={collapsed ? '展开菜单' : '收起菜单'}
+              aria-expanded={!collapsed}
               onClick={() => onCollapsedChange(!collapsed)}
               className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm text-(--tiger-text-secondary,#64748b) hover:bg-(--tiger-bg-hover,#f3f4f6) hover:text-(--tiger-text,#1f2937) transition-all duration-200">
               <span className="shrink-0">
@@ -220,7 +232,7 @@ export function MainSidebar({
                 className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity,transform] duration-300 ease-in-out ${
                   collapsed ? 'max-w-0 -translate-x-2 opacity-0 pointer-events-none' : 'max-w-20 translate-x-0 opacity-100'
                 }`}>
-                收起菜单
+                {collapsed ? '展开菜单' : '收起菜单'}
               </span>
             </button>
           </div>

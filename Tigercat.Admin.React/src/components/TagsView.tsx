@@ -34,8 +34,16 @@ export function TagsView({
 }: TagsViewProps) {
   const tabListRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
-    tabListRef.current?.querySelector<HTMLElement>('[data-active="true"]')
-      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const list = tabListRef.current;
+    if (!list) return;
+    const revealActiveTab = () => {
+      list.querySelector<HTMLElement>('[data-active="true"]')
+        ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    };
+    revealActiveTab();
+    const observer = new ResizeObserver(revealActiveTab);
+    observer.observe(list);
+    return () => observer.disconnect();
   }, [activeKey, keys]);
 
   const canCloseCurrent = activeKey !== TAGS_VIEW_HOME_KEY;
@@ -47,12 +55,12 @@ export function TagsView({
   return (
     <div
       data-testid="shell-tags-view"
-      className="p2-tags-view flex min-w-0 w-full shrink-0 items-center gap-1 border-b border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-card,#ffffff) px-3 py-1.5 md:px-6">
+      className="p2-tags-view flex h-12 min-w-0 w-full shrink-0 items-center gap-1 border-b border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-card,#ffffff) px-3 py-1.5 md:px-6">
       <div
         ref={tabListRef}
         role="tablist"
         aria-label="已打开的页面"
-        className="p2-tags-view-list flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:thin]">
+        className="p2-tags-view-list flex h-full min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:thin]">
         {keys.map((key) => {
           const title = getShellPageTitle(key);
           const isActive = key === activeKey;

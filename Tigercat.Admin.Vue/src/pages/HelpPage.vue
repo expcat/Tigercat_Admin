@@ -37,11 +37,10 @@ const SPY_ITEMS: ScrollSpyItem[] = SECTIONS.map((s) => ({
 }))
 
 const START_COPY =
-  '欢迎使用 Tigercat 管理后台演示。登录后可通过左侧菜单浏览各业务域，或使用命令面板（⌘/Ctrl + K）快速跳转。下面是一个调用受保护接口的示例：'
+  '欢迎使用 Tigercat 管理后台演示。登录后可通过左侧菜单浏览各业务域，或使用命令面板（⌘/Ctrl + K）快速跳转。下面是调用本服务健康检查的示例，无需登录：'
 
-const SAMPLE_CODE = `# 使用演示令牌登录后调用受保护接口
-curl -X GET https://api.tigercat.demo/v1/profile \\
-  -H "Authorization: Bearer <your-token>" \\
+const SAMPLE_CODE = `# GET /api/health，无需登录
+curl -X GET http://127.0.0.1:5137/api/health \\
   -H "Accept: application/json"`
 
 const HIGHLIGHT_KEYWORDS = ['权限', '令牌']
@@ -73,7 +72,7 @@ const FAQ = [
   {
     key: 'faq-account',
     q: '如何重置我的账户密码？',
-    a: '进入「个人中心 → 安全设置」，点击「修改密码」，按提示完成两步验证即可。演示环境下所有变更仅保存在当前会话。',
+    a: '点击右上角账号菜单中的「修改密码」，按弹窗填写当前密码和新密码。忘记密码可从登录页进入找回流程；静态演示模式仅验证流程。',
   },
   {
     key: 'faq-permission',
@@ -83,7 +82,7 @@ const FAQ = [
   {
     key: 'faq-data',
     q: '页面里的数据会被保存吗？',
-    a: '本示例以展示组件用法为主，绝大多数写操作走内存态或 MockApi，刷新后重置，不会写入真实后端。',
+    a: '静态演示模式使用 Mock 数据，页面刷新会重置演示写入；API 模式的用户、角色等业务写入后端，页面标记为演示的功能仍提供样例数据。',
   },
   {
     key: 'faq-print',
@@ -97,7 +96,7 @@ const CATEGORIES = ['入门指南', '权限模型', '数据导入', '报表打�
 const ALL_ARTICLES: ListItem[] = Array.from({ length: 14 }, (_, i) => ({
   key: `article-${i + 1}`,
   title: `帮助文章 ${String(i + 1).padStart(2, '0')} · ${CATEGORIES[i % CATEGORIES.length]}`,
-  description: '点击查看完整文档，了解该功能的配置项、最佳实践与常见陷阱。',
+  description: '演示目录项，用于展示分批加载；具体配置参见组件文档。',
 }))
 
 const PAGE_SIZE = 5
@@ -155,7 +154,7 @@ function submitFeedback() {
       <MetricCard title="快捷键" :value="SHORTCUTS.length" description="提升操作效率">
         <template #icon><Icon name="compass" :size="20" /></template>
       </MetricCard>
-      <MetricCard title="反馈渠道" value="7×24" description="随时联系支持团队">
+      <MetricCard title="反馈渠道" value="演示入口" description="展示反馈交互">
         <template #icon><Icon name="message" :size="20" /></template>
       </MetricCard>
     </MetricGrid>
@@ -187,20 +186,13 @@ function submitFeedback() {
                   :global="true"
                 />
               </Text>
-              <Highlight
-                :keywords="HIGHLIGHT_KEYWORDS"
-                :text="SAMPLE_CODE"
-                :case-sensitive="false"
-                :global="true"
-                class-name="block whitespace-pre-wrap font-mono text-sm"
-              />
               <Code :code="SAMPLE_CODE" copyable copy-label="复制" copied-label="已复制" />
               <div class="flex flex-wrap items-center gap-4">
                 <Link href="#help-faq" variant="primary" @click="onFaqLinkClick">
                   <Icon name="link" :size="14" class="mr-1" />
                   查看常见问题
                 </Link>
-                <Link href="https://github.com" target="_blank" variant="secondary">
+                <Link href="https://github.com/expcat/Tigercat" target="_blank" variant="secondary">
                   组件文档（外链）
                 </Link>
               </div>
@@ -322,7 +314,7 @@ function submitFeedback() {
             <MutedPanel
               compact
               class="mt-3"
-              description="点击目录项平滑滚动到对应章节；向下滚动可见右下角「回到顶部」。"
+              description="点击目录项平滑滚动到对应章节；桌面端可使用左下角「回到顶部」。"
             />
           </Card>
         </Affix>

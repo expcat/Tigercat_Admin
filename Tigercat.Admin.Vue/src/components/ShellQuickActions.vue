@@ -52,6 +52,7 @@ const sendFeedback = () => {
   </FloatButtonGroup>
 
   <BackTop
+    class="max-sm:!hidden"
     :target="getScrollTarget"
     :visibility-height="240"
     position="fixed"

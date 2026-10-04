@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, inject, onMounted, h } from 'vue'
+import { ref, computed, inject, onMounted, h, nextTick } from 'vue'
 import { Avatar } from '@expcat/tigercat-vue/Avatar'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Checkbox } from '@expcat/tigercat-vue/Checkbox'
@@ -148,6 +148,9 @@ const modalTitle = ref('新增用户')
 const editingId = ref<number | null>(null)
 const editingAvatarId = ref<number | null>(null)
 const avatarUploading = ref(false)
+const formErrors = ref({ username: '', password: '' })
+const usernameInputRef = ref<{ focus: () => void } | null>(null)
+const passwordInputRef = ref<{ focus: () => void } | null>(null)
 const formData = ref({
   username: '',
   password: '',
@@ -247,20 +250,19 @@ async function handleSubmit() {
     return
   }
 
-  // Validation
-  if (!editingId.value) {
-    if (!formData.value.username.trim()) {
-      Message.error({ content: '请输入用户名', duration: 3000 })
-      return
-    }
-    if (!formData.value.password) {
-      Message.error({ content: '请输入密码', duration: 3000 })
-      return
-    }
-    if (formData.value.password.length < 6) {
-      Message.error({ content: '密码长度不能少于 6 位', duration: 3000 })
-      return
-    }
+  const errors = {
+    username: !editingId.value && !formData.value.username.trim() ? '请输入用户名' : '',
+    password: !editingId.value
+      ? !formData.value.password ? '请输入密码'
+        : formData.value.password.length < 6 ? '密码长度不能少于 6 位' : ''
+      : '',
+  }
+  formErrors.value = errors
+  if (errors.username || errors.password) {
+    await nextTick()
+    const input = errors.username ? usernameInputRef : passwordInputRef
+    input.value?.focus()
+    return false
   }
 
   try {
@@ -301,6 +303,7 @@ async function handleSubmit() {
     await loadUsers()
   } catch (e: any) {
     Message.error({ content: e.message || '操作失败', duration: 3000 })
+    return false
   }
 }
 
@@ -377,6 +380,7 @@ async function confirmBatchStatus() {
 }
 
 function openCreateModal() {
+  formErrors.value = { username: '', password: '' }
   editingId.value = null
   editingAvatarId.value = null
   modalTitle.value = '新增用户'
@@ -385,6 +389,7 @@ function openCreateModal() {
 }
 
 function openEditModal(user: UserItem) {
+  formErrors.value = { username: '', password: '' }
   editingId.value = user.id
   editingAvatarId.value = user.avatarMediaId
   modalTitle.value = '编辑用户'
@@ -876,16 +881,20 @@ onMounted(() => {
     >
       <div class="p2-modal-scroll">
       <Form :model-value="formData" :label-width="88">
-        <FormItem label="用户名" name="username">
+        <FormItem label="用户名" name="username" :error="formErrors.username">
           <Input
+            ref="usernameInputRef"
             v-model="formData.username"
+            @update:model-value="formErrors.username = ''"
             placeholder="请输入用户名"
             :disabled="!!editingId"
           />
         </FormItem>
-        <FormItem label="密码" name="password">
+        <FormItem label="密码" name="password" :error="formErrors.password">
           <Input
+            ref="passwordInputRef"
             v-model="formData.password"
+            @update:model-value="formErrors.password = ''"
             type="password"
             :placeholder="editingId ? '留空则不修改密码' : '请输入密码'"
           />

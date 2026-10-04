@@ -255,7 +255,7 @@ function ContentPage() {
               <Text size="sm" color="secondary">
                 立即发布
               </Text>
-              <Switch checked={publishNow} onChange={setPublishNow} />
+              <Switch aria-label="立即发布" checked={publishNow} onChange={setPublishNow} />
             </div>
             <Button variant="outline" disabled={loading || saving} onClick={() => void saveDraft()}>
               <span className="mr-1 inline-flex align-middle">

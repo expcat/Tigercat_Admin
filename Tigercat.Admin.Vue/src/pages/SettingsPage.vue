@@ -234,6 +234,7 @@ function handleSettingGroupsChange(keys: (string | number)[]) {
             </Text>
           </div>
           <Switch
+            aria-label="全局内容水印"
             :model-value="watermarkEnabled"
             data-testid="setting-theme-watermark-switch"
             @update:model-value="(val: boolean) => setWatermarkEnabled(val)"
@@ -269,6 +270,7 @@ function handleSettingGroupsChange(keys: (string | number)[]) {
 
               <Switch
                 v-if="getControl(item.key).type === 'switch'"
+                :aria-label="item.description ?? item.key"
                 :model-value="editValues[item.key] === 'true'"
                 @update:model-value="(val: boolean) => (editValues[item.key] = String(val))"
                 :disabled="!canEdit"

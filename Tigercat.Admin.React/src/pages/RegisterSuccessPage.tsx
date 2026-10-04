@@ -56,13 +56,8 @@ function RegisterSuccessPage() {
             status="success"
             title="注册成功"
             subTitle="账号已创建，即将返回登录页"
-            extra={
-              <Button variant="primary" onClick={goToLogin}>
-                立即登录
-              </Button>
-            }
           >
-            <div className="flex flex-col items-center">
+            <div className="mb-4 flex justify-center">
               <Countdown
                 value={countdownTarget}
                 format="s"
@@ -70,6 +65,11 @@ function RegisterSuccessPage() {
                 title="即将自动返回登录"
                 onFinish={() => navigate('/login')}
               />
+            </div>
+            <div className="flex justify-center">
+              <Button variant="primary" onClick={goToLogin}>
+                立即登录
+              </Button>
             </div>
           </Result>
         </Card>

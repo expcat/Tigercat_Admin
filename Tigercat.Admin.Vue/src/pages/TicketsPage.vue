@@ -205,8 +205,18 @@ const selectedDescriptions = computed<DescriptionsItem[]>(() => {
     { label: '提交人', content: t.requester, labelClassName: 'whitespace-nowrap' },
     { label: '分类', content: t.category, labelClassName: 'whitespace-nowrap' },
     { label: '优先级', content: PRIORITY_META[t.priority].label, labelClassName: 'whitespace-nowrap' },
-    { label: '创建时间', content: t.createdAt, labelClassName: 'whitespace-nowrap' },
-    { label: '更新时间', content: t.updatedAt, labelClassName: 'whitespace-nowrap' },
+    {
+      label: '创建时间',
+      content: t.createdAt,
+      labelClassName: 'whitespace-nowrap',
+      contentClassName: 'break-words',
+    },
+    {
+      label: '更新时间',
+      content: t.updatedAt,
+      labelClassName: 'whitespace-nowrap',
+      contentClassName: 'break-words',
+    },
   ]
 })
 
@@ -363,8 +373,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   mql?.removeEventListener('change', syncWide)
 })
-const splitDirection = computed(() => (isWide.value ? 'horizontal' : 'vertical'))
-const splitStyle = computed(() => ({ height: isWide.value ? '640px' : '900px' }))
 /** ChatWindow fills this box; textarea resize would fight the Resizable bottom handle. */
 const TICKET_CHAT_WINDOW_CLASS = 'h-full min-h-0 [&_textarea]:resize-none'
 
@@ -412,15 +420,15 @@ const chatStatus = computed(() =>
       </Button>
     </div>
 
-    <Card class="min-w-0 overflow-hidden">
-      <Splitter
-        :orientation="splitDirection"
-        :min="220"
-        :gutter-size="8"
-        :style="splitStyle"
+    <Card class="min-w-0 lg:overflow-hidden">
+      <component
+        :is="isWide ? Splitter : 'div'"
+        v-bind="isWide
+          ? { orientation: 'horizontal', sizes: ['28%', '72%'], min: 220, gutterSize: 8, style: { height: '640px' } }
+          : { class: 'space-y-6' }"
       >
         <!-- 左：列表 -->
-        <div class="flex h-full min-w-0 flex-col gap-3 overflow-hidden pr-1">
+        <div class="flex min-w-0 flex-col gap-3 lg:h-full lg:overflow-hidden lg:pr-1">
           <Input v-model="keyword" placeholder="搜索标题 / 提交人 / 工单号" clearable />
           <div class="flex flex-wrap gap-2">
             <button
@@ -439,7 +447,7 @@ const chatStatus = computed(() =>
             </button>
           </div>
 
-          <div class="flex-1 space-y-2 overflow-y-auto">
+          <div class="space-y-2 lg:flex-1 lg:overflow-y-auto">
             <button
               v-for="t in filteredTickets"
               :key="t.id"
@@ -492,16 +500,16 @@ const chatStatus = computed(() =>
           </div>
         </div>
 
-        <!-- 右：详情。body 内滚，ActionBar 钉在窗格底（首屏可见，不必右栏内滚）。 -->
+        <!-- 桌面详情内滚；窄屏随主区滚动，操作条保持在可视区底部。 -->
         <div
-          class="flex h-full min-w-0 flex-col overflow-hidden pl-1"
+          class="flex min-w-0 flex-col lg:h-full lg:overflow-hidden lg:pl-1"
           data-ticket-detail-pane
         >
           <template v-if="selected">
             <div class="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-2">
-              <div class="flex items-center gap-2">
+              <div class="flex min-w-0 flex-1 items-start gap-2">
                 <Text size="lg" weight="bold">{{ selected.title }}</Text>
-                <Tag :variant="STATUS_META[selected.status].variant" size="sm">
+                <Tag :variant="STATUS_META[selected.status].variant" size="sm" class="shrink-0">
                   {{ STATUS_META[selected.status].label }}
                 </Tag>
               </div>
@@ -525,12 +533,12 @@ const chatStatus = computed(() =>
               </div>
             </div>
 
-            <div class="mt-4 min-h-0 flex-1 overflow-y-auto">
-            <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <div class="mt-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto" data-ticket-detail-body>
+            <div class="space-y-4">
               <Card>
                 <template #header><Text weight="bold">工单信息</Text></template>
-                <Descriptions :items="selectedDescriptions" :column="1" bordered colon />
-                <div class="mt-3 flex items-center gap-2">
+                <Descriptions :items="selectedDescriptions" :column="1" :layout="isWide ? 'horizontal' : 'vertical'" bordered colon />
+                <div class="mt-3 flex flex-wrap items-center gap-2">
                   <Text size="sm" color="secondary">满意度</Text>
                   <Rate :model-value="selected.satisfaction" disabled allow-half />
                   <Popover trigger="hover" placement="top" :width="240">
@@ -644,13 +652,14 @@ const chatStatus = computed(() =>
             </div>
 
             <div
-              class="sticky bottom-0 z-10 mt-auto shrink-0 border-t border-[var(--tiger-border,#e5e7eb)] bg-[var(--tiger-bg-card,#fff)] px-1 py-3"
+              class="sticky bottom-0 z-10 mt-4 shrink-0 border-t border-[var(--tiger-border,#e5e7eb)] bg-[var(--tiger-bg-card,#fff)] px-1 py-3 lg:mt-auto"
               data-ticket-detail-action
             >
               <WorkflowActionBar
                 :items="TICKET_WORKFLOW_ACTIONS"
                 :disabled="workflowActionsDisabled"
                 aria-label="审批操作"
+                :style="{ flexWrap: 'wrap', overflowX: 'visible' }"
                 @action="handleWorkflowAction"
               />
             </div>
@@ -665,7 +674,7 @@ const chatStatus = computed(() =>
             />
           </div>
         </div>
-      </Splitter>
+      </component>
     </Card>
 
     <!-- 新建工单 -->

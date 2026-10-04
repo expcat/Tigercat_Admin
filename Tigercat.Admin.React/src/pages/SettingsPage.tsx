@@ -264,6 +264,7 @@ function SettingsPage() {
                 </Text>
               </div>
               <Switch
+                aria-label="全局内容水印"
                 checked={watermarkEnabled}
                 onChange={(val) => setWatermarkEnabled(val)}
                 data-testid="setting-theme-watermark-switch"
@@ -301,6 +302,7 @@ function SettingsPage() {
 
                         {ctrl.type === 'switch' ? (
                           <Switch
+                            aria-label={item.description ?? item.key}
                             checked={editValues[item.key] === 'true'}
                             onChange={(val) =>
                               setEditValues((prev) => ({

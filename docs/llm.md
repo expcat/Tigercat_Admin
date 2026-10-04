@@ -14,6 +14,7 @@
 | 理解项目或快速开始 | [README.md](../README.md) | [docs/operations.md](operations.md) |
 | 编码、审查、重构、文档整理 | [AGENT.md](../AGENT.md) | 相关专题和现有实现 |
 | 前端页面、布局、Tigercat UI | [docs/frontend.md](frontend.md) | [docs/api.md](api.md)、[上游需求](tigercat-upstream-requirements.md)、[上游建议短清单](frontend-upstream-suggestions.md)、双端同名页面 |
+| 视觉 Review、hover / 焦点修复、后续开发计划 | [视觉报告](frontend-visual-review.md) + [Roadmap](../Roadmap.md) | [逐项证据](visual-review/2026-10-04/findings.md)、[待验证分支](roadmap-followups.md)、相关双端源码 |
 | API 对接或后端端点 | [docs/api.md](api.md) | 对应 [docs/api](api) 专题、`Tigercat.Admin.Api/Endpoints/*` |
 | 数据库、Redis、媒体、部署、CI | [docs/operations.md](operations.md) | API 或前端专题 |
 | Native AOT / `PublishAot` / JSON source-gen | [docs/operations.md Native AOT 评估](operations.md#native-aot) | csproj 与 `AppJsonContext`（不要打开 `PublishAot`，不要把 AOT 加进 CI） |
@@ -66,6 +67,7 @@
 | 事实 | 归属 | 其他文档的引用方式 |
 | ---- | ---- | ------------------ |
 | 组件用法、视觉规则、双端映射、表格约定、页面验收 | [docs/frontend.md](frontend.md) | guide 按锚点引用，不复写 |
+| 视觉发现、证据与开发计划 | [视觉报告](frontend-visual-review.md) + [逐项记录](visual-review/2026-10-04/findings.md) + [Roadmap](../Roadmap.md) | 报告写覆盖，记录写复现，路线图写开发；入口只链接 |
 | 对 Tigercat 组件库的缺口与建议 API | [docs/tigercat-upstream-requirements.md](tigercat-upstream-requirements.md) | suggestions 只列开放项指针 |
 | API 字段与契约 | [docs/api.md](api.md) + [docs/api](api) | [guide/backend.md](guide/backend.md) 只写抽象层 |
 | 本仓库运行、数据库、部署、CI | [docs/operations.md](operations.md) | guide 引用章节 |

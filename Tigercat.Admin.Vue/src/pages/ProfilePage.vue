@@ -255,6 +255,7 @@ function handleSave(scope: string) {
                   <Text size="sm" color="secondary" class="block">登录时额外校验身份验证器动态码</Text>
                 </div>
                 <Switch
+                  aria-label="两步验证"
                   :model-value="security.twoFactor || twoFactorPending"
                   :disabled="twoFactorLoading"
                   @update:model-value="handleTwoFactorChange"
@@ -266,7 +267,7 @@ function handleSave(scope: string) {
                   <Text weight="medium">登录提醒</Text>
                   <Text size="sm" color="secondary" class="block">新设备登录时发送邮件通知</Text>
                 </div>
-                <Switch v-model="security.loginAlert" />
+                <Switch v-model="security.loginAlert" aria-label="登录提醒" />
               </div>
               <Divider spacing="sm" />
               <div class="flex items-center justify-between gap-4 py-2">
@@ -274,7 +275,7 @@ function handleSave(scope: string) {
                   <Text weight="medium">异地登录保护</Text>
                   <Text size="sm" color="secondary" class="block">非常用地登录时需二次确认</Text>
                 </div>
-                <Switch v-model="security.remoteProtect" />
+                <Switch v-model="security.remoteProtect" aria-label="异地登录保护" />
               </div>
             </div>
           </Card>
@@ -323,7 +324,7 @@ function handleSave(scope: string) {
           <div class="space-y-6">
             <div>
               <Text weight="medium" class="mb-2 block">界面密度</Text>
-              <RadioGroup :value="density" @update:value="handleDensityChange">
+              <RadioGroup :model-value="density" @update:model-value="handleDensityChange">
                 <Space>
                   <Radio :value="'compact'">紧凑</Radio>
                   <Radio :value="'comfortable'">适中</Radio>
@@ -341,8 +342,8 @@ function handleSave(scope: string) {
               <Text weight="medium" class="mb-2 block">界面字号</Text>
               <div class="max-w-sm">
                 <Slider
-                  :value="fontSize"
-                  @update:value="handleFontSizeChange"
+                  :model-value="fontSize"
+                  @update:model-value="handleFontSizeChange"
                   :min="12"
                   :max="20"
                   :step="1"
@@ -383,7 +384,7 @@ function handleSave(scope: string) {
                 <Text weight="medium">邮件摘要</Text>
                 <Text size="sm" color="secondary" class="block">每周发送一次工作摘要邮件</Text>
               </div>
-              <Switch v-model="emailDigest" />
+              <Switch v-model="emailDigest" aria-label="邮件摘要" />
             </div>
 
             <div class="flex justify-end">

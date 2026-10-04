@@ -87,6 +87,7 @@ function focusTrigger() {
           <Text size="sm" color="secondary">收紧内容区内边距，侧栏默认折叠</Text>
         </div>
         <Switch
+          aria-label="紧凑密度"
           :model-value="props.themePrefs.compactMode"
           @update:model-value="(checked: boolean) => patchTheme({ compactMode: checked })"
         />

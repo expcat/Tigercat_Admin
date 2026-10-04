@@ -84,6 +84,7 @@ export function ThemeConfigDrawer({
             </Text>
           </div>
           <Switch
+            aria-label="紧凑密度"
             checked={themePrefs.compactMode}
             onChange={(checked) => patchTheme({ compactMode: checked })}
           />

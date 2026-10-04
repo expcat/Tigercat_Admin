@@ -369,9 +369,8 @@ onMounted(async () => {
       <Card title="保留策略">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
           <Input
-            :value="retentionDays"
+            v-model="retentionDays"
             placeholder="保留天数"
-            @change="(value) => retentionDays = String(value ?? '')"
           />
           <Button v-if="canSaveRetention" variant="outline" @click="handleSaveRetention">
             保存策略

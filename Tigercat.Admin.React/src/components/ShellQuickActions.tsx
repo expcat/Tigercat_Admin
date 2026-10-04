@@ -57,6 +57,7 @@ export function ShellQuickActions() {
       </FloatButtonGroup>
 
       <BackTop
+        className="max-sm:!hidden"
         target={getScrollTarget}
         visibilityHeight={240}
         position="fixed"

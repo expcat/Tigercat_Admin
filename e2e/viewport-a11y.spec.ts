@@ -62,16 +62,22 @@ test.describe('375 viewport coverage', { tag: '@mobile' }, () => {
     await expectNoPageHorizontalOverflow(page);
   });
 
-  test('Tickets Splitter 窄屏为上下分栏且内容可见', async ({ page }, testInfo) => {
+  test('Tickets 窄屏顺序阅读详情且操作完整换行', async ({ page }, testInfo) => {
     await loginAsAdmin(page, testInfo);
 
     await page.goto(appPath(testInfo, '/tickets'));
     await expect(page.getByText('工单列表')).toBeVisible();
-    await expect(page.locator('[data-orientation="vertical"]').first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll div[data-orientation]')).toHaveCount(0);
+    const detailBody = page.locator('[data-ticket-detail-body]');
+    await expect.poll(() => detailBody.evaluate((element) => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1);
+    const toolbar = page.getByRole('toolbar', { name: '审批操作' });
+    await expect.poll(() => toolbar.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
     await expect(page.getByText('工单生命周期', { exact: true })).toBeVisible();
     await expect(page.getByText('工单信息', { exact: true })).toBeVisible();
 
+    await page.getByText('工单信息', { exact: true }).scrollIntoViewIfNeeded();
     await expectTicketActionBarFirstScreen(page);
+    await expect(toolbar).toBeInViewport({ ratio: 1 });
     await expect(page.getByRole('button', { name: '同意' })).toBeVisible();
 
     const chat = page.locator('#main-content-scroll [data-tiger-chat-window]').first();

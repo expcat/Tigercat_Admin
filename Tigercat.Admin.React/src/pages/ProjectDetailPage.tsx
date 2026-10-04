@@ -140,9 +140,13 @@ function ProjectDetailPage() {
     }
   };
 
-  const handleAnchorClick = (_event: React.MouseEvent, href: string) => {
+  const handleAnchorClick = (event: React.MouseEvent, href: string) => {
+    event.preventDefault();
     setActiveTab(tabFromHref(href));
   };
+
+  const anchorHref = PROJECT_DETAIL_TABS.find((item) => item.key === activeTab)?.href ?? '#project-overview';
+  const currentAnchor = () => anchorHref;
 
   if (loading) {
     return (
@@ -199,6 +203,7 @@ function ProjectDetailPage() {
       activeTab={activeTab}
       onTabChange={handleTabChange}
       onAnchorClick={handleAnchorClick}
+      currentAnchor={currentAnchor}
       onBack={goBackToList}
     />
   );
@@ -211,6 +216,7 @@ function ProjectDetailContent({
   activeTab,
   onTabChange,
   onAnchorClick,
+  currentAnchor,
   onBack,
 }: {
   project: ProjectRecord;
@@ -219,6 +225,7 @@ function ProjectDetailContent({
   activeTab: ProjectDetailTab;
   onTabChange: (key: string | number) => void;
   onAnchorClick: (event: React.MouseEvent, href: string) => void;
+  currentAnchor: () => string;
   onBack: () => void;
 }) {
   const status = PROJECT_STATUS_META[project.status];
@@ -381,6 +388,7 @@ function ProjectDetailContent({
               getContainer={getScrollContainer}
               offsetTop={16}
               onClick={onAnchorClick}
+              getCurrentAnchor={currentAnchor}
             >
               {PROJECT_DETAIL_TABS.map((item) => (
                 <AnchorLink key={item.key} href={item.href} title={item.label} />
@@ -389,7 +397,7 @@ function ProjectDetailContent({
             <MutedPanel
               compact
               className="mt-3"
-              description="点击目录切换概览、成员或动态，并滚动到对应区块。"
+              description="点击目录切换概览、成员或动态。"
             />
           </Card>
         </div>

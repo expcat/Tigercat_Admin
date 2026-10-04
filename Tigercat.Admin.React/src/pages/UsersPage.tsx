@@ -164,6 +164,9 @@ function UsersPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingAvatarId, setEditingAvatarId] = useState<number | null>(null);
   const [formData, setFormData] = useState<UserFormData>({ ...INITIAL_FORM });
+  const [formErrors, setFormErrors] = useState({ username: '', password: '' });
+  const usernameInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
 
   const [batchDeleteConfirmVisible, setBatchDeleteConfirmVisible] =
@@ -285,20 +288,19 @@ function UsersPage() {
   const handleSubmit = async () => {
     if (!modalVisible) return;
 
-    // Validation
-    if (!editingId) {
-      if (!formData.username.trim()) {
-        Message.error({ content: '请输入用户名', duration: 3000 });
-        return;
-      }
-      if (!formData.password) {
-        Message.error({ content: '请输入密码', duration: 3000 });
-        return;
-      }
-      if (formData.password.length < 6) {
-        Message.error({ content: '密码长度不能少于 6 位', duration: 3000 });
-        return;
-      }
+    const errors = {
+      username: !editingId && !formData.username.trim() ? '请输入用户名' : '',
+      password: !editingId
+        ? !formData.password ? '请输入密码'
+          : formData.password.length < 6 ? '密码长度不能少于 6 位' : ''
+        : '',
+    };
+    setFormErrors(errors);
+    if (errors.username || errors.password) {
+      requestAnimationFrame(() => {
+        (errors.username ? usernameInputRef : passwordInputRef).current?.focus();
+      });
+      return;
     }
 
     try {
@@ -547,6 +549,7 @@ function UsersPage() {
   };
 
   const openCreateModal = () => {
+    setFormErrors({ username: '', password: '' });
     setEditingId(null);
     setEditingAvatarId(null);
     setModalTitle('新增用户');
@@ -555,6 +558,7 @@ function UsersPage() {
   };
 
   const openEditModal = (user: UserItem) => {
+    setFormErrors({ username: '', password: '' });
     setEditingId(user.id);
     setEditingAvatarId(user.avatarMediaId);
     setModalTitle('编辑用户');
@@ -909,6 +913,9 @@ function UsersPage() {
     value: UserFormData[K],
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === 'username' || field === 'password') {
+      setFormErrors((prev) => ({ ...prev, [field]: '' }));
+    }
   };
 
   return (
@@ -1017,16 +1024,18 @@ function UsersPage() {
         onCancel={() => setModalVisible(false)}>
         <div className="p2-modal-scroll">
         <Form value={formData} labelWidth={88}>
-          <FormItem label="用户名" name="username">
+          <FormItem label="用户名" name="username" error={formErrors.username}>
             <Input
+              ref={usernameInputRef}
               value={formData.username}
               placeholder="请输入用户名"
               disabled={!!editingId}
               onChange={(val) => setField('username', normalizeInput(val))}
             />
           </FormItem>
-          <FormItem label="密码" name="password">
+          <FormItem label="密码" name="password" error={formErrors.password}>
             <Input
+              ref={passwordInputRef}
               value={formData.password}
               type="password"
               placeholder={editingId ? '留空则不修改密码' : '请输入密码'}

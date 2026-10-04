@@ -145,7 +145,7 @@ function CalendarPage() {
     [events],
   );
   const nextEvent = useMemo(() => upcoming.find((e) => e.ts > Date.now()) ?? null, [upcoming]);
-  const countdownTarget = nextEvent ? new Date(nextEvent.ts) : new Date(Date.now() + 45 * 60 * 1000);
+  const countdownTarget = nextEvent ? new Date(nextEvent.ts) : null;
 
   const cellEvents = useMemo(() => toCalendarCellEvents(events), [events]);
 
@@ -229,17 +229,23 @@ function CalendarPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
-          <Countdown
-            value={countdownTarget}
-            format="DD 天 HH:mm:ss"
-            title={nextEvent ? `距离「${nextEvent.title}」` : '暂无即将到来的日程'}
-            size="lg"
-            onFinish={() => Message.info({ content: '有一个日程已到开始时间（演示）', duration: 2600 })}
-          />
-          {nextEvent && (
-            <Text size="sm" color="secondary" className="mt-1 block">
-              {nextEvent.date} {nextEvent.start} · {TYPE_META[nextEvent.type].label}
-            </Text>
+          {nextEvent && countdownTarget ? (
+            <>
+              <Countdown
+                value={countdownTarget}
+                format="DD 天 HH:mm:ss"
+                title={`距离「${nextEvent.title}」`}
+                size="lg"
+                onFinish={() =>
+                  Message.info({ content: '有一个日程已到开始时间（演示）', duration: 2600 })
+                }
+              />
+              <Text size="sm" color="secondary" className="mt-1 block">
+                {nextEvent.date} {nextEvent.start} · {TYPE_META[nextEvent.type].label}
+              </Text>
+            </>
+          ) : (
+            <Statistic title="暂无即将到来的日程" value="—" />
           )}
         </Card>
         <Card>
@@ -272,7 +278,7 @@ function CalendarPage() {
           <MutedPanel
             compact
             className="mt-3"
-            description="格子内用色点和数量标记当天事件；点击日期查看右侧详情。不要另画一套格内事件层。"
+            description="格子内的色点和数量表示当天事件；点击日期查看日程详情。"
           />
         </Card>
 

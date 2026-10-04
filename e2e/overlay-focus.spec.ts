@@ -17,6 +17,54 @@ async function inputPin(page: import('@playwright/test').Page, code: string) {
 }
 
 test.describe('弹层焦点恢复', () => {
+  test('展开组后收缩侧栏保持弹层关闭，Enter / Escape 保留焦点', async ({ page }, testInfo) => {
+    test.skip((page.viewportSize()?.width ?? 0) < 768, '移动导航没有收缩按钮');
+    await loginAsAdmin(page, testInfo);
+    const sidebar = page.getByRole('complementary', { name: '侧栏' });
+    const system = sidebar.getByRole('menuitem', { name: '系统管理', exact: true })
+      .or(sidebar.getByRole('button', { name: '系统管理', exact: true }));
+    const inlineUser = sidebar.getByText('用户管理', { exact: true });
+    if (!(await inlineUser.isVisible())) await system.click();
+    await expect(inlineUser).toBeVisible();
+
+    await page.getByRole('button', { name: '收起菜单', exact: true }).click();
+    const expand = page.getByRole('button', { name: '展开菜单', exact: true });
+    await expect(expand).toHaveAttribute('aria-expanded', 'false');
+    const popup = page.getByRole('menu', { name: '系统管理', exact: true });
+    await expect(popup).toBeHidden();
+
+    await system.focus();
+    await page.keyboard.press('Enter');
+    await expect(popup).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(popup).toBeHidden();
+    await expectFocused(system);
+    await expand.click();
+    await expect(inlineUser).toBeVisible();
+  });
+
+  test('新增用户空提交显示字段错误并聚焦首个错误字段', async ({ page }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+    await page.goto(appPath(testInfo, '/users'));
+    const trigger = page.getByRole('button', { name: '新增用户' });
+    await trigger.click();
+    const dialog = page.getByRole('dialog', { name: '新增用户' });
+    const username = dialog.getByPlaceholder('请输入用户名');
+    const password = dialog.getByPlaceholder('请输入密码');
+    await dialog.getByRole('button', { name: '确定', exact: true }).click();
+    await expect(username).toHaveAttribute('aria-invalid', 'true');
+    await expect(password).toHaveAttribute('aria-invalid', 'true');
+    await expectFocused(username);
+    await username.fill('visual-validation');
+    await password.fill('123');
+    await dialog.getByRole('button', { name: '确定', exact: true }).click();
+    await expect(dialog.getByText('密码长度不能少于 6 位', { exact: true })).toBeVisible();
+    await expectFocused(password);
+    await dialog.getByRole('button', { name: '取消', exact: true }).click();
+    await expect(dialog).toBeHidden();
+    await expectFocused(trigger);
+  });
+
   test('Spotlight Esc 关闭后焦点回到打开前的触发器', async ({ page }, testInfo) => {
     await loginAsAdmin(page, testInfo);
 
@@ -93,7 +141,7 @@ async function expectCreateDrawerEscRestoresFocus(
   await expectFocused(trigger);
 }
 
-/** Trigger, its chrome root, or the page — not a leftover overlay. */
+/** Restore the trigger or a control in its input chrome, never an unrelated page control. */
 async function expectFocusReturnedToPage(
   trigger: import('@playwright/test').Locator,
 ): Promise<void> {
@@ -101,25 +149,13 @@ async function expectFocusReturnedToPage(
     .poll(async () =>
       trigger.evaluate((element) => {
         const active = document.activeElement;
-        if (!active) return false;
-        if (active === element || element.contains(active) || active.contains(element)) {
+        if (!active || active === document.body || active === document.documentElement) return false;
+        if (active === element || element.contains(active)) {
           return true;
         }
         const chrome = element.closest('[data-tiger-chrome]');
         if (chrome && chrome.contains(active)) return true;
-        const trapped = active.closest(
-          [
-            '[data-tiger-overlay-layer]',
-            '[data-tiger="datepicker-panel"]',
-            '[data-tiger="timepicker-panel"]',
-            '[data-tiger-autocomplete-dropdown]',
-            '[data-tiger-treeselect-dropdown]',
-            '[data-tiger-cascader-dropdown]',
-            '[data-tiger-image-preview]',
-            '[data-tiger-drawer]',
-          ].join(', '),
-        );
-        return !trapped;
+        return false;
       }),
     )
     .toBe(true);
@@ -129,7 +165,7 @@ async function expectEscClosesOverlay(
   page: import('@playwright/test').Page,
   trigger: import('@playwright/test').Locator,
   overlay: import('@playwright/test').Locator,
-  options: { restoreTrigger?: boolean; extraEscapes?: number } = {},
+  options: { restoreTrigger?: boolean } = {},
 ) {
   await trigger.scrollIntoViewIfNeeded();
   await trigger.evaluate((element) => {
@@ -138,10 +174,6 @@ async function expectEscClosesOverlay(
   await trigger.click();
   await expect(overlay).toBeVisible();
   await page.keyboard.press('Escape');
-  for (let extra = 0; extra < (options.extraEscapes ?? 0); extra += 1) {
-    if (await overlay.isHidden()) break;
-    await page.keyboard.press('Escape');
-  }
   await expect(overlay).toBeHidden();
   if (options.restoreTrigger) {
     await expectFocused(trigger);
@@ -246,6 +278,7 @@ async function expectEscClosesNestedOverlay(
   await page.keyboard.press('Escape');
   await expect(overlay).toBeHidden();
   await expect(parent).toBeVisible();
+  await expectFocusReturnedToPage(trigger);
 }
 
 test.describe('日历 / 导入 / 任务剩余弹层', () => {
@@ -401,7 +434,8 @@ test.describe('内容编辑 / 媒体图库浮层焦点', () => {
 
     const treeTrigger = page.getByRole('combobox').filter({ hasText: /^前端$/ });
     const treeDropdown = page.locator('[data-tiger-treeselect-dropdown]');
-    await expectEscClosesOverlay(page, treeTrigger, treeDropdown, { extraEscapes: 2 });
+    await expectEscClosesOverlay(page, treeTrigger, treeDropdown);
+    await expect(treeTrigger).toHaveAttribute('aria-expanded', 'false');
     await expectOutsideClickClosesOverlay(page, treeTrigger, treeDropdown);
 
     const cascaderTrigger = page.getByRole('combobox').filter({ hasText: '文档 / 指南' });

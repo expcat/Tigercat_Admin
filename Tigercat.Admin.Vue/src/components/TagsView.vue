@@ -12,7 +12,7 @@ import {
   type ShellPageKey,
 } from '../utils/shell-navigation'
 import { TAGS_VIEW_HOME_KEY } from '../utils/tags-view'
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps<{
   keys: ShellPageKey[]
@@ -28,10 +28,18 @@ const emit = defineEmits<{
 }>()
 
 const tabList = ref<HTMLDivElement | null>(null)
-watch([() => props.activeKey, () => props.keys, tabList], () => {
+function revealActiveTab() {
   tabList.value?.querySelector<HTMLElement>('[data-active="true"]')
     ?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-}, { flush: 'post' })
+}
+watch([() => props.activeKey, () => props.keys, tabList], revealActiveTab, { flush: 'post' })
+let resizeObserver: ResizeObserver | null = null
+onMounted(() => {
+  if (!tabList.value) return
+  resizeObserver = new ResizeObserver(revealActiveTab)
+  resizeObserver.observe(tabList.value)
+})
+onBeforeUnmount(() => resizeObserver?.disconnect())
 
 const canCloseCurrent = computed(() => props.activeKey !== TAGS_VIEW_HOME_KEY)
 const canCloseOthers = computed(() =>
@@ -62,13 +70,13 @@ function handleSelect(event: MouseEvent, key: ShellPageKey) {
 <template>
   <div
     data-testid="shell-tags-view"
-    class="p2-tags-view flex min-w-0 w-full shrink-0 items-center gap-1 border-b border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-card,#ffffff) px-3 py-1.5 md:px-6"
+    class="p2-tags-view flex h-12 min-w-0 w-full shrink-0 items-center gap-1 border-b border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-card,#ffffff) px-3 py-1.5 md:px-6"
   >
     <div
       ref="tabList"
       role="tablist"
       aria-label="已打开的页面"
-      class="p2-tags-view-list flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:thin]"
+      class="p2-tags-view-list flex h-full min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:thin]"
     >
       <span
         v-for="key in props.keys"

@@ -139,9 +139,18 @@ function HomePage() {
   const [trendLoading, setTrendLoading] = useState(false);
   const [statsError, setStatsError] = useState('');
   const [trendDays, setTrendDays] = useState<number>(7);
+  const [isNarrowTrend, setIsNarrowTrend] = useState(false);
   const [exporting, setExporting] = useState(false);
   const exportColumns = useMemo(() => toExportColumns(OVERVIEW_EXPORT_FIELDS), []);
   const trendRequestId = useRef(0);
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 639px)');
+    const syncNarrowTrend = () => setIsNarrowTrend(query.matches);
+    syncNarrowTrend();
+    query.addEventListener('change', syncNarrowTrend);
+    return () => query.removeEventListener('change', syncNarrowTrend);
+  }, []);
 
   // --- 快捷操作跳转 ---
   const handleQuickAction = useCallback((key: string) => {
@@ -179,7 +188,7 @@ function HomePage() {
   const chartSuccess = 'var(--tiger-success, #16a34a)';
   const chartWarning = 'var(--tiger-warning, #d97706)';
   const chartInfo = 'var(--tiger-info, #3b82f6)';
-  const trendXTicks = trendDays <= 14 ? Math.min(trendDays, 8) : 6;
+  const trendXTicks = isNarrowTrend ? 3 : trendDays <= 14 ? Math.min(trendDays, 8) : 6;
 
   const barChartData = useMemo(() => {
     if (!overview) return [];

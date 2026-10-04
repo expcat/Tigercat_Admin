@@ -32,6 +32,7 @@ const emit = defineEmits<{
 }>()
 
 const expandedKeys = ref<(string | number)[]>(['system'])
+const popupOpenKeys = ref<(string | number)[]>([])
 const menuNav = ref<HTMLElement | null>(null)
 
 function scrollLastMenuItemIntoView() {
@@ -54,6 +55,15 @@ const toggleCollapsed = () => {
 const displayCollapsed = computed(() =>
   props.showCollapseToggle ? props.collapsed : false
 )
+
+watch(displayCollapsed, () => {
+  popupOpenKeys.value = []
+})
+
+function handleOpenKeysChange(keys: (string | number)[]) {
+  if (displayCollapsed.value) popupOpenKeys.value = keys
+  else expandedKeys.value = keys
+}
 
 const { has: hasPerm } = usePermission()
 const menuSchema = useShellMenuSchema()
@@ -131,7 +141,7 @@ const bottomMenuItems = computed(() =>
       <nav ref="menuNav" class="min-h-0 flex-1 overflow-y-auto py-2">
         <Menu
           :selected-keys="[activeMenu]"
-          :open-keys="expandedKeys"
+          :open-keys="displayCollapsed ? popupOpenKeys : expandedKeys"
           :collapsed="displayCollapsed"
           popup-portal
           mode="inline"
@@ -142,7 +152,7 @@ const bottomMenuItems = computed(() =>
           class="!min-w-0"
           :class="{ 'menu-collapsed': displayCollapsed }"
           @select="handleMenuSelect"
-          @update:open-keys="(keys: (string | number)[]) => expandedKeys = keys"
+          @update:open-keys="handleOpenKeysChange"
         />
       </nav>
 
@@ -163,6 +173,9 @@ const bottomMenuItems = computed(() =>
       <!-- 折叠按钮 -->
       <div v-if="props.showCollapseToggle" class="shrink-0 border-t border-(--tiger-border,#e2e8f0) p-3 overflow-hidden">
         <button 
+          type="button"
+          :aria-label="props.collapsed ? '展开菜单' : '收起菜单'"
+          :aria-expanded="!props.collapsed"
           @click="toggleCollapsed" 
           class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm text-(--tiger-text-secondary,#64748b) hover:bg-(--tiger-bg-hover,#f3f4f6) hover:text-(--tiger-text,#1f2937) transition-all duration-200"
         >
@@ -173,7 +186,7 @@ const bottomMenuItems = computed(() =>
             class="overflow-hidden whitespace-nowrap transition-[max-width,opacity,transform] duration-300 ease-in-out"
             :class="props.collapsed ? 'max-w-0 -translate-x-2 opacity-0 pointer-events-none' : 'max-w-20 translate-x-0 opacity-100'"
           >
-            收起菜单
+            {{ props.collapsed ? '展开菜单' : '收起菜单' }}
           </span>
         </button>
       </div>

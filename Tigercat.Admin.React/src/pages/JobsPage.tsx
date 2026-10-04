@@ -255,6 +255,7 @@ function JobsPage() {
                     <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-2">
                         <Switch
+                          aria-label={`启用任务：${job.name}`}
                           checked={job.enabled}
                           disabled={togglingId === job.id}
                           onChange={(checked) => void toggleJob(job, checked)}
@@ -371,6 +372,7 @@ function JobsPage() {
               并发数
             </Text>
             <InputNumber
+              aria-label="并发数"
               value={form.concurrency}
               min={1}
               max={20}
@@ -399,7 +401,7 @@ function JobsPage() {
             <NumberKeyboard value={form.batchSize} mode="number" maxLength={6} onChange={(value) => setForm((s) => ({ ...s, batchSize: value }))} />
           </div>
           <div className="flex items-center gap-2">
-            <Switch checked={form.enabled} onChange={(checked) => setForm((s) => ({ ...s, enabled: checked }))} />
+            <Switch aria-label="保存后立即启用" checked={form.enabled} onChange={(checked) => setForm((s) => ({ ...s, enabled: checked }))} />
             <Text size="sm" color="secondary">
               保存后立即启用
             </Text>

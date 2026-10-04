@@ -254,6 +254,7 @@ onMounted(() => {
               <td class="px-3 py-3" @click.stop>
                 <div class="flex items-center gap-2">
                   <Switch
+                    :aria-label="`启用任务：${job.name}`"
                     :model-value="job.enabled"
                     :disabled="togglingId === job.id"
                     @update:model-value="(v: boolean) => toggleJob(job, v)"
@@ -351,6 +352,7 @@ onMounted(() => {
         <div>
           <Text weight="medium" class="mb-1 block">并发数</Text>
           <InputNumber
+            aria-label="并发数"
             :model-value="form.concurrency"
             :min="1"
             :max="20"
@@ -371,7 +373,7 @@ onMounted(() => {
           <NumberKeyboard v-model="form.batchSize" mode="number" :max-length="6" />
         </div>
         <div class="flex items-center gap-2">
-          <Switch v-model="form.enabled" />
+          <Switch v-model="form.enabled" aria-label="保存后立即启用" />
           <Text size="sm" color="secondary">保存后立即启用</Text>
         </div>
         <div class="flex justify-end gap-2 pt-2">

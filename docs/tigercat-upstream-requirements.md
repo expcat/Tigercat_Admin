@@ -1,6 +1,6 @@
 # Tigercat 上游组件需求
 
-面向 Tigercat 组件库开发。本仓库目标包版本 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `3.0.0-preview.8`。
+面向 Tigercat 组件库开发。本仓库包版本 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `3.0.0-preview.9`。
 
 **单一事实源：** 这里记录「Admin 场景需要、但包侧尚未提供或能力不够」的上游需求；已落地的条目从本文删除，用法只写在 [frontend.md](frontend.md)。当前仍开放、需要立刻跟进的短清单在 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)，该文件只做索引，不复写本文细节。
 
@@ -37,11 +37,11 @@
 
 ## 1. 表单
 
-### 1.1 动态表单项 / schema 表单 — P2（推迟：Admin 不做表单设计器）
+### 1.1 schema 高级能力 — P2（推迟：Admin 不做表单设计器）
 
 - **场景：** 对标 Vben/Pro 的配置驱动表单。Admin **不**做表单设计器产品。
-- **现状：** `Form`/`FormItem` + `FormWizard` 够演示；无 schema 渲染器。
-- **建议：** 若做，保持纯数据描述（字段、校验、显隐），不要绑后台代码生成。
+- **现状：** 已有 SchemaForm，审批发起弹层已采用；不能把 schema 渲染器列为缺失能力。
+- **建议：** 只有现有 SchemaForm 无法覆盖明确需求时，再增强字段、校验或显隐等纯数据能力；不新增表单设计器或后台代码生成。
 
 ### 1.2 人机验证码组件 — P2（推迟：Admin 无明示需求）
 
@@ -56,8 +56,18 @@
 - **现状：** 点到为止，像素坐标预映射，Tooltip 未与轴精细联动。
 - **建议：** 高层图已够用；基元若要生产级，补 axis↔tooltip 共享 scale 示例，而不是逼 Admin 自绘。
 
-## 3. 明确不做（Admin 侧也不发明）
+<a id="cron-summary"></a>
 
-- 动态后端菜单管理、部门/岗位/字典/租户/工作流等新产品域。
+### 2.2 Cron 中文与范围摘要 — P2（后续增强）
+
+- **场景：** Jobs 使用 CronEditor 配置调度，界面为中文，摘要仍显示英文；0–59 范围会展开成六十个分钟值。
+- **现状：** 模式和输入布局、长词换行已修复，320 / 375px 无横溢，见 [VR-017](visual-review/2026-10-04/findings.md#vr-017)。换行解决显示缺陷，尚未改变摘要的语言和表达方式。
+- **建议：** 复用现有 locale / Cron 解析能力，给当前 zhCN 提供分钟范围与步长的简洁摘要；不让 Admin 自行翻译或重复解析，不引入运行时语言切换。验收与顺序见 [R3.4](../Roadmap.md)。
+
+本轮已复现回归的修复范围与发布验收见 [独立需求](visual-review/2026-10-04/tigercat-fix-request.md)，逐项状态见 [问题记录](visual-review/2026-10-04/findings.md)。不再把已修复的日期、树选择或图表问题列为待复现候选。
+
+## 3. 本次不纳入的额外范围
+
+- 当前已有动态菜单管理与审批工作流；不把它们列为未实现。不给现有域之外新增部门、岗位、字典、租户等产品域。
 - 运行时 i18n 语言包切换（本仓库只加载 `zhCN` + `appText`）。
-- 把 Mock 2FA/忘记密码做成真实 .NET 端点（契约已标注 Mock only）。
+- .NET 已有 2FA / 忘记密码端点，见 [认证契约](api/auth.md)；真实 TOTP、短信 / 邮件投递推迟。

@@ -244,8 +244,18 @@ function TicketsPage() {
         { label: '提交人', content: selected.requester, labelClassName: 'whitespace-nowrap' },
         { label: '分类', content: selected.category, labelClassName: 'whitespace-nowrap' },
         { label: '优先级', content: PRIORITY_META[selected.priority].label, labelClassName: 'whitespace-nowrap' },
-        { label: '创建时间', content: selected.createdAt, labelClassName: 'whitespace-nowrap' },
-        { label: '更新时间', content: selected.updatedAt, labelClassName: 'whitespace-nowrap' },
+        {
+          label: '创建时间',
+          content: selected.createdAt,
+          labelClassName: 'whitespace-nowrap',
+          contentClassName: 'break-words',
+        },
+        {
+          label: '更新时间',
+          content: selected.updatedAt,
+          labelClassName: 'whitespace-nowrap',
+          contentClassName: 'break-words',
+        },
       ]
     : [];
 
@@ -371,8 +381,7 @@ function TicketsPage() {
     }
   };
 
-  const splitDirection: 'horizontal' | 'vertical' = isWide ? 'horizontal' : 'vertical';
-  const splitStyle = { height: isWide ? '640px' : '900px' };
+  const TicketLayout = isWide ? Splitter : 'div';
   const ticketChatWindow = selected ? (
     <ChatWindow
       messages={selected.messages as ChatMessage[]}
@@ -421,10 +430,12 @@ function TicketsPage() {
         </Button>
       </div>
 
-      <Card className="min-w-0 overflow-hidden">
-        <Splitter orientation={splitDirection} min={220} gutterSize={8} style={splitStyle}>
+      <Card className="min-w-0 lg:overflow-hidden">
+        <TicketLayout {...(isWide
+          ? { orientation: 'horizontal' as const, sizes: ['28%', '72%'], min: 220, gutterSize: 8, style: { height: '640px' } }
+          : { className: 'space-y-6' })}>
           {/* 左：列表 */}
-          <div className="flex h-full min-w-0 flex-col gap-3 overflow-hidden pr-1">
+          <div className="flex min-w-0 flex-col gap-3 lg:h-full lg:overflow-hidden lg:pr-1">
             <Input value={keyword} onChange={(v) => setKeyword(String(v))} placeholder="搜索标题 / 提交人 / 工单号" clearable />
             <div className="flex flex-wrap gap-2">
               {statusFilters.map((f) => (
@@ -442,7 +453,7 @@ function TicketsPage() {
               ))}
             </div>
 
-            <div className="flex-1 space-y-2 overflow-y-auto">
+            <div className="space-y-2 lg:flex-1 lg:overflow-y-auto">
               {filteredTickets.map((t) => (
                 <button
                   key={t.id}
@@ -492,18 +503,18 @@ function TicketsPage() {
             </div>
           </div>
 
-          {/* 右：详情。body 内滚，ActionBar 钉在窗格底（首屏可见，不必右栏内滚）。 */}
+          {/* 桌面详情内滚；窄屏随主区滚动，操作条保持在可视区底部。 */}
           <div
-            className="flex h-full min-w-0 flex-col overflow-hidden pl-1"
+            className="flex min-w-0 flex-col lg:h-full lg:overflow-hidden lg:pl-1"
             data-ticket-detail-pane="">
             {selected ? (
               <>
                 <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 flex-1 items-start gap-2">
                     <Text size="lg" weight="bold">
                       {selected.title}
                     </Text>
-                    <Tag variant={STATUS_META[selected.status].variant} size="sm">
+                    <Tag variant={STATUS_META[selected.status].variant} size="sm" className="shrink-0">
                       {STATUS_META[selected.status].label}
                     </Tag>
                   </div>
@@ -528,11 +539,11 @@ function TicketsPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
-                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <div className="mt-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto" data-ticket-detail-body="">
+                <div className="space-y-4">
                   <Card header={<Text weight="bold">工单信息</Text>}>
-                    <Descriptions items={descriptions} column={1} bordered colon />
-                    <div className="mt-3 flex items-center gap-2">
+                    <Descriptions items={descriptions} column={1} layout={isWide ? 'horizontal' : 'vertical'} bordered colon />
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
                       <Text size="sm" color="secondary">
                         满意度
                       </Text>
@@ -614,12 +625,13 @@ function TicketsPage() {
                 </div>
 
                 <div
-                  className="sticky bottom-0 z-10 mt-auto shrink-0 border-t border-[var(--tiger-border,#e5e7eb)] bg-[var(--tiger-bg-card,#fff)] px-1 py-3"
+                  className="sticky bottom-0 z-10 mt-4 shrink-0 border-t border-[var(--tiger-border,#e5e7eb)] bg-[var(--tiger-bg-card,#fff)] px-1 py-3 lg:mt-auto"
                   data-ticket-detail-action="">
                   <WorkflowActionBar
                     items={TICKET_WORKFLOW_ACTIONS}
                     disabled={workflowActionsDisabled}
                     ariaLabel="审批操作"
+                    style={{ flexWrap: 'wrap', overflowX: 'visible' }}
                     onAction={handleWorkflowAction}
                   />
                 </div>
@@ -634,7 +646,7 @@ function TicketsPage() {
               </div>
             )}
           </div>
-        </Splitter>
+        </TicketLayout>
       </Card>
 
       {/* 新建工单 */}
