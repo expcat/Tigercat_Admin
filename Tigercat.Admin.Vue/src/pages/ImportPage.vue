@@ -85,6 +85,9 @@ const CONFLICT_LABELS: Record<string, string> = {
 }
 
 const current = ref(0)
+const narrowSteps = ref(false)
+let stepsQuery: MediaQueryList | null = null
+const syncSteps = () => { narrowSteps.value = stepsQuery?.matches ?? false }
 const files = ref<UploadFile[]>([])
 const mode = ref<ImportMode>('append')
 const mappedKeys = ref<(string | number)[]>(['name', 'email', 'dept'])
@@ -220,11 +223,15 @@ function restart() {
 }
 
 onMounted(() => {
+  stepsQuery = window.matchMedia('(max-width: 639px)')
+  syncSteps()
+  stepsQuery.addEventListener('change', syncSteps)
   pollCancelled = false
   void restoreLastImportJob()
 })
 
 onBeforeUnmount(() => {
+  stepsQuery?.removeEventListener('change', syncSteps)
   pollCancelled = true
 })
 </script>
@@ -271,6 +278,7 @@ onBeforeUnmount(() => {
     <Card v-else>
       <FormWizard
         :steps="STEPS"
+        :orientation="narrowSteps ? 'vertical' : 'horizontal'"
         v-model:current="current"
         next-text="下一步"
         prev-text="上一步"

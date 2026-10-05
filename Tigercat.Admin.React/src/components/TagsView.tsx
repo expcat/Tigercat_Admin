@@ -55,7 +55,7 @@ export function TagsView({
   return (
     <div
       data-testid="shell-tags-view"
-      className="p2-tags-view flex h-12 min-w-0 w-full shrink-0 items-center gap-1 border-b border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-card,#ffffff) px-3 py-1.5 md:px-6">
+      className="p2-tags-view flex h-12 min-w-0 w-full shrink-0 items-center gap-1 border-b border-(--tiger-border,#e2e8f0)/30 bg-(--tiger-bg-card,#ffffff) px-3 py-1.5 md:px-6">
       <div
         ref={tabListRef}
         role="tablist"

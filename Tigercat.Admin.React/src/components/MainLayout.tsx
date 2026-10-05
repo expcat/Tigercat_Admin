@@ -236,7 +236,7 @@ export function MainLayout({
           onLockScreen={lock}
           onToggleSidebar={handleSidebarToggle}
           demoMode={DEMO_MODE}
-          chatDock={isMobile ? <ChatDock open={chatOpen} floating={false} onOpenChange={setChatOpen} /> : undefined}
+          chatDock={<><ChatDock open={chatOpen} floating={false} onOpenChange={setChatOpen} /><ShellQuickActions /></>}
         />
 
         <div className={`relative ${SHELL_WATERMARK_PANE_CLASS}`}>
@@ -249,7 +249,7 @@ export function MainLayout({
             onCloseOthers={tagsView.closeOthers}
             onCloseAll={tagsView.closeAll}
           />
-          <Content as="main" id="main-content-scroll" tabIndex={-1} className="min-h-0 flex-1 overflow-auto p-3 pb-28 pe-4 scroll-smooth sm:p-4 sm:pb-28 md:p-6 md:pb-32 md:pe-28">
+          <Content as="main" id="main-content-scroll" padding={false} tabIndex={-1} className="min-h-0 flex-1 overflow-auto p-4 pb-20 scroll-smooth md:p-6 md:pb-20">
             <div
               className={`mx-auto max-w-7xl animate-fade-in${
                 fillMain ? ' flex min-h-full w-full flex-col md:h-full md:min-h-0' : ''
@@ -282,8 +282,6 @@ export function MainLayout({
         onLogout={onLogout}
         onOpenChat={() => setChatOpen(true)}
       />
-      {!isMobile && <ChatDock open={chatOpen} onOpenChange={setChatOpen} />}
-      <ShellQuickActions />
       <OnboardingTour />
     </Layout>
       </div>

@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Badge } from '@expcat/tigercat-react/Badge';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Empty } from '@expcat/tigercat-react/Empty';
 import { Loading } from '@expcat/tigercat-react/Loading';
@@ -48,24 +47,16 @@ export function MetricCard({
   loading = false,
   framed = true,
 }: MetricCardProps) {
+  const metricValue = value ?? badge;
   const chipNode = icon ? (
-    <div className="p2-icon-chip flex h-11 w-11 shrink-0 items-center justify-center transition-transform group-hover:scale-110">
+    <div className="p2-icon-chip hidden h-10 w-10 shrink-0 items-center justify-center sm:flex">
       {icon}
     </div>
   ) : null;
 
-  const iconNode =
-    badge === undefined || chipNode === null ? (
-      chipNode
-    ) : (
-      <Badge content={badge} type="number" showZero standalone={false}>
-        {chipNode}
-      </Badge>
-    );
-
   const content = (
-    <div className="flex items-center gap-3">
-      {iconNode}
+    <div className="flex items-center gap-3 h-full">
+      {chipNode}
       <div className="min-w-0">
         {loading ? (
           <>
@@ -76,8 +67,8 @@ export function MetricCard({
               <Loading size="sm" />
             </div>
           </>
-        ) : value !== undefined ? (
-          <Statistic title={title} value={value} />
+        ) : metricValue !== undefined ? (
+          <Statistic title={title} value={metricValue} />
         ) : (
           <Text weight="bold">{title}</Text>
         )}
@@ -91,11 +82,11 @@ export function MetricCard({
   );
 
   if (!framed) {
-    return <div className="group">{content}</div>;
+    return <div>{content}</div>;
   }
 
   return (
-    <Card className="group hover:shadow-lg transition-shadow duration-300">
+    <Card>
       {content}
     </Card>
   );
@@ -103,10 +94,10 @@ export function MetricCard({
 
 export function MetricGrid({ children, columns = 3 }: MetricGridProps) {
   const columnClass =
-    columns === 4 ? 'md:grid-cols-3 xl:grid-cols-4' : 'md:grid-cols-3';
+    columns === 4 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3';
 
   return (
-    <div className={`grid grid-cols-1 gap-4 ${columnClass}`}>{children}</div>
+    <div className={`grid gap-3 sm:gap-4 ${columnClass}`}>{children}</div>
   );
 }
 

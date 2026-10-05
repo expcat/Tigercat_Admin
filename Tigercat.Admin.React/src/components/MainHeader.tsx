@@ -22,7 +22,6 @@ import {
   MoonIcon,
   MonitorIcon,
   MenuIcon,
-  XIcon,
   ChevronDownIcon,
   UserIcon,
   PaletteIcon,
@@ -118,25 +117,23 @@ export function MainHeader({
 
   return (
     <Header role="banner" height="auto" className="p2-main-header flex min-h-16 flex-nowrap items-center justify-between gap-2 px-3 py-2 z-10 sm:gap-3 sm:px-4 md:px-6">
-      <div className="flex min-w-0 flex-1 flex-col gap-1 py-2">
-        <div className="flex min-w-0 items-center gap-2">
-          {showSidebarToggle && (
-            <Button
-              variant="outline"
-              onClick={onToggleSidebar}
-              aria-controls="main-sidebar"
-              aria-expanded={sidebarOpen}
-              aria-label={sidebarOpen ? '关闭导航菜单' : '打开导航菜单'}
-              className="p2-header-toggle-btn h-10 w-10 !p-0 shrink-0">
-              {sidebarOpen ? <XIcon size={18} /> : <MenuIcon size={18} />}
-            </Button>
-          )}
-          <Text size="lg" weight="bold" className="p2-header-title min-w-0 truncate">
-            管理中心
-          </Text>
-        </div>
+      <div className="p2-header-title flex min-w-0 flex-1 items-center gap-3">
+        {showSidebarToggle && (
+          <Button
+            variant="ghost"
+            onClick={onToggleSidebar}
+            aria-controls="main-sidebar"
+            aria-expanded={sidebarOpen}
+            aria-label={sidebarOpen ? '关闭导航菜单' : '打开导航菜单'}
+            className="p2-header-toggle-btn h-10 w-10 !p-0 shrink-0">
+            <MenuIcon size={18} />
+          </Button>
+        )}
+        <Text size="sm" weight="medium" className="min-w-0 truncate lg:hidden">
+          {pageTitle}
+        </Text>
         <Breadcrumb
-          className="hidden min-w-0 max-w-full overflow-hidden text-sm text-(--tiger-text-secondary,#64748b) sm:block"
+          className="hidden min-w-0 max-w-full overflow-hidden text-sm text-(--tiger-text-secondary,#64748b) lg:block"
           maxItems={3}>
           <BreadcrumbItem>管理中心</BreadcrumbItem>
           {currentBreadcrumbItems.map((item, index) => (
@@ -150,9 +147,9 @@ export function MainHeader({
       </div>
 
       {/* 右侧操作区 */}
-      <div className="flex shrink-0 items-center gap-1 sm:gap-3">
+      <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
         {demoMode && (
-          <Tag variant="warning" className="p2-header-demo-tag !hidden rounded-full px-3 font-medium sm:!inline-flex">
+          <Tag variant="warning" className="!hidden xl:!inline-flex">
             演示模式
           </Tag>
         )}
@@ -161,7 +158,7 @@ export function MainHeader({
           data-testid="shell-fullscreen-toggle"
           aria-label={fullscreen ? '退出全屏' : '进入全屏'}
           title={fullscreen ? '退出全屏' : '进入全屏'}
-          className="hidden h-10 w-10 items-center justify-center rounded-lg text-(--tiger-text,#1f2937) transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9) sm:flex"
+          className="hidden h-10 w-10 items-center justify-center rounded-lg text-(--tiger-text,#1f2937) transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9) lg:flex"
           onClick={() => {
             void toggleDocumentFullscreen().catch(() => undefined);
           }}>
@@ -190,15 +187,15 @@ export function MainHeader({
               className="p2-header-user-btn"
               title={accountLabel}
               aria-label={accountLabel}>
-              <Avatar className="p2-avatar shrink-0 font-bold text-sm bg-gradient-to-tr from-(--tiger-primary,#3b82f6) to-blue-400 text-white">
+              <Avatar className="p2-avatar shrink-0 font-medium text-sm bg-(--tiger-primary) text-(--tiger-primary-foreground)">
                 {accountLabel.charAt(0).toUpperCase()}
               </Avatar>
-              <span className="p2-header-user-name hidden min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937) sm:inline">
+              <span className="p2-header-user-name hidden min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937) xl:inline">
                 {accountLabel}
               </span>
               <ChevronDownIcon
                 size={14}
-                className={`p2-header-chevron hidden shrink-0 sm:block ${open ? 'rotate-180' : ''}`}
+                className={`p2-header-chevron hidden shrink-0 xl:block ${open ? 'rotate-180' : ''}`}
               />
             </button>
           )}>

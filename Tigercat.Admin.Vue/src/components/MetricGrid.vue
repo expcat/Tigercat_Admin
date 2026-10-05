@@ -8,8 +8,8 @@ withDefaults(defineProps<{
 
 <template>
   <div
-    class="grid grid-cols-1 gap-4"
-    :class="columns === 4 ? 'md:grid-cols-3 xl:grid-cols-4' : 'md:grid-cols-3'"
+    class="grid gap-3 sm:gap-4"
+    :class="columns === 4 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'"
   >
     <slot />
   </div>

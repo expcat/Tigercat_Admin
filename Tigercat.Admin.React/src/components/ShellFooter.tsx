@@ -8,7 +8,7 @@ export function ShellFooter() {
   return (
     <Footer
       data-testid="shell-footer"
-      className="mt-8 border-t border-(--tiger-border,#e2e8f0) bg-transparent px-0 py-4"
+      className="mt-8 border-t border-(--tiger-border,#e2e8f0)/30 bg-transparent px-0 py-4"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Space size="sm" align="center" wrap>
@@ -17,7 +17,7 @@ export function ShellFooter() {
             Tigercat Admin
           </Text>
           <Tag size="sm" variant="default">
-            UI 3.0.0-preview.9
+            UI 3.0.0-rc.1
           </Tag>
         </Space>
         <Text size="sm" color="secondary">

@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { notification } from '@expcat/tigercat-react';
-import { FloatButton, FloatButtonGroup } from '@expcat/tigercat-react/FloatButton';
+import { Button } from '@expcat/tigercat-react/Button';
+import { Dropdown, DropdownItem, DropdownMenu } from '@expcat/tigercat-react/Dropdown';
 import { BackTop } from '@expcat/tigercat-react/BackTop';
-import { ArrowUpIcon, HelpIcon, MessageIcon, PlusIcon } from './Icons';
+import { ArrowUpIcon, HelpIcon } from './Icons';
 
 const getScrollTarget = () =>
   typeof document !== 'undefined'
@@ -11,10 +12,6 @@ const getScrollTarget = () =>
 
 export function ShellQuickActions() {
   const navigate = useNavigate();
-
-  const goHelp = () => {
-    navigate('/about');
-  };
 
   const sendFeedback = () => {
     notification.info({
@@ -25,43 +22,27 @@ export function ShellQuickActions() {
 
   return (
     <>
-      <FloatButtonGroup
+      <Dropdown
         trigger="click"
-        placement="bottom-right"
-        offset={{ y: '6.5rem' }}
-        className="max-sm:!hidden"
-        triggerNode={
-          <FloatButton type="primary" size="lg" aria-label="快捷操作" tooltip="快捷操作">
-            <PlusIcon size={22} />
-          </FloatButton>
-        }
+        placement="bottom-end"
+        showArrow={false}
+        renderTrigger={() => (
+          <Button variant="ghost" aria-label="帮助与反馈" className="!hidden h-10 w-10 shrink-0 !p-0 sm:!flex">
+            <HelpIcon size={20} />
+          </Button>
+        )}
       >
-        <FloatButton
-          type="default"
-          size="md"
-          aria-label="帮助"
-          tooltip="帮助"
-          onClick={goHelp}
-        >
-          <HelpIcon size={20} />
-        </FloatButton>
-        <FloatButton
-          type="default"
-          size="md"
-          aria-label="反馈"
-          tooltip="反馈"
-          onClick={sendFeedback}
-        >
-          <MessageIcon size={20} />
-        </FloatButton>
-      </FloatButtonGroup>
-
+        <DropdownMenu>
+          <DropdownItem onClick={() => navigate('/help')}>帮助中心</DropdownItem>
+          <DropdownItem onClick={sendFeedback}>反馈</DropdownItem>
+        </DropdownMenu>
+      </Dropdown>
       <BackTop
-        className="max-sm:!hidden"
+        aria-label="回到顶部"
         target={getScrollTarget}
         visibilityHeight={240}
         position="fixed"
-        placement="bottom-left"
+        placement="bottom-right"
         offset={24}
       >
         <ArrowUpIcon size={20} />

@@ -47,6 +47,21 @@ cd Tigercat.Admin.Vue && pnpm dev
 
 前端通过 `/api` 访问后端。Aspire 会注入 `VITE_API_URL`。单独 `pnpm dev` 时 Vite 把 `/api` 与 `/hubs`（WebSocket）代理到 `http://127.0.0.1:5137`，可用 `VITE_API_URL` 覆盖。
 
+### Tigercat 本地构建联调
+
+当前根目录 `pnpm-workspace.yaml` 的 `overrides` 将 Core、React、Vue 三个 Tigercat 包统一指向同级 `../Tigercat/packages/` 下的本地包。应用的 `package.json` 保留发布版本，实际安装来源由这些 `file:` 覆盖和根 lockfile 决定。pnpm 为本地包接入 Admin 的 React / Vue peer 依赖，避免直接链接上游目录时加载另一份框架运行时。
+
+从 Admin 根目录执行以下命令，先构建上游，再刷新本地包并启动双端演示：
+
+```bash
+pnpm --dir ../Tigercat --filter @expcat/tigercat-core build
+pnpm --dir ../Tigercat --filter @expcat/tigercat-react --filter @expcat/tigercat-vue --parallel build
+pnpm install --force --frozen-lockfile
+pnpm dev:demo:all --force
+```
+
+`file:` 包通过硬链接安装；上游重建 `dist` 后需重新安装并重启 Vite，以刷新包文件和预构建缓存。双端构建验证仍用 `pnpm build:frontend`。恢复 npm 包时，删除上述三个 `overrides`，再在 Admin 根目录执行 `pnpm install` 更新 lockfile。
+
 ## 常用命令
 
 ```bash

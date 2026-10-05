@@ -6,11 +6,9 @@
 
 ## 当前状态
 
-当前仓库包版本 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `3.0.0-preview.9`。
+当前仓库包版本 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `3.0.0-rc.1`。
 
 ## 待上游改进
-
-本轮已复现的组件回归统一由 [修复需求与发布验收](visual-review/2026-10-04/tigercat-fix-request.md) 跟踪，状态和证据见 [视觉 Review](frontend-visual-review.md)，不再维护重复候选表。
 
 | 增强 | 状态 | 需求指针 |
 | ---- | ---- | -------- |

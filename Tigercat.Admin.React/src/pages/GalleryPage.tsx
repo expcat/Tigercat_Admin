@@ -152,7 +152,7 @@ function GalleryPage() {
       <Card header={<Text weight="bold">精选轮播</Text>}>
         <Carousel autoplay arrows dots autoplaySpeed={3500}>
           {featured.map((img) => (
-            <div key={img.id} className="h-56 w-full sm:h-72">
+            <div key={img.id} className="h-40 w-full sm:h-56">
               <Image src={srcOf(img)} alt={img.title} fit="cover" preview={false} className="h-full w-full" />
             </div>
           ))}
@@ -212,10 +212,10 @@ function GalleryPage() {
                   <Button size="sm" variant="outline" onClick={() => openViewer(index)}>
                     查看
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => openAnnotate(img)}>
+                  <Button size="sm" variant="ghost" onClick={() => openAnnotate(img)}>
                     标注
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => openCrop(img)}>
+                  <Button size="sm" variant="ghost" onClick={() => openCrop(img)}>
                     裁剪
                   </Button>
                 </div>

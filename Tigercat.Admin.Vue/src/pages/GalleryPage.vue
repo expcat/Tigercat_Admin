@@ -151,7 +151,7 @@ function applyCrop() {
     <Card>
       <template #header><Text weight="bold">精选轮播</Text></template>
       <Carousel :autoplay="true" :arrows="true" :dots="true" :autoplay-speed="3500">
-        <div v-for="img in featured" :key="img.id" class="h-56 w-full sm:h-72">
+        <div v-for="img in featured" :key="img.id" class="h-40 w-full sm:h-56">
           <Image
             :src="srcOf(img)"
             :alt="img.title"
@@ -204,8 +204,8 @@ function applyCrop() {
           </div>
           <div class="mt-3 flex flex-wrap gap-2">
             <Button size="sm" variant="outline" @click="openViewer(index)">查看</Button>
-            <Button size="sm" variant="outline" @click="openAnnotate(img)">标注</Button>
-            <Button size="sm" variant="outline" @click="openCrop(img)">裁剪</Button>
+            <Button size="sm" variant="ghost" @click="openAnnotate(img)">标注</Button>
+            <Button size="sm" variant="ghost" @click="openCrop(img)">裁剪</Button>
           </div>
         </Card>
       </Masonry>

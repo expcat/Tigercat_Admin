@@ -6,7 +6,6 @@ import { Card } from '@expcat/tigercat-vue/Card'
 import { Loading } from '@expcat/tigercat-vue/Loading'
 import { Message } from '@expcat/tigercat-vue/Message'
 import { Select } from '@expcat/tigercat-vue/Select'
-import { Tag } from '@expcat/tigercat-vue/Tag'
 import { Text } from '@expcat/tigercat-vue/Text'
 import { LineChart, BarChart, PieChart } from '../utils/lazyTigercat'
 import { Marquee } from '@expcat/tigercat-vue/Marquee'
@@ -28,7 +27,7 @@ import {
   type ExportFormat,
 } from '../utils/export'
 import Icon from '../components/Icon.vue'
-import AppLogo from '../components/AppLogo.vue'
+import PageHeader from '../components/PageHeader.vue'
 import MetricCard from '../components/MetricCard.vue'
 import MetricGrid from '../components/MetricGrid.vue'
 import ChartEmptyState from '../components/ChartEmptyState.vue'
@@ -194,31 +193,15 @@ const ANNOUNCEMENTS = [
 
 <template>
   <div class="space-y-6">
-    <!-- 欢迎区域 -->
-    <Card class="overflow-hidden">
-      <div class="relative">
-        <div class="p2-page-accent absolute inset-0 -m-4"></div>
-        <div class="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div class="min-w-0">
-            <div class="flex items-center gap-3 mb-2">
-              <AppLogo :size="48" class="drop-shadow-sm" />
-              <div class="min-w-0">
-                <Text size="lg" weight="bold" class="p2-text-primary">
-                  欢迎回来，{{ session?.username || 'Admin' }}！
-                </Text>
-                <Text size="sm" color="secondary">
-                  {{ homeMessage || '今天是个好日子，让我们开始工作吧！' }}
-                </Text>
-              </div>
-            </div>
-          </div>
-          <div class="hidden sm:flex items-center gap-2">
-            <Tag variant="primary" size="sm">管理员</Tag>
-            <Tag variant="success" size="sm">已认证</Tag>
-          </div>
-        </div>
-      </div>
-    </Card>
+    <PageHeader
+      icon="dashboard"
+      :title="`欢迎回来，${session?.username || 'Admin'}！`"
+      :subtitle="homeMessage || '今天是个好日子，让我们开始工作吧！'"
+      :tags="[
+        { label: '管理员', variant: 'primary' },
+        { label: '已认证', variant: 'success' },
+      ]"
+    />
 
     <!-- 加载错误提示 -->
     <Alert
@@ -236,7 +219,7 @@ const ANNOUNCEMENTS = [
       :gap="24"
       :repeat="2"
       aria-label="运维公告"
-      class-name="rounded-lg border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-card,#ffffff) px-3 py-2"
+      class-name="rounded-lg border border-(--tiger-border,#e5e7eb)/30 bg-(--tiger-bg-card,#ffffff) px-3 py-2"
     >
       <span
         v-for="item in ANNOUNCEMENTS"

@@ -112,22 +112,20 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
 
 <template>
   <Header role="banner" height="auto" class="p2-main-header flex min-h-16 flex-nowrap items-center justify-between gap-2 px-3 py-2 z-10 sm:gap-3 sm:px-4 md:px-6">
-    <div class="flex min-w-0 flex-1 flex-col gap-1 py-2">
-      <div class="flex min-w-0 items-center gap-2">
-        <Button
-          v-if="props.showSidebarToggle"
-          variant="outline"
-          aria-controls="main-sidebar"
-          :aria-expanded="props.sidebarOpen"
-          :aria-label="props.sidebarOpen ? '关闭导航菜单' : '打开导航菜单'"
-          class="p2-header-toggle-btn h-10 w-10 !p-0 shrink-0"
-          @click="$emit('toggle-sidebar')"
-        >
-          <Icon :name="props.sidebarOpen ? 'x' : 'menu'" :size="18" />
-        </Button>
-        <Text size="lg" weight="bold" class="p2-header-title min-w-0 truncate">管理中心</Text>
-      </div>
-      <Breadcrumb class-name="hidden min-w-0 max-w-full overflow-hidden text-sm text-(--tiger-text-secondary,#64748b) sm:block" :max-items="3">
+    <div class="p2-header-title flex min-w-0 flex-1 items-center gap-3">
+      <Button
+        v-if="props.showSidebarToggle"
+        variant="ghost"
+        aria-controls="main-sidebar"
+        :aria-expanded="props.sidebarOpen"
+        :aria-label="props.sidebarOpen ? '关闭导航菜单' : '打开导航菜单'"
+        class="p2-header-toggle-btn h-10 w-10 !p-0 shrink-0"
+        @click="$emit('toggle-sidebar')"
+      >
+        <Icon name="menu" :size="18" />
+      </Button>
+      <Text size="sm" weight="medium" class="min-w-0 truncate lg:hidden">{{ props.pageTitle }}</Text>
+      <Breadcrumb class-name="hidden min-w-0 max-w-full overflow-hidden text-sm text-(--tiger-text-secondary,#64748b) lg:block" :max-items="3">
         <BreadcrumbItem>管理中心</BreadcrumbItem>
         <BreadcrumbItem
           v-for="(item, index) in (props.breadcrumbItems.length ? props.breadcrumbItems : [props.pageTitle])"
@@ -140,11 +138,11 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
     </div>
     
     <!-- 右侧操作区 -->
-    <div class="flex shrink-0 items-center gap-1 sm:gap-3">
+    <div class="flex shrink-0 items-center gap-1 sm:gap-1.5">
       <Tag
         v-if="props.demoMode"
         variant="warning"
-        class="p2-header-demo-tag !hidden rounded-full px-3 font-medium sm:!inline-flex"
+        class="!hidden xl:!inline-flex"
       >
         演示模式
       </Tag>
@@ -153,7 +151,7 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
         data-testid="shell-fullscreen-toggle"
         :aria-label="fullscreen ? '退出全屏' : '进入全屏'"
         :title="fullscreen ? '退出全屏' : '进入全屏'"
-        class="hidden h-10 w-10 items-center justify-center rounded-lg text-(--tiger-text,#1f2937) transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9) sm:flex"
+        class="hidden h-10 w-10 items-center justify-center rounded-lg text-(--tiger-text,#1f2937) transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9) lg:flex"
         @click="handleToggleFullscreen"
       >
         <TigerIcon :icon="fullscreenIcon" size="md" />
@@ -178,14 +176,14 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
             :title="getAccountLabel(props.session)"
             :aria-label="getAccountLabel(props.session)"
           >
-            <Avatar class="p2-avatar shrink-0 font-bold text-sm bg-gradient-to-tr from-(--tiger-primary,#3b82f6) to-blue-400 text-white">
+            <Avatar class="p2-avatar shrink-0 font-medium text-sm bg-(--tiger-primary) text-(--tiger-primary-foreground)">
               {{ getAccountLabel(props.session).charAt(0).toUpperCase() }}
             </Avatar>
-            <span class="p2-header-user-name hidden min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937) sm:inline">{{ getAccountLabel(props.session) }}</span>
+            <span class="p2-header-user-name hidden min-w-0 truncate text-sm font-medium text-(--tiger-text,#1f2937) xl:inline">{{ getAccountLabel(props.session) }}</span>
             <Icon
               name="chevronDown"
               :size="14"
-              class="p2-header-chevron hidden shrink-0 sm:block"
+              class="p2-header-chevron hidden shrink-0 xl:block"
               :class="{ 'rotate-180': open }"
             />
           </button>

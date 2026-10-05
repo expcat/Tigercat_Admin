@@ -19,7 +19,9 @@ pnpm create vite my-admin --template react-ts   # React
 pnpm create vite my-admin --template vue-ts     # Vue
 ```
 
-依赖清单（版本以蓝本 [Tigercat.Admin.React/package.json](../../Tigercat.Admin.React/package.json) / [Tigercat.Admin.Vue/package.json](../../Tigercat.Admin.Vue/package.json) 为准，当前蓝本为 Tigercat `3.0.0-preview.9`）：
+依赖清单（版本以蓝本 [Tigercat.Admin.React/package.json](../../Tigercat.Admin.React/package.json) / [Tigercat.Admin.Vue/package.json](../../Tigercat.Admin.Vue/package.json) 为准，当前蓝本为 Tigercat `3.0.0-rc.1`）：
+
+本仓库当前使用 pnpm `file:` 覆盖做 [Tigercat 本地构建联调](../operations.md#tigercat-本地构建联调)。新项目按下表安装发布版本，不复制这些依赖同级源码目录的 `overrides`。
 
 | 类别 | React 端 | Vue 端 | 说明 |
 | ---- | -------- | ------ | ---- |
@@ -85,6 +87,7 @@ pnpm add -D @tailwindcss/postcss
 | `src/components/MainLayout.tsx` / `MainLayout.vue` | 后台 Shell 骨架（Sidebar + Header + 多标签条 + 可选全局水印 + Content + 页脚） | 基本原样 |
 | `src/components/MainSidebar.tsx` / `MainSidebar.vue` | 侧栏（240px / 折叠 64px、移动 Drawer、展开态菜单搜索） | 替换 Logo、品牌文案 |
 | `src/components/MainHeader.tsx` / `MainHeader.vue` | 面包屑、全屏、主题配置抽屉入口、主题切换、账号菜单 | 按需裁剪菜单项 |
+| `src/components/ChatDock.tsx` / `ChatDock.vue`、`ShellQuickActions.tsx` / `ShellQuickActions.vue` | Header 客服、帮助与反馈及返回顶部 | 按需保留；布局和滚动绑定见 frontend 的 App Shell 蓝图 |
 | `src/components/ShellFooter.tsx` / `ShellFooter.vue` | 内容区底部 `Footer` | 替换产品名 / 版本文案 |
 | `src/components/ThemeConfigDrawer.tsx` / `ThemeConfigDrawer.vue` | 主题配置抽屉（外观 / 主色 / 紧凑密度） | 原样（接 `utils/theme.ts`） |
 | `src/components/TagsView.tsx` / `TagsView.vue` | 多标签导航条 | 原样 |

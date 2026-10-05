@@ -101,6 +101,14 @@ const readErrorMessage = (error: unknown, fallback: string) =>
 
 function ImportPage() {
   const [current, setCurrent] = useState(0);
+  const [narrowSteps, setNarrowSteps] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 639px)');
+    const sync = () => setNarrowSteps(query.matches);
+    sync();
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
   const [files, setFiles] = useState<UploadFile[]>([]);
   const [mode, setMode] = useState<ImportMode>('append');
   const [mappedKeys, setMappedKeys] = useState<(string | number)[]>(['name', 'email', 'dept']);
@@ -353,6 +361,7 @@ function ImportPage() {
         <Card>
           <FormWizard
             steps={STEPS}
+            orientation={narrowSteps ? 'vertical' : 'horizontal'}
             current={current}
             onStepChange={(next) => setCurrent(next)}
             nextText="下一步"

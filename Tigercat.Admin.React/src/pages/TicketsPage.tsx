@@ -510,8 +510,8 @@ function TicketsPage() {
             {selected ? (
               <>
                 <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-2">
-                  <div className="flex min-w-0 flex-1 items-start gap-2">
-                    <Text size="lg" weight="bold">
+                  <div className="flex min-w-0 flex-1 basis-full items-start gap-2 lg:basis-0">
+                    <Text size="lg" weight="bold" className="min-w-0 break-words">
                       {selected.title}
                     </Text>
                     <Tag variant={STATUS_META[selected.status].variant} size="sm" className="shrink-0">

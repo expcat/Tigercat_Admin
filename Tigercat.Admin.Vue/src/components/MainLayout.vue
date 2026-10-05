@@ -269,7 +269,8 @@ watch(
         @lock-screen="lock"
       >
         <template #chat-dock>
-          <ChatDock v-if="isMobile" v-model:open="chatOpen" :floating="false" />
+          <ChatDock v-model:open="chatOpen" :floating="false" />
+          <ShellQuickActions />
         </template>
       </MainHeader>
 
@@ -283,7 +284,7 @@ watch(
           @close-others="closeOthers"
           @close-all="closeAll"
         />
-        <Content as="main" id="main-content-scroll" :tabindex="-1" class="min-h-0 flex-1 overflow-auto p-3 pb-28 pe-4 scroll-smooth sm:p-4 sm:pb-28 md:p-6 md:pb-32 md:pe-28">
+        <Content as="main" id="main-content-scroll" :padding="false" :tabindex="-1" class="min-h-0 flex-1 overflow-auto p-4 pb-20 scroll-smooth md:p-6 md:pb-20">
           <div
             class="mx-auto max-w-7xl animate-fade-in"
             :class="fillMain ? 'flex min-h-full w-full flex-col md:h-full md:min-h-0' : ''"
@@ -317,8 +318,6 @@ watch(
       @logout="$emit('logout')"
       @open-chat="chatOpen = true"
     />
-    <ChatDock v-if="!isMobile" v-model:open="chatOpen" />
-    <ShellQuickActions />
     <OnboardingTour />
   </Layout>
     </div>

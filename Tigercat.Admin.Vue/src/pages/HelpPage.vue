@@ -314,7 +314,7 @@ function submitFeedback() {
             <MutedPanel
               compact
               class="mt-3"
-              description="点击目录项平滑滚动到对应章节；桌面端可使用左下角「回到顶部」。"
+              description="点击目录项平滑滚动到对应章节；滚动后可使用右下角「回到顶部」。"
             />
           </Card>
         </Affix>

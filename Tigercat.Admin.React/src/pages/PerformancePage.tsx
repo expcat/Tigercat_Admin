@@ -365,7 +365,7 @@ function PerformancePage() {
                     return null;
                   }
                   return (
-                    <div className="flex h-full items-center gap-3 border-b border-(--tiger-border,#e5e7eb) px-3">
+                    <div className="grid h-full grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 border-b border-(--tiger-border,#e5e7eb) px-3 py-0.5 sm:flex sm:gap-3 sm:py-0">
                       <Tag variant={LOG_LEVEL_META[line.level].variant} size="sm">
                         {line.level}
                       </Tag>
@@ -375,7 +375,7 @@ function PerformancePage() {
                       <Text size="sm" color="secondary" className="hidden shrink-0 sm:inline">
                         {line.logger}
                       </Text>
-                      <Text size="sm" className="min-w-0 truncate">
+                      <Text size="sm" className="col-span-2 min-w-0 truncate">
                         {line.message}
                       </Text>
                     </div>

@@ -1,6 +1,6 @@
 # 路线图收尾与待验证事项
 
-本文件只维护尚未验证的分支和当前演示边界。开发顺序见 [Roadmap](../Roadmap.md)，本轮问题见 [视觉 Review](frontend-visual-review.md)，组件增强见 [上游需求](tigercat-upstream-requirements.md)。已验证项目从活动清单移除，历史由 Git 保留。
+本文件只维护尚未验证的分支和当前演示边界。开发顺序见 [Roadmap](../Roadmap.md)，组件增强见 [上游需求](tigercat-upstream-requirements.md)。已验证项目从活动清单移除，历史由 Git 保留。
 
 ## 下一轮验证
 
@@ -22,6 +22,6 @@
 | Performance | 万级内存造数；首次挂载、内部滚动和表头本轮通过 | 真实服务端大数据与触摸拖拽未验；不为演示引入另一套拖拽包装 |
 | Analytics | 高层图与基元演示 | 基元 ChartTooltip 固定关闭；Scatter / Heatmap 为静态数据，真实区间、坐标格式和交互联动推迟 |
 
-编辑器使用内置引擎；确定编辑需求后再评估 engine / highlighter。Help 的 Anchor / ScrollSpy 绑定 Shell 滚动容器；已统一代码示例、地址和帮助说明，见 [VO-006](visual-review/2026-10-04/findings.md#vo-006)。
+编辑器使用内置引擎；确定编辑需求后再评估 engine / highlighter。Help 的 Anchor / ScrollSpy 绑定 Shell 滚动容器；代码示例、地址和帮助说明已经统一。
 
 /500 是独立演示入口，未接全局请求失败跳转或错误边界；结合具体失败场景决定是否补全局兜底，避免把普通请求失败一律跳走。

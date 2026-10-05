@@ -1,20 +1,16 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { notification } from '@expcat/tigercat-vue'
-import { FloatButton, FloatButtonGroup } from '@expcat/tigercat-vue/FloatButton'
+import { Button } from '@expcat/tigercat-vue/Button'
+import { Dropdown, DropdownItem, DropdownMenu } from '@expcat/tigercat-vue/Dropdown'
 import { BackTop } from '@expcat/tigercat-vue/BackTop'
 import Icon from './Icon.vue'
 
 const router = useRouter()
-
 const getScrollTarget = () =>
   (typeof document !== 'undefined'
     ? document.getElementById('main-content-scroll')
     : null)
-
-const goHelp = () => {
-  router.push({ name: 'about' })
-}
 
 const sendFeedback = () => {
   notification.info({
@@ -25,38 +21,23 @@ const sendFeedback = () => {
 </script>
 
 <template>
-  <FloatButtonGroup trigger="click" placement="bottom-right" :offset="{ y: '6.5rem' }" class="max-sm:!hidden">
+  <Dropdown trigger="click" placement="bottom-end" :show-arrow="false">
     <template #trigger>
-      <FloatButton type="primary" size="lg" aria-label="快捷操作" tooltip="快捷操作">
-        <Icon name="plus" :size="22" />
-      </FloatButton>
+      <Button variant="ghost" aria-label="帮助与反馈" class="!hidden h-10 w-10 shrink-0 !p-0 sm:!flex">
+        <Icon name="help" :size="20" />
+      </Button>
     </template>
-    <FloatButton
-      type="default"
-      size="md"
-      aria-label="帮助"
-      tooltip="帮助"
-      @click="goHelp"
-    >
-      <Icon name="help" :size="20" />
-    </FloatButton>
-    <FloatButton
-      type="default"
-      size="md"
-      aria-label="反馈"
-      tooltip="反馈"
-      @click="sendFeedback"
-    >
-      <Icon name="message" :size="20" />
-    </FloatButton>
-  </FloatButtonGroup>
-
+    <DropdownMenu>
+      <DropdownItem @click="router.push('/help')">帮助中心</DropdownItem>
+      <DropdownItem @click="sendFeedback">反馈</DropdownItem>
+    </DropdownMenu>
+  </Dropdown>
   <BackTop
-    class="max-sm:!hidden"
+    aria-label="回到顶部"
     :target="getScrollTarget"
     :visibility-height="240"
     position="fixed"
-    placement="bottom-left"
+    placement="bottom-right"
     :offset="24"
   >
     <Icon name="arrowUp" :size="20" />

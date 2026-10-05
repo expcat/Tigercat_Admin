@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Tag } from '@expcat/tigercat-vue/Tag'
-import { Text } from '@expcat/tigercat-vue/Text'
 import { PageHeader as TigerPageHeader } from '@expcat/tigercat-vue/PageHeader'
 import type { TagVariant } from '@expcat/tigercat-core'
 import Icon from './Icon.vue'
@@ -19,21 +18,14 @@ const props = defineProps<{
 </script>
 
 <template>
-  <TigerPageHeader :show-back="false" class-name="min-w-0 overflow-hidden">
+  <TigerPageHeader :show-back="false" :sub-title="props.subtitle" class-name="min-w-0 overflow-hidden [&_.tiger-page-header-title-row]:flex-col [&_.tiger-page-header-title-row]:items-start">
     <template #title>
-      <div class="flex min-w-0 items-center gap-3">
-        <div class="p2-icon-chip flex h-12 w-12 shrink-0 items-center justify-center">
+      <span class="flex min-w-0 items-center gap-3">
+        <span class="p2-icon-chip flex h-10 w-10 shrink-0 items-center justify-center">
           <Icon :name="props.icon" :size="24" />
-        </div>
-        <div class="min-w-0">
-          <Text size="lg" weight="bold" class="p2-text-primary block truncate">
-            {{ props.title }}
-          </Text>
-          <Text size="sm" color="secondary" class="block">
-            {{ props.subtitle }}
-          </Text>
-        </div>
-      </div>
+        </span>
+        <span class="min-w-0 text-xl font-semibold tracking-tight sm:text-2xl">{{ props.title }}</span>
+      </span>
     </template>
     <template v-if="props.tags?.length" #actions>
       <div class="hidden sm:flex items-center gap-2">

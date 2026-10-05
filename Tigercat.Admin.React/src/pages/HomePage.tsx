@@ -4,8 +4,8 @@ import { Card } from '@expcat/tigercat-react/Card';
 import { Loading } from '@expcat/tigercat-react/Loading';
 import { Message } from '@expcat/tigercat-react/Message';
 import { Select } from '@expcat/tigercat-react/Select';
-import { Tag } from '@expcat/tigercat-react/Tag';
 import { Text } from '@expcat/tigercat-react/Text';
+import { PageHeader } from '../components/PageHeader';
 import { LineChart, BarChart, PieChart } from '../utils/lazyTigercat';
 import { Marquee } from '@expcat/tigercat-react/Marquee';
 import { DataExport } from '@expcat/tigercat-react/DataExport';
@@ -17,7 +17,7 @@ import {
   ShieldIcon,
   SettingsIcon,
   FileTextIcon,
-  LogoIcon,
+  DashboardIcon,
   ActivityIcon,
   ShieldCheckIcon,
   PackageIcon,
@@ -289,37 +289,15 @@ function HomePage() {
         />
       )}
 
-      {/* 欢迎区域 */}
-      <Card className="overflow-hidden">
-        <div className="relative">
-          <div className="p2-page-accent absolute inset-0 -m-4" />
-          <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="flex items-center justify-center shrink-0">
-                  <LogoIcon size={48} />
-                </div>
-                <div className="min-w-0">
-                  <Text size="lg" weight="bold" className="p2-text-primary">
-                    欢迎回来，{username || 'Admin'}！
-                  </Text>
-                  <Text size="sm" color="secondary">
-                    {homeMessage || '今天是个好日子，让我们开始工作吧！'}
-                  </Text>
-                </div>
-              </div>
-            </div>
-            <div className="hidden sm:flex items-center gap-2">
-              <Tag variant="primary" size="sm">
-                管理员
-              </Tag>
-              <Tag variant="success" size="sm">
-                已认证
-              </Tag>
-            </div>
-          </div>
-        </div>
-      </Card>
+      <PageHeader
+        icon={<DashboardIcon size={24} />}
+        title={`欢迎回来，${username || 'Admin'}！`}
+        subtitle={homeMessage || '今天是个好日子，让我们开始工作吧！'}
+        tags={[
+          { label: '管理员', variant: 'primary' },
+          { label: '已认证', variant: 'success' },
+        ]}
+      />
 
       {/* 加载错误提示 */}
       {errorMessage && (
@@ -338,7 +316,7 @@ function HomePage() {
         gap={24}
         repeat={2}
         aria-label="运维公告"
-        className="rounded-lg border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-card,#ffffff) px-3 py-2">
+        className="rounded-lg border border-(--tiger-border,#e5e7eb)/30 bg-(--tiger-bg-card,#ffffff) px-3 py-2">
         {ANNOUNCEMENTS.map((item) => (
           <span
             key={item}

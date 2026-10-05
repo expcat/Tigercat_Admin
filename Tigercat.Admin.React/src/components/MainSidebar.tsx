@@ -165,7 +165,7 @@ export function MainSidebar({
       className="h-full shrink-0">
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         {/* Logo */}
-        <div className="flex h-16 shrink-0 items-center justify-center border-b border-(--tiger-border,#e2e8f0) overflow-hidden">
+        <div className="flex h-16 shrink-0 items-center justify-center border-b border-(--tiger-border,#e2e8f0)/30 overflow-hidden">
           <div className="flex items-center gap-3">
             <LogoIcon />
             <span
@@ -200,7 +200,7 @@ export function MainSidebar({
         </nav>
 
         {/* Bottom menu */}
-        <div className="shrink-0 border-t border-(--tiger-border,#e2e8f0) py-2">
+        <div className="shrink-0 border-t border-(--tiger-border,#e2e8f0)/30 py-2">
           <Menu
             selectedKeys={[activeMenu]}
             collapsed={displayCollapsed}
@@ -214,7 +214,7 @@ export function MainSidebar({
 
         {/* 折叠按钮 */}
         {showCollapseToggle && (
-          <div className="shrink-0 border-t border-(--tiger-border,#e2e8f0) p-3 overflow-hidden">
+          <div className="shrink-0 border-t border-(--tiger-border,#e2e8f0)/30 p-3 overflow-hidden">
             <button
               type="button"
               aria-label={collapsed ? '展开菜单' : '收起菜单'}

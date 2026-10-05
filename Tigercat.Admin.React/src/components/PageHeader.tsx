@@ -1,5 +1,4 @@
 import { Tag } from '@expcat/tigercat-react/Tag';
-import { Text } from '@expcat/tigercat-react/Text';
 import { PageHeader as TigerPageHeader } from '@expcat/tigercat-react/PageHeader';
 import type { TagVariant } from '@expcat/tigercat-core';
 import type { ReactNode } from 'react';
@@ -20,21 +19,15 @@ export function PageHeader({ title, subtitle, icon, tags }: PageHeaderProps) {
   return (
     <TigerPageHeader
       showBack={false}
-      className="min-w-0 overflow-hidden"
+      className="min-w-0 overflow-hidden [&_.tiger-page-header-title-row]:flex-col [&_.tiger-page-header-title-row]:items-start"
+      subTitle={subtitle}
       title={
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="p2-icon-chip flex h-12 w-12 shrink-0 items-center justify-center [&_svg]:text-current">
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="p2-icon-chip flex h-10 w-10 shrink-0 items-center justify-center [&_svg]:text-current">
             {icon}
-          </div>
-          <div className="min-w-0">
-            <Text size="lg" weight="bold" className="p2-text-primary block truncate">
-              {title}
-            </Text>
-            <Text size="sm" color="secondary" className="block">
-              {subtitle}
-            </Text>
-          </div>
-        </div>
+          </span>
+          <span className="min-w-0 text-xl font-semibold tracking-tight sm:text-2xl">{title}</span>
+        </span>
       }
       actions={
         tags && tags.length > 0 ? (

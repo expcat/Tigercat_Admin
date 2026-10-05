@@ -125,7 +125,7 @@ const bottomMenuItems = computed(() =>
   >
     <div class="flex h-full min-h-0 flex-col overflow-hidden">
       <!-- Logo -->
-      <div class="flex h-16 shrink-0 items-center justify-center border-b border-(--tiger-border,#e2e8f0) overflow-hidden">
+      <div class="flex h-16 shrink-0 items-center justify-center border-b border-(--tiger-border,#e2e8f0)/30 overflow-hidden">
         <div class="flex items-center gap-3">
           <AppLogo :size="36" />
           <span 
@@ -157,7 +157,7 @@ const bottomMenuItems = computed(() =>
       </nav>
 
       <!-- Bottom menu -->
-      <div class="shrink-0 border-t border-(--tiger-border,#e2e8f0) py-2">
+      <div class="shrink-0 border-t border-(--tiger-border,#e2e8f0)/30 py-2">
         <Menu
           :selected-keys="[activeMenu]"
           :collapsed="displayCollapsed"
@@ -171,7 +171,7 @@ const bottomMenuItems = computed(() =>
       </div>
 
       <!-- 折叠按钮 -->
-      <div v-if="props.showCollapseToggle" class="shrink-0 border-t border-(--tiger-border,#e2e8f0) p-3 overflow-hidden">
+      <div v-if="props.showCollapseToggle" class="shrink-0 border-t border-(--tiger-border,#e2e8f0)/30 p-3 overflow-hidden">
         <button 
           type="button"
           :aria-label="props.collapsed ? '展开菜单' : '收起菜单'"

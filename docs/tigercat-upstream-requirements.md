@@ -1,6 +1,6 @@
 # Tigercat 上游组件需求
 
-面向 Tigercat 组件库开发。本仓库包版本 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `3.0.0-preview.9`。
+面向 Tigercat 组件库开发。本仓库包版本 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `3.0.0-rc.1`。
 
 **单一事实源：** 这里记录「Admin 场景需要、但包侧尚未提供或能力不够」的上游需求；已落地的条目从本文删除，用法只写在 [frontend.md](frontend.md)。当前仍开放、需要立刻跟进的短清单在 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)，该文件只做索引，不复写本文细节。
 
@@ -61,10 +61,8 @@
 ### 2.2 Cron 中文与范围摘要 — P2（后续增强）
 
 - **场景：** Jobs 使用 CronEditor 配置调度，界面为中文，摘要仍显示英文；0–59 范围会展开成六十个分钟值。
-- **现状：** 模式和输入布局、长词换行已修复，320 / 375px 无横溢，见 [VR-017](visual-review/2026-10-04/findings.md#vr-017)。换行解决显示缺陷，尚未改变摘要的语言和表达方式。
+- **现状：** 模式和输入布局、长词换行已修复，320 / 375px 无横溢。换行解决显示缺陷，尚未改变摘要的语言和表达方式。
 - **建议：** 复用现有 locale / Cron 解析能力，给当前 zhCN 提供分钟范围与步长的简洁摘要；不让 Admin 自行翻译或重复解析，不引入运行时语言切换。验收与顺序见 [R3.4](../Roadmap.md)。
-
-本轮已复现回归的修复范围与发布验收见 [独立需求](visual-review/2026-10-04/tigercat-fix-request.md)，逐项状态见 [问题记录](visual-review/2026-10-04/findings.md)。不再把已修复的日期、树选择或图表问题列为待复现候选。
 
 ## 3. 本次不纳入的额外范围
 
