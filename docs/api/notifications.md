@@ -44,3 +44,7 @@
 | `POST /api/notifications` | `notification:create` | Body：`groupKey`、`title`、`description`、`toastType`、`linkUrl?`、`meta?` | 新建的 `NotificationItemResponse`（未读） | `400` 标题为空、分组/类型非法或链接不是安全站内路径 |
 | `PUT /api/notifications/{id}/read` | `notification:edit` | Body：`read` | 更新后的通知对象 | `404` 通知不存在 |
 | `POST /api/notifications/mark-read` | `notification:edit` | Body：`groupKey` 可为 `null` 或省略 | `{ message }` | 只处理未读通知；传分组时只处理该组 |
+
+前端通知中心取第 1 页、每页 100 条，显示服务端 total，分组未读数仅统计当前加载记录。通知及已读状态由所有账号共享；批量成功提示不以当前加载数量冒充全组处理量。单项和批量写需 `notification:edit`，串行提交且成功后才更新本地状态，失败显示原因并可重试；点击链接标已读失败时停留在通知中心。站内目标的 `taskId` / `eventId` 由目标页独立读取，未知 ID 明确显示失败。创建弹层仅成功后关闭，失败在弹层内显示原因并保留输入，提交期间禁重复及关闭。
+
+工作台只读 `unread=true&page=1&pageSize=5`，显示未读总数，直接打开安全站内目标且不写已读状态。读取需 `notification:view`，目标链接另核对目标页权限；Header 铃铛也按读取权限挂载。

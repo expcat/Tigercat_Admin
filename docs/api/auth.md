@@ -71,3 +71,15 @@
 - 库中仍为 SHA256 hex 的旧哈希在**密码校验成功后**透明升级。登录契约（`X-Token` / `Bearer`、session token）不变。
 - 2FA 与忘记密码演示码仍为 `123456`，本阶段不改为 TOTP/短信。
 - `POST /api/auth/login`、`/two-factor/verify`、`/forgot-password*`、`/register` 叠加 IP `RateLimiter`；账号锁定仍按失败次数。两种 `429` 都走 `ApiResponse`。限流窗口见 [operations.md](../operations.md)。
+
+## 用户状态、会话与权限变化
+
+InMemory、SQLite 与 PostgreSQL 均由 `EfUserStore` / `EfSessionStore` 读取当前 `AdminDbContext`。注册、管理创建和 CSV 导入写入同一用户表；管理页重置的密码可用于登录。InMemory 数据仍只在进程内保留，重启后重置。
+
+只有 Active 用户可校验密码或完成 2FA challenge。单个 / 批量禁用或删除用户会同时删除该用户名的现有会话；重新启用或创建同名账号不会恢复旧 token。HTTP 登录过滤器与 Hub 认证中间件每次验证会话时也检查当前用户存在且启用，无效会话返回 `401`。
+
+权限服务直接查询当前用户与角色授权，不保留五分钟权限缓存。用户角色、角色权限、角色用户关联和角色删除完成后，后续受保护 API 请求立即按新权限返回结果；前端菜单与路由在重新加载权限后更新，可通过整页刷新核对。单纯收回权限返回 `403`，不注销仍有效的会话。
+
+`/hubs/monitor` 和 `/hubs/chat` 的新协商 / 新连接使用相同状态校验。已建立的长连接没有主动断开或逐条消息重新鉴权机制；不能将新连接拒绝解释为旧长连接已经断开。
+
+MockApi 是标签页内的静态演示：token 和部分认证 / 权限动作使用演示实现，不等同于 .NET 的会话失效与服务端授权保证。真实认证验收应使用隔离的 .NET 账号；固定验证码仍不是 TOTP 或短信 / 邮件投递。

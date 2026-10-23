@@ -51,23 +51,27 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。根 `Conf
 
 ## App Shell 蓝图
 
+`AppShell` 在 rc.2 中组合 Sidebar / Header / Breadcrumb / Tabs，但未提供标签关闭、持久化、移动 Drawer 和锁屏接口。当前 Shell 已承担动态菜单与权限，继续使用现有组合，避免增加一层适配。
+
 受保护页面统一使用后台 shell：
 
-- 外层：`Layout` 横向布局，左侧 `MainSidebar`，右侧 `MainHeader + TagsView + Content`。Vue 根 `RouterView` 必须包在真实 DOM 节点里（不要直接作为 `ConfigProvider` `contents` 根的兄弟被 overlay-host 插入），否则离开 Shell 进 403/404 时 Vue `insertBefore` 会把页面卸空。回归见 [e2e/overlay-focus.spec.ts](../e2e/overlay-focus.spec.ts)：登录 → `/users` → `/404` → `/403` → 再回 `/users` → 退出，断言应用根不是空 ConfigProvider。同文件还覆盖 `/profile` DatePicker / TimePicker / Tabs、`/analytics` DatePicker、`/content` AutoComplete / TreeSelect / Cascader、`/gallery` ImagePreview 与标注裁剪 Drawer、`/calendar` 新建事件 Drawer 内 DatePicker / TimePicker、`/tickets` 确认关闭 Drawer、`/import` Cascader、`/jobs` 新建任务 Drawer 内 CronEditor 的 Esc / 外部点击关闭与焦点。
+- 外层：`Layout` 横向布局，左侧 `MainSidebar`，右侧 `MainHeader + TagsView + Content`。Vue 根 `RouterView` 必须包在真实 DOM 节点里（不要直接作为 `ConfigProvider` `contents` 根的兄弟被 overlay-host 插入），否则离开 Shell 进 403/404 时 Vue `insertBefore` 会把页面卸空。回归见 [e2e/overlay-focus.spec.ts](../e2e/overlay-focus.spec.ts)：登录 → `/users` → `/404` → `/403` → 再回 `/users` → 退出，断言应用根不是空 ConfigProvider。同文件还覆盖 `/profile` DatePicker / TimePicker / Tabs、`/analytics` DatePicker、`/content` AutoComplete / TreeSelect / Cascader、`/gallery` ImagePreview 与标注裁剪 Drawer、`/calendar` 新建事件 Drawer 内 DatePicker / TimePicker、`/tickets` 确认关闭 Drawer、`/import` 字段映射 Select、`/jobs` 新建任务 Drawer 内 CronEditor 的 Esc / 外部点击关闭与焦点。
 - 桌面侧栏：宽 `240px`，折叠宽 `64px`，使用 `Sidebar`、`Menu`、`SubMenu`、`MenuItem`。
 - 桌面侧栏主菜单保持 `mode="inline"`；折叠态继续传 `collapsed` 并开启 `popupPortal`。展开态 `expandedKeys` 与折叠态 `popupOpenKeys` 分开控制，切换模式清空 popup 状态，避免收缩本身打开二级菜单；重新展开恢复原分组。底部按钮按状态提供「展开菜单 / 收起菜单」及 `aria-expanded`。
 - 移动侧栏：使用 `Drawer placement="left"`，宽 `240px`，遮罩可点击关闭；Esc 关闭为 Drawer 内置行为（经 `onClose/@close` 回调），不要再手动监听 keydown。`destroyOnClose` 会等关场过渡后再卸载；焦点恢复用 `onAfterClose` / `@after-close`。不要再传已删除的 `destroyOnCloseAfterLeave` / `onAfterLeave` / `@after-leave`。
 - Header：使用 `Header`、`Breadcrumb`、`Button`、`Dropdown`、`Avatar`、`Tag`、`Icon`，保持单行、最小高度 64px。桌面显示面包屑，低于 `lg` 显示当前页标题；全屏入口从 `lg` 起显示，演示标记、账号名从 `xl` 起显示。包含侧栏开关、主题配置、客服、帮助与反馈、通知和账号菜单；账号菜单保留主题切换、修改密码、锁定屏幕和退出。全屏使用浏览器 Fullscreen API。
-- 侧栏菜单：展开态开启 `Menu searchable`（`searchPlaceholder="搜索菜单"`）；折叠到 64px 时关闭搜索，避免挤占迷你栏。登录后 `GET /api/menus/schema` 拉 `MenuSchemaNode` 树，经 `filterMenuByPermission` 与 `menuSchemaToMenuItems` 喂给现有 `Menu`（不要自写第二套菜单渲染）。失败时回退 `shell-navigation` 里的打包 schema。游客态该接口 401 会落到打包树；SPA 登录成功（无整页刷新）必须 `resetShellMenuSchema` 再拉一次 live schema，否则 iframeSrc-only 等节点会一直缺到整页刷新。壳主要业务路由是 mixed：`schemaToRouteRecords` + `utils/page-map` 懒加载页面（Vue `router/index.ts` 初始绑定打包树，live schema 再 `addRoute`；React 按 live schema 渲染 `<Route>` 元素，不要再包一层非 Route 组件，否则 React Router 7 会拒绝）。导航走 schema `path`（`getShellNavigatePath`），不要把 `path` 写成 `MenuItem.href`（hash 演示路由会整页跳走）。游客 / 403·404·500 / `projects/:id` / `approvals/:id` 仍是静态路由。无 pageMap 但有安全 `iframeSrc` 的节点走通用嵌入页。菜单管理轻页在系统管理下（`/menus`，`menu:view`），对 schema 做 CRUD，并用角色权限做过滤预览。
+- 侧栏菜单：展开态开启 `Menu searchable`（`searchPlaceholder="搜索菜单"`）；折叠到 64px 时关闭搜索，避免挤占迷你栏。登录后 `GET /api/menus/schema` 拉 `MenuSchemaNode` 树，经 `filterMenuByPermission` 与 `menuSchemaToMenuItems` 喂给现有 `Menu`（不要自写第二套菜单渲染）。失败时回退 `shell-navigation` 里的打包 schema。游客态（包括注销后）没有 Authorization 时直接使用打包树，不请求受保护的菜单接口；SPA 登录成功（无整页刷新）必须 `resetShellMenuSchema` 再拉一次 live schema，否则 iframeSrc-only 等节点会一直缺到整页刷新。壳主要业务路由是 mixed：`schemaToRouteRecords` + `utils/page-map` 懒加载页面（Vue `router/index.ts` 初始绑定打包树，live schema 再 `addRoute`；React 按 live schema 渲染 `<Route>` 元素，不要再包一层非 Route 组件，否则 React Router 7 会拒绝）。导航走 schema `path`（`getShellNavigatePath`），不要把 `path` 写成 `MenuItem.href`（hash 演示路由会整页跳走）。游客 / 403·404·500 / `projects/:id` / `approvals/:id` / `files/:id` / `import/:id` 仍是静态路由。无 pageMap 但有安全 `iframeSrc` 的节点走通用嵌入页。菜单管理轻页在系统管理下（`/menus`，`menu:view`），对 schema 做 CRUD，并用角色权限做过滤预览。
 - 中台演示：协作下「审批中心」`/approvals`（待办 / 已办 / 抄送 / 我发起的）+ `/approvals/:id` + 「流程设计」`/workflow-designer`。详情 IA、Designer Inspector、库/应用分工与 Do-NOT 见下文「审批工作流」。发起审批弹层用 `SchemaForm`，不要再手写一套 FormItem。工单详情仍用 Timeline + ActionBar，动作写回工单 `PUT`；完整实例状态机以审批中心为准（2.5.0：`tasks` / 加签 / 退回 / 撤回）。不要接 Flowable/Camunda，也不要自写第二套 Timeline / Menu。
 - 页脚：`Content` 滚动区内、页面主体之后渲染 `Footer`（`ShellFooter`），随内容滚动，不占固定视口高度。
 - 路由进度：受保护路由切换时用 `LoadingBar.start()` / `LoadingBar.finish()` 驱动顶部进度条（失败或 `next(false)` 也要 `finish`）；根节点挂载 `#tiger-loading-bar-container-root`，由 `LoadingBar` 把 `LoadingBarContainer` 挂进去（子路径 `/LoadingBar` 与 `/LoadingBarContainer` 分开）。React 把命令式调用放入 `queueMicrotask`，避免在 layout effect 中触发组件库的 `flushSync`。游客页与独立异常页不显示。
 - 命令面板：`Spotlight` 显式开启 `hotkey`（React `hotkey`，Vue `:hotkey="true"`），绑定 ⌘K / Ctrl+K；不要再在 App 里叠一层 keydown 开关，否则受控 `open` 会被两次 toggle 抵消。打开后输入框获得焦点，Esc 关闭并恢复原焦点。
-- 多标签（tags-view）：受保护 Shell 在 Header 与 Content 之间显示标签条（`TagsView`）。打开受保护路由即生成标签；标题复用 `getShellPageTitle`，路由映射复用 `resolveShellPageKey`（先精确查 `SHELL_ROUTE_TO_MENU` 的 path，再按前缀映射，使 `/projects/:id` 仍高亮列表菜单 `projects`）。侧栏跳转走 `getShellNavigatePath`（schema `path`，缺失时回退 `SHELL_MENU_ROUTES`）。仪表盘（`home`）固定在最前且不可关闭；关闭当前时跳到相邻标签，关尽后回到仪表盘。刷新后从 `sessionStorage` 键 `tigercat-admin:tags-view` 恢复（损坏/缺失 JSON 时回退为仅仪表盘）。游客页与 `/403` `/404` `/500` 不套 `MainLayout`，因此不显示标签条。面包屑仍由 `MainHeader` + `getShellBreadcrumbItems` 负责，不要在标签条重复实现。标签条固定 48px；当前标签在路由、标签集合或容器宽度变化后沿用 `scrollIntoView` 定位，ResizeObserver 在卸载时清理。
+- 多标签（tags-view）：受保护 Shell 在 Header 与 Content 之间显示标签条（`TagsView`）。打开受保护路由即生成标签；标题复用 `getShellPageTitle`，路由映射复用 `resolveShellPageKey`（先精确查 `SHELL_ROUTE_TO_MENU` 的 path，再按前缀映射，使 `/projects/:id` 仍高亮列表菜单 `projects`）。侧栏跳转走 `getShellNavigatePath`（schema `path`，缺失时回退 `SHELL_MENU_ROUTES`）。仪表盘（`home`）固定在最前且不可关闭；关闭当前时跳到相邻标签，关尽后回到仪表盘。刷新后从 `sessionStorage` 键 `tigercat-admin:tags-view` 恢复（损坏/缺失 JSON 时回退为仅仪表盘）。游客页与 `/403` `/404` `/500` 不套 `MainLayout`，因此不显示标签条。面包屑仍由 `MainHeader` + `getShellBreadcrumbItems` 负责，不要在标签条重复实现。标签条固定 48px；当前标签在路由、标签集合或容器宽度变化后沿用 `scrollIntoView` 定位，ResizeObserver 在卸载时清理。标签本身用 Enter / Space 切换；关闭按钮保留原生键盘事件，关闭后焦点回到当前标签，避免父标签拦截关闭动作。
 - 锁屏：头像下拉「锁定屏幕」打开全屏遮罩（`LockScreen`），覆盖侧栏、标签条与内容；含当前用户 `Avatar`、`Statistic` 实时时钟、`NumberKeyboard` PIN 输入。演示 PIN 固定 `123456`（与登录 OTP 相同）。正确 PIN 关闭遮罩并留在当前路由；错误 PIN 提示后清空输入；Esc / ⌘K 不能绕过 PIN。锁定标记写入 `sessionStorage` 键 `tigercat-admin:lock-screen`。不进左侧菜单。
+- 浏览器全屏：Header 使用官方 `/FullscreenButton`，保留 `shell-fullscreen-toggle` 测试入口和 `lg` 显示断点；`labels.enterAriaLabel` / `exitAriaLabel` 为「进入全屏 / 退出全屏」。状态和 `fullscreenchange` 订阅由组件管理，`onError` / `@error` 用 `Message.error` 显示「全屏切换失败，请重试」。
 - 全局水印：`/settings` 的 `theme.watermark` 开关控制是否在 Header 下方内容区（多标签条 + 页面出口）叠一层 Tigercat `Watermark`。水印文案为两行数组：当前用户名、当天日期 `YYYY-MM-DD`（如 `admin` / `2026-08-23`）。开关立即生效，写入 `localStorage` 键 `tigercat-admin:watermark`（无新 API 端点）。关闭时不渲染 Shell `Watermark`；内容编辑页 / 报表页的页内水印演示保持独立。覆盖层外框是 `absolute inset-0` 且 `pointer-events: none`；`Watermark` 本身保持 `relative h-full w-full`（组件总会加上 `relative`，不要把 `absolute` 写在 Watermark 上，否则与组件 class 冲突后高度为 0）。锁屏遮罩仍覆盖水印层。
-- 主题配置抽屉：Header 通知铃铛旁的调色板按钮打开右侧 `Drawer`。控件接 `utils/theme.ts`：`RadioGroup` 切换 light / dark / system，`ColorSwatch` 选 `COLOR_PRESETS` 主色，带「紧凑密度」可访问名称的 `Switch` 控制 `compactMode`。变更立即 `saveThemePreferences` + `applyTheme`（含根节点 `.dark` 与 `.compact`），并同步 `ConfigProvider` 的 `theme="modern"` 与解析后的 `colorScheme`。头像下拉「主题模式」循环切换仍保留。不进左侧菜单。
-- 消息铃铛 toast：点击 Popover 内单条通知时用 `notification.*({ title, description, actions, onClick })`。`actions` 渲染「查看」按钮（`closeOnClick: true`），整条 `onClick` 仍跳转 `/notifications`；不要只靠整条点击、也不要自绘 toast 按钮。
+- 主题配置抽屉：Header 通知铃铛旁的调色板按钮打开右侧 `Drawer`。控件接 `utils/theme.ts`：`Segmented` 切换 light / dark / system，`ColorSwatch` 选 `COLOR_PRESETS` 主色，带「紧凑密度」可访问名称的 `Switch` 控制 `compactMode`。变更立即 `saveThemePreferences` + `applyTheme`（含根节点 `.dark` 与 `.compact`），并同步 `ConfigProvider` 的 `theme="modern"` 与解析后的 `colorScheme`。头像下拉「主题模式」循环切换仍保留。不进左侧菜单。
+- 消息铃铛：保留本地 `Popover + Badge + Button` 薄组合。官方 `/NotificationBell` 仅提供 `items`、`locale` 与单项已读事件，缺少单项点击、查看全部、批量已读、受控打开 / 打开时刷新和触发器定制入口，无法完整承接现有行为；具体诉求见 [通知铃铛组合扩展](tigercat-upstream-requirements.md#notification-bell-actions)。
+- 消息铃铛 toast：点击 Popover 内单条通知时用 `notification.*({ title, description, actions })`。`actions` 渲染一个「查看」按钮，跳转 `/notifications` 并关闭 toast（`closeOnClick: true`）。rc.2 的 `onClick` 只生成兼容动作按钮，未绑定整条 toast；与 `actions` 同传会重复渲染「查看」。整条点击缺口见 [上游需求 2.4](tigercat-upstream-requirements.md#notification-toast-click)。
 - 回到顶部：`BackTop` 的 `target` 指向 `#main-content-scroll`（页面滚在 `Content` 而非 `window`）。容器滚动时显式传 `position="fixed"`、`placement="bottom-right"`、`offset={24}`（Vue `:offset="24"`），滚动超过 240px 后显示。不要再用 `!fixed !bottom-*` 覆盖内置 sticky 类。
 - 客服入口：全部尺寸统一放在 Header（React `chatDock` prop、Vue `chat-dock` slot），`ChatDock` 传 `floating={false}` / `:floating="false"`、`size="sm"`，按钮为 40px，保留 Drawer、消息逻辑和未读 `Badge`。`ShellQuickActions` 同样放在 Header；帮助与反馈 Dropdown 从 `sm` 起显示，帮助中心跳 `/help`。窄屏可通过侧栏或命令面板进入帮助中心。返回顶部独立放右下角，绑定主区滚动，滚动超过 240px 后显示，并提供「回到顶部」可访问名称。
 - Content：以 `as="main"`、`id="main-content-scroll"`、`tabIndex={-1}` / `:tabindex="-1"` 输出主内容地标，Header 显式 `role="banner"`。传 `padding={false}` / `:padding="false"` 关闭组件默认内边距，再使用 `min-h-0 overflow-auto p-4 pb-20 md:p-6 md:pb-20`，避免默认 `p-6` 盖掉移动端间距。路径变化将主区滚动位置立即重置为左上角；Shell 捕获「跳到主内容」链接点击，阻止默认 hash 导航并聚焦主区，避免覆盖 Demo hash 路由。审批壳内部桌面 `h-full min-h-0` 钉底，窄屏 `min-h-full` 随主区滚动。
@@ -78,6 +82,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。根 `Conf
 | 菜单 key | 路径 | 页面 | 权限 |
 | -------- | ---- | ---- | ---- |
 | `home` | `/dashboard` | 仪表盘 | `dashboard:view` |
+| `workspace` | `/workspace` | 我的工作台 | 登录；各块沿用资源权限 |
 | `analytics` | `/analytics` | 数据分析（分组「数据分析」） | 无入口权限 |
 | `monitor` | `/monitor` | 实时监控（分组「数据分析」） | 无入口权限 |
 | `projects` | `/projects` | 项目列表（分组「项目」） | 无入口权限 |
@@ -86,6 +91,8 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。根 `Conf
 | `approvals` | `/approvals` | 审批中心（分组「协作」） | 无入口权限 |
 | — | `/approvals/:id` | 审批详情（动态参数 `id`，不进侧栏；列表菜单保持高亮） | 无入口权限 |
 | `workflowDesigner` | `/workflow-designer` | 流程设计（分组「协作」） | 无入口权限 |
+| `import` | `/import` | 用户 CSV 导入（分组「运维」） | `user:create` |
+| — | `/import/:id` | 导入结果（列表菜单保持高亮） | `user:create` |
 | `performance` | `/performance` | 大数据演示（分组「运维」） | 无入口权限 |
 | `users` | `/users` | 用户管理 | `user:view` |
 | `roles` | `/roles` | 角色管理 | `role:view` |
@@ -95,7 +102,7 @@ Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。根 `Conf
 | `files` | `/files` | 文件管理 | `media:view` |
 | `notifications` | `/notifications` | 通知中心 | 无入口权限 |
 | `tasks` | `/tasks` | 任务面板 | 无入口权限 |
-| `audit` | `/audit-logs` | 审计日志 | 无入口权限 |
+| `audit` | `/audit-logs` | 审计日志 | 页面校验 `audit:view` |
 | `about` | `/about` | 关于 | 无入口权限 |
 | `profile` | `/profile` | 个人中心（头像下拉进入，不在左侧菜单） | 无入口权限 |
 | — | `/403` `/404` `/500` | 异常页（公共独立布局，不进菜单） | 无（独立兜底页） |
@@ -132,37 +139,45 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 | 页面/区域 | 主要 Tigercat 组件 | 关键交互 |
 | --------- | ------------------ | -------- |
 | Shell | `Layout`、`Content`、`Header`、`Footer`、`Sidebar`、`Drawer`、`Menu`、`Breadcrumb`、`Dropdown`、`Avatar`、`Tag`、`Statistic`、`NumberKeyboard`、`Watermark`、`ColorSwatch`、`Segmented`、`Switch`、`LoadingBar`、`LoadingBarContainer`、`Icon` | 折叠菜单、展开态菜单搜索、移动抽屉、主题切换、账号菜单、内容区全屏、页脚版权条、多标签条（打开/关闭当前·其他·全部、sessionStorage 恢复）、锁屏全屏遮罩（头像下拉锁定，demo PIN 解锁）、全局内容水印（`/settings` 开关，用户名 + 日期）、主题配置抽屉（外观 / 主色 / 紧凑密度，接 `utils/theme.ts`）、受保护路由切换顶部 LoadingBar（落地或失败后消失） |
-| Shell 全局挂件 | `Spotlight`、`Tour`、`FloatButton`/`FloatButtonGroup`、`BackTop`、`Badge`、`Popover`、`Drawer`、`ChatWindow`、`Notification` | 命令面板 ⌘K、首登引导、右下快捷动作/回到顶部、消息铃铛（toast 用 `actions` 渲染「查看」并保留整条 `onClick` 兜底）、在线客服坞（`ChatDock` 发送仍走 `POST /api/chat/messages`，已登录时连 `/hubs/chat` 收完整列表 fan-out；Mock/无 WS 时只 REST。不要把 hub 事件当成 `Message` toast） |
-| 登录/注册 | `Card`、`Form`、`FormItem`、`Input`、`Button`、`Message` | 表单校验、成功跳转、错误提示 |
-| 仪表盘 | `Alert`、`Card`、`Text`、`Tag`、`Select`、`Statistic`、`Loading`、`Empty`、`LineChart`、`BarChart`、`PieChart`、`Marquee`、`DataExport`、`Row`/`Col` | 概览指标、图表空状态、快捷跳转、统计区上方运维公告跑马灯（文档流，不遮挡指标卡片）、概览区按 `trendDays` 导出当前统计与趋势（`GET /api/export/overview` Blob，不用页面 JSON.stringify）、系统信息栅格 |
-| 用户管理 | `DataTableWithToolbar`、`Avatar`、`Button`、`ContextMenu`、`Input`、`Modal`、`Form`、`Select`、`Tag`、`Checkbox`、`CropUpload` | 分页搜索、排序、列显隐、批量状态、头像裁剪、角色选择、窄屏卡片模式、行右键菜单（编辑 / 启停 / 删除，权限不足隐藏或禁用）、工具栏独立 `导出` / `新增用户` 按钮 |
+| Shell 全局挂件 | `Spotlight`、`Tour`、`FloatButton`/`FloatButtonGroup`、`BackTop`、`Badge`、`Popover`、`Drawer`、`ChatWindow`、`Notification` | 命令面板 ⌘K、首登引导、右下快捷动作/回到顶部、消息铃铛（toast 用 `actions` 渲染一个「查看」动作）、在线客服坞（`ChatDock` 发送仍走 `POST /api/chat/messages`，已登录时连 `/hubs/chat` 收完整列表 fan-out；Mock/无 WS 时只 REST。不要把 hub 事件当成 `Message` toast） |
+| 登录/注册 | `Card`、`Form`、`FormItem`、`Input`、`Button`、`Message` | 官方 rules 校验、首个无效字段焦点、Enter 提交、防重复提交、失败重试、离页取消请求与安全返回 |
+| 仪表盘 | `Alert`、`Card`、`Text`、`Tag`、`Select`、`Statistic`、`Loading`、`Empty`、`LineChart`、`BarChart`、`PieChart`、`Marquee`、`DataExport`、`Row`/`Col` | 概览与趋势独立请求、取消旧请求、错误重试、图表空状态、按权限快捷跳转、统计区上方公告示例跑马灯（文档流，不遮挡指标卡片）、概览区按 `trendDays` 导出当前统计与趋势（`GET /api/export/overview` Blob，不用页面 JSON.stringify）、系统信息栅格 |
+| 用户管理 | `DataTableWithToolbar`、`Avatar`、`Button`、`ContextMenu`、`Input`、`Modal`、`Form`、`Select`、`Tag`、`Checkbox`、`CropUpload` | 服务端分页搜索、排序、列显隐、按账号保存命名筛选视图、批量状态失败保留确认与选择、头像裁剪、角色选择、窄屏卡片模式、行右键菜单（编辑 / 启停 / 删除，权限不足隐藏或禁用）、工具栏独立 `导出` / `新增用户` 按钮 |
 | 角色管理 | `DataTableWithToolbar`、`Tree`、`Checkbox`、`Modal`、`Popconfirm`、`Select`、`Tag` | 权限树、角色用户配置、导出字段、删除确认、窄屏卡片模式 |
-| 菜单管理 | `Tree`、`Menu`、`Card`、`Modal`、`Form`、`Select`、`Switch`、`Popconfirm`、`Empty` | schema 树 CRUD（`/api/menus/schema` + `/api/menus/nodes`）、按角色 `filterMenuByPermission` 预览、`schemaToRouteRecords` 计数。不要自写第二套菜单渲染 |
+| 菜单管理 | `Tree`、`Menu`、`Card`、`Modal`、`Form`、`Select`、`Switch`、`Popconfirm`、`Empty` | schema 树 CRUD（`/api/menus/schema` + `/api/menus/nodes`）、按角色 `filterMenuByPermission` 预览、`schemaToRouteRecords` 计数；schema 读取失败隐藏菜单树并提供重试，切换角色取消旧请求，失败可重试且不显示成功预览。不要自写第二套菜单渲染 |
 | 按钮权限 | `Button`、`Card`、`Tag`、`Text` | `/permission-demo` 演示按钮级隐藏：React `PermissionGuard`（含 fallback / `mode="any"|"all"`），Vue `v-permission` / `v-permission.any` 与 `usePermission` fallback。点击只 toast |
-| 系统设置 | `Card`、`Input`、`InputNumber`、`ColorPicker`、`Segmented`、`Switch`、`Upload`、`Modal`、`Collapse`/`CollapsePanel`、`Skeleton` | 分组设置（Collapse 手风琴，默认全部展开）、加载骨架、Logo 上传、保存确认、恢复默认值、全局内容水印开关（`theme.watermark`，本机立即生效）。ColorPicker 触发器/面板文案走 `appText.colorPicker`（「选择颜色」等），不要包一层假文案 |
+| 系统设置 | `Card`、`Input`、`InputNumber`、`ColorPicker`、`Segmented`、`Switch`、`Modal`、`Collapse`/`CollapsePanel`、`Skeleton` | 分组设置（Collapse 手风琴，默认全部展开）、加载骨架与失败重试、原生文件选择与可取消 Logo 上传、草稿 / 已保存值、保存确认与失败重试、恢复默认值仅改草稿、全局内容水印开关（`theme.watermark`，本机立即生效）。ColorPicker 触发器/面板文案走 `appText.colorPicker`（「选择颜色」等），不要包一层假文案 |
 | 文件管理 | `FileManager`、`SplitButton`、`ContextMenu`、`Button`、`Select`、`Tag`、`Modal`、`Message` | 上传（`SplitButton` 主按钮上传、菜单选择文件）、类型筛选、选择、普通删除、强制删除、文件行右键菜单（预览 / 打开 / 删除，删除仍走确认与 `media:delete`） |
-| 通知中心 | `NotificationCenter`、`Badge`、`Statistic`、`Card`、`Button`、`notification` | 已读/未读、批量已读、站内跳转、创建/广播 `POST /api/notifications`（`notification:create`）；列表/已读接口不变。铃铛点单条时 `notification.*({ actions, onClick })`，按钮与整条点击都进 `/notifications` |
+| 通知中心 | `NotificationCenter`、`Badge`、`Statistic`、`Card`、`Button`、`notification` | 全局共享通知与已读状态；列表加载前 100 条，统计标明范围及服务端 total；已读/批量写需 `notification:edit`，成功后更新视图，失败明确提示可重试；站内跳转复用目标页 `taskId` / `eventId` 定位；创建/广播 `POST /api/notifications`（`notification:create`）使用自定义 Modal 页脚，失败留草稿、提交中禁止关闭。铃铛点单条时 `notification.*({ actions })`，「查看」动作进入 `/notifications` 并关闭 toast |
+| 我的工作台 | `Card`、`Button`、`Text`、语义化列表 / 链接 | 四块独立加载 / 空态 / 重试，真实权限与身份范围；详见 [我的工作台](#我的工作台) |
 | 任务面板 | `TaskBoard`、`Statistic`、`Card`、`Input`、`Tag`、`Modal`、`notification` | 拖拽流转、WIP 限制、详情、完成确认 |
-| 审计日志 | `ActivityFeed`、`Timeline`、`Input`、`Select`、`Statistic`、`Empty`、`Modal`、`DataExport`、`CheckboxGroup`、`Code` | 筛选、详情、JSON 预览（`Code copyable`，不要手写 `<pre>`）、`DataExport` 导出 csv/json/xlsx（带当前筛选与字段勾选，`GET /api/audit-logs/export` Blob，权限 `audit:export`）、保留清理 |
-| 个人中心 | `Tabs`/`TabPane`、`Descriptions`、`Avatar`、`Badge`、`Statistic`、`Rate`、`QRCode`、`Signature`、`InputOTP`、`MaskInput`、`ColorSwatch`、`Radio`/`RadioGroup`、`Slider`、`DatePicker`、`TimePicker`、`Textarea`、`Switch`、`Divider`、`Space`、`Timeline`、`List`、`Row`/`Col`、`Icon` | 选项卡分区、资料只读视图、KPI 栅格、两步验证开关对接 enable/disable、`InputOTP` 绑定确认、手机号掩码演示、电子签名、偏好设置、登录设备与历史 |
-| 数据分析 | `Segmented`、`DatePicker`、`ButtonGroup`、`Statistic`、`Progress`、`Skeleton`、`AreaChart`、`PieChart`（环形用 `innerRadiusRatio`）、`FunnelChart`、`GaugeChart`、`HeatmapChart`、`RadarChart`、`ScatterChart`、`TreeMapChart`、`SunburstChart`、`OrgChart`、`ChartCanvas`/`ChartAxis`/`ChartGrid`/`ChartSeries`/`ChartLegend`/`ChartTooltip`、`Table`、`Pagination` | 时间范围切换、KPI 进度、多类型图表、组织分布、图表基元自定义、明细分页 |
+| 审计日志 | `Pagination`、`ActivityFeed`、`Timeline`、`Input`、`Select`、`Statistic`、`Empty`、`Modal`、`DataExport`、`CheckboxGroup`、`Code` | 自动筛选、服务端分页与越界恢复、`eventId` 独立定位及失败重试、JSON 预览（`Code copyable`，不要手写 `<pre>`）、`DataExport` 导出 csv/json/xlsx（带当前筛选与字段勾选，`GET /api/audit-logs/export` Blob，权限 `audit:export`）、保留清理 |
+| 个人中心 | `Tabs`/`TabPane`、`Descriptions`、`Avatar`、`Badge`、`Statistic`、`Rate`、`Signature`、`InputOTP`、`MaskInput`、`ColorSwatch`、`Radio`/`RadioGroup`、`Slider`、`DatePicker`、`TimePicker`、`Textarea`、`Switch`、`Divider`、`Space`、`Timeline`、`List`、`Row`/`Col`、`Icon` | 会话资料只读视图、明确标注的示例统计；2FA 状态读取 / 重试、确认启用 / 取消 / 关闭；手机号、签名、偏好与设备历史明确为演示 |
+| 数据分析 | `Segmented`、`DatePicker`、`ButtonGroup`、`Statistic`、`Progress`、`Skeleton`、`AreaChart`、`PieChart`（环形用 `innerRadiusRatio`）、`FunnelChart`、`GaugeChart`、`HeatmapChart`、`RadarChart`、`ScatterChart`、`TreeMapChart`、`SunburstChart`、`OrgChart`、`ChartCanvas`/`ChartAxis`/`ChartGrid`/`ChartSeries`/`ChartLegend`/`ChartTooltip`、`Table`、`Pagination` | 明示示例数据；预设和自定义区间联动示例规模、KPI 进度、多类型图表、组织分布、图表基元自定义、明细分页与窄屏 Card；系统统计报表入口 |
 | 实时监控 | `Segmented`、`Statistic`、`GaugeChart`、`AreaChart`、`LineChart`、`ActivityFeed`、`Progress`、`Tag`、`Badge` | 优先 SignalR `/hubs/monitor` 按 2s / 3s / 5s（默认 3s）推送同一份 snapshot JSON；暂停后停止推送；连接失败或 Mock 演示回退轮询 `GET /api/monitor/snapshot`；CPU/内存/磁盘水位、QPS/延迟滚动窗口、节点状态、事件流封顶 |
 | 项目列表 | `Card`、`Statistic`、`Tag`、`Avatar`/`AvatarGroup`、`Progress`、`Input`、`Segmented`、`Pagination`、`Empty`、`Row`/`Col` | 卡片网格（`Row`/`Col` 响应式 span）、名称/负责人/编号搜索、状态分段筛选（规划中/进行中/已暂停/已完成）、分页、点击卡片或「查看详情」进入 `/projects/:id`；列表筛选/分页接 `GET /api/projects` |
 | 项目详情 | `Descriptions`、`Steps`/`StepsItem`、`Tabs`/`TabPane`、`Anchor`/`AnchorLink`、`Timeline`、`CommentThread`、`Empty`、`Progress`、`Avatar`/`AvatarGroup` | 动态路由 `:id`、概览/成员/动态；Anchor 点击取消默认导航后切 Tab，`getCurrentAnchor` 同步目录状态，保留链接焦点与路由，不用 key 重建。未知 id 空态仍保持列表菜单高亮；详情接 `GET /api/projects/{id}`，讨论接 `GET /api/comments?targetType=project` |
-| 工单中心 | `Splitter`、`Resizable`、`Steps`/`StepsItem`、`WorkflowTimeline`/`WorkflowActionBar`、`ChatWindow`、`CommentThread`、`Mentions`、`Descriptions`、`Rate`、`Badge`、`Tag`、`Popover`、`Drawer`、`Upload`、`Textarea`、`RadioGroup`/`Radio`、`Input`、`Divider` | 宽屏主从 Splitter 左右 28% / 72%，详情内滚与操作钉底；窄屏列表 / 详情顺序排列，随主区滚动，Descriptions 使用 vertical 布局，操作条保持源码顺序、粘在主区底部并换行。辅助卡片纵向排列，时间按词换行。宽屏对话区 `Resizable` 竖向调高，ChatWindow 填满并内部滚动，`textarea` `resize-none` 避免与底手柄冲突；窄屏去掉 Resizable，对话窗口保留 280px 高度，详情正文不再套固定高度滚动区。工单生命周期、展示用审批时间线（步骤由工单状态派生）、对话、内部 @ 协作、附件、关闭确认、新建工单；列表/详情/关闭/对话接 `/api/tickets`，内部备注接 `/api/comments?targetType=ticket`。ActionBar 同意/驳回写回工单状态，转交/评论写回一条对话（不改状态），撤销禁用；完整待办实例见审批中心。窄屏覆盖见 `e2e/viewport-a11y.spec.ts` |
-| 审批中心 | `DataTableWithToolbar`、`Segmented`、`WorkflowDetailShell`、`Tabs`/`TabPane`、`WorkflowViewer`、`WorkflowTimeline`/`WorkflowActionBar`、`Modal`、`SchemaForm`、`Tag` | 四条列表车道、演示身份 switcher、发起审批。详情：`WorkflowDetailShell`（字段权限 SchemaForm + 默认「审批进度」Timeline / 「流程结构」Viewer + sticky 全量 ActionBar）。发起弹层用 `SchemaForm`（`showActions={false}`，页脚提交调 `validate()`）。同意/拒绝/转交/加签/退回/撤回/评论写回 `/api/approvals/{id}/actions`；同一份 `steps`，不要第二套 Timeline。无 BPM。详情窄屏单列 `min-w-0`，底栏 wrap 不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`） |
+| 工单中心 | `Splitter`、`Resizable`、`Steps`/`StepsItem`、`WorkflowTimeline`/`WorkflowActionBar`、`ChatWindow`、`CommentThread`、`Mentions`、`Descriptions`、`Rate`、`Badge`、`Tag`、`Popover`、`Drawer`、`Textarea`、`RadioGroup`/`Radio`、`Input`、`Divider` | 宽屏主从 Splitter 左右 28% / 72%，详情内滚与操作钉底；窄屏列表 / 详情顺序排列，随主区滚动，Descriptions 使用 vertical 布局，操作条保持源码顺序、粘在主区底部并换行。辅助卡片纵向排列，时间按词换行。宽屏对话区 `Resizable` 竖向调高，ChatWindow 填满并内部滚动，`textarea` `resize-none` 避免与底手柄冲突；窄屏去掉 Resizable，对话窗口保留 280px 高度，详情正文不再套固定高度滚动区。工单生命周期、展示用审批时间线（步骤由工单状态派生）、对话、内部 @ 协作、附件未接入说明、关闭确认、新建工单；列表/详情/关闭/对话接 `/api/tickets`，内部备注接 `/api/comments?targetType=ticket`。列表每页 50 条，`?ticket=ID` 独立读取详情，不依赖当前筛选；切换目标取消旧读取并清空旧详情，404 / 403 / 临时故障页内反馈。备注独立加载与重试，读取期间禁添加，写入期间 ChatWindow / Mentions 禁编辑；新建及关闭提交锁定并保留失败草稿。ActionBar 同意/驳回写回工单状态，转交/评论写回一条对话（不改状态），撤销禁用；完整待办实例见审批中心。窄屏覆盖见 `e2e/viewport-a11y.spec.ts` |
+| 审批中心 | `DataTableWithToolbar`、`Segmented`、`WorkflowDetailShell`、`Tabs`/`TabPane`、`WorkflowViewer`、`WorkflowTimeline`/`WorkflowActionBar`、`AssigneePicker`、`Modal`、`SchemaForm`、`Tag` | 四条列表车道、演示身份 switcher、发起审批。详情：`WorkflowDetailShell`（字段权限 SchemaForm + 默认「审批进度」Timeline / 「流程结构」Viewer + sticky 全量 ActionBar）。发起弹层用 `SchemaForm`（`showActions={false}`，页脚提交调 `validate()`）。同意/拒绝/转交/加签/退回/撤回/评论写回 `/api/approvals/{id}/actions`；同一份 `steps`，不要第二套 Timeline。无 BPM。详情窄屏单列 `min-w-0`，底栏 wrap 不横向溢出（`e2e/viewport-a11y.spec.ts` `@mobile`） |
 | 流程设计 | `WorkflowDesigner`、`WorkflowViewer`、`Card`、`Button`、`Alert` | `/workflow-designer` 吃库 2.5.0 画布摘要 + 右侧 Inspector 四 Tab（审批人 / 操作按钮 / 表单权限 / 高级；标题/类型在面板顶部）。传发起 `schema` 给字段权限矩阵。保存/发布前 `validateWorkflowDesigner`，阻塞项进 Alert + Message。默认种子是请假/采购：条件分支 + 会签 + 抄送 + 金额仅财务可编。会签人写 `actors[]` / `approverPolicy`，不要把人名做成 `children`。预览 Viewer 绑定同一份 `steps`。不写回引擎，不是 BPMN。`min-w-0` + 横向滚 |
 | 团队日历 | `Calendar`、`Countdown`、`Statistic`、`Badge`、`Popover`、`Tag`、`List`、`Drawer`、`DatePicker`、`TimePicker`、`RadioGroup`/`Radio`、`Input` | 月视图 `events` + React `dateCellRender` / Vue `#dateCell` 在格子内标色点和数量；点击日期看右侧当日详情与即将到来列表、新建事件。不要自绘第二套格内事件层。可见月与即将到来接 `GET /api/calendar/events`，Drawer 创建接 `POST /api/calendar/events`；无即将到来事件时显示空值，不生成演示倒计时 |
-| 内容编辑 | `Segmented`、`RichTextEditor`、`MarkdownEditor`、`CodeEditor`、`Watermark`、`Switch`、`Space`、`TreeSelect`、`Cascader`、`TagsInput`、`Mentions`、`Upload`、`Result`、`Tag`、`AutoComplete` | 编辑器三态切换、标题 `AutoComplete`（`allowFreeInput`，可输入未列出的标题）、草稿水印、分类树/栏目级联、`TagsInput` 多标签、@ 协作者、附件上传、立即发布开关、发布成功结果页；挂载加载种子文章 `a1`，保存草稿 / 发布接 `PUT /api/content/articles/{id}`，刷新后从接口恢复。协作者与附件仍本页本地。工具条「加粗 / 斜体」等走 `appText.richTextEditor` / `markdownEditor`，不要自绘一套工具条 |
-| 媒体图库 | `Carousel`、`ImageGroup`、`Image`、`ImagePreview`、`ImageAnnotation`、`ImageCropper`、`Masonry`、`AspectRatio`、`ImageCompare`、`Segmented`、`Skeleton`、`Empty`、`Tag`、`Drawer` | 精选轮播、相册切换、瀑布流网格、固定比例封面、版本前后对比、网格灯箱预览、大图查看（缩放/旋转/导航）、矩形/椭圆标注、16:9 裁剪、刷新骨架屏、空相册空态 |
-| 定时任务 | `CronEditor`、`InputNumber`（`controlsPosition="both"`）、`InputGroup`/`InputGroupAddon`、`NumberKeyboard`、`Gantt`、`Switch`、`Progress`、`Steps`/`StepsItem`、`Badge`、`Tag`、`Drawer`、原生 `Table` | 调度表达式编辑、并发数步进、超时数值+单位、批量条数数字键盘、执行时间轴、启停切换、执行进度、运行阶段、新建/编辑任务；列表 / 启停 / 新建编辑接 `/api/jobs`，Gantt 使用返回的 `start` / `end` / `progress` / `color` |
-| 数据导入 | `FormWizard`、`Transfer`、`Upload`、`Cascader`、`Slider`、`RadioGroup`/`Radio`、`Progress`、`Result`、`Descriptions` | 分步向导、字段映射穿梭框、文件上传、目标表级联、批量大小滑块、导入模式/冲突策略、导入进度、确认摘要、完成结果页；前三步仍本地，完成时 `POST /api/import-jobs` 并轮询 `GET` 直到完成，最近任务 ID 写入 `sessionStorage` 键 `tigercat-admin:last-import-job` 以便刷新恢复 Result |
+| 内容编辑 | `Segmented`、`RichTextEditor`、`MarkdownEditor`、`CodeEditor`、`Watermark`、`Switch`、`Space`、`TreeSelect`、`Cascader`、`TagsInput`、`Mentions`、`Result`、`Tag`、`AutoComplete` | 编辑器三态切换、标题 `AutoComplete`（`allowFreeInput`，可输入未列出的标题）、草稿水印、分类树/栏目级联、`TagsInput` 多标签、@ 协作者、附件上传、立即发布开关、发布成功结果页；挂载加载种子文章 `a1`，保存草稿 / 发布接 `PUT /api/content/articles/{id}`，刷新后从接口恢复。附件通过原生文件选择调用媒体 API 上传，或分页选择已有媒体，并随文章保存为引用；失败队列可重试、移除可取消，迟到响应不追加附件。协作者备注仍为本页参考。加载失败禁保存，保存期间锁定编辑；立即发布关闭时执行保存草稿。工具条「加粗 / 斜体」等走 `appText.richTextEditor` / `markdownEditor`，不要自绘一套工具条 |
+| 媒体图库 | `Carousel`、`ImageGroup`、`Image`、`ImagePreview`、`ImageAnnotation`、`ImageCropper`、`Masonry`、`AspectRatio`、`ImageCompare`、`Segmented`、`Skeleton`、`Empty`、`Tag`、`Drawer` | 精选轮播、相册切换、瀑布流网格、固定比例封面、版本前后对比、网格灯箱预览、大图查看（缩放/旋转/导航）、矩形/椭圆/多边形/自由画笔标注、16:9 裁剪。保留示例相册，新增真实“已保存”相册与服务端分页；标注按媒体 ID 保存和恢复，裁剪上传 `CropResult.blob`、解码验证实际尺寸，失败保留抽屉与草稿。刷新骨架屏、加载失败重试、空相册空态 |
+| 定时任务 | `CronEditor`、`InputNumber`（`controlsPosition="both"`）、`InputGroup`/`InputGroupAddon`、`NumberKeyboard`、`Gantt`、`Switch`、`Progress`、`Steps`/`StepsItem`、`Badge`、`Tag`、`Drawer`、原生 `Table` | 任务配置新建 / 编辑 / 启停接 `/api/jobs`；Cron、并发数校验，超时与批量条数保留展示字符串契约；状态、进度、运行阶段与 Gantt 窗口均明确标为示例，无真实执行器 |
+| 数据导入 | `FormWizard`、原生文件选择、`Select`、`Table`、`Progress`、`Alert` | `/import` 三步：读取真实 UTF-8 CSV → 映射用户名 / 密码 / 可选字段 → API 校验预览并创建任务；`/import/:id` 展示真实进度、逐行结果与失败行下载。菜单、路由与 API 均要求 `user:create`。最近任务 ID 存 sessionStorage，结果页直访和刷新恢复；契约见 [用户 CSV 导入](api/import.md) |
 | 大数据演示 | `VirtualList`、`VirtualTable`、`useDrag`、`TaskBoard`、`Tabs`/`TabPane`、`Tag`、`Card` | 万级日志流虚拟滚动、万行多列表格（stickyHeader + 固定行高）、`useDrag` 自由排序、泳道看板（`TaskBoard` 泳道，区别于任务面板那套后端任务流）；数据页面内生成 |
-| 帮助中心 | `Anchor`/`AnchorLink`、`ScrollSpy`、`Affix`、`Collapse`/`CollapsePanel`、`Code`、`Kbd`、`Link`、`List`、`InfiniteScroll`、`ScrollArea`、`Highlight`、`Card`、`BackTop`（全局） | 长文档章节锚点导航（`getContainer` 指向 `#main-content-scroll`）、横向滚动高亮、侧栏吸顶、FAQ 手风琴、可复制代码块、快捷键 `Kbd`、内联链接、关键字高亮（「权限」「令牌」）、`ScrollArea` 只包 FAQ 答案与更多文章列表（`maxHeight` 240 / 320 写在视口上，根 class 用 `className` / `viewportClassName` 区分，不包整篇以免抢走主内容滚动）、更多文章无限加载、回到顶部 |
-| 报表打印 | `PrintLayout`/`PrintPageBreak`、`Watermark`、`Descriptions`、`Statistic`、`QRCode`、`Result`、`Segmented`、`Divider`、原生 `Table`、`DataExport`、`CheckboxGroup` | A4 打印布局、草稿水印、报表元信息、KPI 汇总、渠道明细、分页分隔、二维码校验、报表类型切换、`window.print()` 输出、打印旁 `DataExport` 导出 csv/json/xlsx（`CheckboxGroup` 勾选 KPI/渠道字段，`GET /api/export/reports` Blob） |
-| 异常页 | `Result`、`Countdown`、`Button`、`Empty` | 403/404/500 独立居中布局、返回首页/上一页、404 倒计时自动回首页、无历史记录时 Empty 提示、无权限路由重定向 `/403` |
-| 登录流程增强 | `Steps`、`Input`、`MaskInput`、`InputOTP`、`Countdown`、`Alert`、`Result`、`Button` | 忘记密码三步重置（邮箱 `Input` / 手机 `MaskInput` → `InputOTP` 验证码 → 新密码 → 完成）、账号两步验证 `InputOTP`（验证通过才写会话、60s 重发倒计时）、注册成功结果页与倒计时回登录 |
-| 关于 | `Alert`、`Card`、`Text`、`Tag`、`NavigationMenu`/`NavigationMenuList`/`NavigationMenuContent`/`NavigationMenuItem`/`NavigationMenuLink`/`NavigationMenuTrigger` | 技术栈和版本信息、页内分区跳转（服务信息 / 特性 / 技术栈）。默认点击 / Enter / Space / ArrowDown 才开层面板，不要依赖悬停；根菜单自行命名（`aria-label="关于分区"`），不要假设默认 `Main`。 |
+| 帮助中心 | `Input`、`Button`、`Anchor`/`AnchorLink`、`ScrollSpy`、`Affix`、`Collapse`/`CollapsePanel`、`Code`、`Kbd`、`Link`、`ScrollArea`、`Highlight`、`Card` | 本地 15 篇使用指南按标题 / 摘要搜索，每批显示 5 篇；搜索重置批次，提供无结果与清空搜索。文章指向现有路由，入口沿用权限判断。章节锚点绑定 `#main-content-scroll`，FAQ 答案用 `ScrollArea maxHeight=240`；Code 自带复制成功 / 失败反馈。反馈按钮明确为演示。 |
+| 报表打印 | `PrintLayout`、`Watermark`、`Segmented`、原生表格、`DataExport` | 当前系统概览 + UTC 用户创建趋势；近 1 / 7 / 30 / 90 天切换、刷新与重试；固定 A4 白纸、表头跨页重复；调用 `PrintLayoutInstance.print()` 隔离 Shell；CSV / JSON / XLSX 均走 `GET /api/export/overview` |
+| 异常页 | `Result`、`Countdown`、`Button`、`Empty` | 403/404/500 独立居中布局、返回首页/上一页、404 倒计时自动回首页；路由复用时重置倒计时并重新判断历史；无权限路由重定向 `/403` |
+| 嵌入页 | `Alert`、`Button`、`Empty`、原生 `iframe` | 安全地址检查、加载提示、15s 等待提示、重载 / 新窗口恢复、空地址提示；保留 sandbox 与 no-referrer |
+| 登录流程增强 | `Steps`、`Input`、`MaskInput`、`InputOTP`、`Countdown`、`Alert`、`Result`、`Button` | 忘记密码填写验证信息 → 新密码 → 完成，验证码随最终请求校验；账号两步验证通过才写会话，60s 后重新请求登录获取 challenge；注册结果页手动 / 倒计时回登录并保留原目标 |
+| 关于 | `Alert`、`Card`、`Text`、`Tag`、`Button`、`CopyButton`、`NavigationMenu`/`NavigationMenuList`/`NavigationMenuItem`/`NavigationMenuLink` | API 服务版本原样取 `/api/info`，UI 包版本独立显示 `3.0.0-rc.2`；关闭错误提示保留连接失败状态，重新连接期间禁重复操作、离页取消请求。CopyButton 复制当前服务信息并保留成功 / 失败反馈。分区菜单命名为「关于分区」，三个链接直接定位服务信息 / 特性 / 技术栈；ArrowLeft / ArrowRight / Home / End 切换焦点，Enter 定位后保留链接焦点与 hash 路由。 |
+
+项目、任务与日历的业务类型集中在双端 `src/utils/types.ts`。项目筛选与分页保存在 URL，详情返回保留 query；详情与讨论独立加载，区分 404、权限和临时故障。项目状态 `Segmented` 使用 `size="sm"`，在 375px 下完整显示五个标签，并以「项目状态」命名。项目总数取服务端 `total`，状态数量与进度均值标明前 200 条样本范围，剩余天数按本机当天的日历日计算。
+
+任务面板从 `utils/lazyTigercat` 懒加载 `TaskBoard`；列表只取当前筛选前 200 条，显示服务端总数及统计 / WIP 的范围。`task:view` 控制读取，`task:create` 控制新增，`task:edit` 控制流转与完成；写入期间禁用五个筛选控件，防止旧筛选请求覆盖新条件。Vue 添加卡片事件也按权限与忙碌状态绑定，避免仅传监听器就显示新增按钮。跨列状态写入后端，同列卡片排序与列顺序仅是当前视图的临时排列。详情独立按 `taskId` 查询，切换目标取消旧请求并清旧数据；完成弹层使用自定义 footer，失败保持打开，关闭后恢复触发器焦点。Vue 弹层退出期间仍可能渲染 Text 插槽，插槽读取可空详情时需使用可选链，避免关闭时读取已清空对象。负责人是字符串包含匹配，现有模型没有可信的联系人 ID 映射，因此保留 Input，不强接 `AssigneePicker`。
+
+日历默认打开当天，并监听月面板切换刷新数据；事件详情以可聚焦按钮点击打开 Popover。共享日程不含 owner / timezone，按填写日期时间显示，倒计时按浏览器时区计算。创建使用原生 form 提交及 `Button type="submit"`，校验标题、有效日期、同一天内结束晚于开始和地点长度；错误保留草稿并聚焦字段，提交中防重复与关闭，取消不写入。Drawer 内 DatePicker / TimePicker 的 Esc 先关闭子浮层，抽屉关闭恢复触发按钮。
 
 组件一律使用 PascalCase 子路径导入，不要从包根 barrel 拉组件（会拖进 `vendor-ui`）：
 
@@ -186,6 +201,8 @@ import { VirtualList } from '@expcat/tigercat-react/VirtualList';
 import { VirtualTable } from '@expcat/tigercat-react/VirtualTable';
 import { useDrag } from '@expcat/tigercat-react/useDrag';
 import { Message } from '@expcat/tigercat-react/Message';
+import { FullscreenButton } from '@expcat/tigercat-react/FullscreenButton';
+import { notification } from '@expcat/tigercat-react/notification';
 import { LoadingBar } from '@expcat/tigercat-react/LoadingBar';
 import { LoadingBarContainer } from '@expcat/tigercat-react/LoadingBarContainer';
 import { ContextMenu, ContextMenuItem, ContextMenuMenu, ContextMenuSub } from '@expcat/tigercat-react/ContextMenu';
@@ -210,26 +227,57 @@ import { CheckboxGroup } from '@expcat/tigercat-react/CheckboxGroup';
 import { Checkbox } from '@expcat/tigercat-react/Checkbox';
 ```
 
-Vue 端将包名替换为 `@expcat/tigercat-vue/...`。拖拽演示走 hook 子路径 `/useDrag`：React 用 `getDragItemProps`，Vue 用 `getDragItemAttrs`（上游另有 `/Drag` render-prop 组件，本项目未使用）。命令式 `notification` 没有公开子路径，允许从包根导入。`Message` 用 `/Message`。
+Vue 端将包名替换为 `@expcat/tigercat-vue/...`。拖拽演示走 hook 子路径 `/useDrag`：React 用 `getDragItemProps`，Vue 用 `getDragItemAttrs`（上游另有 `/Drag` render-prop 组件，本项目未使用）。命令式 `notification` 已公开小写子路径 `/notification`，两端一律从该子路径导入，避免包根 barrel 把无关重组件带入 Shell。`Message` 用 `/Message`。
 
 同文件族可从父路径一起导入（`Dropdown`/`DropdownMenu`/`DropdownItem`、`Menu`/`MenuItem`/`SubMenu`、`Tabs`/`TabPane`、`Steps`/`StepsItem`、`ContextMenu*`、`NavigationMenu*`、`WorkflowTimeline`/`WorkflowActionBar`）。`WorkflowViewer` 是独立入口 `@expcat/tigercat-react/WorkflowViewer`，`WorkflowDesigner` 是 `@expcat/tigercat-react/WorkflowDesigner`，`SchemaForm` 是 `@expcat/tigercat-react/SchemaForm`（Vue 换包名）。`FormItem`、`AvatarGroup`、`RadioGroup` 是独立入口，不要从 `Form`/`Avatar`/`Radio` 再导出。
 
-页面已按路由 `lazy` / `() => import(...)` 拆包。图表、编辑器、裁剪/标注、Gantt 再按交互边界懒加载：双端从 `src/utils/lazyTigercat` 引入（React `lazy` + `Suspense`，Vue `defineAsyncComponent`）。仪表盘 / 监控 / 数据分析懒加载图表；内容页只加载当前编辑器；图库裁剪/标注在抽屉打开后加载；用户头像 `CropUpload` 在编辑弹层出现后加载；定时任务 `Gantt` 随页面异步加载。不要把这些重入口静态写进 Shell。Vite `manualChunks` 只把**静态可达**的 `@expcat/tigercat-*` 放进 `vendor-ui`，避免把懒加载模块打回同一 chunk。
+页面已按路由 `lazy` / `() => import(...)` 拆包。图表、编辑器、裁剪/标注、Gantt、任务面板的 TaskBoard 再按交互边界懒加载：双端从 `src/utils/lazyTigercat` 引入（React `lazy` + `Suspense`，Vue `defineAsyncComponent`）。仪表盘 / 监控 / 数据分析懒加载图表；内容页只加载当前编辑器；图库裁剪/标注在抽屉打开后加载；用户头像 `CropUpload` 在编辑弹层出现后加载；定时任务 `Gantt` 随页面异步加载。不要把这些重入口静态写进 Shell。Vite `manualChunks` 只把**静态可达**的 `@expcat/tigercat-*` 放进 `vendor-ui`，避免把懒加载模块打回同一 chunk。
 
 Vue 的 SVG 内部基元 `ChartAxis` / `ChartGrid` / `ChartSeries` 是同步导出的例外：异步解析会丢失 SVG 命名空间，产生存在于 DOM 却不可见的图表；`ChartCanvas` 和其余重组件仍懒加载。`ChartSeries` 只提供系列容器，实际线条/数据点必须在 children / slot 中绘制。Analytics 用 polyline + circle，按 `ChartCanvas` 的 `resolvedSizeChange` 更新横轴比例尺，外层给 `h-60`；底轴传 `y={innerH}` / `:y="innerH"`，不要用会被组件覆盖的 transform 移轴。
 
 文案只加载 `zhCN`：`import { zhCN } from '@expcat/tigercat-core/locales/zh-CN'`，再与 `appText` overlay 合成 `appLocale`。日期文案在 `locale.datePicker`，没有 `datepicker-locales` 入口。
 
-`DataExport` 2.1.1 官方格式只有 `xlsx` / `markdown`，组件会先在客户端序列化再触发 `onExport`。报表 / 审计 / 仪表盘用它做 csv/json/xlsx 触发按钮（`labels.xlsxText`），`cellFormatter` 跳过客户端文件，实际字节来自导出 API Blob。字段勾选走 `CheckboxGroup`。用户 / 角色页现有导出弹层不改。
+`DataExport` 3.0 默认提供 `xlsx` / `csv` / `markdown`，单个 `formats` 值渲染按钮。报表 / 审计 / 仪表盘需要服务端 CSV / JSON / XLSX，使用 `customExport={() => onExport(format)}`（Vue `:custom-export="() => onExport(format)"`）直接调用 API 下载 Blob，绕过客户端序列化；`columns` 仍用业务字段，`dataSource` 传空数组。每种 API 格式保留一颗 `formats=['xlsx']` 按钮并用 `labels.xlsxText` 命名，真实格式由闭包决定。JSON 是应用 API 格式，不是组件原生格式。`onExport` / `@export` 只在导出完成后通知；不要再通过 `cellFormatter` 抛异常转入 `onError`。字段勾选走 `CheckboxGroup`。用户 / 角色页现有导出弹层不改。
 
 ### 页面中的布局与图表约定
 
-- 报表 / 审计导出字段的 `CheckboxGroup` 显式 `orientation="horizontal"`，允许横排换行。Reports 的 A4 纸保持固定宽度，宿主 Card 用 `overflow-x-auto print:overflow-visible`，手机可在纸张区域内横滚。`p2-print-paper` 在该区域固定浅色文本、边框与表面 token，确保暗色 Shell 中的白纸仍可读。
+- 审计导出字段的 `CheckboxGroup` 显式 `orientation="horizontal"`，允许横排换行。Reports 的 A4 纸保持固定宽度，宿主 Card 用 `overflow-x-auto print:overflow-visible`，手机可在纸张区域内横滚。`p2-print-paper` 在该区域固定浅色文本、边框与表面 token，确保暗色 Shell 中的白纸仍可读。
 - Monitor 保留 20 个滚动数据点，但横轴只显示首、中、末三个时刻、纵轴 `yTicks=3`，并开启 hover。资源百分比用 `Progress variant` 表达健康色；不要用 `status="success"`，该状态会把进度强制完成为 100%。
 - Tasks 筛选控件窄屏全宽、`sm` 起用定宽；日期输入提供「开始日期」/「结束日期」可访问名称。完成任务先阻止 Modal 默认关闭，写回后的状态仍留在详情供用户确认。
 - Performance 自由排序在 `useDrag` 的 `onDrop` 回调中调用 `reorder` 并写回队列，直接保留组件的 item / zone bindings。不要在父级 DOM drop 冒泡后再读拖动状态：卡片 binding 已先执行 drop 并清空状态，父级此时无法重排。hook 回调也覆盖触摸指针提交。
 - 用户表格外的 `ContextMenu` 使用 `asChild` / `as-child`，避免默认内联容器收缩表格；用户 / 角色的「操作」Dropdown 不再叠加重复 Tooltip，Esc 一次关闭当前菜单。
 - 新增用户以 `FormItem.error` 显示用户名 / 密码错误，提交失败聚焦首个无效字段，编辑对应字段时清除错误。Vue 的无效或失败 `onOk` 返回 `false`，避免 Modal 默认关闭；取消后恢复新增入口。
+
+### 定时任务与大数据演示
+
+Jobs 的公共 `Job` / `JobForm` / 创建更新类型放在双端 `utils/types.ts`，请求与表单校验放在 `utils/jobs.ts`。列表请求取消前次读取，加载 / 空 / 错误状态同时覆盖列表与 Gantt；失败可重试。启停先更新勾选值，失败还原原配置；创建 / 编辑先应用写入响应，再刷新列表，刷新失败仍保留已保存值。页面以写入锁阻止重复提交与并行启停，提交期间禁用字段、取消、Esc 和遮罩关闭；保存失败保留 Drawer 与草稿。名称、并发数和 Cron 校验失败聚焦实际输入，表单支持 Enter 提交。
+
+Cron 使用 rc.2 `CronEditor` 的 `onValidate` / `@validate` 和 Core `validateCronExpression`，不复制解析器。组件允许空值，页面额外要求非空、最长 64 字；并发数为空时保留 `null`，要求 1–20 的整数。rc.2 的非整数数值草稿不会提交到表达式或触发校验，因此提交前用 Core `parseOptionalInt` 检查 CronEditor 内 `inputmode="numeric"` 的当前值。每次打开新建 / 编辑递增组件 key，取消后重开从默认值 / 已保存配置重新初始化所有子字段。语法合法但 `nextCronRun` 为 `null`（如 `0 0 31 2 *`）仍可保存配置。timeout / batchSize 只检查 16 字长度，不强加数值契约，见 [Jobs API](api/jobs.md)。中文摘要与草稿校验缺口见 [上游需求 2.2](tigercat-upstream-requirements.md#cron-summary)。
+
+Performance 数据仅在页面内存生成，刷新重置。`VirtualList` 12,000 条、420px 视口与 48px 固定行高；`VirtualTable` 10,000 行、480px 内部视口、48px 固定行高及 sticky 表头，单元格用 `whitespace-nowrap` 避免窄屏换行触发库的行高保护而关闭虚拟化，窄屏在表格内横滚。两者与 Gantt / TaskBoard 一起通过 `lazyTigercat` 的子路径懒加载。自由排序继续使用现有 `useDrag`，页面只补可聚焦卡片及 Space / Enter 的 `startDrag` / `drop`，方向键与 Esc 交原 bindings；Tab、失焦或切换页内 Tab 时取消排序，状态通过 `role="status"` 宣告。卡片 `touch-none` 让触摸指针交给组件处理，提交仍由 `onDrop` 调用 `reorder`，不另建拖拽实现。实体触屏验收见 [收尾清单](roadmap-followups.md)。
+
+### 帮助与关于
+
+双端 `HelpPage` 的静态文章使用 `types.ts` 中 `HelpArticle`，按标题和摘要即时筛选，`visibleCount` 以 5 篇递增；无远程文章接口或模拟延迟。目录提供用户筛选视图、媒体详情 `/files/:id`、CSV 导入结果 `/import/:id` 等现有入口说明；参数详情由对应列表 / 创建结果进入，不捏造固定 ID。受保护入口由现有 `usePermission` 控制，缺权保留可读说明。Anchor / ScrollSpy 的 `getContainer` 与 Affix 的 target 都指向主内容滚动区，锚点不替换 hash 路由。快捷键说明仅包含已实现的命令面板和原生键盘操作。
+
+FAQ 以实际存储为准：Mock 业务写入在当前标签页 `sessionStorage`，刷新可恢复、活动导入可续跑；关闭标签页或清理会话存储后重置。反馈入口是可键盘操作的 Button，提示尚未发送；不宣称有反馈服务。Code 已有复制结果和读屏反馈，保持原组件；About 新增服务信息复制直接使用 `/CopyButton`，不再手写剪贴板状态。
+
+`AboutPage` 的 `InfoResponse` 放双端 `types.ts`。连接状态由 `loading` 与成功获取的 `info` 派生，错误 Alert 仅控制提示；失败不展示默认服务版本，也不把 UI 包版本覆盖为服务版本。页面列出现有能力及权限允许的文件 / 导入 / 报表 / 帮助 / 工作台入口。「关于分区」复用 NavigationMenu 的 List / Item / Link，三个链接直接定位服务信息 / 特性 / 技术栈；ArrowLeft / ArrowRight / Home / End 切换焦点，Enter 在 Shell 主滚动区定位，保留链接焦点与 hash 路由。
+
+### 我的工作台
+
+双端 `WorkspacePage` 位于 `/workspace`，由真实 API / MockApi / 打包菜单 schema 的 `workspace` 节点及 `page-map` 懒加载接入。侧栏、面包屑、标签页和命令面板沿用现有 schema 机制；默认首页仍为 `/dashboard`。帮助中心提供使用指南，关于页提供入口。
+
+页面使用 `Card`、`Button`、`Text` 与语义化链接 / 列表；桌面两列，窄屏单列，颜色沿用主题 token。`utils/workspace.ts` 分别读取四个数据域，各块独立加载、失败、空态和重试，不设聚合接口。每块最多显示 5 条，同时展示对应范围内的完整总数；审批身份不可确认时不展示计数。切换账号、权限或离开页面取消旧请求并清空旧数据；审批演示身份和通知变更事件只刷新对应块。
+
+| 区块 | 数据范围与权限 | 目标 |
+| ---- | -------------- | ---- |
+| 用户名匹配的待办 | `task:view`；当前用户名精确匹配负责人文本，排除 `done`；明确没有账号分派关系，筛选和分页契约见 [任务 API](api/tasks.md) | `/tasks?taskId=ID` 独立详情 |
+| 全局未读通知 | `notification:view`；共享通知与共享已读状态，`unread=true`；打开目标不修改已读状态 | 安全站内 `linkUrl`；缺少目标权限时只展示文字；无安全目标回通知中心 |
+| 团队近期日程 | 登录；本机今天起 30 天内尚未开始的共享日程，无个人归属 | `/calendar?date=YYYY-MM-DD&eventId=ID`，选择对应月 / 日期并聚焦、展开原 Popover；非法日期或缺失事件页内提示 |
+| 演示审批待办 | 登录；先用真实通讯录核对独立演示身份的 ID / username，匹配后才读取 `todo`；不可确认时说明原因并提供审批中心入口，不冒充当前账号统计 | `/approvals/:id` |
+
+无任务 / 通知读取权限时不发对应请求，保留权限说明；Header 通知铃铛同样按 `notification:view` 挂载。工作台不增加审批、日历或个人工作台权限码。页脚入口打开现有业务页，任务面板仍保留自己的筛选行为。
 
 ### 表格使用约定（v1.2.44+）
 
@@ -238,7 +286,15 @@ Vue 的 SVG 内部基元 `ChartAxis` / `ChartGrid` / `ChartSeries` 是同步导�
 - **表格文案**：Table / DataTableWithToolbar 文案统一走 ConfigProvider locale 的 `table` 分节。双端 `src/utils/tigercatText.ts` 导出 `appLocale`（官方 `zhCN` + `appText` overlay），根节点 `ConfigProvider locale={appLocale}`。不要把 `defineText` overlay 单独当完整语言包（v2.1.3 缺键回落 en-US）。卡片排序 Select 的占位与空列表走 locale `select.placeholder` / `emptyText`（「请选择」/「暂无选项」），不要在 Users / Tasks 页硬编码覆盖。页面级覆盖业务文案用 `emptyText`（如「暂无用户数据」）或 `labels` prop；不要再在 toolbar 上硬编码 `searchButtonText` / `bulkActionsLabel` 通用文案，业务化的 `searchPlaceholder`（如「搜索用户名或显示名...」）保留在页面。
 - **锁定列背景**：上游锁定列背景读组件 Token 链 `--tiger-table-bg → --tiger-component-table-bg → --tiger-surface`（stripe/hover/header 同理），`v1.2.43+` 已对 `striped + fixed` 单元格使用不透明 `color-mix(...)` 背景，避免横向滚动时透出下层内容。本项目在双端全局 CSS 的 `.dark` 块中将 `--tiger-component-table-bg/stripe-bg/hover-bg/header-bg` 映射到 `--tiger-bg-card`/`--tiger-bg-page`/`--tiger-bg-hover`，不再使用 `[style*="position: sticky"]` 全局覆盖。需要进一步定制时使用列级 `fixedClassName` / `fixedHeaderClassName`。固定列位置用逻辑边 `start` / `end`，不要写 `left` / `right`。
 - **列显隐面板**：用户/角色页在 `DataTableWithToolbar` 的 `toolbar` 中启用 `showColumnSettings: true`，并使用 Table 受控隐藏列能力保存状态：React 传 `hiddenColumnKeys` + `onHiddenColumnKeysChange`，Vue 传 `:hidden-column-keys` + `@hidden-column-keys-change`。不要再自建 `Popover + Checkbox` 列显隐面板，也不要在页面侧过滤 `columns`；隐藏列由上游 Table 统一处理，sessionStorage 仍保存 `hiddenColumnKeys`。
-- **搜索/筛选/分页（v2.1.3）**：搜索、筛选、批量动作回调写在 `toolbar` 上（React `toolbar.onSearchChange` / `onSearch` / `onFiltersChange` / `onBulkAction`；Vue 仍可用 `@search-change` / `@search` / `@filters-change` / `@bulk-action`）。Vue `DataTableWithToolbar` 会同时调用 toolbar 回调并 emit 同名事件，用户/角色页只绑 toolbar 的 `onSearchChange` / `onSearch`，不要再叠 `@search-change` / `@search`，否则 `handleSearch` 会触发两次。筛选/批量动作 Vue 继续用 `@filters-change` / `@bulk-action`（toolbar 上未再写一份）。用户/角色页是服务端分页，必须 `toolbar.searchMode: 'remote'`，不要用默认 `local` 去筛当前页。`onPageChange` / `onPageSizeChange` 与 Table 同签名：`({ current, pageSize })`；改页尺寸只发 `onPageSizeChange`。
+- **搜索/筛选/分页（v2.1.3）**：搜索、筛选、批量动作回调写在 `toolbar` 上（React `toolbar.onSearchChange` / `onSearch` / `onFiltersChange` / `onBulkAction`；Vue 仍可用 `@search-change` / `@search` / `@filters-change` / `@bulk-action`）。Vue `DataTableWithToolbar` 会同时调用 toolbar 回调并 emit 同名事件，用户/角色页只绑 toolbar 的 `onSearchChange` / `onSearch`，不要再叠 `@search-change` / `@search`，否则 `handleSearch` 会触发两次。筛选/批量动作 Vue 继续用 `@filters-change` / `@bulk-action`（toolbar 上未再写一份）。用户/角色页是服务端分页，必须同时设置 `toolbar.searchMode: 'remote'` 和 `pagination.remote: true`；前者控制工具栏搜索，后者避免 Table 再次切页 / 排序 / 过滤服务端结果。`onPageChange` / `onPageSizeChange` 与 Table 同签名：`({ current, pageSize })`；改页尺寸只发 `onPageSizeChange`。
+
+用户 / 角色页搜索使用 300ms 防抖；查询变化立即取消旧请求，切页、改每页条数、排序和筛选会清掉待执行搜索。只接收最新请求的结果，失败清空旧列表并提供页内重试；删除末页最后一项后自动回到有效页。
+
+Reports 预览行与概览导出的 `section/key/label/value` 一一对应，天数仅过滤 UTC 用户创建趋势，概览保持当前累计值。使用 `PrintLayoutInstance.print()` 克隆报表与样式到打印 iframe，避免 `window.print()` 输出 Shell；原生表格保留语义 `thead`，长表按浏览器打印分页。PrintLayout 的 iframe 可能采用浏览器默认表格字色，报表区域的原生表格须显式读取浅纸文本 token；打印样式仅在报表克隆为 body 直接子节点时将 html/body 固定白底，避免暗色背景污染整张 A4。Watermark 通过 `font.color` 固定浅纸水印颜色。数据变更后应刷新预览，导出会按相同条件重新查询。
+
+AuditLogs 的列表 effect / watch 只依赖权限、查询、页码与目标事件；保留策略加载和清理忙碌状态不触发重复查询。保留天数校验 1–3650 整数，策略读取失败禁用保存及预览；清理使用自定义 Modal footer，失败保留弹层和错误，关闭恢复到「预览清理」按钮。详情选择包含当前页全部事件，目标事件详情独立于筛选结果。
+
+用户导入沿用 rc.2 原生文件选择方案和现有请求工具，严格 UTF-8 解码后向预览 / 创建接口提交 JSON CSV。`FormWizard showActions=false`，页面负责下一步、上一步、取消和提交；忙碌时禁重复提交，取消清空文件与映射并恢复文件输入焦点。步骤切换聚焦本步标题，映射 Select 支持键盘、Esc 和外部关闭。预览与结果表每页 10 行、行号固定在 `start`、`responsiveMode="card"` / `cardBreakpoint="md"`，状态 render 接收整条 record。结果轮询失败停止并提供重试；403 / 404 清空旧结果，临时错误保留已加载进度；路由切换取消请求和计时器。原 CSV 不写浏览器持久存储，预览 / 结果不显示密码，失败下载密码列为空。
 
 ## React / Vue 映射
 
@@ -259,8 +315,24 @@ Vue 的 SVG 内部基元 `ChartAxis` / `ChartGrid` / `ChartSeries` 是同步导�
 - 会话存在 `SESSION_KEY`，认证头由 `getAuthHeaders()` 或等价工具生成。Monitor / Chat 实时连接用 `utils/realtime.ts`（`@microsoft/signalr` 动态导入），token 走 `getSessionToken()`；演示模式（`VITE_TIGERCAT_DEMO`）不连 hub。
 - API 返回结构使用 `ApiResponse<T>`；分页列表使用 `PagedResult<T>`。
 - 权限列表从 `/api/auth/permissions` 加载，菜单和按钮按权限隐藏。按钮级演示在 `/permission-demo`：React 用 `PermissionGuard` / `usePermission`，Vue 用 `v-permission` / `usePermission`。不要新增 Tigercat 权限组件，也不要自写第二套权限指令。
-- 用户、角色、文件、审计等数据工作台使用 sessionStorage 保留查询、排序、选中行、隐藏列和导出状态。
+- .NET 权限从当前 EF 授权读取；角色变更后刷新页面可重新加载菜单和路由权限。禁用 / 删除使原 token 失效；新 Hub 连接和既有长连接的区别见 [认证专题](api/auth.md#用户状态会话与权限变化)。
+- 用户、角色、文件、审计等数据工作台复用 `utils/workbench.ts`，以 sessionStorage 保留查询、排序、选中行、隐藏列和导出状态。用户页临时状态以当前会话 `username` 隔离，不读取旧的公共 users 键。
+- 用户页命名筛选视图另存 localStorage，键为 `tigercat.admin.workbench.users.<encodeURIComponent(username)>.views`，只在当前浏览器当前账号内生效。保存关键字、状态、排序、每页条数、隐藏列；不保存页码、选择或导出。输入同名保存会替换原快照，另起名称保存为新视图，删除视图保留当前筛选。修改后显示「已修改」，需再次保存；切换 / 重新载入活动视图时恢复已保存快照、回到第 1 页并清空选择。没有活动视图时仍沿用临时工作台返回恢复行为。
+- 系统设置初次 GET 失败时仅显示错误与重试，不展示可编辑空表单。保存只 PUT 有变化的项，成功使用响应更新已保存值；失败保留草稿和确认框，取消不发送 PUT。Logo 上传只改表单引用，预览 / 当前表单值与当前持久化值分别显示；恢复默认值也需确认保存。服务端 `theme.mode` / `theme.primaryColor` / `theme.compactMode` 与 Shell 本机外观偏好分别保存，水印开关为本机立即生效。
+- Logo 选择沿用原生文件输入与 `uploadMediaFile`，保持 React 开发 StrictMode 可用；校验图片 MIME 和 2 MB 上限，上传失败 / 取消保留旧草稿与持久化值。上传期间禁保存 / 恢复，取消中止请求、忽略迟到响应并将焦点恢复到选择按钮；离页中止上传。工单没有附件接口，新建表单只说明该边界，不提供无效文件选择。
+- Vue `Modal` 的 `@ok` 校验失败或请求失败必须 `return false`，否则组件会关闭 `v-model:open`。双端直接返回提交 Promise，让组件在处理中阻止重复确认；取消路径只关闭弹层。
 - 通知 `linkUrl` 只允许站内路径，跳转前检查目标页面权限。
+
+### 认证、个人中心与异常恢复
+
+- 登录 / 注册使用官方 `Form.rules` 与 `FormItem.name`，由 Form 校验并聚焦首个无效字段；提交按钮走原生 submit，保留 Enter 路径。请求期间阻止重复提交，离页或返回时中止请求，并丢弃迟到响应。
+- 双端 `utils/auth.ts` 的 `getSafeReturnTo` 统一检查登录返回路径：只接受站内根路径或 `#/…`，排除外部地址、反斜杠、控制字符，以及带查询参数或尾斜杠的认证 / 异常入口。合法目标保留 query / hash。注册、找回密码和结果页继续传递原目标；登录完成加载期间若会话已被清除，不再跳转。
+- 登录 2FA 的「重新获取验证码」会重新调用登录端点获取 challenge，失败后可重试，成功后才重置 60s 倒计时。返回账号登录会清空验证码与 challenge；验证通过前不写会话。当前验证码仍为固定演示码，不表示已发送短信或邮件。
+- 找回密码先检查邮箱 / 11 位手机号与 6 位验证码格式，更换账号立即清除旧验证信息；切换手机掩码输入后恢复焦点。验证码由最终重置端点校验，失败返回验证码字段；密码错误留在新密码步骤，其他错误保留重试入口。
+- 个人中心只有用户名来自当前会话，2FA 开关读写当前账号 API。读取失败时状态未知、开关禁用并可重试；启用前需输入演示码确认，取消不写回并恢复开关焦点，保存失败保留待确认状态。当前 API 未提供 TOTP 配置，不展示虚构绑定二维码。
+- 个人资料、统计、设备 / 历史明确数据来源。手机号、签名、登录提醒、异地保护和偏好仅为页面演示，不声称已持久化或已启用通知 / 防护；全站主题仍使用 Shell 配置。
+- 403 / 404 / 500 复用页面时更新状态、历史判断和倒计时；手动返回取消自动跳转，回首页使用 replace。`/500` 仍是独立演示入口。
+- Iframe 通过 load / error 事件及 15s 计时提供恢复提示；load 仅表示 frame 响应，不能证明跨域内容可读。浏览器无法可靠区分跨域 CSP / X-Frame-Options 拦截，重载与新窗口入口始终可用。
 
 ## 页面生成验收
 
@@ -277,9 +349,11 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 ## 已对齐的上游能力
 
-本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `3.0.0-rc.1`（3.0 不向前兼容：modern 预设走 `createTigercatPlugin` / `ConfigProvider theme`，`Stepper` / `Kanban` / `DonutChart` / `ImageViewer` 已从调用面移除）。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 Captcha 仍跳过（登录无明示需求）。
+本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `3.0.0-rc.2`，React、Vue 与 MockApi 的 Core 依赖保持同版本（3.0 不向前兼容：modern 预设走 `createTigercatPlugin` / `ConfigProvider theme`，`Stepper` / `Kanban` / `DonutChart` / `ImageViewer` 已从调用面移除）。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 Captcha 仍跳过（登录无明示需求）。
 
-`3.0.0-preview.8` 已由上游修复 React OverlayPortal 的 StrictMode 生命周期与可取消定位等待、双端 WorkflowActionBar 的真实「更多」按钮锚点，以及 Spotlight 的初始聚焦与焦点恢复。双端本地补丁和 `patchedDependencies` 已移除。`3.0.0-rc.1` 已发布，包含结构分隔线柔化、菜单选中背景修复和 WorkflowDesigner / WorkflowViewer 分叉与汇合连线修复，本仓库直接使用 npm 包；如需再次联调本地组件构建，构建、刷新与恢复 npm 包的步骤见 [Tigercat 本地构建联调](operations.md#tigercat-本地构建联调)。浮层与焦点回归见 [e2e/overlay-focus.spec.ts](../e2e/overlay-focus.spec.ts)，审批确认与提交路径见 [e2e/approvals.spec.ts](../e2e/approvals.spec.ts)。
+`3.0.0-rc.2` 直接使用 npm 发布包，包含前序浮层焦点、结构分隔线、菜单选中背景与工作流连线修复，并补齐表单校验、异步事件、拖拽、文件管理和图表交互修复；不保留本地补丁或 `patchedDependencies`。如需联调本地组件构建，构建、刷新与恢复 npm 包的步骤见 [Tigercat 本地构建联调](operations.md#tigercat-本地构建联调)。浮层与焦点回归见 [e2e/overlay-focus.spec.ts](../e2e/overlay-focus.spec.ts)，审批确认与提交路径见 [e2e/approvals.spec.ts](../e2e/approvals.spec.ts)。
+
+升级时对照 [rc.2 迁移指南](https://github.com/expcat/Tigercat/blob/v3.0.0-rc.2/docs/MIGRATION.md)：`Slider` 不再接受 `vertical` / `showInput`，`LoadingBar` 不再接受 `renderBar`，`VirtualList` 仅使用纵向列表契约，不再传 `columns` / `orientation` / `stickyIndexes`。上传文案读取 `getUploadLabels(locale, overrides)`，不要导入已删除的英文常量；自定义拖拽项完整展开 `getDragItemProps` / `getDragItemAttrs` 的返回值，保留数字 key 所需的 `data-drag-id-type`。
 
 | 组件 | 平台 | 上游现状 | 本项目保留的布局 glue |
 | ---- | ---- | -------- | --------------------- |
@@ -288,16 +362,16 @@ LLM 生成新页面或复刻页面时，至少满足：
 | `Table` / `DataTableWithToolbar` | React / Vue | `v1.2.37` 起锁定列背景改读组件 Token 链（`--tiger-component-table-*`），并新增窄屏卡片模式（`responsiveMode="card"` + `cardBreakpoint` + 列级 `hideInCard`/`cardTitle`/`cardPriority`）。`v1.2.39` 起新增 `locale`/`labels` props 与 `TigerLocale.table` 分节，卡片模式补齐 i18n 文案、主题化选择框、全选、排序 Select、`Empty` 空状态与 `cardClassName`/`renderCard`。`v1.2.41` 起新增 `hiddenColumnKeys` / `defaultHiddenColumnKeys` 与 toolbar `showColumnSettings` 列设置面板，并统一浮层 z-index，使 Dropdown / Popover 高于表格 sticky 层。`v1.2.43` 起 `striped + fixed` 单元格改用不透明混合背景，避免斑马纹锁定列透出下层内容。`v1.2.44` 起 Card 模式新增列级 `cardGrid` 和表级 `cardLayout`，可控制 `colSpan`、`rowSpan`、`hideLabel`、`labelPosition`。 | 使用方式见上文「表格使用约定」；用户/角色页仅保留 sessionStorage 状态同步，不再自建列显隐面板或 sticky 层叠 CSS workaround，并通过表级 `cardLayout` 在窄屏卡片中启用紧凑信息行排列。 |
 | `Card` | React / Vue | `v1.2.39` 起新增 `variant="transparent"`（透明、无边框、无阴影）。 | 登录/注册页改用该变体，并保留 `p-0` 类以延续页面级布局约定。 |
 | `Popover` / `Dropdown` | React / Vue | `v1.2.39` 起经 Escape 或外部点击关闭后自动恢复触发器焦点；`v1.2.41` 起浮层统一高于表格 sticky 层。 | 行内操作菜单直接使用上游浮层层级，不再添加全局行 z-index 覆盖。 |
-| `Notification` | React / Vue | `v2.1.2` 起 imperative API 支持 `actions`（`label` / `type` / `closeOnClick` / `onClick`），整条 `onClick` 仍可用。 | 消息铃铛点单条通知时传 `actions: [{ label: '查看', type: 'primary', closeOnClick: true }]`，并保留整条点击跳转通知中心。 |
+| `Notification` | React / Vue | imperative API 支持 `actions`（`label` / `type` / `closeOnClick` / `onClick`）；rc.2 的顶层 `onClick` 仅生成兼容动作按钮，整条点击尚未绑定。 | 消息铃铛点单条通知时传 `actions: [{ label: '查看', type: 'primary', closeOnClick: true }]`，不再同传顶层 `onClick`；整条点击缺口已记录。 |
 | `BackTop` | React / Vue | `v2.1.2` 起支持 `position`（`auto` / `fixed` / `sticky`）、`placement`、`offset`。`auto` 在非 window `target` 时仍走 sticky。 | `ShellQuickActions` 对内容容器滚动使用 `position="fixed"` + `placement="bottom-right"` + `offset={24}`，自定义图标提供 `aria-label="回到顶部"`。 |
 | `FloatButton` | React / Vue | `v2.1.2` 起独立按钮可选 `floating` + `placement` + `offset`；`FloatButtonGroup` 同步支持 `placement` / `offset`。 | `ChatDock` 全部尺寸用 Header 内联入口，传 `floating=false`，未读 `Badge` 叠在按钮内。帮助与反馈使用 Header Dropdown。 |
 | `ColorPicker` | React / Vue | `v2.1.2` 起支持 `labels`（`trigger` / `panelTitle` / `clear` 等）与 ConfigProvider `colorPicker` 分节。 | 中文站点在 `tigercatText.ts` 的 `appText.colorPicker` 提供文案；Settings 页不另造触发器文案层。 |
 | `Select` | React / Vue | `v2.1.2` 起 `TigerLocaleSelect` 增加 `placeholder` / `emptyText`，并随 zh 语言包给出中文默认值。 | 卡片排序等未传 `placeholder` 的 Select 读 `appText.select`（「请选择」/「暂无选项」）；业务 Select 仍可在页面上传入具体 `placeholder`。 |
 | `RichTextEditor` / `MarkdownEditor` | React / Vue | `v2.1.2` 起内置工具条读 ConfigProvider `richTextEditor` / `markdownEditor` 分节，也可用组件 `labels` 覆盖。`v2.1.3` 起 Vue 三个编辑器走默认 `v-model`（`modelValue` / `update:modelValue`）。 | 在 `tigercatText.ts` 提供加粗、斜体、标题、列表等中文；Content 页不另包自定义工具条，Vue 不要再写 `v-model:value`。 |
 | `Drawer` / overlay | React / Vue | `v2.1.3` 删除 `deferDestroyOnClose` / `destroyOnCloseAfterLeave`；`destroyOnClose` 自己等关场。焦点恢复用 `onAfterClose` / `@after-close`。Alert / Tag / ChartTooltip 可见性是 `open`，不是 `visible`。 | 移动侧栏 Drawer 只传 `destroyOnClose` + `onAfterClose`；图表基元 `ChartTooltip` 用 `open={false}`。 |
-| `DataTableWithToolbar` | React / Vue | `v2.1.3` 搜索/筛选默认写进当前表（`searchMode: 'local'`）；`onPageChange` 与 Table 同为对象签名。 | 用户/角色页 `toolbar.searchMode: 'remote'`，分页回调吃 `{ current, pageSize }`。 |
+| `DataTableWithToolbar` | React / Vue | `v2.1.3` 搜索/筛选默认写进当前表（`searchMode: 'local'`）；`onPageChange` 与 Table 同为对象签名。 | 用户/角色页同时设置 `toolbar.searchMode: 'remote'`、`pagination.remote: true`，分页回调吃 `{ current, pageSize }`。 |
 | `NavigationMenu` | React / Vue | `v2.1.3` 默认点击才开层；`NavigationMenuList` 进根入口；不再默认 `aria-label="Main"`。 | About 页包 `NavigationMenuList` 并自行命名。 |
-| `Transfer` / `TreeSelect` | React / Vue | 搜索开关统一 `searchable`，旧 `showSearch` 已删。 | 导入穿梭框与内容分类树用 `searchable`。 |
+| `Transfer` / `TreeSelect` | React / Vue | 搜索开关统一 `searchable`，旧 `showSearch` 已删。 | 内容分类树用 `searchable`；用户导入字段映射使用 Select。 |
 | `List` | React / Vue | `bordered` 是外框布尔，不再接受 `'bordered' \| 'divided' \| 'none'`。 | 个人中心设备列表写 `bordered`。 |
 | `ImageCropper` / `CropUpload` | React / Vue | `v2.1.4` 起 ResizeObserver 只量父级宽度，拟合尺寸写内层 stage，裁剪画布不再越缩越小。无新必填 prop。 | Gallery 裁剪抽屉和 Users 头像 CropUpload 不另加高度 workaround。 |
 | `SplitButton` | React / Vue | `v2.1.4` 主按钮与 chevron 同高。 | Files 页上传继续用 SplitButton。 |
@@ -316,7 +390,7 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 | 层 | 职责 | 本仓库落点 |
 | -- | ---- | ---------- |
-| Tigercat `3.0.0-rc.1` | 扫读 + `ApproverSource` / `tasks` / `reduceWorkflowAction` / 完整 ActionBar / 纵向流程画布 Designer / `validateWorkflowDesigner`（`@expcat/tigercat-core/workflow-designer`）/ 字段权限 helpers / DetailShell `h-full` 粘底配方 | 包组件与纯函数；不要在页面重写第二套 Timeline 或半套 Inspector；详情壳桌面给有界高度，窄屏随主区滚动并留可操作的最小高度 |
+| Tigercat `3.0.0-rc.2` | 扫读 + `ApproverSource` / `tasks` / `reduceWorkflowAction` / 完整 ActionBar / 纵向流程画布 Designer / `validateWorkflowDesigner`（`@expcat/tigercat-core/workflow-designer`）/ 字段权限 helpers / DetailShell `h-full` 粘底配方 | 包组件与纯函数；不要在页面重写第二套 Timeline 或半套 Inspector；详情壳桌面给有界高度，窄屏随主区滚动并留可操作的最小高度 |
 | Admin | 路由、**Mock 通讯录 `resolveApprovers`**、ApprovalStore 全动作写回、**详情壳**（DetailShell + 字段权限 SchemaForm + 全量 ActionBar）、**Designer 页**（Inspector + 发布校验） | `ApprovalStore` / MockApi `contacts.ts`；详情页用库 `WorkflowDetailShell`；设计页直接吃库 `WorkflowDesigner` |
 
 ### 详情 IA
@@ -335,9 +409,11 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 详情表单统一 `labelPosition="top"` / `label-position="top"`；手机 DetailShell 设 `min-h-[32rem]`，`md` 起回到 `min-h-0`，避免被页头和身份切换区挤空。未知审批 id 的页内空态不显示派生的「审批中」标签。
 
+rc.2 的 `WorkflowActionBar.onAction(item, payload)` 返回 `void`，确认层不会等待 API；页面自己锁定提交，失败保留表单及动作参数并提供重试。评论由页面自定义 Modal 提交，API 错误显示在 Modal 内，失败不关弹层、不清草稿，成功才关闭。详情切换 ID / 演示身份会取消旧读取并清空旧数据；SchemaForm 先校验再设 disabled。转交和加签通过真实通讯录驱动 `AssigneePicker`，失败时禁空选并提供重试；当前 `WorkflowAssigneePickerContext.onChange(actor)` 为单人回传，加签明确标注每次一人。发起弹层从通讯录生成处理人选项，标题 trim / 必填 / 120 字、说明 2000 字、金额 32 字，使用自定义页脚并防止重复提交。
+
 ### Designer
 
-`/workflow-designer` 直接使用库 2.5.0 `WorkflowDesigner`：画布是摘要卡；点选后右侧 Inspector（标题/类型 + 四 Tab：审批人 / 操作按钮 / 表单权限 / 高级）。传入发起 `APPROVAL_DETAIL_SCHEMA`，字段权限矩阵才有行。节点下「在后方插入」加兄弟，不是 child。默认种子是请假/采购演示：条件分支 + 主管会签 + 财务会签 + 抄送 + 结束；会签人写 `actors[]` / `approverPolicy`。保存草稿 / 发布前跑 `validateWorkflowDesigner`（缺发起/结束、空审批人、无分支、按钮全关），阻塞项进页内 Alert 与库 banner，发布被拦住。下方 `WorkflowViewer` 绑定同一份 `steps`。编辑结果只留本机，不写回引擎。
+`/workflow-designer` 直接使用库 2.5.0 `WorkflowDesigner`：画布是摘要卡；点选后右侧 Inspector（标题/类型 + 四 Tab：审批人 / 操作按钮 / 表单权限 / 高级）。传入发起 `APPROVAL_DETAIL_SCHEMA`，字段权限矩阵才有行。节点下「在后方插入」加兄弟，不是 child。默认种子是请假/采购演示：条件分支 + 主管会签 + 财务会签 + 抄送 + 结束；会签人写 `actors[]` / `approverPolicy`。保存草稿 / 发布前跑 `validateWorkflowDesigner`（缺发起/结束、空审批人、无分支、按钮全关），阻塞项进页内 Alert 与库 banner，发布被拦住。下方 `WorkflowViewer` 绑定同一份 `steps`。Designer / Viewer 均从双端 `lazyTigercat` 子路径懒加载。草稿成功保存后刷新会恢复；存储失败明确提示，损坏 JSON 回到默认。主管种子使用真实演示联系人王经理 / 李总监。按钮“发布（本机演示）”只做校验和本机保存，成功反馈明确未发布到引擎。
 
 ### Do-NOT
 
@@ -347,3 +423,15 @@ LLM 生成新页面或复刻页面时，至少满足：
 - 表单设计器（`SchemaForm` 只渲 schema，不是设计器）
 - 库内 sticky ActionBar（sticky 由 Admin 贴底栏）
 - 运行时加抄送选人器；并加签 / 减签 / 仅通知加签
+
+## 内容、图库与媒体详情
+
+`/content` 读取文章 `a1`；加载失败时提供重试，避免将默认正文误保存。编辑内容与附件一起保存，上传和选择按剩余 12 个附件名额计算，保存时禁编辑；取消上传会中止请求，重新加载恢复服务端文章。媒体读取 / 上传沿用 `media:view` / `media:upload`，内容保存仍只需登录。协作者为明确提示的本页备注。
+
+`/gallery` 的示例相册和轮播保留，已保存图片从媒体 API 分页读取。标注首次保存示例时转 PNG 上传，随后写入标注；写入失败保留已上传 ID 与形状，重试不重复上传。裁剪等待 `ready`，从 `getCropResult().blob` 上传输出图；`cropRect` 是显示坐标，不用它冒充输出像素。提交时禁关闭和重复提交，失败保留抽屉、成功刷新“已保存”。图库卡片的多动作、瀑布流与轮播需要现有组合，rc.2 `Gallery` 仅提供图片集与当前索引，本批保持现有组合。
+
+`/files` 每页 20 条，筛选和翻页清除旧选择。详情统一进入 `/files/:id`（`media:view`），双端 `page-map` 提供懒加载入口，Shell 高亮文件菜单并追加媒体详情面包屑，tags-view 复用文件管理标签。详情按 ID 读取，取消旧请求并清理旧数据，区分无效 ID / 404、403、加载失败与重试；展示元数据、只读标注和引用来源，使用 `CopyButton` 复制资源 URL 或站内链接。文件上传失败保留原文件以重试，重复文件提供已有详情入口；删除前引用读取失败时禁止提交，普通删除与清理 Logo / 头像 / 文章附件的强制删除共用一个确认弹层。暗色使用主题 token。
+
+附件选择沿用 FilesPage 的原生文件输入与现有媒体上传 API，待处理列表只保存原文件、错误和请求取消句柄，成功媒体进入附件列表。数量校验在发请求前执行：已有 10 个再选 3 个会整批拒绝并提示剩余 2 个名额；处理中与失败项占用名额，失败项须重试或移除后再保存。取消与重新加载中止请求，并忽略迟到响应。编辑器、裁剪与标注继续从 `utils/lazyTigercat` 加载。
+
+该处理避开 [React rc.2 Upload 的 StrictMode 生命周期缺口](tigercat-upstream-requirements.md#upload-strict-mode)，保留全局 StrictMode。后续页面（包括导入）在缺口修复前沿用该文件选择方式。组件契约核对事实：Vue Upload 列表事件为 `update:fileList`，React 为 `onChange(file, fileList)`；`customRequest` 必须同步返回 `{ abort }`，不能返回 Promise；Vue `.d.mts` 遗漏实现中已有的 `abort(uid?)`。这些契约不代表 React 开发模式的 Upload 已可正常发请求。

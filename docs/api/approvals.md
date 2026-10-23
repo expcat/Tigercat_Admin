@@ -4,6 +4,8 @@
 
 实例存在内存（.NET 进程内 `ApprovalStore`；MockApi 写入 `sessionStorage` 演示状态）。重启 .NET API 会回到种子数据；Mock 演示刷新会话前会保留动作结果。
 
+工作台使用审批中心同一独立演示身份，先通过 `GET /api/approvals/contacts` 核对 ID / username；匹配后读取 `lane=todo&page=1&pageSize=5` 并显示该身份的完整待办总数。未匹配时不读取待办，也不显示虚构的零计数；文案始终区分演示身份与当前登录账号。
+
 列表按当前登录用户划分四条车道：待办（当前处理人且未结束；有 `tasks[]` 时看该用户是否有 `pending`/`active` 任务，**不含** `blocked` 前加签暂停）、已办（当前用户曾操作）、抄送（`cc` 含当前用户）、我发起的（`starter` 为当前用户）。同一实例可以同时出现在多条车道。加签待办、退回后的再提交待办走同一套 `tasks[]` 写回，不是假按钮。
 
 无 `tasks` 时写回兼容 2.4.2 **节点级**（一次同意推进当前 `kind=approve` 节点）。有 `tasks[]` 时同意写到**当前用户任务**，会签按人累计。
@@ -103,3 +105,5 @@
 种子数据（admin 登录可见）：`AP-1001` 待办且挂 `TK-2048`；`AP-1002` 已通过；`AP-1003` 抄送；`AP-1004` 我发起（处理人为 demo）；`AP-1005` 已驳回（含 rollbackPoint）；`AP-1006` 会签 1/3（`tasks[]`：admin 已签，demo / 王经理待办）；`AP-1007` 采购财务会签（金额仅财务可编，`ticketId` 在财务节点 `hidden`，待 `chen` / `zhao`）。
 
 流程设计页 `/workflow-designer` 不走本组接口：本地 JSON 树 + 库 `validateWorkflowDesigner` 发布校验，草稿写入 `localStorage` 键 `tigercat-admin:workflow-designer-draft`，不写回引擎。
+
+前端发起表单按标题 120、说明 2000、金额 32 字校验，处理人必须来自 `contacts`。转交 / 加签的 rc.2 选人适配每次回传一名真实联系人；演示身份只影响本接口请求头。详情加载区分 404 / 403 / 临时失败并支持重试。动作请求串行，失败保留表单值与动作参数；评论失败在评论弹层内提示并保留草稿，用原提交按钮重试。设计页保存与本机演示发布均拦截阻塞校验项，成功保存后刷新恢复本机草稿。

@@ -49,14 +49,21 @@ cd Tigercat.Admin.Vue && pnpm dev
 
 ### Tigercat 本地构建联调
 
-当前根目录 `pnpm-workspace.yaml` 的 `overrides` 将 Core、React、Vue 三个 Tigercat 包统一指向同级 `../Tigercat/packages/` 下的本地包。应用的 `package.json` 保留发布版本，实际安装来源由这些 `file:` 覆盖和根 lockfile 决定。pnpm 为本地包接入 Admin 的 React / Vue peer 依赖，避免直接链接上游目录时加载另一份框架运行时。
+当前使用 npm 发布包，根目录 `pnpm-workspace.yaml` 没有本地 `overrides`。需要联调同级 `../Tigercat` 源码时，临时将以下配置加入该文件；应用的 `package.json` 保留发布版本，实际安装来源由 `file:` 覆盖和根 lockfile 决定。pnpm 为本地包接入 Admin 的 React / Vue peer 依赖，避免直接链接上游目录时加载另一份框架运行时。
+
+```yaml
+overrides:
+  '@expcat/tigercat-core': file:../Tigercat/packages/core
+  '@expcat/tigercat-react': file:../Tigercat/packages/react
+  '@expcat/tigercat-vue': file:../Tigercat/packages/vue
+```
 
 从 Admin 根目录执行以下命令，先构建上游，再刷新本地包并启动双端演示：
 
 ```bash
 pnpm --dir ../Tigercat --filter @expcat/tigercat-core build
 pnpm --dir ../Tigercat --filter @expcat/tigercat-react --filter @expcat/tigercat-vue --parallel build
-pnpm install --force --frozen-lockfile
+pnpm install --force
 pnpm dev:demo:all --force
 ```
 
@@ -90,7 +97,7 @@ dotnet list Tigercat.Aspire/Tigercat.Aspire.csproj package --vulnerable --includ
 dotnet list Tigercat.ServiceDefaults/Tigercat.ServiceDefaults.csproj package --vulnerable --include-transitive
 ```
 
-Playwright 默认 Desktop 项目会 `grepInvert` `@mobile` / `@dark`，避免把同一批用例再跑一遍。375 视口与 `colorScheme: dark` 是独立 project，只跑带对应 tag 的用例（`e2e/viewport-a11y.spec.ts`，含 `/tickets` 对话区窄屏无 Resizable、`/approvals/:id` ActionBar + 时间线不溢出）。焦点恢复与 Vue overlay 回归在 `e2e/overlay-focus.spec.ts`（含 Shell 挂件、页面 Drawer、`/profile` / `/analytics` 选择器、`/content` 下拉、`/gallery` 灯箱与 Drawer、`/calendar` Drawer 内选择器、`/tickets` 确认关闭、`/import` Cascader、`/jobs` CronEditor），走 Desktop。只跑标注用例用 `pnpm e2e:mobile` / `pnpm e2e:dark`（demo 配置对应 `e2e:demo:mobile` / `e2e:demo:dark`）。
+Playwright 默认 Desktop 项目会 `grepInvert` `@mobile` / `@dark`，避免把同一批用例再跑一遍。375 视口与 `colorScheme: dark` 是独立 project，只跑带对应 tag 的用例（`e2e/viewport-a11y.spec.ts`，含 `/tickets` 对话区窄屏无 Resizable、`/approvals/:id` ActionBar + 时间线不溢出）。焦点恢复与 Vue overlay 回归在 `e2e/overlay-focus.spec.ts`（含 Shell 挂件、页面 Drawer、`/profile` / `/analytics` 选择器、`/content` 下拉、`/gallery` 灯箱与 Drawer、`/calendar` Drawer 内选择器、`/tickets` 确认关闭、`/import` 字段映射 Select、`/jobs` CronEditor），走 Desktop。只跑标注用例用 `pnpm e2e:mobile` / `pnpm e2e:dark`（demo 配置对应 `e2e:demo:mobile` / `e2e:demo:dark`）。
 
 ## NuGet 依赖审计
 
@@ -120,6 +127,8 @@ Playwright 默认 Desktop 项目会 `grepInvert` `@mobile` / `@dark`，避免把
 
 默认 SQLite 配置位于 [Tigercat.Admin.Api/appsettings.json](../Tigercat.Admin.Api/appsettings.json)，本地数据库文件在 `Tigercat.Admin.Api/tigercat_admin.db`。
 
+三个 provider 的用户与会话均走同一 `AdminDbContext` 的 EF store，InMemory 不再另建认证用户 / 会话字典。管理创建、注册与导入可以互相读取；InMemory 重启后仍重置。状态与授权变化规则见 [认证契约](api/auth.md#用户状态会话与权限变化)。
+
 常见切换：
 
 ```bash
@@ -132,7 +141,7 @@ export Database__Provider=PostgreSql
 export ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=tigercat_admin;Username=postgres;Password=postgres"
 ```
 
-SQLite 与 PostgreSQL 共用 EF Core migrations。生产发布前生成并评审幂等 SQL：
+SQLite 与 PostgreSQL 共用 EF Core migrations。`AddMediaAnnotations` 为 `MediaResources` 增加必填 `AnnotationsJson`（默认 `[]`，最大 64000 字符），现有记录无需回填；文章附件复用 `MediaReferences`，不新增附件表。备份和恢复需同时保留数据库中的标注、引用与媒体卷。`AddCsvImportRows` 为现有 `ImportJobs` 添加 `Total`、`Processed`、`Failed`（默认 0）、`RowsJson`（默认 `[]`）、`Operator`（默认空）。旧文件名演示任务没有原 CSV，不能继续真实导入，需重新选择文件。任务行包含敏感密码哈希，按现有用户数据库的访问和备份规则保存；不要记录 CSV 请求体。验证迁移和恢复时使用临时数据库，避免改动本地开发数据。生产发布前生成并评审幂等 SQL：
 
 ```bash
 pnpm db:script:postgres
@@ -203,11 +212,11 @@ export ForwardedHeaders__KnownNetworks__0="10.0.0.0/8"
 - 当前媒体 provider 为 `Local`，`Media:LocalRoot` 必须指向持久化卷。
 - `Media:PublicBaseUrl` 可设置 API 对外域名；同源部署可留空使用相对 URL。
 - 上传会校验大小、MIME、扩展名和图片尺寸，并计算 SHA256；重复内容返回已有媒体资源。
-- Logo 或头像引用中的媒体普通删除会失败并发布 `admin.media.delete.failed`；强制删除会清理已知引用并发布 `admin.media.delete.forced`。
+- Logo、头像或文章附件引用中的媒体普通删除会失败并发布 `admin.media.delete.failed`；强制删除会清理上述已知引用并发布 `admin.media.delete.forced`。
 - `POST /api/media/orphans/cleanup` 支持预览或清理本地孤儿文件。
 - Redis Streams 用于把任务、设置、审计清理、媒体删除失败和用户治理事件转化为通知中心消息。
-- 缓存走 `ICacheService` + HybridCache：`Infrastructure:UseInMemory=true` 时只有进程内 L1；Redis 在线时 L2 复用现有 `IConnectionMultiplexer`（`IDistributedCache`）。权限列表和 `GET /api/settings` 用 `GetOrSet` 防 stampede。2FA / 忘记密码验证码仍走同一 `ICacheService` 的 Get/Set/Remove。**不要**加全局 `OutputCache`：业务 GET 几乎都要登录，Stats 若缓存必须按用户/权限 `VaryBy`，Monitor snapshot 是步进演示，缓存会破坏「每次不同」。
-- 导入任务进度由 `ImportJobProgressService`（`BackgroundService`）推进，`GET /api/import-jobs/{id}` 只读。间隔 `ImportJobs:ProgressIntervalMilliseconds`（默认 250）。这不是真实文件解析器，也不是 cron 产品。
+- 缓存走 `ICacheService` + HybridCache：`Infrastructure:UseInMemory=true` 时只有进程内 L1；Redis 在线时 L2 复用现有 `IConnectionMultiplexer`（`IDistributedCache`）。`GET /api/settings` 用 `GetOrSet` 防 stampede；权限每次查询当前 EF 授权，不走缓存。2FA / 忘记密码验证码仍走同一 `ICacheService` 的 Get/Set/Remove。**不要**加全局 `OutputCache`：业务 GET 几乎都要登录，Stats 若缓存必须按用户/权限 `VaryBy`，Monitor snapshot 是步进演示，缓存会破坏「每次不同」。
+- 导入任务进度由 `ImportJobProgressService`（`BackgroundService`）推进，`GET /api/import-jobs/{id}` 只读。间隔 `ImportJobs:ProgressIntervalMilliseconds`（默认 250）。每个间隔按真实 CSV 行创建用户或记录跳过 / 失败，进度按 `processed/total` 计算。任务及待处理哈希持久化，重启继续处理；公开响应不含密码 / 哈希，原 CSV 不落盘。关系数据库将每行用户和结果更新放在同一事务，异常中断保留已完成行，可用原 CSV 重新导入并跳过已有用户。配置及失败行恢复见 [用户 CSV 导入 API](api/import.md)。Mock 只在有活动任务时续跑计时器。
 
 ## 健康检查与观测
 
@@ -227,7 +236,7 @@ OpenTelemetry 在配置 `OTEL_EXPORTER_OTLP_ENDPOINT` 后导出 logs、metrics �
 | `tigercat.auth.events` | 登录 / 2FA / 改密 / 退出 |
 | `tigercat.redis_stream.events` | Redis Stream 发布与消费 |
 | `tigercat.cache.events` | HybridCache `hit` / `miss`（`Get` 与 `GetOrSet`）。`Get` 用 `DisableUnderlyingData` 做 try-get，缺省值记 `miss`，命中记 `hit`。 |
-| `tigercat.import_jobs` | 导入任务 `created` / `progress` / `completed` |
+| `tigercat.import_jobs` | 导入任务 `created` / `progress` / `completed` / `failed` |
 | `tigercat.jobs` | 定时任务 `created` / `updated`（仍无真实 cron 执行器） |
 
 Tracing 含 ASP.NET、HttpClient、Runtime，以及 EF Core instrumentation（`OpenTelemetry.Instrumentation.EntityFrameworkCore`，当前为 1.15.x beta）。`/health`、`/alive`、`/api/health*` 不进 traces。
@@ -280,7 +289,7 @@ pnpm run check:links
 2. 管理员登录、设置读取和用户列表读取正常。
 3. 保存一次设置，确认通知中心可见并可跳转。
 4. 完成一个任务，确认任务状态和通知事件。
-5. 对被 Logo 或头像引用的媒体执行普通删除，确认失败通知；确认业务影响后再验证强制删除。
+5. 对被 Logo、头像或文章附件引用的媒体执行普通删除，确认失败通知；确认业务影响后再验证强制删除。
 6. 执行审计清理 `dryRun=true`，确认通知可跳转到 `/audit-logs?eventId=...`。
 
 回滚演练应覆盖应用镜像回退、PostgreSQL schema 回退或备份恢复、本地媒体目录与数据库记录同步恢复，以及回退后的 `/api/health` 和登录 smoke。

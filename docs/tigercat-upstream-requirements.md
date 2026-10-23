@@ -1,6 +1,6 @@
 # Tigercat 上游组件需求
 
-面向 Tigercat 组件库开发。本仓库包版本 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `3.0.0-rc.1`。
+面向 Tigercat 组件库开发。本仓库包版本 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `3.0.0-rc.2`。
 
 **单一事实源：** 这里记录「Admin 场景需要、但包侧尚未提供或能力不够」的上游需求；已落地的条目从本文删除，用法只写在 [frontend.md](frontend.md)。当前仍开放、需要立刻跟进的短清单在 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)，该文件只做索引，不复写本文细节。
 
@@ -58,11 +58,40 @@
 
 <a id="cron-summary"></a>
 
-### 2.2 Cron 中文与范围摘要 — P2（后续增强）
+### 2.2 Cron 中文、范围摘要与草稿校验 — P2（rc.2 开放项）
 
 - **场景：** Jobs 使用 CronEditor 配置调度，界面为中文，摘要仍显示英文；0–59 范围会展开成六十个分钟值。
-- **现状：** 模式和输入布局、长词换行已修复，320 / 375px 无横溢。换行解决显示缺陷，尚未改变摘要的语言和表达方式。
-- **建议：** 复用现有 locale / Cron 解析能力，给当前 zhCN 提供分钟范围与步长的简洁摘要；不让 Admin 自行翻译或重复解析，不引入运行时语言切换。验收与顺序见 [R3.4](../Roadmap.md)。
+- **rc.2 实装：** 两端摘要直接调用 Core `describeCronExpression(expressionDraft)`；`zhCN.cronEditor` 提供控件和错误文案，没有摘要字段。`0 2 * * *` 仍返回 `Runs at minute 0, hour 2, every day, every month.`，`0-59 2 * * *` 仍展开全部分钟。已有换行解决显示溢出，尚未改变语言和表达方式。
+- **草稿缺口：** 数值子字段通过 `patchDraft` 更新草稿，只有 Core `parseOptionalInt` 非空才写回表达式；分钟值填 `bad` 或清空时，`onValidate` / `validate` 仍只反映旧表达式。双端浏览器已复现：输入 `bad` 后保存会提交旧 `0 2 * * *`。建议组件的校验包含所有当前子字段草稿，并在非法草稿时发出校验结果、显示对应错误。
+- **当前处理：** Admin 继续用组件与 Core 校验，提交前复用 `parseOptionalInt` 阻止非法数值草稿；每次打开 Drawer 更新组件 key，取消后重开从默认 / 已保存值重建草稿。没有复制 Cron 解析器或摘要翻译。`validateCronExpression('0 0 31 2 *').valid` 为 `true`、`nextCronRun` 为 `null`，页面保留其合法性。
+- **建议：** 复用现有 locale / Cron 解析能力，给当前 zhCN 提供分钟范围与步长的简洁摘要；不引入运行时语言切换。验收与顺序见 [UP-09](../Roadmap.md)。
+
+<a id="notification-bell-actions"></a>
+
+### 2.3 通知铃铛组合扩展 — P1（保留现有业务行为后再迁移）
+
+- **场景：** Header 展示最近五条通知和未读数；打开时刷新，单条点击关闭 Popover 并显示带「查看」动作的 toast，动作跳转通知中心并关闭 toast；另有「全部已读」和「查看全部通知」。整条 toast 点击缺口见 2.4。
+- **实装依据：** rc.2 React `/NotificationBell` 类型为 `items?: NotificationItem[]`、`locale?: string`、`onItemReadChange(item, read)`；Vue 对应 `item-read-change`，另发 `update:open`，但没有受控 `open` prop。两端内部均只将单项已读事件透传给 NotificationCenter。Core 的简化类型不能替代框架包实装类型。
+- **缺口：** 无单项点击回调、查看全部 / 批量已读入口与回调、完整受控打开和双端一致的打开事件；也无法定制触发器以保留中文可访问名、40px Header 布局和 `data-tour`。只靠已读回调推断点击会改变业务语义，且已读项无法触发原有 toast。
+- **建议：** 在现有组件上提供上述回调与 trigger / footer 扩展点，保留 `onItemReadChange`；加载状态和空态允许由调用方提供。数据请求、路由、toast 类型与 `notification.actions` 仍由 Admin 负责，不把业务依赖放进库。
+- **当前处理：** Admin 继续使用本地 Popover / Badge / Button 组合。验收应覆盖未读与已读项的 toast、查看动作、批量已读持久化、查看全部、打开刷新以及 Esc 焦点恢复。
+
+<a id="notification-toast-click"></a>
+
+### 2.4 通知 toast 整条点击 — P1（rc.2 实装缺口）
+
+- **实装依据：** rc.2 两端 `NotificationContainer` 仅为顶层 `onClick` 渲染一个兼容动作按钮，容器没有点击处理；同时传 `actions` 会出现两个「查看」。浏览器与已安装包源码已核对。
+- **当前处理：** Admin 仅传 `actions`，保留一个「查看」及点击后导航、关闭行为。历史文档所述整条点击当前不可用，不添加 DOM 代理或另一套 toast 实现。
+- **建议：** 上游区分 toast 容器点击与操作按钮，并明确两者组合规则；支持整条点击后，再恢复 Admin 的整条导航验收。
+
+<a id="upload-strict-mode"></a>
+
+### 2.5 React Upload 在 StrictMode 下不发请求 — P0（rc.2 实装缺口）
+
+- **复现：** 开发模式全局 StrictMode 内渲染 Upload，传合法文件和同步返回 `{ abort }` 的 `customRequest`；选择文件后没有请求或列表更新。生产构建与 Vue 的结果不能代替此路径。
+- **根因：** React `dist/chunk-5E22X3BS.mjs` 用 `useRef(createUploadController(...))` 保留控制器，空依赖 effect 的清理调用 `controllerRef.current.dispose()`。Core `dist/index.js` 的 `createUploadController` 将 `disposed` 永久设为 true；StrictMode 的 effect 重放复用该 ref，随后 `enqueue` / `processFilesInner` 直接退出。
+- **当前处理：** Content、Settings Logo 和 Import 双端沿用 FilesPage 的原生文件输入和现有 API，保留重试、AbortController 取消和名额校验；Logo 支持取消与焦点恢复，工单未接附件 API 因而移除演示选择器。不关闭全局 StrictMode，不修改 node_modules。
+- **建议：** 使控制器创建与清理适配 effect 重放，验证初次选择、失败重试、移除取消、真正卸载与迟到回调。Vue Upload 的 `update:fileList` 事件及实现中 `abort(uid?)` 的类型遗漏也需保持文档 / 类型对齐。
 
 ## 3. 本次不纳入的额外范围
 

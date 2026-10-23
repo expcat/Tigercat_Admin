@@ -35,6 +35,8 @@ Monitor / Chat SignalR（`/hubs/monitor`、`/hubs/chat`）使用同一套会话 
 
 未登录通常返回 `401`，权限不足返回 `403`。权限码和入口权限见各专题。
 
+.NET 的认证账号、管理用户与导入用户共用当前 provider 的 EF 用户表；禁用 / 删除与会话失效、即时权限读取和 Hub 连接边界见 [认证专题](api/auth.md#用户状态会话与权限变化)。
+
 ## OpenAPI
 
 开发环境提供 Scalar 与 OpenAPI JSON，用来对照本文件和 [docs/api](api) 专题，不是第二份契约：
@@ -75,21 +77,21 @@ Monitor / Chat SignalR（`/hubs/monitor`、`/hubs/chat`）使用同一套会话 
 | 用户管理 | [api/users.md](api/users.md) | `/api/users`、批量删除、批量状态 |
 | 角色与权限 | [api/roles.md](api/roles.md) | `/api/roles`、角色权限、角色用户、权限列表 |
 | 仪表盘统计、导出 | [api/dashboard-export.md](api/dashboard-export.md) | `/api/stats/*`、`/api/export/*`（users / roles / reports / overview） |
-| 审计日志 | [api/audit.md](api/audit.md) | `/api/audit-logs`、导出、保留策略、清理 |
+| 审计日志 | [api/audit.md](api/audit.md) | `/api/audit-logs`（固定最近 1000 条窗口后筛选分页）、单条定位、导出、保留策略、清理 |
 | 通知中心 | [api/notifications.md](api/notifications.md) | `/api/notifications`、创建广播、已读、批量已读 |
 | 实时监控 | [api/monitor.md](api/monitor.md) | `/api/monitor/snapshot`，SignalR `/hubs/monitor`（REST 保留） |
-| 任务面板 | [api/tasks.md](api/tasks.md) | `/api/tasks`、流转、完成 |
+| 任务面板 | [api/tasks.md](api/tasks.md) | `/api/tasks`（含负责人精确匹配、未完成筛选）、按 ID 详情、流转、完成 |
 | 工单 | [api/tickets.md](api/tickets.md) | `/api/tickets`、状态流转、工单消息 |
 | 审批 Mock | [api/approvals.md](api/approvals.md) | `/api/approvals`、通讯录 `/contacts`、`/resolve`、全动作写回（`tasks` / 加签 / 退回 / 撤回） |
 | 聊天坞 | [api/chat.md](api/chat.md) | `/api/chat/messages`，SignalR `/hubs/chat`（发送仍走 POST） |
 | 评论 | [api/comments.md](api/comments.md) | `/api/comments`（`targetType=ticket\|project`） |
 | 项目 | [api/projects.md](api/projects.md) | `/api/projects`、`/api/projects/{id}` |
 | 日历 | [api/calendar.md](api/calendar.md) | `/api/calendar/events` |
-| 内容文章 | [api/content.md](api/content.md) | `/api/content/articles`、保存草稿 / 发布 |
+| 内容文章 | [api/content.md](api/content.md) | `/api/content/articles`、保存草稿 / 发布、媒体附件引用 |
 | 定时任务 | [api/jobs.md](api/jobs.md) | `/api/jobs`、启停与编辑 |
-| 数据导入 | [api/import.md](api/import.md) | `/api/import-jobs`、只读进度轮询（后台推进） |
+| 数据导入 | [api/import.md](api/import.md) | `/api/import-jobs/preview`、真实用户 CSV 导入、只读逐行结果（均需 `user:create`） |
 | 系统设置 | [api/settings.md](api/settings.md) | `/api/settings` |
-| 媒体资源 | [api/media.md](api/media.md) | `/api/media`、内容读取、删除、孤儿清理 |
+| 媒体资源 | [api/media.md](api/media.md) | `/api/media`、图片标注持久化、内容读取、删除、孤儿清理 |
 | 动态菜单 schema | [api/menus.md](api/menus.md) | `GET /api/menus/schema`；节点 CRUD `POST/PUT/DELETE /api/menus/nodes` |
 
 ## 维护规则

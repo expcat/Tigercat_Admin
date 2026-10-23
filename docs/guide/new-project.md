@@ -19,9 +19,9 @@ pnpm create vite my-admin --template react-ts   # React
 pnpm create vite my-admin --template vue-ts     # Vue
 ```
 
-依赖清单（版本以蓝本 [Tigercat.Admin.React/package.json](../../Tigercat.Admin.React/package.json) / [Tigercat.Admin.Vue/package.json](../../Tigercat.Admin.Vue/package.json) 为准，当前蓝本为 Tigercat `3.0.0-rc.1`）：
+依赖清单（版本以蓝本 [Tigercat.Admin.React/package.json](../../Tigercat.Admin.React/package.json) / [Tigercat.Admin.Vue/package.json](../../Tigercat.Admin.Vue/package.json) 为准，当前蓝本为 Tigercat `3.0.0-rc.2`）：
 
-本仓库当前使用 pnpm `file:` 覆盖做 [Tigercat 本地构建联调](../operations.md#tigercat-本地构建联调)。新项目按下表安装发布版本，不复制这些依赖同级源码目录的 `overrides`。
+本仓库直接使用 npm 发布包。新项目按下表安装同版本的 Core 与框架包；需要联调上游源码时再参考 [Tigercat 本地构建联调](../operations.md#tigercat-本地构建联调)，不要把临时 `file:` 覆盖复制到新项目。
 
 | 类别 | React 端 | Vue 端 | 说明 |
 | ---- | -------- | ------ | ---- |
@@ -33,11 +33,13 @@ pnpm create vite my-admin --template vue-ts     # Vue
 
 ```bash
 # React
-pnpm add @expcat/tigercat-core @expcat/tigercat-react react-router-dom tailwindcss postcss autoprefixer
+pnpm add --save-exact @expcat/tigercat-core@3.0.0-rc.2 @expcat/tigercat-react@3.0.0-rc.2
+pnpm add react-router-dom tailwindcss postcss autoprefixer
 pnpm add -D @tailwindcss/postcss
 
 # Vue
-pnpm add @expcat/tigercat-core @expcat/tigercat-vue vue-router tailwindcss postcss autoprefixer
+pnpm add --save-exact @expcat/tigercat-core@3.0.0-rc.2 @expcat/tigercat-vue@3.0.0-rc.2
+pnpm add vue-router tailwindcss postcss autoprefixer
 pnpm add -D @tailwindcss/postcss
 ```
 
@@ -86,26 +88,39 @@ pnpm add -D @tailwindcss/postcss
 | --- | --- | --- |
 | `src/components/MainLayout.tsx` / `MainLayout.vue` | 后台 Shell 骨架（Sidebar + Header + 多标签条 + 可选全局水印 + Content + 页脚） | 基本原样 |
 | `src/components/MainSidebar.tsx` / `MainSidebar.vue` | 侧栏（240px / 折叠 64px、移动 Drawer、展开态菜单搜索） | 替换 Logo、品牌文案 |
-| `src/components/MainHeader.tsx` / `MainHeader.vue` | 面包屑、全屏、主题配置抽屉入口、主题切换、账号菜单 | 按需裁剪菜单项 |
+| `src/components/MainHeader.tsx` / `MainHeader.vue` | 面包屑、官方 FullscreenButton、主题配置抽屉入口、主题切换、账号菜单 | 按需裁剪菜单项 |
 | `src/components/ChatDock.tsx` / `ChatDock.vue`、`ShellQuickActions.tsx` / `ShellQuickActions.vue` | Header 客服、帮助与反馈及返回顶部 | 按需保留；布局和滚动绑定见 frontend 的 App Shell 蓝图 |
+| `src/components/CommandPalette.tsx` / `CommandPalette.vue`、`NotificationBell.tsx` / `NotificationBell.vue`、`OnboardingTour.tsx` / `OnboardingTour.vue` | 命令面板、通知和引导 | 随 Shell 调用方及 `utils/notifications.ts` 一起复制；通知沿用资源权限 |
 | `src/components/ShellFooter.tsx` / `ShellFooter.vue` | 内容区底部 `Footer` | 替换产品名 / 版本文案 |
 | `src/components/ThemeConfigDrawer.tsx` / `ThemeConfigDrawer.vue` | 主题配置抽屉（外观 / 主色 / 紧凑密度） | 原样（接 `utils/theme.ts`） |
 | `src/components/TagsView.tsx` / `TagsView.vue` | 多标签导航条 | 原样 |
 | `src/components/LockScreen.tsx` / `LockScreen.vue` | 锁屏全屏遮罩 | 原样（演示 PIN 可改） |
 | `src/components/Icons.tsx`（Vue：`Icon.vue` + `AppLogo.vue`） | 业务图标 | 按需增删 |
 | `src/components/PageHeader.tsx` + `PageFragments.tsx`（Vue：`PageHeader.vue`、`MetricCard.vue`、`MetricGrid.vue`、`MutedPanel.vue`、`PageActionPanel.vue`、`ChartEmptyState.vue`） | 页面级片段组件 | 原样 |
-| `src/components/ProtectedRoute.tsx` + `GuestRoute.tsx`（Vue：`ProtectedShell.vue` + `GuestShell.vue` + `src/router/index.ts`） | 路由守卫与 mixed 路由骨架 | 静态段（游客 / 异常 / `:id` 详情）留下；业务页走 pageMap |
+| `src/components/ProtectedRoute.tsx` + `GuestRoute.tsx` + `PermissionRoute.tsx`（Vue：`ProtectedShell.vue` + `GuestShell.vue` + `src/router/index.ts`） | 路由守卫与 mixed 路由骨架 | 静态段（游客 / 异常 / `:id` 详情）留下；业务页走 pageMap，保留页面权限校验 |
 | `src/components/PermissionGuard.tsx`（Vue：`src/directives/permission.ts` + `directives/index.ts`） | 权限控件 / 指令 | 原样 |
-| `src/utils/`：`theme.ts`、`request.ts`、`auth.ts`、`permission.tsx`（Vue：`permission.ts`）、`permission-helpers.ts`、`types.ts`、`constants.ts`、`common.ts`、`hooks.ts`（Vue：`composables.ts`）、`shell-navigation.ts`、`page-map.ts(x)`、`schema-routes.ts`、`tags-view.ts`、`lock-screen.ts`、`watermark.ts`、`fullscreen.ts`、`tigercatText.ts`、`lazyTigercat.tsx`（Vue：`lazyTigercat.ts`）、`validation.ts` | 主题 / 请求 / 会话 / 权限 / 导航 / mixed schema 路由 / 多标签 / 锁屏 / 水印 / 全屏 / 文案 / 重组件懒加载 | `types.ts` 裁剪为自己的业务类型；`shell-navigation` 替换菜单 schema（`GET /api/menus/schema` 失败时回退本地树）；`page-map` 按 schema `key` 懒加载页面，`schema-routes` 用 `schemaToRouteRecords` 绑定 path；`constants.ts` 检查 API 前缀；无图表/编辑器/裁剪/Gantt 页时可删 `lazyTigercat` |
+| `src/utils/`：`theme.ts`、`request.ts`、`auth.ts`、`permission.tsx`（Vue：`permission.ts`）、`permission-helpers.ts`、`types.ts`、`constants.ts`、`common.ts`、`hooks.ts`（Vue：`composables.ts`）、`shell-navigation.ts`、`page-map.ts(x)`、`schema-routes.ts`、`tags-view.ts`、`lock-screen.ts`、`watermark.ts`、`tigercatText.ts`、`lazyTigercat.tsx`（Vue：`lazyTigercat.ts`）、`validation.ts` | 主题 / 请求 / 会话 / 权限 / 导航 / mixed schema 路由 / 多标签 / 锁屏 / 水印 / 文案 / 重组件懒加载 | `types.ts` 裁剪为自己的业务类型；`shell-navigation` 替换菜单 schema（`GET /api/menus/schema` 失败时回退本地树）；`page-map` 按 schema `key` 懒加载页面，`schema-routes` 用 `schemaToRouteRecords` 绑定 path；`constants.ts` 检查 API 前缀；无图表/编辑器/裁剪/Gantt/任务看板页时可删 `lazyTigercat` |
 | `src/main.tsx` + `App.tsx`（Vue：`src/main.ts` + `App.vue`） | 应用入口（ConfigProvider locale、Router 模式） | **删除 `@tigercat-admin/mock-api` 的 import、`isTigercatDemoEnabled` 与 `installTigercatMockApi(...)` 调用**（除非选 backend.md 方案 C）；不需要 hash 路由时可删 `VITE_TIGERCAT_ROUTER_MODE` 分支 |
 
-蓝本中 `src/utils/` 其余文件（`notifications.ts`、`monitor.ts`、`chat.ts`、`realtime.ts`、`task-board.ts`、`settings.ts`、`media.ts`、`export.ts`、`workbench.ts`、`menus.ts`、`tickets.ts`、`approvals.ts`、`workflow-designer.ts`）是具体业务页面的 API 包装，按你实际要做的页面选择性复制。复制 Monitor / Chat 实时面时同时复制 `realtime.ts` 并安装 `@microsoft/signalr`。复制菜单管理轻页时同时复制 `menus.ts` 与 `MenusPage`。复制审批中心时同时复制 `approvals.ts`、`ApprovalsPage` 与 `ApprovalDetailPage`（发起审批用 `SchemaForm`）。复制流程设计演示时同时复制 `WorkflowDesignerPage` 与 `utils/workflow-designer.ts`（本地 JSON 树，库 Inspector 四 Tab + `validateWorkflowDesigner` 发布校验，会签人用 `actors[]`，预览用 `WorkflowViewer`，不要接 BPM 引擎）。复制按钮权限演示时同时复制 `PermissionDemoPage`（只用现有 `PermissionGuard` / `v-permission`，不要新增库级权限组件）。
+蓝本中 `src/utils/` 其余文件（`notifications.ts`、`monitor.ts`、`chat.ts`、`realtime.ts`、`task-board.ts`、`settings.ts`、`media.ts`、`export.ts`、`workbench.ts`、`menus.ts`、`tickets.ts`、`approvals.ts`、`workflow-designer.ts`、`projects.ts`、`calendar.ts`、`comments.ts`、`content.ts`）是具体业务页面的 API 包装，按你实际要做的页面选择性复制。复制 Monitor / Chat 实时面时同时复制 `realtime.ts` 并安装 `@microsoft/signalr`。复制 Home / Reports 时同时保留统计类型与 `export.ts`，预览和导出使用同一天数的 overview 数据域；Analytics 是示例图表页。复制 AuditLogs 时保留独立事件定位、权限、服务端分页、保留策略与失败不关闭的清理弹层。复制菜单管理轻页时同时复制 `menus.ts` 与 `MenusPage`。复制审批中心时同时复制 `approvals.ts`、`ApprovalsPage` 与 `ApprovalDetailPage`（发起审批用 `SchemaForm`）。复制流程设计演示时同时复制 `WorkflowDesignerPage` 与 `utils/workflow-designer.ts`（本地 JSON 树，库 Inspector 四 Tab + `validateWorkflowDesigner` 发布校验，会签人用 `actors[]`，预览用 `WorkflowViewer`，不要接 BPM 引擎）。复制按钮权限演示时同时复制 `PermissionDemoPage`（只用现有 `PermissionGuard` / `v-permission`，不要新增库级权限组件）。
+
+复制项目页时同时复制 `ProjectsPage`、`ProjectDetailPage`、`projects.ts`、`comments.ts` 和 `types.ts` 中项目类型，保留 URL 筛选分页与详情独立错误状态。复制任务页时保留 `task-board.ts`、`lazyTigercat` 的 TaskBoard 和 `types.ts` 中任务类型，详情按 ID 单独查询，不以列表前 200 条代替。复制日历页时保留 `calendar.ts`、共享日程类型、创建校验与本机时区说明；接口规则见 [日历 API](../api/calendar.md)。
+
+复制我的工作台时，同时复制双端 `WorkspacePage`、`utils/workspace.ts`、`types.ts` 的工作台类型及 `notifications.ts` / `calendar.ts` / `approvals.ts`，保留任务、通知、日历、审批详情页及其依赖。同步真实 API、MockApi、打包菜单 schema 的 `workspace` 节点和 `page-map` 懒加载入口；任务列表后端 / Mock 须支持 `assigneeExact`、`unfinished` 和筛选后的完整 `total`。保留四块独立取消 / 重试、权限门禁及文字匹配 / 共享数据 / 独立演示身份说明，具体范围以 [工作台前端约定](../frontend.md#我的工作台) 为准。
+
+复制定时任务时同时保留双端 `JobsPage`、`utils/jobs.ts`、`types.ts` 的 `Job` / `JobForm` / 创建更新类型、`lazyTigercat` 的 Gantt，以及 `request.ts` / `auth.ts`。保留 Cron 草稿校验和每次开 Drawer 重建组件、并发数空值、写入锁、失败草稿与启停回退；`timeout` / `batchSize` 仍是展示字符串。后端或 Mock 复制对应 Jobs 端点，不把示例状态 / 时间轴当成调度器，见 [Jobs API](../api/jobs.md)。复制大数据演示时保留双端 `PerformancePage`、`lazyTigercat` 的 VirtualList / VirtualTable / TaskBoard 子路径懒加载和 `/useDrag` bindings；固定行高、内部滚动、键盘开始 / 提交 / 取消及卡片 `touch-none` 一并保留。该页内存造数，不需要新增 API；具体约定见 [前端说明](../frontend.md#定时任务与大数据演示)。
+
+复制用户 CSV 导入时同时复制双端 `ImportPage`、`ImportResultPage`、`utils/import-jobs.ts`、`types.ts` 的导入类型及 `export.ts` 的 `downloadBlob`。在 page-map 和静态路由保留 `/import/:id`，同步 Shell / Mock 菜单的 `user:create` 和结果页标题。后端方案 A 保留 `Import/CsvUserImport.cs`、`ImportJobProgressService`、ImportJobs 端点 / 契约 / 实体、JSON source-generation 注册和 `AddCsvImportRows` 迁移；继续复用 UsersEndpoints 的共享校验、用户 / 角色表与 PasswordHasher。方案 C 同时保留 MockApi `src/import-users.ts` 和活动任务计时器。接口、限制和敏感字段规则见 [导入 API](../api/import.md)。
 
 路由、菜单与权限：
 
 - [frontend.md「App Shell 蓝图」](../frontend.md#app-shell-蓝图) 中的菜单-路由-权限表是**本仓库示例**；新项目复制其结构，把条目替换为自己的页面。
 - 权限码沿用 `资源:动作` 命名约定（如 `user:view`、`role:edit`），菜单和按钮按权限隐藏。
 - 主题与暗色模式：根 `ConfigProvider` 使用 `theme="modern"`，`colorScheme` 传 `utils/theme.ts` 解析出的 `light` / `dark`。`applyTheme` 仍切换根节点 `.compact`、写入用户主色，并在深色时盖回文本/边框/阴影。不要在页面内写孤立深色配色。
+
+复制帮助与关于页时，同时保留双端 `HelpPage` / `AboutPage`、`types.ts` 的 `HelpArticle` / `InfoResponse`、`permission` 与请求工具。帮助文章是本地数据，复制后替换标题、摘要、路由和权限；保留搜索重置、5 篇分批读取、无结果及 Shell 锚点容器。About 的 API 服务版本来自 `/api/info`，UI 包版本随实际依赖更新，不能相互替代；保留关闭错误后仍失败、重新连接和 CopyButton 复制反馈。具体说明见 [帮助与关于](../frontend.md#帮助与关于)。
+
+复制系统设置时保留 `utils/settings.ts`、`utils/media.ts`、Logo 原生文件输入与 AbortController；取消 / 失败不覆盖草稿，上传完成仍需保存设置建立引用。复制工单时保留 `utils/tickets.ts`、`comments.ts` 与附件未接入说明，不复制旧的演示 Upload。采用 .NET 方案时用户与会话统一使用当前 provider 的 EF store，复制认证时同时保留用户状态检查和禁用 / 删除清除会话逻辑，详见 [认证契约](../api/auth.md#用户状态会话与权限变化)。
 
 ## 4. 页面生成模式
 
@@ -120,7 +135,7 @@ pnpm add -D @tailwindcss/postcss
 
 | 页面类型 | 蓝本模板 | 覆盖的模式 |
 | -------- | -------- | ---------- |
-| 数据工作台（列表 + 搜索 + 批量 + 弹窗表单） | `UsersPage.*` | 分页、排序、列显隐、批量操作、sessionStorage 状态保留 |
+| 数据工作台（列表 + 搜索 + 批量 + 弹窗表单） | `UsersPage.*` | 远程分页、排序、列显隐、批量失败重试、按账号保留临时状态与命名筛选视图（语义见 [数据、权限与状态](../frontend.md#数据权限与状态)） |
 | 仪表盘（指标 + 图表） | `HomePage.*` | `MetricGrid`、图表、空状态 |
 | 访客页（登录 / 注册） | `LoginPage.*` | Guest shell、表单校验、登录态写入 |
 
@@ -146,3 +161,7 @@ pnpm add -D @tailwindcss/postcss
 - 开发期 `/api` 代理指向真实后端，或部署期由反向代理转发 `/api`。
 - CSS 入口完整：`@plugin "./tigercat-modern-plugin.js"`（`createTigercatPlugin({ preset: modernTheme })`）+ 双 `@source`（指向所用框架包），根 `ConfigProvider` 为 `theme="modern"`。
 - `@expcat/tigercat-core` 与 `@expcat/tigercat-react` / `-vue` 版本号一致。
+
+复制内容、图库和文件管理时，同时保留 `ContentPage`、`GalleryPage`、`FilesPage`、`FileDetailPage`（双端同名）、`utils/content.ts`、`utils/media.ts`、`types.ts` 的文章 / 媒体 / 图库类型与 `lazyTigercat` 重组件。文件详情为 `/files/:id` 静态参数路由，由 `page-map` 额外导出入口，使用 `media:view`；Shell 文件菜单、详情面包屑与 tags-view 沿用现有机制。后端需复制媒体标注迁移 / 快照、Content 附件引用逻辑和强删清理逻辑，契约见 [内容 API](../api/content.md) 与 [媒体 API](../api/media.md)。静态演示复制 Mock 的原文件存储与标注 / 附件处理，不能只保留上传占位图。
+
+附件文件选择沿用 FilesPage 的原生输入与现有媒体上传工具，不复制组件库补丁，也不关闭 React StrictMode；rc.2 Upload 的上游缺口与后续使用边界见 [前端约定](../frontend.md#内容图库与媒体详情)。

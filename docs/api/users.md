@@ -25,10 +25,14 @@
 | `GET /api/users` | `user:view` | Query：`page` 默认 `1`；`pageSize` 默认 `10`、范围 `1-100`；`keyword`；`sortBy=id|username|displayname|status|createdat`；`sortOrder=asc|desc`；`status=0|1` | 分页用户 | `400` 无效 `status` |
 | `GET /api/users/{id}` | `user:view` | Path：`id` | 用户对象 | `404` 用户不存在 |
 | `POST /api/users` | `user:create` | Body：`username`、`password` 必填；`displayName`、`roleIds` 可选 | 创建后的用户对象 | `400` 用户名/密码为空、用户名长度 2-50、用户名字符非法、密码策略不满足、显示名称超 100、角色 ID 无效；`409` 用户已存在；事件 `admin.user.created` |
-| `PUT /api/users/{id}` | `user:edit` | Body 全可选：`displayName`、`status`、`password`、`roleIds`、`avatarMediaId`；`avatarMediaId<=0` 清空头像 | 更新后的用户对象 | `400` 无效状态、密码策略不满足、显示名称超 100、角色 ID 无效、头像不存在或非图片；`404` 用户不存在；事件 `admin.user.updated`，改密码另发 `admin.user.password.reset` |
+| `PUT /api/users/{id}` | `user:edit` | Body 全可选：`displayName`、`status`、`password`、`roleIds`、`avatarMediaId`；`avatarMediaId<=0` 清空头像 | 更新后的用户对象 | `400` 无效状态、禁用当前用户 / 最后一个可用管理员、密码策略不满足、显示名称超 100、角色 ID 无效、头像不存在或非图片；`404` 用户不存在；事件 `admin.user.updated`，改密码另发 `admin.user.password.reset` |
 | `DELETE /api/users/{id}` | `user:delete` | Path：`id` | `{ message }` | `400` 不能删除自己 / 最后一个管理员；`404` 用户不存在；事件 `admin.user.deleted` |
 | `POST /api/users/batch-delete` | `user:delete` | Body：`ids` 必填且至少一个 | `{ message }` | `400` 未选择、包含当前登录用户、删除最后一个管理员；`404` 未找到任何用户；事件 `admin.user.batch.deleted` |
 | `POST /api/users/batch-status` | `user:edit` | Body：`ids` 必填，`status` 为 `0` 或 `1` | `{ message }` | `400` 未选择、状态无效、禁用当前用户、禁用最后一个可用管理员；`404` 任一用户 ID 不存在；事件 `admin.user.batch.status.updated` |
+
+创建用户与 [CSV 导入](import.md) 共用 `ValidateNewUser` 和当前 `AuthPolicySettings`。用户名 trim 后转小写，允许 `char.IsLetterOrDigit`（含中文等 Unicode 字母和数字）、下划线、短横线与点。新用户默认 Active（`0`）；可选角色 ID 须有效，密码使用现有 ASP.NET Identity PBKDF2 存储。CSV 导入同样要求 `user:create`，已有用户名改为逐行跳过，成功写入现有用户表并发布同类事件。
+
+单个 / 批量禁用和删除同时清除已有会话，角色关联变更影响后续请求；与 InMemory 认证一致性及 Hub 边界一起见 [认证专题](auth.md#用户状态会话与权限变化)。
 
 ## 关键示例
 

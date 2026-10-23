@@ -14,11 +14,12 @@
 | 理解项目或快速开始 | [README.md](../README.md) | [docs/operations.md](operations.md) |
 | 编码、审查、重构、文档整理 | [AGENT.md](../AGENT.md) | 相关专题和现有实现 |
 | 前端页面、布局、Tigercat UI | [docs/frontend.md](frontend.md) | [docs/api.md](api.md)、[上游需求](tigercat-upstream-requirements.md)、[上游建议短清单](frontend-upstream-suggestions.md)、双端同名页面 |
-| 后续开发计划与未验证分支 | [Roadmap](../Roadmap.md) | [待验证分支](roadmap-followups.md)、[上游需求](tigercat-upstream-requirements.md)、相关双端源码 |
+| 全页面与组件升级、后续计划与未验证分支 | [Roadmap](../Roadmap.md) | [待验证分支](roadmap-followups.md)、[上游需求](tigercat-upstream-requirements.md)、相关双端源码 |
 | API 对接或后端端点 | [docs/api.md](api.md) | 对应 [docs/api](api) 专题、`Tigercat.Admin.Api/Endpoints/*` |
 | 数据库、Redis、媒体、部署、CI | [docs/operations.md](operations.md) | API 或前端专题 |
 | Native AOT / `PublishAot` / JSON source-gen | [docs/operations.md Native AOT 评估](operations.md#native-aot) | csproj 与 `AppJsonContext`（不要打开 `PublishAot`，不要把 AOT 加进 CI） |
 | 新增跨领域能力 | 本文件 + 受影响专题 | 必要时新增专题文档 |
+| 我的工作台、任务 / 通知 / 日程 / 审批聚合入口 | [工作台前端约定](frontend.md#我的工作台) | [任务](api/tasks.md)、[通知](api/notifications.md)、[日历](api/calendar.md)、[审批](api/approvals.md) |
 
 ## Skill 路由
 

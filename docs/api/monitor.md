@@ -4,6 +4,8 @@
 
 `GET /api/monitor/snapshot` 的 `data` 是当前步进快照。服务端在进程内做小步随机游走，连续请求会缓慢漂移而不是大幅跳变。节点种子 ID 为 `api-hz-1`、`api-bj-1`、`worker-hz-1`、`cache-hz-1`。前端优先连 SignalR `/hubs/monitor`，按 2 / 3 / 5 秒接收同一份 JSON；暂停后停止推送。WebSocket 不可用时回退轮询本 REST 接口。QPS / 延迟滚动窗口由前端用连续快照拼接（最近 20 点）。每次成功 `GET` 或一次 hub `Start`/到期推送都会推进一步进器。不落库、无 Migration。
 
+前端首帧成功前显示加载或错误，不用本地预置数据伪装成功。REST 回退在每次请求完成后等待所选间隔再请求，避免重叠；暂停、切换间隔及卸载会取消旧请求与计时器，忽略迟到快照。失败后可重试，成功后清除错误。
+
 ## 对象
 
 `MonitorSnapshotResponse`：
