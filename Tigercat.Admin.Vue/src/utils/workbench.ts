@@ -34,6 +34,7 @@ const STORAGE_PREFIX = 'tigercat.admin.workbench.';
 export function loadWorkbenchState(
   entity: WorkbenchEntity,
   defaults: Partial<WorkbenchState> = {},
+  account?: string,
 ): WorkbenchState {
   const fallback = normalizeState(defaults);
   if (typeof window === 'undefined') {
@@ -41,7 +42,7 @@ export function loadWorkbenchState(
   }
 
   try {
-    const raw = window.sessionStorage.getItem(`${STORAGE_PREFIX}${entity}`);
+    const raw = window.sessionStorage.getItem(workbenchKey(entity, account));
     if (!raw) {
       return fallback;
     }
@@ -55,12 +56,13 @@ export function loadWorkbenchState(
 export function saveWorkbenchState(
   entity: WorkbenchEntity,
   nextState: Partial<WorkbenchState>,
+  account?: string,
 ): void {
   if (typeof window === 'undefined') {
     return;
   }
 
-  const previous = loadWorkbenchState(entity);
+  const previous = loadWorkbenchState(entity, {}, account);
   const state = normalizeState({
     ...previous,
     ...nextState,
@@ -70,11 +72,61 @@ export function saveWorkbenchState(
     },
   });
 
-  window.sessionStorage.setItem(`${STORAGE_PREFIX}${entity}`, JSON.stringify(state));
+  window.sessionStorage.setItem(workbenchKey(entity, account), JSON.stringify(state));
 }
 
-export function clearWorkbenchSelection(entity: WorkbenchEntity): void {
-  saveWorkbenchState(entity, { selectedRowKeys: [] });
+export function clearWorkbenchSelection(entity: WorkbenchEntity, account?: string): void {
+  saveWorkbenchState(entity, { selectedRowKeys: [] }, account);
+}
+
+function workbenchKey(entity: WorkbenchEntity, account?: string): string {
+  return `${STORAGE_PREFIX}${entity}${account ? `.${encodeURIComponent(account)}` : ''}`;
+}
+
+// 用户页命名视图独立于临时工作台状态；只存查询和列，不包含页码、选择或导出。
+export function userViewSnapshot(query: WorkbenchQueryState, hiddenColumnKeys: string[]) {
+  return {
+    queryState: {
+      keyword: query.keyword ?? '',
+      pageSize: query.pageSize ?? 10,
+      status: query.status ?? null,
+      sortBy: query.sortBy ?? null,
+      sortOrder: query.sortOrder ?? null,
+    },
+    hiddenColumnKeys: [...new Set(hiddenColumnKeys)].sort(),
+  };
+}
+
+export type UserView = ReturnType<typeof userViewSnapshot> & { name: string };
+export type UserViewsState = { views: UserView[]; activeViewName: string | null };
+
+export function loadUserViews(account: string): UserViewsState {
+  const fallback: UserViewsState = { views: [], activeViewName: null };
+  if (!account || typeof window === 'undefined') return fallback;
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(`${workbenchKey('users', account)}.views`) || 'null');
+    if (!Array.isArray(saved?.views)) return fallback;
+    const views: UserView[] = saved.views
+      .filter((view: UserView) => typeof view?.name === 'string' && view.name.trim())
+      .map((view: UserView) => ({
+        name: view.name,
+        ...userViewSnapshot(
+          normalizeQueryState(view.queryState ?? {}),
+          Array.isArray(view.hiddenColumnKeys) ? view.hiddenColumnKeys.filter(key => typeof key === 'string') : [],
+        ),
+      }));
+    return {
+      views,
+      activeViewName: views.some(view => view.name === saved.activeViewName) ? saved.activeViewName : null,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+export function saveUserViews(account: string, state: UserViewsState): void {
+  if (!account || typeof window === 'undefined') return;
+  window.localStorage.setItem(`${workbenchKey('users', account)}.views`, JSON.stringify(state));
 }
 
 function normalizeState(state: Partial<WorkbenchState>): WorkbenchState {

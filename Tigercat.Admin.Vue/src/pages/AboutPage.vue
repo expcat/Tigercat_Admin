@@ -1,31 +1,31 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
+import { Button } from '@expcat/tigercat-vue/Button'
+import { CopyButton } from '@expcat/tigercat-vue/CopyButton'
+import { usePermission } from '../utils/permission'
+import type { InfoResponse } from '../utils/types'
 import { Alert } from '@expcat/tigercat-vue/Alert'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Tag } from '@expcat/tigercat-vue/Tag'
 import { Text } from '@expcat/tigercat-vue/Text'
 import {
   NavigationMenu,
-  NavigationMenuContent,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-  NavigationMenuTrigger,
 } from '@expcat/tigercat-vue/NavigationMenu'
 import type { TagVariant } from '@expcat/tigercat-core'
 import { apiRequest } from '../utils'
 import Icon from '../components/Icon.vue'
 import PageHeader from '../components/PageHeader.vue'
 
-interface InfoResponse {
-  name: string
-  version: string
-  description: string
-}
-
 const info = ref<InfoResponse | null>(null)
 const loading = ref(true)
 const errorMessage = ref('')
+const { has: hasPerm } = usePermission()
+let infoRequest: AbortController | null = null
+onBeforeUnmount(() => infoRequest?.abort())
 
 const CONTAINS_CHINESE_CHAR_REGEX = /[\u4e00-\u9fa5]/
 
@@ -42,7 +42,7 @@ const connectionStatus = computed(() => {
   if (loading.value) {
     return { variant: 'primary', label: '连接中' }
   }
-  if (errorMessage.value) {
+  if (!info.value) {
     return { variant: 'danger', label: '连接失败' }
   }
   return { variant: 'success', label: '已连接' }
@@ -56,8 +56,8 @@ const infoCards = computed(() => [
     iconClass: 'bg-(--tiger-primary)/10 text-(--tiger-primary)'
   },
   {
-    label: '当前版本',
-    value: info.value?.version || 'v1.0.0',
+    label: 'API 服务版本',
+    value: info.value?.version || '—',
     icon: 'tag',
     iconClass: 'bg-(--tiger-primary)/10 text-(--tiger-primary)'
   },
@@ -71,29 +71,29 @@ const infoCards = computed(() => [
 
 const highlights = [
   {
-    title: '清晰导航体验',
-    description: '统一的侧边栏布局，快速定位关键模块。',
+    title: '内容与媒体',
+    description: '上传文件、查看媒体详情、标注与引用，并复制资源链接。',
     icon: 'compass',
     className: 'from-(--tiger-bg-hover,#f8fafc) to-(--tiger-bg-card,#ffffff)',
     iconClass: 'text-(--tiger-primary)'
   },
   {
-    title: '安全认证体系',
-    description: '基于令牌的认证机制，保障后台安全。',
+    title: 'CSV 用户导入',
+    description: 'UTF-8 CSV 字段映射、预览校验与逐行结果，刷新可恢复导入任务。',
     icon: 'lock',
     className: 'from-(--tiger-bg-hover,#f8fafc) to-(--tiger-bg-card,#ffffff)',
     iconClass: 'text-(--tiger-primary)'
   },
   {
-    title: '快速响应接口',
-    description: '轻量化 API 提供稳定的管理体验。',
+    title: '协作与审批',
+    description: '我的工作台汇集任务、共享通知与团队日程，审批明确使用独立演示身份。',
     icon: 'zap',
     className: 'from-(--tiger-bg-hover,#f8fafc) to-(--tiger-bg-card,#ffffff)',
     iconClass: 'text-(--tiger-warning,#d97706)'
   },
   {
-    title: '一致视觉语言',
-    description: '保持与首页一致的风格与组件呈现。',
+    title: '报表与外观',
+    description: '统计预览、导出与打印共用数据，支持窄屏及深浅色主题。',
     icon: 'palette',
     className: 'from-(--tiger-bg-hover,#f8fafc) to-(--tiger-bg-card,#ffffff)',
     iconClass: 'text-(--tiger-success,#16a34a)'
@@ -121,7 +121,7 @@ const techStack = [
   },
   {
     label: 'UI 组件',
-    value: 'Tigercat UI',
+    value: 'Tigercat UI 3.0.0-rc.2',
     icon: 'palette',
     iconClass: 'bg-(--tiger-primary)/10 text-(--tiger-primary)'
   }
@@ -150,15 +150,21 @@ const systemInfo = computed(() => [
 ])
 
 const loadInfo = async () => {
+  infoRequest?.abort()
+  const request = new AbortController()
+  infoRequest = request
   loading.value = true
+  info.value = null
   errorMessage.value = ''
   try {
-    const { data } = await apiRequest<InfoResponse>('/api/info')
+    const { data } = await apiRequest<InfoResponse>('/api/info', { signal: request.signal })
+    if (request.signal.aborted) return
+    if (!data) throw new Error('服务信息为空，请重试。')
     info.value = data
   } catch (error: unknown) {
-    errorMessage.value = getFriendlyErrorMessage(error)
+    if (!request.signal.aborted) errorMessage.value = getFriendlyErrorMessage(error)
   } finally {
-    loading.value = false
+    if (!request.signal.aborted) loading.value = false
   }
 }
 
@@ -171,19 +177,16 @@ const ABOUT_SECTIONS = [
     key: 'info',
     href: '#about-info',
     label: '服务信息',
-    description: '查看服务名称、版本与连接状态',
   },
   {
     key: 'features',
     href: '#about-features',
     label: '特性',
-    description: '浏览产品亮点与体验说明',
   },
   {
     key: 'stack',
     href: '#about-stack',
     label: '技术栈',
-    description: '了解前端、构建与 UI 组件',
   },
 ] as const
 
@@ -217,15 +220,12 @@ onMounted(() => {
           :key="section.key"
           :value="section.key"
         >
-          <NavigationMenuTrigger>{{ section.label }}</NavigationMenuTrigger>
-          <NavigationMenuContent>
-            <NavigationMenuLink
-              :href="section.href"
-              @click="scrollToAboutSection($event, section.href)"
-            >
-              {{ section.description }}
-            </NavigationMenuLink>
-          </NavigationMenuContent>
+          <NavigationMenuLink
+            :href="section.href"
+            @click="scrollToAboutSection($event, section.href)"
+          >
+            {{ section.label }}
+          </NavigationMenuLink>
         </NavigationMenuItem>
       </NavigationMenuList>
     </NavigationMenu>
@@ -242,19 +242,25 @@ onMounted(() => {
     <div id="about-info">
     <Card>
       <template #header><Text weight="bold">服务概览</Text></template>
+      <div class="mb-4 flex flex-wrap items-center gap-3">
+        <Tag :variant="connectionStatus.variant as TagVariant">{{ connectionStatus.label }}</Tag>
+        <Button variant="outline" size="sm" :loading="loading" :disabled="loading" @click="loadInfo">重新连接服务</Button>
+        <CopyButton v-if="info" :text="`服务：${info.name}\nAPI 服务版本：${info.version}\n描述：${info.description}\nTigercat UI：3.0.0-rc.2`" label="复制服务信息" />
+      </div>
       <div v-if="loading" class="flex items-center justify-center py-10">
         <Text size="sm" color="secondary">正在加载服务信息...</Text>
       </div>
+      <Text v-else-if="!info" tag="p" size="sm" color="secondary">尚未获取服务信息，请重新连接服务。</Text>
       <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div
           v-for="item in infoCards"
           :key="item.label"
-          class="flex items-center gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-hover,#f8fafc)"
+          class="min-w-0 flex items-center gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-hover,#f8fafc)"
         >
-          <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="item.iconClass">
+          <div class="w-10 h-10 shrink-0 rounded-lg flex items-center justify-center" :class="item.iconClass">
             <Icon :name="item.icon" :size="20" />
           </div>
-          <div>
+          <div class="min-w-0 break-words">
             <Text size="xs" color="secondary">{{ item.label }}</Text>
             <Text size="sm" weight="medium">{{ item.value }}</Text>
           </div>
@@ -285,6 +291,17 @@ onMounted(() => {
     </Card>
     </div>
 
+    <Card>
+      <template #header><Text weight="bold">常用入口</Text></template>
+      <div class="flex flex-wrap gap-4">
+          <RouterLink class="p2-text-primary underline" to="/workspace">我的工作台</RouterLink>
+        <RouterLink v-if="hasPerm('media:view')" class="p2-text-primary underline" to="/files">文件管理与媒体详情</RouterLink>
+        <RouterLink v-if="hasPerm('user:create')" class="p2-text-primary underline" to="/import">CSV 导入与结果</RouterLink>
+        <RouterLink class="p2-text-primary underline" to="/reports">报表预览与打印</RouterLink>
+        <RouterLink class="p2-text-primary underline" to="/help">帮助中心</RouterLink>
+      </div>
+    </Card>
+
     <div id="about-stack">
     <Card>
       <template #header><Text weight="bold">技术栈</Text></template>
@@ -292,12 +309,12 @@ onMounted(() => {
         <div
           v-for="item in techStack"
           :key="item.label"
-          class="flex items-center gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-hover,#f8fafc)"
+          class="min-w-0 flex items-center gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-hover,#f8fafc)"
         >
-          <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="item.iconClass">
+          <div class="w-10 h-10 shrink-0 rounded-lg flex items-center justify-center" :class="item.iconClass">
             <Icon :name="item.icon" :size="20" />
           </div>
-          <div>
+          <div class="min-w-0 break-words">
             <Text size="xs" color="secondary">{{ item.label }}</Text>
             <Text size="sm" weight="medium">{{ item.value }}</Text>
           </div>
@@ -312,12 +329,12 @@ onMounted(() => {
         <div
           v-for="item in systemInfo"
           :key="item.label"
-          class="flex items-center gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-hover,#f8fafc)"
+          class="min-w-0 flex items-center gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-hover,#f8fafc)"
         >
-          <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="item.iconClass">
+          <div class="w-10 h-10 shrink-0 rounded-lg flex items-center justify-center" :class="item.iconClass">
             <Icon :name="item.icon" :size="20" />
           </div>
-          <div>
+          <div class="min-w-0 break-words">
             <Text size="xs" color="secondary">{{ item.label }}</Text>
             <Tag v-if="item.tagVariant" :variant="item.tagVariant" size="sm">● {{ item.value }}</Tag>
             <Text v-else size="sm" weight="medium">{{ item.value }}</Text>

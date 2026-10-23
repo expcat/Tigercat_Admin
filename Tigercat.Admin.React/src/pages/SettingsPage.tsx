@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
@@ -13,11 +13,9 @@ import { Switch } from '@expcat/tigercat-react/Switch';
 import { Tag } from '@expcat/tigercat-react/Tag';
 import { Text } from '@expcat/tigercat-react/Text';
 import { ColorPicker } from '@expcat/tigercat-react/ColorPicker';
-import { Upload } from '@expcat/tigercat-react/Upload';
 import { Collapse } from '@expcat/tigercat-react/Collapse';
 import { CollapsePanel } from '@expcat/tigercat-react/CollapsePanel';
 import { Skeleton } from '@expcat/tigercat-react/Skeleton';
-import type { UploadRequestOptions } from '@expcat/tigercat-core';
 import { LogoIcon, SettingsIcon } from '../components/Icons';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest, getAuthHeaders, normalizeInput } from '../utils';
@@ -41,8 +39,13 @@ function SettingsPage() {
   const [settings, setSettings] = useState<SettingItem[]>([]);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const logoUploadController = useRef<AbortController | null>(null);
+  useEffect(() => () => logoUploadController.current?.abort(), []);
   const [openSettingGroups, setOpenSettingGroups] = useState<(string | number)[]>(
     Object.keys(SETTINGS_GROUP_LABELS),
   );
@@ -57,6 +60,7 @@ function SettingsPage() {
   const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError('');
       const res = await apiRequest<SettingItem[]>('/api/settings', {
         headers: getAuthHeaders(),
       });
@@ -65,6 +69,7 @@ function SettingsPage() {
       for (const s of res.data) values[s.key] = s.value;
       setEditValues(values);
     } catch (e: any) {
+      setLoadError(e.message || '加载设置失败');
       Message.error({ content: e.message || '加载设置失败', duration: 3000 });
     } finally {
       setLoading(false);
@@ -92,14 +97,16 @@ function SettingsPage() {
     if (entries.length === 0) return;
     try {
       setSaving(true);
-      await apiRequest<SettingItem[]>('/api/settings', {
+      const res = await apiRequest<SettingItem[]>('/api/settings', {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({ settings: entries }),
       });
+      const updated = settings.map(item => res.data.find(value => value.key === item.key) ?? item);
+      setSettings(updated);
+      setEditValues(Object.fromEntries(updated.map(item => [item.key, item.value])));
       setSaveConfirmOpen(false);
       Message.success({ content: '设置已保存', duration: 3000 });
-      await fetchSettings();
     } catch (e: any) {
       Message.error({ content: e.message || '保存失败', duration: 3000 });
     } finally {
@@ -147,27 +154,40 @@ function SettingsPage() {
   };
 
   const currentLogoUrl = editValues['site.logo'] || '';
+  const savedLogoUrl = settings.find(item => item.key === 'site.logo')?.value || '';
 
-  const handleLogoUpload = async ({
-    file,
-    onProgress,
-    onSuccess,
-    onError,
-  }: UploadRequestOptions) => {
+  const handleLogoUpload = async (file: File) => {
+    if (!canEdit || logoUploadController.current) return;
+    if (!file.type.startsWith('image/') || file.size > 2 * 1024 * 1024) {
+      Message.warning({ content: '请选择不超过 2 MB 的图片', duration: 3000 });
+      return;
+    }
+    const controller = new AbortController();
+    logoUploadController.current = controller;
+    setLogoUploading(true);
     try {
-      onProgress?.(20);
-      const media = await uploadMediaFile(file, 'logo');
-      onProgress?.(100);
-      onSuccess?.(media);
+      const media = await uploadMediaFile(file, 'logo', controller.signal);
+      if (controller.signal.aborted) return;
       setEditValues((prev) => ({ ...prev, 'site.logo': media.url }));
       Message.success({
         content: 'Logo 已上传，请保存设置以持久化引用',
         duration: 3000,
       });
     } catch (error: any) {
-      onError?.(error);
-      Message.error({ content: error.message || 'Logo 上传失败', duration: 3000 });
+      if (!controller.signal.aborted) Message.error({ content: error.message || 'Logo 上传失败', duration: 3000 });
+    } finally {
+      if (logoUploadController.current === controller) {
+        logoUploadController.current = null;
+        if (!controller.signal.aborted) setLogoUploading(false);
+      }
     }
+  };
+
+  const cancelLogoUpload = () => {
+    logoUploadController.current?.abort();
+    logoUploadController.current = null;
+    setLogoUploading(false);
+    requestAnimationFrame(() => document.getElementById('logo-upload-select')?.focus());
   };
 
   return (
@@ -185,6 +205,13 @@ function SettingsPage() {
             <Skeleton variant="text" />
             <Skeleton variant="text" />
             <Skeleton variant="button" />
+          </div>
+        </Card>
+      ) : loadError ? (
+        <Card>
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3">
+            <span>{loadError}</span>
+            <Button variant="outline" onClick={() => { void fetchSettings(); }}>重试加载设置</Button>
           </div>
         </Card>
       ) : (
@@ -221,19 +248,22 @@ function SettingsPage() {
                   )}
                 </div>
 
-                <Upload
-                  accept="image/*"
-                  disabled={!canEdit}
-                  listType="picture-card"
-                  showFileList={false}
-                  maxSize={2 * 1024 * 1024}
-                  customRequest={(options) => {
-                    void handleLogoUpload(options);
-                  }}
-                />
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button id="logo-upload-select" variant="outline" disabled={!canEdit || logoUploading || saving} onClick={() => logoInputRef.current?.click()}>
+                    {logoUploading ? '正在上传…' : '选择 Logo 图片'}
+                  </Button>
+                  <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    event.currentTarget.value = '';
+                    if (file) void handleLogoUpload(file);
+                  }} />
+                  {logoUploading && <Button variant="outline" onClick={cancelLogoUpload}>取消上传</Button>}
+                  <Text size="sm" color="secondary">图片不超过 2 MB</Text>
+                </div>
 
-                <div className="p2-muted-panel px-4 py-3 text-sm">
-                  当前持久化值：{editValues['site.logo'] || '未设置'}
+                <div className="p2-muted-panel space-y-1 break-all px-4 py-3 text-sm">
+                  <p>当前表单值：{currentLogoUrl || '未设置'}</p>
+                  <p>当前持久化值：{savedLogoUrl || '未设置'}</p>
                 </div>
               </div>
 
@@ -397,14 +427,14 @@ function SettingsPage() {
                 onConfirm={handleRestoreDefaults}>
                 <Button
                   variant="outline"
-                  disabled={!hasDefaultOverrides || saving}>
+                  disabled={!hasDefaultOverrides || saving || logoUploading}>
                   恢复默认值
                 </Button>
               </Popconfirm>
               <Button
                 variant="primary"
                 onClick={() => setSaveConfirmOpen(true)}
-                disabled={!hasChanges || saving}>
+                disabled={!hasChanges || saving || logoUploading}>
                 {saving ? '保存中…' : '保存修改'}
               </Button>
             </div>

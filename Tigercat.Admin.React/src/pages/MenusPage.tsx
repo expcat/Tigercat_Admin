@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Empty } from '@expcat/tigercat-react/Empty';
@@ -58,6 +58,7 @@ function MenusPage() {
     bottomItems: [],
   });
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalTitle, setModalTitle] = useState('新增菜单节点');
@@ -69,6 +70,7 @@ function MenusPage() {
   const [previewCodes, setPreviewCodes] = useState<string[]>([]);
   const [previewError, setPreviewError] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
+  const previewRequest = useRef<AbortController | null>(null);
 
   const treeData = useMemo(() => toMenuTreeData(schema), [schema]);
   const selectedKeys = selectedKey ? [selectedKey] : [];
@@ -109,6 +111,7 @@ function MenusPage() {
 
   const loadSchema = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const res = await fetchMenuSchema();
       setSchema(res.data);
@@ -117,6 +120,7 @@ function MenusPage() {
         return findMenuNode(schemaNodes(res.data), current) ? current : null;
       });
     } catch (error: unknown) {
+      setLoadError(readErrorMessage(error, '菜单加载失败'));
       Message.error({
         content: readErrorMessage(error, '菜单 schema 加载失败'),
         duration: 3000,
@@ -141,6 +145,7 @@ function MenusPage() {
 
   useEffect(() => {
     void Promise.all([loadSchema(), loadRoles()]);
+    return () => previewRequest.current?.abort();
   }, [loadRoles, loadSchema]);
 
   const handleSelectedKeys = (keys: TreeNodeKey[]) => {
@@ -209,20 +214,24 @@ function MenusPage() {
   };
 
   const handlePreviewRoleChange = async (value: unknown) => {
-    const id = typeof value === 'number' ? value : Number(value);
-    const nextId = Number.isFinite(id) ? id : null;
+    previewRequest.current?.abort();
+    const id = value == null || value === '' ? NaN : Number(value);
+    const nextId = Number.isFinite(id) && id > 0 ? id : null;
     setPreviewRoleId(nextId);
     setPreviewCodes([]);
-    if (!nextId) return;
-    setPreviewLoading(true);
     setPreviewError('');
+    setPreviewLoading(false);
+    if (!nextId) return;
+    const request = new AbortController();
+    previewRequest.current = request;
+    setPreviewLoading(true);
     try {
-      const res = await fetchRoleDetail(nextId);
-      setPreviewCodes((res.data.permissions ?? []).map((item) => item.code));
+      const res = await fetchRoleDetail(nextId, request.signal);
+      if (!request.signal.aborted) setPreviewCodes((res.data.permissions ?? []).map((item) => item.code));
     } catch (error: unknown) {
-      setPreviewError(readErrorMessage(error, '角色权限加载失败'));
+      if (!request.signal.aborted) setPreviewError(readErrorMessage(error, '角色权限加载失败'));
     } finally {
-      setPreviewLoading(false);
+      if (!request.signal.aborted) setPreviewLoading(false);
     }
   };
 
@@ -286,7 +295,12 @@ function MenusPage() {
           {loading ? (
             <div className="p2-text-secondary mb-3">菜单树加载中...</div>
           ) : null}
-          <Tree
+          {loadError ? (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-3">
+              <span>{loadError}</span>
+              <Button variant="outline" onClick={() => { void loadSchema(); }}>重试加载菜单</Button>
+            </div>
+          ) : <Tree
             treeData={treeData}
             selectedKeys={selectedKeys}
             defaultExpandAll
@@ -295,21 +309,20 @@ function MenusPage() {
             ariaLabel="菜单树"
             emptyText="暂无菜单节点"
             onSelectedKeysChange={handleSelectedKeys}
-          />
+          />}
         </Card>
 
         <Card>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <Text weight="medium">角色预览</Text>
-            {previewRoleId != null ? (
+            {previewRoleId != null && !previewLoading && !previewError ? (
               <Tag size="sm" variant="primary">
                 {previewRouteTotal} 条路由记录
               </Tag>
             ) : null}
           </div>
           <Text size="sm" color="secondary" className="mb-3 block">
-            使用 filterMenuByPermission 与 menuSchemaToMenuItems
-            按角色权限过滤，不裁剪服务端 schema。
+            选择角色，预览其有权访问的侧栏菜单和路由数量。
           </Text>
           <Select
             value={previewRoleId ?? undefined}
@@ -320,11 +333,12 @@ function MenusPage() {
             onChange={handlePreviewRoleChange}
           />
           {previewError ? (
-            <Text size="sm" color="danger" className="mb-3 block">
-              {previewError}
-            </Text>
+            <div role="alert" className="mb-3 flex flex-wrap items-center gap-2">
+              <Text size="sm" color="danger">{previewError}</Text>
+              <Button size="sm" variant="outline" onClick={() => { void (roles.length ? handlePreviewRoleChange(previewRoleId) : loadRoles()); }}>重试预览</Button>
+            </div>
           ) : null}
-          {!previewRoleId ? (
+          {previewError ? null : !previewRoleId ? (
             <Empty description="选择一个角色，查看该角色侧栏会看到的菜单" />
           ) : previewLoading ? (
             <div className="p2-text-secondary py-8 text-center">预览加载中...</div>
@@ -347,9 +361,7 @@ function MenusPage() {
         showDefaultFooter
         okText={submitting ? '保存中…' : '确定'}
         cancelText="取消"
-        onOk={() => {
-          void submitForm();
-        }}
+        onOk={submitForm}
         onCancel={() => setModalVisible(false)}>
         <div className="p2-modal-scroll">
           <Form labelWidth={96}>

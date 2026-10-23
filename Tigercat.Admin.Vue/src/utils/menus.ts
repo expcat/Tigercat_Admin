@@ -120,9 +120,10 @@ export function fetchRolesForPreview() {
   });
 }
 
-export function fetchRoleDetail(id: number) {
+export function fetchRoleDetail(id: number, signal?: AbortSignal) {
   return apiRequest<RoleItem>(`/api/roles/${id}`, {
     headers: getAuthHeaders(),
+    signal,
   });
 }
 

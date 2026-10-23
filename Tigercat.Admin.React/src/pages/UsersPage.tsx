@@ -47,12 +47,19 @@ import {
 import {
   apiRequest,
   normalizeInput,
-  debounce,
   getAuthHeaders,
   exportData,
   loadWorkbenchState,
   saveWorkbenchState,
   clearWorkbenchSelection,
+  loadUserViews,
+  saveUserViews,
+  userViewSnapshot,
+  safeParse,
+  SESSION_KEY,
+  type Session,
+  type WorkbenchState,
+  type UserViewsState,
 } from '../utils';
 import { uploadMediaBlob } from '../utils/media';
 import type { ExportFormat } from '../utils/export';
@@ -115,9 +122,11 @@ const STATUS_FILTER_OPTIONS = [
 
 function UsersPage() {
   const { has: hasPerm } = usePermission();
-  const savedWorkbench = useMemo(
-    () =>
-      loadWorkbenchState('users', {
+  const account = useMemo(() => safeParse<Session>(localStorage.getItem(SESSION_KEY))?.username ?? '', []);
+  const [userViews, setUserViews] = useState(() => loadUserViews(account));
+  const [viewName, setViewName] = useState(userViews.activeViewName ?? '');
+  const savedWorkbench = useMemo(() => {
+    const state = loadWorkbenchState('users', {
         queryState: { page: 1, pageSize: 10, status: null },
         selectedRowKeys: [],
         hiddenColumnKeys: [],
@@ -125,14 +134,25 @@ function UsersPage() {
           format: 'csv',
           fields: EXPORT_FIELD_OPTIONS.map((f) => f.key),
         },
-      }),
-    [],
-  );
+    }, account);
+    const active = userViews.views.find(view => view.name === userViews.activeViewName);
+    return active
+      ? { ...state, queryState: { ...active.queryState, page: 1 }, hiddenColumnKeys: active.hiddenColumnKeys, selectedRowKeys: [] }
+      : state;
+    // Restore a named snapshot only when the page mounts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account]);
+  const persistWorkbench = useCallback((state: Partial<WorkbenchState>) => {
+    saveWorkbenchState('users', state, account);
+  }, [account]);
   const savedQuery = savedWorkbench.queryState;
 
   // ---- State ----
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const requestRef = useRef<AbortController | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [keyword, setKeyword] = useState(savedQuery.keyword ?? '');
   const [currentPage, setCurrentPage] = useState(savedQuery.page ?? 1);
   const [pageSize, setPageSize] = useState(savedQuery.pageSize ?? 10);
@@ -211,7 +231,7 @@ function UsersPage() {
 
   const persistQuery = useCallback((next: Partial<typeof queryRef.current>) => {
     queryRef.current = { ...queryRef.current, ...next };
-    saveWorkbenchState('users', {
+    persistWorkbench({
       queryState: {
         page: queryRef.current.page,
         pageSize: queryRef.current.pageSize,
@@ -221,11 +241,16 @@ function UsersPage() {
         status: queryRef.current.statusFilter,
       },
     });
-  }, []);
+  }, [persistWorkbench]);
 
   // ---- API calls ----
-  const loadUsers = useCallback(async () => {
+  const loadUsers = useCallback(async (): Promise<void> => {
+    clearTimeout(searchTimer.current);
+    requestRef.current?.abort();
+    const request = new AbortController();
+    requestRef.current = request;
     setLoading(true);
+    setLoadError('');
     try {
       const {
         page,
@@ -252,21 +277,35 @@ function UsersPage() {
         `/api/users?${params}`,
         {
           headers: getAuthHeaders(),
+          signal: request.signal,
         },
       );
+      if (request.signal.aborted) return;
+      const lastPage = Math.max(1, Math.ceil(res.data.total / ps));
+      if (page > lastPage) {
+        persistQuery({ page: lastPage });
+        setCurrentPage(lastPage);
+        void loadUsers();
+        return;
+      }
       setUsers(res.data.items);
       setTotal(res.data.total);
     } catch (e: any) {
+      if (request.signal.aborted) return;
+      setUsers([]);
+      setTotal(0);
+      setLoadError(e.message || '加载用户列表失败');
       Message.error({
         content: e.message || '加载用户列表失败',
         duration: 3000,
       });
     } finally {
-      setLoading(false);
+      if (!request.signal.aborted) setLoading(false);
     }
-  }, []);
+  }, [persistQuery]);
 
   const loadRoles = useCallback(async () => {
+    if (!hasPerm('role:view')) return;
     try {
       const res = await apiRequest<{ items: RoleInfo[] }>(
         '/api/roles?pageSize=100',
@@ -279,8 +318,13 @@ function UsersPage() {
   }, []);
 
   useEffect(() => {
+    persistWorkbench(savedWorkbench);
     loadUsers();
     loadRoles();
+    return () => {
+      clearTimeout(searchTimer.current);
+      requestRef.current?.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -353,7 +397,7 @@ function UsersPage() {
       Message.success({ content: '删除成功', duration: 3000 });
       setSelectedRowKeys((prev) => {
         const next = prev.filter((k) => k !== userId);
-        saveWorkbenchState('users', { selectedRowKeys: next });
+        persistWorkbench({ selectedRowKeys: next });
         return next;
       });
       loadUsers();
@@ -370,7 +414,7 @@ function UsersPage() {
     }
     const next = keys.map(Number).filter((id) => Number.isFinite(id));
     setSelectedRowKeys(next);
-    saveWorkbenchState('users', { selectedRowKeys: next });
+    persistWorkbench({ selectedRowKeys: next });
     setBatchDeleteConfirmVisible(true);
   };
 
@@ -387,7 +431,7 @@ function UsersPage() {
       });
       setBatchDeleteConfirmVisible(false);
       setSelectedRowKeys([]);
-      clearWorkbenchSelection('users');
+      clearWorkbenchSelection('users', account);
       loadUsers();
     } catch (e: any) {
       Message.error({ content: e.message || '批量删除失败', duration: 3000 });
@@ -402,7 +446,7 @@ function UsersPage() {
 
     const next = keys.map(Number).filter((id) => Number.isFinite(id));
     setSelectedRowKeys(next);
-    saveWorkbenchState('users', { selectedRowKeys: next });
+    persistWorkbench({ selectedRowKeys: next });
     setBatchStatusConfirm({ open: true, status });
   };
 
@@ -422,7 +466,7 @@ function UsersPage() {
       });
       setBatchStatusConfirm((prev) => ({ ...prev, open: false }));
       setSelectedRowKeys([]);
-      clearWorkbenchSelection('users');
+      clearWorkbenchSelection('users', account);
       loadUsers();
     } catch (e: any) {
       Message.error({
@@ -440,7 +484,7 @@ function UsersPage() {
       const next = prev.includes(key)
         ? prev.filter((f) => f !== key)
         : [...prev, key];
-      saveWorkbenchState('users', {
+      persistWorkbench({
         exportState: { format: exportFormat, fields: next },
       });
       return next;
@@ -449,7 +493,7 @@ function UsersPage() {
 
   const handleExportFormatChange = (format: ExportFormat) => {
     setExportFormat(format);
-    saveWorkbenchState('users', {
+    persistWorkbench({
       exportState: { format, fields: exportFields },
     });
   };
@@ -597,21 +641,73 @@ function UsersPage() {
   };
 
   // ---- Search with debounce ----
-  const debouncedLoad = useMemo(
-    () =>
-      debounce(() => {
-        persistQuery({ page: 1 });
-        setCurrentPage(1);
-        loadUsers();
-      }, 300),
-    [loadUsers, persistQuery],
-  );
-
   const handleSearch = (val: string) => {
     const normalized = normalizeInput(val);
-    persistQuery({ keyword: normalized });
+    persistQuery({ keyword: normalized, page: 1 });
     setKeyword(normalized);
-    debouncedLoad();
+    setCurrentPage(1);
+    clearTimeout(searchTimer.current);
+    requestRef.current?.abort();
+    setLoading(true);
+    searchTimer.current = setTimeout(() => { void loadUsers(); }, 300);
+  };
+
+  const currentView = userViewSnapshot({
+    keyword, pageSize, status: statusFilter,
+    sortBy: sortState.key, sortOrder: sortState.direction,
+  }, hiddenColumnKeys);
+  const activeView = userViews.views.find(view => view.name === userViews.activeViewName);
+  const viewModified = activeView && JSON.stringify(currentView) !==
+    JSON.stringify(userViewSnapshot(activeView.queryState, activeView.hiddenColumnKeys));
+
+  const persistViews = (next: UserViewsState) => {
+    try {
+      saveUserViews(account, next);
+      setUserViews(next);
+      return true;
+    } catch {
+      Message.error({ content: '保存用户视图失败，请检查浏览器存储后重试', duration: 3000 });
+      return false;
+    }
+  };
+
+  const switchUserView = (value: unknown) => {
+    const name = typeof value === 'string' && value ? value : null;
+    const view = userViews.views.find(item => item.name === name);
+    if (!persistViews({ ...userViews, activeViewName: view?.name ?? null })) return;
+    setViewName(view?.name ?? '');
+    setSelectedRowKeys([]);
+    clearWorkbenchSelection('users', account);
+    if (view) {
+      const query = view.queryState;
+      const nextSort: SortState = { key: query.sortBy, direction: query.sortOrder };
+      setKeyword(query.keyword);
+      setPageSize(query.pageSize);
+      setStatusFilter(query.status);
+      setSortState(nextSort);
+      setCurrentPage(1);
+      setHiddenColumns(new Set(view.hiddenColumnKeys));
+      persistWorkbench({ hiddenColumnKeys: view.hiddenColumnKeys });
+      persistQuery({ keyword: query.keyword, pageSize: query.pageSize, statusFilter: query.status, sortState: nextSort, page: 1 });
+    }
+    void loadUsers();
+  };
+
+  const saveUserView = () => {
+    const name = viewName.trim();
+    if (!name) return;
+    const view = { name, ...currentView };
+    const views = [...userViews.views.filter(item => item.name !== name), view];
+    if (persistViews({ views, activeViewName: name })) {
+      setViewName(name);
+      Message.success({ content: '用户视图已保存', duration: 3000 });
+    }
+  };
+
+  const deleteUserView = () => {
+    if (persistViews({ views: userViews.views.filter(view => view.name !== userViews.activeViewName), activeViewName: null })) {
+      setViewName('');
+    }
   };
 
   // ---- Bulk actions ----
@@ -634,10 +730,10 @@ function UsersPage() {
   // ---- Column visibility ----
   const handleHiddenColumnsChange = useCallback((nextHiddenKeys: string[]) => {
     setHiddenColumns(new Set(nextHiddenKeys));
-    saveWorkbenchState('users', {
+    persistWorkbench({
       hiddenColumnKeys: nextHiddenKeys,
     });
-  }, []);
+  }, [persistWorkbench]);
 
   // ---- Table columns ----
   const columns = useMemo<TableColumn<UserItem>[]>(() => {
@@ -761,6 +857,7 @@ function UsersPage() {
   const paginationConfig = useMemo(
     () => ({
       current: currentPage,
+      remote: true,
       pageSize,
       total,
       showSizeChanger: true,
@@ -828,7 +925,7 @@ function UsersPage() {
   const handleSelectionChange = (keys: (string | number)[]) => {
     const next = keys.map(Number).filter((id) => Number.isFinite(id));
     setSelectedRowKeys(next);
-    saveWorkbenchState('users', { selectedRowKeys: next });
+    persistWorkbench({ selectedRowKeys: next });
   };
 
   // ---- Role select options ----
@@ -952,6 +1049,26 @@ function UsersPage() {
       <div className="p2-muted-panel px-4 py-3 text-sm">
         {serverPaginationHint}
       </div>
+
+      <div className="p2-muted-panel space-y-2 p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <Select aria-label="用户筛选视图" placeholder="选择已保存视图" className="w-full sm:w-52"
+            value={userViews.activeViewName ?? undefined} clearable
+            options={userViews.views.map(view => ({ label: view.name, value: view.name }))}
+            onChange={switchUserView} />
+          <Input aria-label="视图名称" placeholder="视图名称" maxLength={40} className="w-full sm:w-52"
+            value={viewName} onChange={value => setViewName(normalizeInput(value))} />
+          <Button variant="outline" disabled={!account || !viewName.trim()} onClick={saveUserView}>保存视图</Button>
+          <Button variant="ghost" disabled={!userViews.activeViewName} onClick={deleteUserView}>删除视图</Button>
+        </div>
+        <p className="p2-text-secondary text-sm" role="status">
+          {activeView ? `当前视图：${activeView.name}${viewModified ? '（已修改，尚未保存）' : ''}。` : ''}
+          视图仅保存在当前浏览器的当前账号下，包含筛选、排序、每页条数和可见列；切换或重新载入视图不会恢复勾选项。
+        </p>
+      </div>
+      {loadError && <div role="alert" className="p2-muted-panel flex items-center justify-between gap-3 p-4">
+        <span>{loadError}</span><Button variant="outline" onClick={() => { void loadUsers(); }}>重试加载用户</Button>
+      </div>}
 
       <ContextMenu asChild>
         <div onContextMenuCapture={onUsersContextMenu}>

@@ -112,3 +112,28 @@ export const Gantt = lazyNamed(
   () => import('@expcat/tigercat-vue/Gantt'),
   'Gantt',
 )
+
+export const TaskBoard = lazyNamed(
+  () => import('@expcat/tigercat-vue/TaskBoard'),
+  'TaskBoard',
+)
+
+export const WorkflowDesigner = lazyNamed(
+  () => import('@expcat/tigercat-vue/WorkflowDesigner'),
+  'WorkflowDesigner',
+)
+
+export const WorkflowViewer = lazyNamed(
+  () => import('@expcat/tigercat-vue/WorkflowViewer'),
+  'WorkflowViewer',
+)
+
+export const VirtualList = lazyNamed(
+  () => import('@expcat/tigercat-vue/VirtualList'),
+  'VirtualList',
+);
+
+export const VirtualTable = lazyNamed(
+  () => import('@expcat/tigercat-vue/VirtualTable'),
+  'VirtualTable',
+);

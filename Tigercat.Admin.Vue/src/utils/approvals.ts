@@ -60,22 +60,22 @@ export const EMPTY_APPROVAL_CREATE: FormValues = {
 
 export const APPROVAL_CREATE_SCHEMA: SchemaFormSchema = {
   fields: [
-    { name: 'title', label: '标题', required: true, placeholder: '例如：请假、报销或工单升级' },
+    { name: 'title', label: '标题', required: true, placeholder: '例如：请假、报销或工单升级', rules: [{ required: true, transform: (value) => String(value ?? '').trim(), max: 120, message: '请填写 1–120 字标题' }] },
     { name: 'category', label: '类型', type: 'select', options: APPROVAL_CATEGORY_OPTIONS },
-    { name: 'assignee', label: '处理人', type: 'select', options: APPROVAL_TRANSFER_OPTIONS },
+    { name: 'assignee', label: '处理人', type: 'select', required: true, options: APPROVAL_TRANSFER_OPTIONS },
     { name: 'ticketId', label: '关联工单', placeholder: '可选，如 TK-2048' },
-    { name: 'reason', label: '说明', type: 'textarea', placeholder: '申请原因' },
+    { name: 'reason', label: '说明', type: 'textarea', placeholder: '申请原因', rules: [{ max: 2000, message: '说明最多 2000 字' }] },
   ],
 };
 
 export const APPROVAL_DETAIL_SCHEMA: SchemaFormSchema = {
   fields: [
-    { name: 'title', label: '标题' },
+    { name: 'title', label: '标题', rules: [{ required: true, transform: (value) => String(value ?? '').trim(), max: 120, message: '请填写 1–120 字标题' }] },
     { name: 'category', label: '类型' },
     { name: 'starter', label: '发起人' },
-    { name: 'amount', label: '金额 / 天数（财务节点可编）' },
+    { name: 'amount', label: '金额 / 天数（财务节点可编）', rules: [{ max: 32, message: '金额 / 天数最多 32 字' }] },
     { name: 'ticketId', label: '关联工单' },
-    { name: 'reason', label: '说明', type: 'textarea' },
+    { name: 'reason', label: '说明', type: 'textarea', rules: [{ max: 2000, message: '说明最多 2000 字' }] },
   ],
 };
 
@@ -239,7 +239,7 @@ export function fetchApprovals(query: {
   keyword?: string;
   page?: number;
   pageSize?: number;
-}) {
+}, signal?: AbortSignal) {
   const params = new URLSearchParams({
     lane: query.lane ?? 'todo',
     page: String(query.page ?? 1),
@@ -248,6 +248,7 @@ export function fetchApprovals(query: {
   if (query.keyword?.trim()) params.set('keyword', query.keyword.trim());
   return apiRequest<PagedResult<ApprovalListItem>>(`/api/approvals?${params}`, {
     headers: approvalAuthHeaders(),
+    signal,
   });
 }
 
@@ -270,15 +271,17 @@ export async function fetchRelatedApproval(ticketId: string): Promise<ApprovalLi
   return null;
 }
 
-export function fetchApproval(id: string) {
+export function fetchApproval(id: string, signal?: AbortSignal) {
   return apiRequest<ApprovalDetail>(`/api/approvals/${encodeURIComponent(id)}`, {
+    signal,
     headers: approvalAuthHeaders(),
   });
 }
 
-export function fetchApprovalContacts() {
+export function fetchApprovalContacts(signal?: AbortSignal) {
   return apiRequest<{ users: ApprovalContactUser[] }>('/api/approvals/contacts', {
     headers: approvalAuthHeaders(),
+    signal,
   });
 }
 

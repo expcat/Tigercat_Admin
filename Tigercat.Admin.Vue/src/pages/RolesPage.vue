@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, inject, onMounted, h } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, h } from 'vue'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Checkbox } from '@expcat/tigercat-vue/Checkbox'
 import { DataTableWithToolbar } from '@expcat/tigercat-vue/DataTableWithToolbar'
@@ -20,7 +20,7 @@ import { Tree } from '@expcat/tigercat-vue/Tree'
 import type { TableColumn, TableCardLayoutItem, SortState } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
-import { apiRequest, debounce, loadWorkbenchState, saveWorkbenchState, type Session } from '../utils'
+import { apiRequest, getAuthHeaders, loadWorkbenchState, saveWorkbenchState } from '../utils'
 import { exportData, type ExportFormat } from '../utils/export'
 import type { PermissionInfo, RoleUserInfo, RoleItem, PagedResult } from '../utils/types'
 import { usePermission } from '../utils/permission'
@@ -32,14 +32,6 @@ import {
 const { has: hasPerm } = usePermission()
 const canEdit = computed(() => hasPerm('role:edit'))
 const canDelete = computed(() => hasPerm('role:delete'))
-
-// ---- Session ----
-const session = inject<import('vue').Ref<Session | null>>('session')!
-const authHeaders = computed<Record<string, string>>(() => {
-  const headers: Record<string, string> = {}
-  if (session.value?.token) headers.Authorization = `Bearer ${session.value.token}`
-  return headers
-})
 
 const DEFAULT_EXPORT_FIELDS = ['id', 'name', 'description', 'createdAt', 'permissions', 'userCount']
 const ROLE_CARD_LAYOUT: TableCardLayoutItem[] = [
@@ -60,6 +52,9 @@ const savedQuery = savedWorkbench.queryState
 // ---- State ----
 const roles = ref<RoleItem[]>([])
 const loading = ref(false)
+const loadError = ref('')
+let requestController: AbortController | null = null
+let searchTimer: ReturnType<typeof setTimeout> | undefined
 const keyword = ref(savedQuery.keyword ?? '')
 const currentPage = ref(savedQuery.page ?? 1)
 const pageSize = ref(savedQuery.pageSize ?? 10)
@@ -128,11 +123,18 @@ function persistQuery() {
 
 // ---- API calls ----
 async function loadRoles() {
+  clearTimeout(searchTimer)
+  requestController?.abort()
+  const request = new AbortController()
+  requestController = request
   loading.value = true
+  loadError.value = ''
   try {
+    const page = currentPage.value
+    const ps = pageSize.value
     const params = new URLSearchParams({
-      page: String(currentPage.value),
-      pageSize: String(pageSize.value),
+      page: String(page),
+      pageSize: String(ps),
     })
     if (keyword.value.trim()) {
       params.set('keyword', keyword.value.trim())
@@ -142,21 +144,34 @@ async function loadRoles() {
       params.set('sortOrder', sortState.value.direction)
     }
     const res = await apiRequest<PagedResult<RoleItem>>(`/api/roles?${params}`, {
-      headers: authHeaders.value,
+      headers: getAuthHeaders(),
+      signal: request.signal,
     })
+    if (request.signal.aborted) return
+    const lastPage = Math.max(1, Math.ceil(res.data.total / ps))
+    if (page > lastPage) {
+      currentPage.value = lastPage
+      persistQuery()
+      void loadRoles()
+      return
+    }
     roles.value = res.data.items
     total.value = res.data.total
   } catch (e: any) {
-    Message.error({ content: e.message || '加载角色列表失败', duration: 3000 })
+    if (request.signal.aborted) return
+    roles.value = []
+    total.value = 0
+    loadError.value = e.message || '加载角色列表失败'
+    Message.error({ content: loadError.value, duration: 3000 })
   } finally {
-    loading.value = false
+    if (!request.signal.aborted) loading.value = false
   }
 }
 
 async function loadAllPermissions() {
   try {
     const res = await apiRequest<PermissionInfo[]>('/api/roles/permissions', {
-      headers: authHeaders.value,
+      headers: getAuthHeaders(),
     })
     allPermissions.value = res.data
   } catch {
@@ -170,15 +185,15 @@ async function handleSubmit() {
   // Validation
   if (!formData.value.name.trim()) {
     Message.error({ content: '请输入角色名称', duration: 3000 })
-    return
+    return false
   }
   if (formData.value.name.trim().length < 2 || formData.value.name.trim().length > 50) {
     Message.error({ content: '角色名称长度需在 2-50 之间', duration: 3000 })
-    return
+    return false
   }
   if (formData.value.description && formData.value.description.length > 200) {
     Message.error({ content: '描述长度不能超过 200', duration: 3000 })
-    return
+    return false
   }
 
   try {
@@ -186,7 +201,7 @@ async function handleSubmit() {
       // Update
       await apiRequest(`/api/roles/${editingId.value}`, {
         method: 'PUT',
-        headers: authHeaders.value,
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: formData.value.name.trim(),
           description: formData.value.description || null,
@@ -198,7 +213,7 @@ async function handleSubmit() {
       // Create
       await apiRequest('/api/roles', {
         method: 'POST',
-        headers: authHeaders.value,
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: formData.value.name.trim(),
           description: formData.value.description || null,
@@ -211,6 +226,7 @@ async function handleSubmit() {
     await loadRoles()
   } catch (e: any) {
     Message.error({ content: e.message || '操作失败', duration: 3000 })
+    return false
   }
 }
 
@@ -218,7 +234,7 @@ async function handleDelete(role: RoleItem) {
   try {
     await apiRequest(`/api/roles/${role.id}`, {
       method: 'DELETE',
-      headers: authHeaders.value,
+      headers: getAuthHeaders(),
     })
     Message.success({ content: '删除成功', duration: 3000 })
     await loadRoles()
@@ -257,7 +273,7 @@ async function handlePermSubmit() {
   try {
     await apiRequest(`/api/roles/${permConfigRole.value.id}/permissions`, {
       method: 'PUT',
-      headers: authHeaders.value,
+      headers: getAuthHeaders(),
       body: JSON.stringify({ permissionIds: permConfigIds.value }),
     })
     Message.success({ content: '权限配置已保存', duration: 3000 })
@@ -266,6 +282,7 @@ async function handlePermSubmit() {
     await loadRoles()
   } catch (e: any) {
     Message.error({ content: e.message || '权限配置失败', duration: 3000 })
+    return false
   }
 }
 
@@ -412,6 +429,7 @@ const columns = computed<TableColumn[]>(() => {
 
 // ---- Pagination ----
 const paginationConfig = computed(() => ({
+  remote: true,
   current: currentPage.value,
   pageSize: pageSize.value,
   total: total.value,
@@ -453,16 +471,14 @@ function handleSortChange(next: SortState) {
 }
 
 // ---- Search ----
-const debouncedLoad = debounce(() => {
-  currentPage.value = 1
-  persistQuery()
-  loadRoles()
-}, 300)
-
 function handleSearch(val: string) {
   keyword.value = val
+  currentPage.value = 1
   persistQuery()
-  debouncedLoad()
+  clearTimeout(searchTimer)
+  requestController?.abort()
+  loading.value = true
+  searchTimer = setTimeout(() => { void loadRoles() }, 300)
 }
 
 function handleSelectionChange(keys: (string | number)[]) {
@@ -517,11 +533,11 @@ function handleExportFormatChange(value: unknown) {
 async function handleExport() {
   if (exportFields.value.length === 0) {
     Message.error({ content: '请至少选择一个导出字段', duration: 3000 })
-    return
+    return false
   }
   if (total.value === 0) {
     Message.error({ content: '当前筛选没有可导出的结果', duration: 3000 })
-    return
+    return false
   }
   exporting.value = true
   try {
@@ -534,12 +550,13 @@ async function handleExport() {
         sortBy: sortState.value.key ?? undefined,
         sortOrder: sortState.value.direction ?? undefined,
       },
-      headers: authHeaders.value,
+      headers: getAuthHeaders(),
     })
     Message.success({ content: '导出成功', duration: 3000 })
     exportModalVisible.value = false
   } catch (e: any) {
     Message.error({ content: e.message || '导出失败', duration: 3000 })
+    return false
   } finally {
     exporting.value = false
   }
@@ -549,6 +566,10 @@ async function handleExport() {
 onMounted(() => {
   loadRoles()
   loadAllPermissions()
+})
+onBeforeUnmount(() => {
+  clearTimeout(searchTimer)
+  requestController?.abort()
 })
 </script>
 
@@ -589,6 +610,10 @@ onMounted(() => {
 
     <div class="p2-muted-panel px-4 py-3 text-sm">
       {{ serverPaginationHint }}
+    </div>
+
+    <div v-if="loadError" role="alert" class="p2-muted-panel flex items-center justify-between gap-3 p-4">
+      <span>{{ loadError }}</span><Button variant="outline" @click="loadRoles">重试加载角色</Button>
     </div>
 
     <DataTableWithToolbar

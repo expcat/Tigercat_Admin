@@ -1,304 +1,132 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert } from '@expcat/tigercat-react/Alert';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
+import { Loading } from '@expcat/tigercat-react/Loading';
 import { Message } from '@expcat/tigercat-react/Message';
-import { Statistic } from '@expcat/tigercat-react/Statistic';
 import { Text } from '@expcat/tigercat-react/Text';
 import { Segmented } from '@expcat/tigercat-react/Segmented';
-import { PrintLayout, PrintPageBreak } from '@expcat/tigercat-react/PrintLayout';
-import { Descriptions } from '@expcat/tigercat-react/Descriptions';
+import { PrintLayout } from '@expcat/tigercat-react/PrintLayout';
 import { Watermark } from '@expcat/tigercat-react/Watermark';
-import { QRCode } from '@expcat/tigercat-react/QRCode';
-import { Result } from '@expcat/tigercat-react/Result';
-import { Divider } from '@expcat/tigercat-react/Divider';
 import { DataExport } from '@expcat/tigercat-react/DataExport';
-import { CheckboxGroup } from '@expcat/tigercat-react/CheckboxGroup';
-import { Checkbox } from '@expcat/tigercat-react/Checkbox';
-import type { SegmentedOption, DescriptionsItem } from '@expcat/tigercat-core';
+import type { PrintLayoutInstance } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
-import { PageActionPanel, MutedPanel } from '../components/PageFragments';
-import { FileTextIcon, DownloadIcon } from '../components/Icons';
-import { getAuthHeaders } from '../utils';
+import { ChartEmptyState, PageActionPanel } from '../components/PageFragments';
+import { FileTextIcon } from '../components/Icons';
+import { apiRequest, getAuthHeaders } from '../utils';
+import type { StatsOverview, StatsTrend } from '../utils/types';
 import {
-  DATA_EXPORT_PLACEHOLDER_ROWS,
-  DATA_EXPORT_TRIGGER_FORMATS,
-  EXPORT_FORMAT_LABELS,
-  EXPORT_FORMATS,
-  REPORT_EXPORT_FIELDS,
-  exportReports,
-  handleDataExportError,
-  skipClientDataExport,
-  toExportColumns,
-  type ExportFormat,
+  DATA_EXPORT_TRIGGER_FORMATS, EXPORT_FORMAT_LABELS, EXPORT_FORMATS,
+  OVERVIEW_EXPORT_FIELDS, exportOverview, toExportColumns, type ExportFormat,
 } from '../utils/export';
-import type { ReportType } from '../utils/types';
 
-interface ReportMeta {
-  title: string;
-  period: string;
-  watermark: string;
-}
-
-const REPORT_OPTIONS: SegmentedOption[] = [
-  { value: 'daily', label: '运营日报' },
-  { value: 'weekly', label: '销售周报' },
-  { value: 'monthly', label: '财务月报' },
-];
-
-const REPORT_META: Record<ReportType, ReportMeta> = {
-  daily: { title: '运营日报', period: '2026-07-01', watermark: '运营日报 · 演示' },
-  weekly: { title: '销售周报', period: '2026-06-25 ~ 2026-07-01', watermark: '销售周报 · 演示' },
-  monthly: { title: '财务月报', period: '2026-06', watermark: '财务月报 · 演示' },
-};
-
-interface KpiRow {
-  label: string;
-  value: number;
-  suffix?: string;
-}
-
-const KPIS: Record<ReportType, KpiRow[]> = {
-  daily: [
-    { label: '访问量', value: 18420 },
-    { label: '订单数', value: 642 },
-    { label: '转化率', value: 3.5, suffix: '%' },
-    { label: '收入', value: 128600, suffix: ' 元' },
-  ],
-  weekly: [
-    { label: '访问量', value: 126800 },
-    { label: '订单数', value: 4380 },
-    { label: '转化率', value: 3.4, suffix: '%' },
-    { label: '收入', value: 892400, suffix: ' 元' },
-  ],
-  monthly: [
-    { label: '访问量', value: 542000 },
-    { label: '订单数', value: 18960 },
-    { label: '转化率', value: 3.6, suffix: '%' },
-    { label: '收入', value: 3846200, suffix: ' 元' },
-  ],
-};
-
-interface ChannelRow {
-  channel: string;
-  visits: number;
-  orders: number;
-  rate: string;
-  amount: string;
-}
-
-const CHANNEL_ROWS: ChannelRow[] = [
-  { channel: '自然搜索', visits: 6820, orders: 248, rate: '3.6%', amount: '¥ 48,200' },
-  { channel: '付费广告', visits: 5140, orders: 196, rate: '3.8%', amount: '¥ 39,600' },
-  { channel: '社交媒体', visits: 3260, orders: 108, rate: '3.3%', amount: '¥ 21,400' },
-  { channel: '直接访问', visits: 3200, orders: 90, rate: '2.8%', amount: '¥ 19,400' },
-];
+const REPORT_DAYS = [1, 7, 30, 90].map((value) => ({ value, label: `近 ${value} 天` }));
 
 function ReportsPage() {
-  const [reportType, setReportType] = useState<ReportType>('daily');
-  const [exportFields, setExportFields] = useState<string[]>(
-    REPORT_EXPORT_FIELDS.map((field) => field.key),
-  );
+  const [trendDays, setTrendDays] = useState(7);
+  const [overview, setOverview] = useState<StatsOverview | null>(null);
+  const [trend, setTrend] = useState<StatsTrend | null>(null);
+  const [generatedAt, setGeneratedAt] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
   const [exporting, setExporting] = useState(false);
-  const exportColumns = useMemo(() => toExportColumns(REPORT_EXPORT_FIELDS), []);
+  const [reload, setReload] = useState(0);
+  const printRef = useRef<PrintLayoutInstance>(null);
+  const exportColumns = useMemo(() => toExportColumns(OVERVIEW_EXPORT_FIELDS), []);
 
-  const meta = REPORT_META[reportType];
-  const kpis = KPIS[reportType];
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setErrorMessage('');
+    setOverview(null);
+    setTrend(null);
+    void (async () => {
+      try {
+        const [stats, series] = await Promise.all([
+          apiRequest<StatsOverview>('/api/stats/overview', { headers: getAuthHeaders(), signal: controller.signal }),
+          apiRequest<StatsTrend>(`/api/stats/trend?days=${trendDays}`, { headers: getAuthHeaders(), signal: controller.signal }),
+        ]);
+        if (controller.signal.aborted) return;
+        setOverview(stats.data);
+        setTrend(series.data);
+        setGeneratedAt(new Date().toLocaleString('zh-CN', { hour12: false }));
+      } catch (error) {
+        if (!controller.signal.aborted) setErrorMessage(error instanceof Error ? error.message : '报表加载失败');
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    })();
+    return () => controller.abort();
+  }, [trendDays, reload]);
 
-  const summaryItems: DescriptionsItem[] = useMemo(
-    () => [
-      { label: '报表编号', content: `RPT-${reportType.toUpperCase()}-20260701` },
-      { label: '报表类型', content: meta.title },
-      { label: '统计区间', content: meta.period },
-      { label: '生成时间', content: '2026-07-01 08:00' },
-      { label: '负责人', content: '运营中心 · 演示账户' },
-      { label: '数据来源', content: '演示数据集（内存态）' },
-    ],
-    [reportType, meta],
-  );
+  const rows = useMemo(() => overview && trend ? [
+    ...[
+      ['totalUsers', '总用户数'], ['activeUsers', '活跃用户'], ['disabledUsers', '禁用用户'],
+      ['totalRoles', '总角色数'], ['totalPermissions', '总权限数'],
+    ].map(([key, label]) => ({ section: 'overview', key, label, value: String(overview[key as keyof StatsOverview]) })),
+    ...trend.points.map(({ date, count }) => ({ section: 'trend', key: date, label: date, value: String(count) })),
+  ] : [], [overview, trend]);
+  const period = trend?.points.length ? `${trend.points[0].date} ~ ${trend.points[trend.points.length - 1].date}` : '暂无趋势数据';
+  const ready = !loading && !errorMessage && rows.length > 0;
 
   const onExport = useCallback(async (format: ExportFormat) => {
-    if (exportFields.length === 0) {
-      Message.error({ content: '请至少选择一个导出字段', duration: 3000 });
-      return;
-    }
+    if (!ready || exporting) return;
     setExporting(true);
     try {
-      await exportReports({
-        type: reportType,
-        format,
-        fields: exportFields,
-        headers: getAuthHeaders(),
-      });
+      await exportOverview({ format, days: trendDays, headers: getAuthHeaders() });
       Message.success({ content: '导出成功', duration: 3000 });
-    } catch (error: unknown) {
+    } catch (error) {
       Message.error({ content: error instanceof Error ? error.message : '导出失败', duration: 3000 });
     } finally {
       setExporting(false);
     }
-  }, [exportFields, reportType]);
-
-  const handlePrint = () => {
-    Message.info({ content: '正在调起浏览器打印（可另存为 PDF）', duration: 1800 });
-    window.setTimeout(() => window.print(), 300);
-  };
+  }, [ready, exporting, trendDays]);
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        icon={<FileTextIcon size={24} />}
-        title="报表打印"
-        subtitle="A4 打印布局、水印与二维码校验的报表输出工作台"
-        tags={[
-          { label: '帮助支持', variant: 'primary' },
-          { label: '演示数据', variant: 'info' },
-        ]}
-      />
-
-      <PageActionPanel
-        title="报表参数"
-        description="选择报表类型后即时预览；点击「打印」按 A4 布局输出，可另存为 PDF。"
-        actions={
-          <>
-            <Segmented
-              value={reportType}
-              options={REPORT_OPTIONS}
-              onChange={(value) => setReportType(value as ReportType)}
-            />
-            <Button onClick={handlePrint}>
-              <span className="mr-1 inline-flex align-middle">
-                <DownloadIcon size={16} />
-              </span>
-              打印
-            </Button>
-            {EXPORT_FORMATS.map((format) => (
-              <DataExport
-                key={format}
-                columns={exportColumns}
-                dataSource={DATA_EXPORT_PLACEHOLDER_ROWS}
-                formats={DATA_EXPORT_TRIGGER_FORMATS}
-                fileName="reports"
-                labels={{
-                  xlsxText: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
-                  exportingText: '导出中...',
-                  triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
-                }}
-                disabled={exporting}
-                cellFormatter={skipClientDataExport}
-                onError={(error) =>
-                  handleDataExportError(error, format, onExport, (message) =>
-                    Message.error({ content: message, duration: 3000 }),
-                  )
-                }
-              />
-            ))}
-            <CheckboxGroup
-              orientation="horizontal"
-              value={exportFields}
-              className="flex w-full flex-wrap gap-x-4 gap-y-2 sm:w-auto"
-              onChange={(value) => setExportFields(value.map(String))}>
-              {REPORT_EXPORT_FIELDS.map((field) => (
-                <Checkbox key={field.key} value={field.key}>
-                  {field.label}
-                </Checkbox>
-              ))}
-            </CheckboxGroup>
-          </>
-        }
-      />
-
-      <Card className="overflow-x-auto print:overflow-visible">
-        <PrintLayout
-          className="p2-print-paper"
-          pageSize="A4"
-          orientation="portrait"
-          showHeader
-          showFooter
-          headerText={`Tigercat 后台 · ${meta.title}`}
-          footerText="本报表由 Tigercat 演示系统生成 · 仅供演示"
-          showPageBreaks>
-          <Watermark content={meta.watermark}>
-            <div className="space-y-6 p-2">
-              <div>
-                <Text size="lg" weight="bold" className="p2-text-primary">
-                  {meta.title}
-                </Text>
-                <Text size="sm" color="secondary">
-                  统计区间 {meta.period}
-                </Text>
-              </div>
-
-              <Descriptions items={summaryItems} column={{ xs: 1, sm: 2, lg: 3 }} bordered colon />
-
-              <Divider />
-
-              <div>
-                <Text weight="bold" className="mb-3 block">
-                  关键指标
-                </Text>
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                  {kpis.map((kpi) => (
-                    <div key={kpi.label} className="p2-soft-surface rounded-lg p-4">
-                      <Statistic title={kpi.label} value={kpi.value} suffix={kpi.suffix} groupSeparator />
-                    </div>
-                  ))}
+      <PageHeader icon={<FileTextIcon size={24} />} title="报表打印"
+        subtitle="当前系统概览与用户创建趋势，预览、打印和导出使用相同数据域与天数"
+        tags={[{ label: '系统统计', variant: 'primary' }]} />
+      <PageActionPanel title="报表参数"
+        description="概览为当前累计值；天数仅筛选按 UTC 日期统计的用户创建趋势。打印可另存为 PDF。"
+        actions={<>
+          <Segmented value={trendDays} options={REPORT_DAYS} disabled={exporting} onChange={(value) => setTrendDays(Number(value))} />
+          <Button variant="outline" disabled={loading || exporting} onClick={() => setReload((value) => value + 1)}>刷新报表</Button>
+          <Button disabled={!ready || exporting} onClick={() => printRef.current?.print()}>打印</Button>
+          {EXPORT_FORMATS.map((format) => <DataExport key={format} columns={exportColumns} dataSource={[]}
+            formats={DATA_EXPORT_TRIGGER_FORMATS} fileName="overview"
+            labels={{ xlsxText: `导出 ${EXPORT_FORMAT_LABELS[format]}`, exportingText: '导出中...', triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}` }}
+            disabled={!ready || exporting} customExport={() => onExport(format)} />)}
+        </>} />
+      {errorMessage && <div className="space-y-3"><Alert type="error" title="报表加载失败" description={errorMessage} />
+        <Button variant="outline" onClick={() => setReload((value) => value + 1)}>重试</Button></div>}
+      {loading ? <div className="flex h-40 items-center justify-center" role="status" aria-label="报表加载中"><Loading /></div> : ready ? (
+        <Card className="overflow-x-auto print:overflow-visible">
+          <PrintLayout ref={printRef} className="p2-print-paper" pageSize="A4" orientation="portrait"
+            showHeader showFooter headerText="Tigercat 后台 · 系统概览与用户创建趋势"
+            footerText={`用户创建趋势（UTC）：${period}`}>
+            <Watermark content="Tigercat · 系统统计" font={{ color: 'rgba(71,85,105,0.12)' }}>
+              <div className="space-y-5 p-2">
+                <div>
+                  <Text size="lg" weight="bold">系统概览与用户创建趋势</Text>
+                  <p>趋势区间（UTC）：<span data-testid="report-period">{period}</span> · 最近 {trendDays} 天</p>
+                  <p>生成时间：{generatedAt} · 概览为当前累计值</p>
+                  <p className="text-sm">数据来源：系统用户、角色与权限统计。导出按相同天数重新查询；数据变更后可刷新报表。</p>
                 </div>
+                <table className="p2-report-table w-full border-collapse text-sm" data-testid="report-data">
+                  <caption className="mb-3 text-left font-medium">当前概览与按日新增用户明细</caption>
+                  <thead><tr>{OVERVIEW_EXPORT_FIELDS.map((field) => <th key={field.key} className="border-b px-3 py-2 text-left font-medium">{field.label}</th>)}</tr></thead>
+                  <tbody>{rows.map((row) => <tr key={`${row.section}-${row.key}`} data-section={row.section}>
+                    <td className="border-b px-3 py-2">{row.section}</td><td className="border-b px-3 py-2">{row.key}</td>
+                    <td className="border-b px-3 py-2">{row.label}</td><td className="border-b px-3 py-2 text-right tabular-nums">{row.value}</td>
+                  </tr>)}</tbody>
+                </table>
+                <p className="text-sm">overview：当前累计概览；trend：对应 UTC 日期的新增用户数，包含零值日期。</p>
               </div>
-
-              <Divider />
-
-              <div>
-                <Text weight="bold" className="mb-3 block">
-                  渠道明细
-                </Text>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[520px] border-collapse text-sm">
-                    <thead>
-                      <tr className="border-b border-(--tiger-border,#e5e7eb) text-left text-(--tiger-text-secondary,#64748b)">
-                        <th className="px-3 py-2 font-medium">渠道</th>
-                        <th className="px-3 py-2 font-medium text-right">访问量</th>
-                        <th className="px-3 py-2 font-medium text-right">订单数</th>
-                        <th className="px-3 py-2 font-medium text-right">转化率</th>
-                        <th className="px-3 py-2 font-medium text-right">金额</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {CHANNEL_ROWS.map((row) => (
-                        <tr key={row.channel} className="border-b border-(--tiger-border,#e5e7eb)">
-                          <td className="px-3 py-2">
-                            <Text weight="medium">{row.channel}</Text>
-                          </td>
-                          <td className="px-3 py-2 text-right">{row.visits.toLocaleString()}</td>
-                          <td className="px-3 py-2 text-right">{row.orders}</td>
-                          <td className="px-3 py-2 text-right">{row.rate}</td>
-                          <td className="px-3 py-2 text-right">{row.amount}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <PrintPageBreak />
-
-              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <MutedPanel
-                  compact
-                  title="报表校验"
-                  description="扫描右侧二维码可校验报表来源与完整性（演示链接，不会实际跳转）。"
-                  className="flex-1"
-                />
-                <QRCode value={`https://tigercat.demo/reports/RPT-${reportType}-20260701`} size={128} />
-              </div>
-
-              <Result
-                status="success"
-                title="报表生成完成"
-                subTitle={`${meta.title} 已就绪，可直接打印或另存为 PDF。`}
-              />
-            </div>
-          </Watermark>
-        </PrintLayout>
-      </Card>
+            </Watermark>
+          </PrintLayout>
+        </Card>
+      ) : !errorMessage && <ChartEmptyState description="暂无可生成的报表数据" />}
     </div>
   );
 }

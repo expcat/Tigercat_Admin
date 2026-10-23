@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import type { ProjectRecord, ProjectStatusFilter } from '../utils/types'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Avatar } from '@expcat/tigercat-vue/Avatar'
 import { AvatarGroup } from '@expcat/tigercat-vue/AvatarGroup'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Input } from '@expcat/tigercat-vue/Input'
-import { Message } from '@expcat/tigercat-vue/Message'
+import { Button } from '@expcat/tigercat-vue/Button'
 import { Tag } from '@expcat/tigercat-vue/Tag'
 import { Text } from '@expcat/tigercat-vue/Text'
 import { Statistic } from '@expcat/tigercat-vue/Statistic'
@@ -26,15 +27,30 @@ import {
   PROJECT_PAGE_SIZE,
   PROJECT_STATUS_FILTERS,
   PROJECT_STATUS_META,
-  type ProjectRecord,
-  type ProjectStatusFilter,
 } from '../utils/projects'
 
 const router = useRouter()
-const keyword = ref('')
-const statusFilter = ref<ProjectStatusFilter>('all')
-const page = ref(1)
-const loading = ref(false)
+const route = useRoute()
+const keyword = computed(() => typeof route.query.keyword === 'string' ? route.query.keyword : '')
+const statusFilter = computed<ProjectStatusFilter>(() => PROJECT_STATUS_FILTERS.some(item => item.value === route.query.status) ? route.query.status as ProjectStatusFilter : 'all')
+const page = computed(() => {
+  const value = Number(route.query.page)
+  return Number.isSafeInteger(value) && value > 0 ? value : 1
+})
+const loadError = ref('')
+const statsError = ref('')
+const statsTotal = ref<number | null>(null)
+let listRequest: AbortController | null = null
+let statsRequest: AbortController | null = null
+function updateQuery(patch: Record<string, string>) {
+  const next = { ...route.query }
+  Object.entries(patch).forEach(([key, value]) => {
+    if (!value || value === 'all' || (key === 'page' && value === '1')) delete next[key]
+    else next[key] = value
+  })
+  void router.replace({ query: next })
+}
+const loading = ref(true)
 const projects = ref<ProjectRecord[]>([])
 const total = ref(0)
 const statsProjects = ref<ProjectRecord[]>([])
@@ -58,68 +74,60 @@ const avgProgress = computed(() => {
 })
 
 async function loadProjects() {
+  listRequest?.abort()
+  const controller = new AbortController()
+  listRequest = controller
   loading.value = true
+  loadError.value = ''
+  projects.value = []
+  total.value = 0
   try {
     const payload = await fetchProjects({
       page: page.value,
       pageSize: PROJECT_PAGE_SIZE,
       status: statusFilter.value,
       keyword: keyword.value,
-    })
+    }, controller.signal)
+    if (controller.signal.aborted) return
+    const lastPage = Math.max(1, Math.ceil(payload.data.total / PROJECT_PAGE_SIZE))
+    if (page.value > lastPage) { updateQuery({ page: String(lastPage) }); return }
     projects.value = payload.data.items ?? []
     total.value = payload.data.total ?? 0
   } catch (error: unknown) {
-    Message.error({ content: readErrorMessage(error, '项目列表加载失败'), duration: 3000 })
+    if (!controller.signal.aborted) loadError.value = readErrorMessage(error, '项目列表加载失败')
   } finally {
-    loading.value = false
+    if (!controller.signal.aborted) loading.value = false
   }
 }
 
 async function loadStats() {
+  statsRequest?.abort()
+  const controller = new AbortController()
+  statsRequest = controller
+  statsError.value = ''
+  statsTotal.value = null
   try {
-    const payload = await fetchProjects({ page: 1, pageSize: 200 })
+    const payload = await fetchProjects({ page: 1, pageSize: 200 }, controller.signal)
+    if (controller.signal.aborted) return
     statsProjects.value = payload.data.items ?? []
+    statsTotal.value = payload.data.total
   } catch {
-    statsProjects.value = []
+    if (!controller.signal.aborted) {
+      statsProjects.value = []
+      statsError.value = '项目统计加载失败'
+    }
   }
 }
 
-watch(keyword, () => {
-  page.value = 1
-})
+watch([keyword, statusFilter, page], () => void loadProjects(), { immediate: true })
+onMounted(() => void loadStats())
+onBeforeUnmount(() => { listRequest?.abort(); statsRequest?.abort() })
 
-watch(
-  [keyword, statusFilter, page],
-  () => {
-    void loadProjects()
-  },
-  { immediate: true },
-)
-
-onMounted(() => {
-  void loadStats()
-})
-
-function handleStatusChange(value: string | number) {
-  const next = String(value)
-  if (
-    next === 'all' ||
-    next === 'planning' ||
-    next === 'active' ||
-    next === 'paused' ||
-    next === 'done'
-  ) {
-    statusFilter.value = next
-    page.value = 1
-  }
-}
-
-function handlePageChange(value: number) {
-  page.value = value
-}
-
+function retryProjects() { void loadProjects(); void loadStats() }
+function handleStatusChange(value: string | number) { updateQuery({ status: String(value), page: '1' }) }
+function handlePageChange(value: number) { updateQuery({ page: String(value) }) }
 function openProject(id: string) {
-  router.push({ name: 'projects-detail', params: { id } })
+  void router.push({ name: 'projects-detail', params: { id }, query: route.query })
 }
 
 function statusMeta(project: ProjectRecord) {
@@ -140,19 +148,21 @@ function statusMeta(project: ProjectRecord) {
     />
 
     <MetricGrid :columns="4">
-      <MetricCard title="项目总数" :value="statsProjects.length" description="全部项目">
+      <MetricCard title="项目总数" :value="statsTotal ?? '—'" description="接口返回的全部项目总数">
         <template #icon><Icon name="package" :size="20" /></template>
       </MetricCard>
-      <MetricCard title="进行中" :value="activeCount" description="当前推进中的项目">
+      <MetricCard title="进行中" :value="statsTotal === null ? '—' : activeCount" :description="`已加载 ${statsProjects.length} 条中的进行中数量`">
         <template #icon><Icon name="trendingUp" :size="20" /></template>
       </MetricCard>
-      <MetricCard title="已完成" :value="doneCount" description="已发布归档">
+      <MetricCard title="已完成" :value="statsTotal === null ? '—' : doneCount" :description="`已加载 ${statsProjects.length} 条中的已完成数量`">
         <template #icon><Icon name="checkCircle" :size="20" /></template>
       </MetricCard>
-      <MetricCard title="平均进度" :value="avgProgress" description="全部项目进度均值">
+      <MetricCard title="平均进度" :value="statsTotal === null ? '—' : avgProgress" :description="`已加载 ${statsProjects.length} 条的进度均值（最多 200 条）`">
         <template #icon><Icon name="clock" :size="20" /></template>
       </MetricCard>
     </MetricGrid>
+
+    <div v-if="statsError" role="alert" class="flex flex-wrap items-center gap-3"><Text color="danger">{{ statsError }}</Text><Button variant="outline" @click="retryProjects">重试项目统计</Button></div>
 
     <PageActionPanel
       title="筛选项目"
@@ -160,12 +170,15 @@ function statusMeta(project: ProjectRecord) {
     >
       <template #actions>
         <Input
-          v-model="keyword"
+          :model-value="keyword"
+          @update:model-value="(value) => updateQuery({ keyword: String(value), page: '1' })"
           placeholder="搜索名称 / 负责人 / 编号"
           clearable
           class="w-full sm:w-64"
         />
         <Segmented
+          size="sm"
+          aria-label="项目状态"
           :model-value="statusFilter"
           :options="PROJECT_STATUS_FILTERS"
           @update:model-value="handleStatusChange"
@@ -173,8 +186,9 @@ function statusMeta(project: ProjectRecord) {
       </template>
     </PageActionPanel>
 
+    <Card v-if="loadError"><div role="alert" class="space-y-3"><Text color="danger">{{ loadError }}</Text><Button variant="outline" @click="retryProjects">重试项目列表</Button></div></Card>
     <Row
-      v-if="projects.length"
+      v-else-if="projects.length"
       data-testid="projects-grid"
       :gutter="[16, 16]"
     >

@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Avatar } from '@expcat/tigercat-vue/Avatar'
 import { AvatarGroup } from '@expcat/tigercat-vue/AvatarGroup'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
-import { Message } from '@expcat/tigercat-vue/Message'
 import { Tag } from '@expcat/tigercat-vue/Tag'
 import { Text } from '@expcat/tigercat-vue/Text'
 import { Descriptions } from '@expcat/tigercat-vue/Descriptions'
@@ -33,17 +32,20 @@ import {
   PROJECT_MILESTONES,
   PROJECT_STATUS_META,
   readProjectId,
-  type ProjectDetailTab,
-  type ProjectRecord,
 } from '../utils/projects'
 import { fetchComments } from '../utils/comments'
 import { ApiError } from '../utils/request'
-import type { CommentItem } from '../utils/types'
+import type { CommentItem, ProjectDetailTab, ProjectRecord } from '../utils/types'
 
 const route = useRoute()
 const router = useRouter()
 const activeTab = ref<ProjectDetailTab>('overview')
-const loading = ref(false)
+const loading = ref(true)
+const detailError = ref('')
+const commentsError = ref('')
+const commentsLoading = ref(false)
+let detailRequest: AbortController | null = null
+let commentsRequest: AbortController | null = null
 const project = ref<ProjectRecord | null>(null)
 const comments = ref<CommentNode[]>([])
 
@@ -77,32 +79,47 @@ const overviewItems = computed<DescriptionsItem[]>(() => {
   ]
 })
 
+async function loadComments() {
+  commentsRequest?.abort()
+  const controller = new AbortController()
+  commentsRequest = controller
+  commentsLoading.value = true
+  commentsError.value = ''
+  try {
+    const payload = await fetchComments('project', id.value, controller.signal)
+    if (!controller.signal.aborted) comments.value = toCommentNodes(payload.data ?? [])
+  } catch (error: unknown) {
+    if (!controller.signal.aborted) commentsError.value = readErrorMessage(error, '项目讨论加载失败')
+  } finally {
+    if (!controller.signal.aborted) commentsLoading.value = false
+  }
+}
+
 async function loadDetail() {
+  detailRequest?.abort()
+  commentsRequest?.abort()
+  const controller = new AbortController()
+  detailRequest = controller
   loading.value = true
   project.value = null
   comments.value = []
-  if (!id.value) {
-    loading.value = false
-    return
-  }
-
+  commentsError.value = ''
+  detailError.value = ''
   try {
-    const [projectPayload, commentsPayload] = await Promise.all([
-      fetchProject(id.value),
-      fetchComments('project', id.value),
-    ])
-    project.value = projectPayload.data
-    comments.value = toCommentNodes(commentsPayload.data ?? [])
+    if (!id.value) return
+    const payload = await fetchProject(id.value, controller.signal)
+    if (controller.signal.aborted) return
+    project.value = payload.data
+    void loadComments()
   } catch (error: unknown) {
-    if (!(error instanceof ApiError && error.status === 404)) {
-      Message.error({ content: readErrorMessage(error, '项目详情加载失败'), duration: 3000 })
+    if (!controller.signal.aborted && !(error instanceof ApiError && error.status === 404)) {
+      detailError.value = error instanceof ApiError && error.status === 403 ? '无权查看该项目' : readErrorMessage(error, '项目详情加载失败')
     }
-    project.value = null
-    comments.value = []
   } finally {
-    loading.value = false
+    if (!controller.signal.aborted) loading.value = false
   }
 }
+onBeforeUnmount(() => { detailRequest?.abort(); commentsRequest?.abort() })
 
 watch(
   id,
@@ -114,7 +131,7 @@ watch(
 )
 
 function goBackToList() {
-  router.push({ name: 'projects' })
+  router.push({ name: 'projects', query: route.query })
 }
 
 function handleTabChange(key: string | number) {
@@ -170,11 +187,11 @@ function getScrollContainer(): HTMLElement | Window {
   <div v-else-if="!project" class="space-y-6">
     <PageHeader
       icon="package"
-      title="未找到项目"
-      :subtitle="id ? `没有编号为 ${id} 的项目` : '缺少项目编号'"
+      :title="detailError ? '项目详情加载失败' : '未找到项目'"
+      :subtitle="detailError || (id ? `没有编号为 ${id} 的项目` : '缺少项目编号')"
       :tags="[
         { label: '项目', variant: 'primary' },
-        { label: '未找到', variant: 'warning' },
+        { label: detailError ? '加载失败' : '未找到', variant: 'warning' },
       ]"
     />
     <PageActionPanel
@@ -186,7 +203,10 @@ function getScrollContainer(): HTMLElement | Window {
       </template>
     </PageActionPanel>
     <Card>
-      <Empty description="该项目不存在或已被移除，请从项目列表重新进入。" />
+      <div class="space-y-3" :role="detailError ? 'alert' : undefined">
+        <Empty :description="detailError || '该项目不存在或已被移除，请从项目列表重新进入。'" />
+        <Button v-if="detailError" variant="outline" @click="loadDetail">重试项目详情</Button>
+      </div>
     </Card>
   </div>
 
@@ -319,8 +339,10 @@ function getScrollContainer(): HTMLElement | Window {
               </Card>
               <Card>
                 <template #header><Text weight="bold">讨论</Text></template>
+                <MutedPanel v-if="commentsLoading" compact description="正在加载讨论…" />
+                <div v-else-if="commentsError" role="alert" class="space-y-3"><Text color="danger">{{ commentsError }}</Text><Button variant="outline" @click="loadComments">重试项目讨论</Button></div>
                 <CommentThread
-                  v-if="comments.length"
+                  v-else-if="comments.length"
                   :nodes="comments"
                   :show-reply="false"
                   :show-like="false"

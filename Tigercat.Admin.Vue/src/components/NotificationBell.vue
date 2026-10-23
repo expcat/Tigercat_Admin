@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { notification } from '@expcat/tigercat-vue'
+import { notification } from '@expcat/tigercat-vue/notification'
 
 import { Badge } from '@expcat/tigercat-vue/Badge'
 import { Button } from '@expcat/tigercat-vue/Button'
@@ -54,7 +54,6 @@ const handleItemClick = (item: AdminNotificationItem) => {
   const config = {
     title: item.title,
     description: item.description,
-    onClick: goNotifications,
     actions: [
       {
         key: 'view',

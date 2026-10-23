@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { notification } from '@expcat/tigercat-react';
+import { notification } from '@expcat/tigercat-react/notification';
 import { Badge } from '@expcat/tigercat-react/Badge';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Text } from '@expcat/tigercat-react/Text';
@@ -70,7 +70,6 @@ export function NotificationBell() {
     const config = {
       title: item.title,
       description: item.description,
-      onClick: goNotifications,
       actions: [
         {
           key: 'view',

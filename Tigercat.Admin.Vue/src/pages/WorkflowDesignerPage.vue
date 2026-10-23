@@ -4,8 +4,7 @@ import { Alert } from '@expcat/tigercat-vue/Alert'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Message } from '@expcat/tigercat-vue/Message'
 import { Text } from '@expcat/tigercat-vue/Text'
-import { WorkflowDesigner } from '@expcat/tigercat-vue/WorkflowDesigner'
-import { WorkflowViewer } from '@expcat/tigercat-vue/WorkflowViewer'
+import { WorkflowDesigner, WorkflowViewer } from '../utils/lazyTigercat'
 import type { WorkflowTimelineStep } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import MutedPanel from '../components/MutedPanel.vue'
@@ -19,9 +18,10 @@ import {
   designerBlockingIssues,
   designerIssueText,
   persistDesignerDraft,
+  loadDesignerDraft,
 } from '../utils/workflow-designer'
 
-const steps = ref<WorkflowTimelineStep[]>(cloneDesignerDemoSteps())
+const steps = ref<WorkflowTimelineStep[]>(loadDesignerDraft())
 const stepCount = computed(() => countWorkflowSteps(steps.value))
 const blockingIssues = computed(() => designerBlockingIssues(steps.value))
 const issueMessages = computed(() => blockingIssues.value.map(designerIssueText))
@@ -31,7 +31,14 @@ function resetDesigner() {
 }
 
 function saveDraft() {
-  persistDesignerDraft(steps.value)
+  if (blockingIssues.value.length > 0) {
+    Message.error({ content: '存在阻塞项，无法保存草稿', duration: 3000 })
+    return
+  }
+  if (!persistDesignerDraft(steps.value)) {
+    Message.error({ content: '本机存储不可用，草稿未保存', duration: 3000 })
+    return
+  }
   Message.success({ content: DESIGNER_SAVE_OK, duration: 2500 })
 }
 
@@ -40,7 +47,10 @@ function publishDesigner() {
     Message.error({ content: DESIGNER_PUBLISH_BLOCKED, duration: 3000 })
     return
   }
-  persistDesignerDraft(steps.value)
+  if (!persistDesignerDraft(steps.value)) {
+    Message.error({ content: '本机存储不可用，草稿未保存', duration: 3000 })
+    return
+  }
   Message.success({ content: DESIGNER_PUBLISH_OK, duration: 2500 })
 }
 </script>
@@ -53,19 +63,19 @@ function publishDesigner() {
       subtitle="纵向摘要卡流程画布 + 右侧 Inspector。点选节点编辑审批人、按钮和表单权限。"
       :tags="[
         { label: '演示', variant: 'primary' },
-        { label: 'v3.0.0-rc.1', variant: 'info' },
+        { label: 'v3.0.0-rc.2', variant: 'info' },
       ]"
     />
 
     <MutedPanel
       compact
-      description="左侧是纵向流程画布（轨道与插入点）。点选节点后右侧 Inspector 四 Tab 编辑；保存或发布前拦截阻塞项。"
+      description="左侧是纵向流程画布（轨道与插入点）。点选节点后右侧 Inspector 四 Tab 编辑；保存或发布前拦截阻塞项。草稿仅保存在此浏览器；“发布”为本机演示，不连接流程引擎。"
     />
 
     <div class="flex flex-wrap items-center gap-2">
       <Button variant="outline" @click="resetDesigner">恢复默认</Button>
       <Button variant="outline" @click="saveDraft">保存草稿</Button>
-      <Button @click="publishDesigner">发布</Button>
+      <Button @click="publishDesigner">发布（本机演示）</Button>
       <Text size="sm" color="secondary">当前 {{ stepCount }} 个节点</Text>
     </div>
 

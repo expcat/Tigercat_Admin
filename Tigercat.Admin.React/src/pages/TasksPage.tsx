@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type {
   InputType,
@@ -7,7 +7,7 @@ import type {
   TaskBoardColumn,
   TaskBoardColumnMoveEvent,
 } from '@expcat/tigercat-core';
-import { notification } from '@expcat/tigercat-react';
+import { notification } from '@expcat/tigercat-react/notification';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Input } from '@expcat/tigercat-react/Input';
@@ -15,7 +15,9 @@ import { Modal } from '@expcat/tigercat-react/Modal';
 import { Select } from '@expcat/tigercat-react/Select';
 import { Tag } from '@expcat/tigercat-react/Tag';
 import { Text } from '@expcat/tigercat-react/Text';
-import { TaskBoard } from '@expcat/tigercat-react/TaskBoard';
+import { TaskBoard } from '../utils/lazyTigercat';
+import { usePermission } from '../utils/permission';
+import { ApiError } from '../utils/request';
 import { PageHeader } from '../components/PageHeader';
 import { ClipboardIcon, ClockIcon, ZapIcon } from '../components/Icons';
 import {
@@ -61,7 +63,23 @@ function TasksPage() {
   const [dueTo, setDueTo] = useState('');
   const [columns, setColumns] = useState<AdminTaskBoardColumn[]>([]);
   const [selectedTask, setSelectedTask] = useState<AdminTaskBoardCard | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
+  const { has } = usePermission();
+  const canView = has('task:view');
+  const canCreate = has('task:create');
+  const canEdit = has('task:edit');
+  const queryTaskId = new URLSearchParams(location.search).get('taskId');
+  const detailOpen = queryTaskId !== null;
+  const queryTaskIdRef = useRef(queryTaskId);
+  queryTaskIdRef.current = queryTaskId;
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [serverTotal, setServerTotal] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const listRequest = useRef<AbortController | null>(null);
+  const detailRequest = useRef<AbortController | null>(null);
+  const mutationPending = useRef(false);
+  const detailTrigger = useRef<HTMLElement | null>(null);
   const [completionNote, setCompletionNote] = useState('');
   const [completing, setCompleting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -70,60 +88,67 @@ function TasksPage() {
   );
 
   const loadTasks = useCallback(async () => {
+    listRequest.current?.abort();
+    const controller = new AbortController();
+    listRequest.current = controller;
     setLoading(true);
-
+    setLoadError('');
+    setColumns([]);
+    setServerTotal(0);
     try {
+      if (!canView) throw new Error('无权查看任务面板。');
+      if (dueFrom && dueTo && dueFrom > dueTo) throw new Error('开始日期不能晚于结束日期。');
       const params = new URLSearchParams({ page: '1', pageSize: '200' });
-      if (filterText.trim()) {
-        params.set('keyword', filterText.trim());
-      }
-      if (assigneeFilter.trim()) {
-        params.set('assignee', assigneeFilter.trim());
-      }
-      if (blockedFilter) {
-        params.set('blocked', blockedFilter);
-      }
-      if (dueFrom.trim()) {
-        params.set('dueFrom', new Date(dueFrom).toISOString());
-      }
-      if (dueTo.trim()) {
-        params.set('dueTo', new Date(`${dueTo}T23:59:59`).toISOString());
-      }
-
-      const payload = await apiRequest<PagedResult<AdminTaskBoardCard>>(
-        `/api/tasks?${params}`,
-        { headers: getAuthHeaders() },
-      );
-      const nextColumns = buildTaskBoardColumnsFromTasks(payload.data.items);
-      setColumns(nextColumns);
-      setSelectedTask((current) => {
-        const queryTaskId = new URLSearchParams(location.search).get('taskId');
-        const targetId = queryTaskId ?? current?.id;
-        const target = targetId ? findTaskBoardCard(nextColumns, targetId) : null;
-        if (queryTaskId && target) {
-          setDetailOpen(true);
-        }
-        return target ?? current;
+      if (filterText.trim()) params.set('keyword', filterText.trim());
+      if (assigneeFilter.trim()) params.set('assignee', assigneeFilter.trim());
+      if (blockedFilter) params.set('blocked', blockedFilter);
+      if (dueFrom) params.set('dueFrom', new Date(`${dueFrom}T00:00:00`).toISOString());
+      if (dueTo) params.set('dueTo', new Date(`${dueTo}T23:59:59.999`).toISOString());
+      const payload = await apiRequest<PagedResult<AdminTaskBoardCard>>(`/api/tasks?${params}`, {
+        headers: getAuthHeaders(), signal: controller.signal,
       });
-      setLastAction(`已同步 ${payload.data.total} 个后端任务。`);
+      if (controller.signal.aborted) return;
+      setColumns(buildTaskBoardColumnsFromTasks(payload.data.items));
+      setServerTotal(payload.data.total);
+      setLastAction(`已加载 ${payload.data.items.length} / ${payload.data.total} 个匹配任务，最多显示前 200 条。`);
     } catch (error) {
-      const message =
-        error instanceof Error && error.message
-          ? error.message
-          : '任务加载失败，请稍后重试。';
-      setLastAction(message);
-      notification.error({
-        title: '任务加载失败',
-        description: message,
-      });
+      if (!controller.signal.aborted) setLoadError(error instanceof Error ? error.message : '任务加载失败，请重试。');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
-  }, [assigneeFilter, blockedFilter, dueFrom, dueTo, filterText, location.search]);
+  }, [assigneeFilter, blockedFilter, dueFrom, dueTo, filterText, canView]);
 
-  useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
+  const loadTaskDetail = useCallback(async () => {
+    detailRequest.current?.abort();
+    const controller = new AbortController();
+    detailRequest.current = controller;
+    setSelectedTask(null);
+    setCompletionNote('');
+    setDetailError('');
+    setDetailLoading(queryTaskId !== null);
+    if (queryTaskId === null) return;
+    try {
+      if (!queryTaskId.trim()) throw new Error('缺少任务编号');
+      if (!canView) throw new Error('无权查看该任务');
+      const payload = await apiRequest<AdminTaskBoardCard>(`/api/tasks/${encodeURIComponent(queryTaskId)}`, {
+        headers: getAuthHeaders(), signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
+      setSelectedTask(payload.data);
+      setCompletionNote(payload.data.completionNote ?? '');
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      const message = error instanceof ApiError && error.status === 404 ? '任务不存在或已被移除'
+        : error instanceof ApiError && error.status === 403 ? '无权查看该任务'
+        : error instanceof Error ? error.message : '任务详情加载失败，请重试';
+      setDetailError(`${message}（ID：${queryTaskId || '空'}）`);
+    } finally {
+      if (!controller.signal.aborted) setDetailLoading(false);
+    }
+  }, [queryTaskId, canView]);
+
+  useEffect(() => { void loadTasks(); return () => listRequest.current?.abort(); }, [loadTasks]);
+  useEffect(() => { void loadTaskDetail(); return () => detailRequest.current?.abort(); }, [loadTaskDetail]);
 
   const totalCount = useMemo(() => countTaskBoardCards(columns), [columns]);
   const blockedCount = useMemo(
@@ -141,6 +166,14 @@ function TasksPage() {
 
   const handleCardAdd = useCallback(
     async (columnId: string | number) => {
+      if (!canCreate || mutationPending.current || loading) return;
+      const column = columns.find(item => item.id === String(columnId));
+      if (column?.wipLimit && column.cards.length >= column.wipLimit) {
+        notification.warning({ title: '已达到 WIP 限制', description: '请先完成或移出当前视图中的任务。' });
+        return;
+      }
+      mutationPending.current = true;
+      setSaving(true);
       try {
         await apiRequest<AdminTaskBoardCard>('/api/tasks', {
           method: 'POST',
@@ -167,9 +200,12 @@ function TasksPage() {
           title: '新增任务失败',
           description: error instanceof Error ? error.message : '请稍后重试。',
         });
+      } finally {
+        mutationPending.current = false;
+        setSaving(false);
       }
     },
-    [loadTasks],
+    [loadTasks, canCreate, loading, columns],
   );
 
   const handleColumnAdd = useCallback(() => {
@@ -181,11 +217,14 @@ function TasksPage() {
 
   const handleCardMove = useCallback(
     async (event: TaskBoardCardMoveEvent) => {
+      if (!canEdit || mutationPending.current) return;
+      mutationPending.current = true;
+      setSaving(true);
       const description = describeTaskMove(event, columns);
       setLastAction(description);
       try {
         await apiRequest<AdminTaskBoardCard>(
-          `/api/tasks/${event.cardId}/status`,
+          `/api/tasks/${encodeURIComponent(event.cardId)}/status`,
           {
             method: 'PUT',
             headers: getAuthHeaders(),
@@ -203,9 +242,12 @@ function TasksPage() {
           title: '任务流转失败',
           description: error instanceof Error ? error.message : '请稍后重试。',
         });
+      } finally {
+        mutationPending.current = false;
+        setSaving(false);
       }
     },
-    [columns, loadTasks],
+    [columns, loadTasks, canEdit],
   );
 
   const handleColumnMove = useCallback((event: TaskBoardColumnMoveEvent) => {
@@ -218,32 +260,21 @@ function TasksPage() {
   }, []);
 
   const handleResetBoard = useCallback(() => {
-    setFilterText('');
-    setAssigneeFilter('');
-    setBlockedFilter('');
-    setDueFrom('');
-    setDueTo('');
-    loadTasks();
-  }, [loadTasks]);
+    void loadTasks();
+    if (detailOpen) void loadTaskDetail();
+  }, [loadTasks, loadTaskDetail, detailOpen]);
 
-  const openTaskDetail = useCallback(
-    (card: AdminTaskBoardCard) => {
-      setSelectedTask(card);
-      setCompletionNote(card.completionNote ?? '');
-      setDetailOpen(true);
-      navigate(`/tasks?taskId=${encodeURIComponent(card.id)}`, { replace: true });
-    },
-    [navigate],
-  );
-
-  const closeTaskDetail = useCallback(() => {
-    setDetailOpen(false);
-    navigate('/tasks', { replace: true });
+  const openTaskDetail = useCallback((card: AdminTaskBoardCard) => {
+    detailTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    navigate(`/tasks?taskId=${encodeURIComponent(card.id)}`, { replace: true });
   }, [navigate]);
 
-  const handleCompleteTask = useCallback(async (event: { preventDefault(): void }) => {
-    event.preventDefault();
-    if (!selectedTask) {
+  const closeTaskDetail = useCallback(() => {
+    if (!mutationPending.current) navigate('/tasks', { replace: true });
+  }, [navigate]);
+
+  const handleCompleteTask = useCallback(async () => {
+    if (!canEdit || mutationPending.current || !selectedTask) {
       return;
     }
 
@@ -257,10 +288,11 @@ function TasksPage() {
       return;
     }
 
+    mutationPending.current = true;
     setCompleting(true);
     try {
       const payload = await apiRequest<AdminTaskBoardCard>(
-        `/api/tasks/${selectedTask.id}/complete`,
+        `/api/tasks/${encodeURIComponent(selectedTask.id)}/complete`,
         {
           method: 'POST',
           headers: getAuthHeaders(),
@@ -270,7 +302,7 @@ function TasksPage() {
           }),
         },
       );
-      setSelectedTask(payload.data);
+      if (queryTaskIdRef.current === payload.data.id) setSelectedTask(payload.data);
       await loadTasks();
       notification.success({
         title: '任务已完成',
@@ -282,12 +314,14 @@ function TasksPage() {
         description: error instanceof Error ? error.message : '请稍后重试。',
       });
     } finally {
+      mutationPending.current = false;
       setCompleting(false);
     }
-  }, [completionNote, loadTasks, selectedTask]);
+  }, [completionNote, loadTasks, selectedTask, canEdit]);
 
   const beforeCardMove = useCallback(
     (event: TaskBoardCardMoveEvent) => {
+      if (!canEdit || loading || mutationPending.current) return false;
       if (event.toColumnId !== 'done') {
         return true;
       }
@@ -306,18 +340,11 @@ function TasksPage() {
       });
       return false;
     },
-    [columns],
+    [columns, canEdit, loading],
   );
 
   const renderCard = useCallback(({ card }: { card: TaskBoardCard; column: TaskBoardColumn; isDragging: boolean }) => {
-    const currentCard = card as unknown as {
-      assignee?: string;
-      priority?: 'low' | 'medium' | 'high';
-      dueAt?: string;
-      estimateHours?: number;
-          blocked?: boolean;
-          blockedReason?: string | null;
-        };
+    const currentCard = card as unknown as AdminTaskBoardCard;
 
     return (
       <div className="space-y-3">
@@ -371,7 +398,7 @@ function TasksPage() {
     <div className="space-y-6">
       <PageHeader
         title="任务面板"
-        subtitle="用 TaskBoard 把后续异步任务做成可拖拽的阶段看板，验证增列、加卡片、WIP 与移动规则。"
+        subtitle="查看任务、按条件筛选，并流转阶段或确认完成。"
         icon={<ClipboardIcon size={24} className="text-white" />}
         tags={[
           { label: 'TaskBoard', variant: 'primary' },
@@ -387,18 +414,21 @@ function TasksPage() {
           <>
             <Input
               value={filterText}
+              disabled={saving || completing}
               placeholder="搜索任务标题或说明"
               className="w-full sm:w-64"
               onChange={(event) => setFilterText(normalizeInput(event))}
             />
             <Input
               value={assigneeFilter}
-              placeholder="负责人"
+              disabled={saving || completing}
+              placeholder="负责人（包含匹配）"
               className="w-full sm:w-40"
               onChange={(event) => setAssigneeFilter(normalizeInput(event))}
             />
             <Input
               value={dueFrom}
+              disabled={saving || completing}
               type={'date' as unknown as InputType}
               placeholder="开始日期"
               aria-label="开始日期"
@@ -407,6 +437,7 @@ function TasksPage() {
             />
             <Input
               value={dueTo}
+              disabled={saving || completing}
               type={'date' as unknown as InputType}
               placeholder="结束日期"
               aria-label="结束日期"
@@ -415,6 +446,7 @@ function TasksPage() {
             />
             <Select
               value={blockedFilter}
+              disabled={saving || completing}
               options={[
                 { label: '全部阻塞状态', value: '' },
                 { label: '仅阻塞', value: 'true' },
@@ -424,7 +456,7 @@ function TasksPage() {
               className="w-full sm:w-44"
               onChange={(value) => setBlockedFilter(String(value ?? ''))}
             />
-            <Button variant="outline" onClick={handleResetBoard}>
+            <Button variant="outline" data-testid="tasks-refresh" disabled={saving || completing} onClick={handleResetBoard}>
               刷新看板
             </Button>
           </>
@@ -434,12 +466,13 @@ function TasksPage() {
       <MetricGrid>
         <MetricCard
           title="任务总数"
-          description={`当前看板共 ${totalCount} 个异步任务。`}
+          value={loading || loadError ? '—' : serverTotal}
+          description={`当前显示 ${totalCount} 条；统计与 WIP 限于已加载任务。`}
           icon={<ClipboardIcon size={20} />}
         />
         <MetricCard
           title="超期任务"
-          description={`还有 ${overdueCount} 个任务超过计划时间。`}
+          description={`已加载任务中有 ${overdueCount} 个超过计划时间。`}
           icon={<ClockIcon size={20} />}
         />
         <MetricCard
@@ -456,31 +489,37 @@ function TasksPage() {
           description={loading ? '正在同步后端任务...' : lastAction}
         />
 
-        <TaskBoard
+        {loadError ? <div role="alert" className="space-y-3"><Text color="danger">{loadError}</Text><Button variant="outline" onClick={handleResetBoard}>重试任务列表</Button></div> : <TaskBoard
           columns={columns as unknown as TaskBoardColumn[]}
-          filterText={filterText}
           showCardCount
-          allowAddCard
+          allowAddCard={canCreate && !loading && !saving && !completing}
+          draggable={canEdit && !loading && !saving && !completing}
+          columnDraggable={!loading && !saving && !completing}
           allowAddColumn={false}
           enforceWipLimit
           onColumnsChange={handleColumnsChange}
-          onCardAdd={handleCardAdd}
+          onCardAdd={canCreate && !loading && !saving && !completing ? handleCardAdd : undefined}
           onColumnAdd={handleColumnAdd}
           onCardMove={handleCardMove}
           onColumnMove={handleColumnMove}
           beforeCardMove={beforeCardMove}
           renderCard={renderCard}
-        />
+        />}
+        {!loading && !loadError && totalCount === 0 && <Text color="secondary">没有符合条件的任务。</Text>}
       </Card>
 
       <Modal
         open={detailOpen}
         title="任务详情"
-        showDefaultFooter
-        okText={completing ? '完成中...' : '确认完成'}
-        cancelText="关闭"
-        onOk={handleCompleteTask}
-        onCancel={closeTaskDetail}>
+        maskClosable={!completing}
+        keyboard={!completing}
+        closable={!completing}
+        onOpenChange={(open) => { if (!open) closeTaskDetail(); }}
+        onCancel={closeTaskDetail}
+        onAfterClose={() => (detailTrigger.current?.isConnected ? detailTrigger.current : document.querySelector<HTMLElement>('[data-testid="tasks-refresh"]'))?.focus()}
+        footer={<><Button variant="outline" disabled={completing} onClick={closeTaskDetail}>关闭</Button>{selectedTask && canEdit && <Button disabled={completing || selectedTask.blocked || selectedTask.status === 'done'} onClick={() => void handleCompleteTask()}>{completing ? '完成中...' : '确认完成'}</Button>}</>}
+      >
+        {detailLoading ? <Text>正在加载任务 {queryTaskId}…</Text> : detailError ? <div role="alert" className="space-y-3"><Text color="danger">{detailError}</Text><Button variant="outline" onClick={() => void loadTaskDetail()}>重试任务详情</Button></div> : null}
         {selectedTask ? (
           <div className="space-y-4">
             <div>
@@ -509,16 +548,16 @@ function TasksPage() {
             <Input
               value={completionNote}
               placeholder="完成说明"
-              disabled={selectedTask.blocked || selectedTask.status === 'done'}
+              aria-label="完成说明"
+              maxLength={500}
+              disabled={!canEdit || completing || selectedTask.blocked || selectedTask.status === 'done'}
               onChange={(event) => setCompletionNote(normalizeInput(event))}
             />
             {selectedTask.blocked && (
               <Text color="danger">阻塞任务需要先清除阻塞状态，才能确认完成。</Text>
             )}
           </div>
-        ) : (
-          <Text color="secondary">请选择任务。</Text>
-        )}
+        ) : null}
       </Modal>
     </div>
   );

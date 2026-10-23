@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { Button } from '@expcat/tigercat-vue/Button'
+import { Alert } from '@expcat/tigercat-vue/Alert'
+import { Pagination } from '@expcat/tigercat-vue/Pagination'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { AutoComplete } from '@expcat/tigercat-vue/AutoComplete'
 import { Message } from '@expcat/tigercat-vue/Message'
@@ -18,7 +20,6 @@ import { TreeSelect } from '@expcat/tigercat-vue/TreeSelect'
 import { Cascader } from '@expcat/tigercat-vue/Cascader'
 import { TagsInput } from '@expcat/tigercat-vue/TagsInput'
 import { Mentions } from '@expcat/tigercat-vue/Mentions'
-import { Upload } from '@expcat/tigercat-vue/Upload'
 import { Watermark } from '@expcat/tigercat-vue/Watermark'
 import { Result } from '@expcat/tigercat-vue/Result'
 import type {
@@ -27,19 +28,21 @@ import type {
   CascaderOption,
   CascaderModelValue,
   MentionOption,
+  UploadFile,
 } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import MutedPanel from '../components/MutedPanel.vue'
 import Icon from '../components/Icon.vue'
-import { ApiError } from '../utils/request'
+import { useRouter } from 'vue-router'
+import { usePermission } from '../utils/permission'
+import { listMedia, uploadOrReuseMedia } from '../utils/media'
+import type { MediaItem } from '../utils/types'
 import {
   asCategoryKey,
   asColumnPath,
   currentEditorBody,
   fetchArticle,
-  fetchArticles,
   saveArticle,
-  unwrapArticles,
   type Article,
   type ArticleEditorType,
 } from '../utils/content'
@@ -111,6 +114,25 @@ const DEFAULT_MARKDOWN =
 const DEFAULT_CODE =
   'export const version = "1.6.0";\n\nexport function release() {\n  return `Tigercat ${version} ready`;\n}'
 
+const router = useRouter()
+const { has } = usePermission()
+const canUpload = computed(() => has('media:upload'))
+const canView = computed(() => has('media:view'))
+let loadController: AbortController | null = null
+const uploadControllers = new Map<string, AbortController>()
+const fileInputRef = ref<HTMLInputElement | null>(null)
+const loadError = ref('')
+const attachments = ref<MediaItem[]>([])
+const uploadFiles = ref<UploadFile[]>([])
+const uploading = computed(() => uploadFiles.value.filter((file) => file.status === 'uploading').length)
+const pickerOpen = ref(false)
+const mediaItems = ref<MediaItem[]>([])
+const mediaPage = ref(1)
+const mediaTotal = ref(0)
+const mediaLoading = ref(false)
+const mediaError = ref('')
+let mediaController: AbortController | null = null
+
 const articleId = ref('a1')
 const loading = ref(false)
 const saving = ref(false)
@@ -131,6 +153,8 @@ const readErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback
 
 function applyArticle(article: Article) {
+  attachments.value = article.attachments
+  uploadFiles.value = []
   articleId.value = article.id
   title.value = article.title
   editorType.value = article.editorType
@@ -156,30 +180,104 @@ function buildPayload(nextPublished: boolean) {
     category: asCategoryKey(category.value),
     column: asColumnPath(column.value),
     published: nextPublished,
+    attachmentIds: attachments.value.map((item) => item.id),
   }
 }
 
 async function loadArticle() {
+  loadController?.abort()
+  uploadControllers.forEach((controller) => controller.abort())
+  uploadFiles.value = []
+  const controller = new AbortController()
+  loadController = controller
   loading.value = true
+  loadError.value = ''
   try {
-    let article: Article | undefined
-    try {
-      const payload = await fetchArticle('a1')
-      article = payload.data
-    } catch (error: unknown) {
-      if (!(error instanceof ApiError) || error.status !== 404) throw error
-      const list = await fetchArticles()
-      article = unwrapArticles(list.data)[0]
-    }
-    if (article) applyArticle(article)
-  } catch (error: unknown) {
-    Message.error({ content: readErrorMessage(error, '文章加载失败'), duration: 3000 })
+    const payload = await fetchArticle('a1', controller.signal)
+    if (!controller.signal.aborted) applyArticle(payload.data)
+  } catch (error) {
+    if (!controller.signal.aborted) loadError.value = readErrorMessage(error, '文章加载失败')
   } finally {
-    loading.value = false
+    if (!controller.signal.aborted) loading.value = false
   }
 }
 
+async function loadMedia(page = mediaPage.value) {
+  mediaController?.abort()
+  const controller = new AbortController()
+  mediaController = controller
+  mediaPage.value = page
+  mediaLoading.value = true
+  mediaError.value = ''
+  try {
+    const { data } = await listMedia({ page, pageSize: 6, sortOrder: 'desc' }, controller.signal)
+    if (!controller.signal.aborted) { mediaItems.value = data.items; mediaTotal.value = data.total }
+  } catch (error) {
+    if (!controller.signal.aborted) mediaError.value = readErrorMessage(error, '媒体加载失败')
+  } finally {
+    if (!controller.signal.aborted) mediaLoading.value = false
+  }
+}
+
+function togglePicker() {
+  pickerOpen.value = !pickerOpen.value
+  if (pickerOpen.value && canView.value) void loadMedia()
+  else mediaController?.abort()
+}
+
+function addAttachment(item: MediaItem) {
+  if (!attachments.value.some((entry) => entry.id === item.id)) attachments.value.push(item)
+}
+
+async function handleUpload(upload: UploadFile) {
+  if (!upload.file || uploadControllers.has(upload.uid)) return
+  const controller = new AbortController()
+  uploadControllers.set(upload.uid, controller)
+  uploadFiles.value = uploadFiles.value.map((item) => item.uid === upload.uid ? { ...item, status: 'uploading', error: undefined } : item)
+  try {
+    const item = await uploadOrReuseMedia(upload.file, controller.signal)
+    if (controller.signal.aborted) return
+    addAttachment(item)
+    uploadFiles.value = uploadFiles.value.filter((entry) => entry.uid !== upload.uid)
+  } catch (error) {
+    if (!controller.signal.aborted) uploadFiles.value = uploadFiles.value.map((item) => item.uid === upload.uid
+      ? { ...item, status: 'error', error: readErrorMessage(error, '附件上传失败') } : item)
+  } finally {
+    uploadControllers.delete(upload.uid)
+  }
+}
+
+function handleFileInputChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files ?? [])
+  input.value = ''
+  const remaining = 12 - attachments.value.length - uploadFiles.value.length
+  if (files.length > remaining) {
+    Message.warning({ content: `最多 12 个附件，当前还可添加 ${remaining} 个；本次未上传`, duration: 3000 })
+    return
+  }
+  if (files.some((file) => file.size > 10 * 1024 * 1024)) {
+    Message.warning({ content: '文件超过 10 MB 上限，本次未上传', duration: 3000 })
+    return
+  }
+  const added: UploadFile[] = files.map((file) => ({ uid: crypto.randomUUID(), name: file.name, file, status: 'uploading' }))
+  uploadFiles.value.push(...added)
+  added.forEach((file) => void handleUpload(file))
+}
+
+function removeUpload(uid: string) {
+  uploadControllers.get(uid)?.abort()
+  uploadFiles.value = uploadFiles.value.filter((item) => item.uid !== uid)
+}
+
+onBeforeUnmount(() => {
+  loadController?.abort()
+  mediaController?.abort()
+  uploadControllers.forEach((controller) => controller.abort())
+})
+
 async function saveDraft() {
+  if (loading.value || saving.value || loadError.value || uploadFiles.value.length) return
   saving.value = true
   try {
     const payload = await saveArticle(articleId.value, buildPayload(false))
@@ -193,10 +291,12 @@ async function saveDraft() {
 }
 
 async function publish() {
+  if (!publishNow.value) { await saveDraft(); return }
   if (!title.value.trim()) {
     Message.warning({ content: '请先填写内容标题', duration: 2000 })
     return
   }
+  if (loading.value || saving.value || loadError.value || uploadFiles.value.length) return
   saving.value = true
   try {
     const payload = await saveArticle(articleId.value, buildPayload(true))
@@ -245,25 +345,27 @@ const currentColumnText = computed(() => {
 
     <Card>
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Segmented v-model="editorType" :options="EDITOR_OPTIONS" />
+        <Segmented :disabled="saving || loading || !!loadError" v-model="editorType" :options="EDITOR_OPTIONS" />
         <Space :size="'sm'" align="center" wrap>
           <div class="flex items-center gap-2">
             <Text size="sm" color="secondary">立即发布</Text>
-            <Switch aria-label="立即发布" :model-value="publishNow" @update:model-value="(v: boolean) => (publishNow = v)" />
+            <Switch :disabled="saving || loading || !!loadError" aria-label="立即发布" :model-value="publishNow" @update:model-value="(v: boolean) => (publishNow = v)" />
           </div>
-          <Button variant="outline" :disabled="loading || saving" @click="saveDraft">
+          <Button variant="outline" :disabled="loading || saving || !!loadError || uploadFiles.length > 0" @click="saveDraft">
             <Icon name="download" :size="16" class="mr-1" />
             保存草稿
           </Button>
-          <Button :disabled="loading || saving" @click="publish">
+          <Button :disabled="loading || saving || !!loadError || uploadFiles.length > 0" @click="publish">
             <Icon name="upload" :size="16" class="mr-1" />
-            发布
+            {{ publishNow ? '发布' : '保存' }}
           </Button>
+          <Button variant="ghost" :disabled="saving || loading" @click="loadArticle">重新加载</Button>
         </Space>
       </div>
     </Card>
 
-    <Card v-if="loading && !published">
+    <Alert v-if="loadError" type="error" title="文章加载失败" :description="loadError"><template #action><Button @click="loadArticle">重试</Button></template></Alert>
+    <Card v-else-if="loading">
       <MutedPanel description="正在加载文章…" />
     </Card>
 
@@ -272,17 +374,16 @@ const currentColumnText = computed(() => {
         <Result
           status="success"
           title="发布成功"
-          :sub-title="`《${title}》已${publishNow ? '立即发布' : '加入发布队列'}，栏目：${currentColumnText}`"
+          :sub-title="`《${title}》已发布，栏目：${currentColumnText}`"
         >
           <div class="flex justify-center gap-2">
             <Button variant="outline" @click="continueEditing">继续编辑</Button>
-            <Button :disabled="saving" @click="saveDraft">查看发布记录</Button>
           </div>
         </Result>
       </Card>
     </div>
 
-    <div v-else class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div v-else :inert="saving" class="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <Card class="lg:col-span-2">
         <template #header>
           <div class="flex items-center gap-2">
@@ -327,7 +428,7 @@ const currentColumnText = computed(() => {
           </Watermark>
           <MutedPanel
             compact
-            description="水印用于标识草稿状态；发布后正文水印移除（演示）。标题、正文与分类栏目标签会保存到服务端，刷新后从接口恢复。协作者与附件仍仅本页有效。"
+            description="标题、正文、分类、栏目、标签与附件随文章保存，刷新后恢复。附件上传后请保存草稿或发布；协作者备注仅供本页编辑参考。"
           />
         </div>
       </Card>
@@ -383,12 +484,45 @@ const currentColumnText = computed(() => {
             />
             <div>
               <Text weight="medium" class="mb-1 block">封面 / 附件</Text>
-              <Upload :auto-upload="false" accept="image/*" :multiple="true">
-                <span class="inline-flex items-center">
-                  <Icon name="upload" :size="14" class="mr-1" />
-                  选择文件
-                </span>
-              </Upload>
+              <div class="space-y-3">
+                <template v-if="canUpload">
+                  <input ref="fileInputRef" type="file" multiple class="hidden" :disabled="saving || attachments.length + uploadFiles.length >= 12" @change="handleFileInputChange" />
+                  <Button :disabled="saving || attachments.length + uploadFiles.length >= 12" @click="fileInputRef?.click()"><span class="inline-flex items-center gap-1"><Icon name="upload" :size="14" />上传附件</span></Button>
+                </template>
+                <ul class="space-y-2" aria-label="附件上传">
+                  <li v-for="file in uploadFiles" :key="file.uid" class="space-y-1 rounded border border-(--tiger-border) p-2 text-sm">
+                    <span class="block break-all">{{ file.name }}</span>
+                    <span v-if="file.status === 'error'" role="alert" class="block break-all text-(--tiger-error)">{{ file.error }}</span><span v-else role="status">正在上传…</span>
+                    <div class="flex gap-2">
+                      <Button v-if="file.status === 'error'" size="sm" variant="outline" :aria-label="`重试上传 ${file.name}`" @click="handleUpload(file)">重试</Button>
+                      <Button size="sm" variant="ghost" :aria-label="`取消上传 ${file.name}`" @click="removeUpload(file.uid)">{{ file.status === 'error' ? '移除' : '取消' }}</Button>
+                    </div>
+                  </li>
+                </ul>
+                <Text v-if="uploadFiles.length > 0" size="sm" color="secondary">请等待上传完成，或重试 / 移除失败项后保存文章。</Text>
+                <Button v-if="canView" variant="outline" size="sm" @click="togglePicker">{{ pickerOpen ? '收起媒体选择' : '选择已有媒体' }}</Button>
+                <div v-if="pickerOpen && canView" class="space-y-2 rounded border border-(--tiger-border) p-2">
+                  <Alert v-if="mediaError" type="error" :title="mediaError"><template #action><Button size="sm" @click="loadMedia()">重试</Button></template></Alert>
+                  <Text v-else-if="mediaLoading">正在加载媒体…</Text>
+                  <template v-else>
+                    <Text v-if="!mediaItems.length" color="secondary">暂无媒体，请先上传附件</Text>
+                    <div v-for="item in mediaItems" :key="item.id" class="flex min-w-0 items-center justify-between gap-2">
+                      <span class="min-w-0 truncate">{{ item.originalFileName }}</span>
+                      <Button size="sm" variant="ghost" :disabled="uploading > 0 || attachments.length + uploadFiles.length >= 12 || attachments.some((entry) => entry.id === item.id)" @click="addAttachment(item)">添加</Button>
+                    </div>
+                  </template>
+                  <Pagination :current="mediaPage" :page-size="6" :total="mediaTotal" size="sm" @change="loadMedia" />
+                </div>
+                <ul class="space-y-2" aria-label="文章附件">
+                  <li v-for="item in attachments" :key="item.id" class="flex min-w-0 items-center justify-between gap-2">
+                    <Button v-if="canView" variant="ghost" size="sm" class="min-w-0 truncate" @click="router.push(`/files/${item.id}`)">{{ item.originalFileName }}</Button>
+                    <span v-else class="min-w-0 truncate">{{ item.originalFileName }}</span>
+                    <Button variant="ghost" size="sm" :aria-label="`移除附件 ${item.originalFileName}`" @click="attachments = attachments.filter((entry) => entry.id !== item.id)">移除</Button>
+                  </li>
+                </ul>
+                <Text v-if="!attachments.length" size="sm" color="secondary">暂无附件</Text>
+                <Text v-if="!canUpload" size="sm" color="secondary">当前账号无上传权限</Text>
+              </div>
             </div>
           </div>
         </Card>

@@ -3,10 +3,11 @@ import { lazy, type LazyExoticComponent, type ComponentType } from 'react';
 /**
  * Lazy pageMap for mixed schema routing.
  * Keyed by MenuSchemaNode.key (schemaToRouteRecords `name`).
- * Parametric extras (`/projects/:id`, `/approvals/:id`) stay static in App routes.
+ * Parametric extras (`/projects/:id`, `/approvals/:id`, `/files/:id`, `/import/:id`) stay static in App routes.
  */
 export const SHELL_PAGE_MAP = {
   home: lazy(() => import('../pages/HomePage')),
+  workspace: lazy(() => import('../pages/WorkspacePage')),
   analytics: lazy(() => import('../pages/AnalyticsPage')),
   monitor: lazy(() => import('../pages/MonitorPage')),
   projects: lazy(() => import('../pages/ProjectsPage')),
@@ -41,3 +42,6 @@ export type ShellPageComponent = LazyExoticComponent<ComponentType>;
 export const SHELL_IFRAME_PAGE: ShellPageComponent = lazy(
   () => import('../pages/IframePage'),
 );
+
+export const FILE_DETAIL_PAGE = lazy(() => import('../pages/FileDetailPage'));
+export const IMPORT_RESULT_PAGE = lazy(() => import('../pages/ImportResultPage'));

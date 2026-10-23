@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Result } from '@expcat/tigercat-react/Result';
@@ -35,9 +35,10 @@ const EXCEPTION_META: Record<
 export default function ExceptionPage({ status }: ExceptionPageProps) {
   const navigate = useNavigate();
   const meta = EXCEPTION_META[status];
-  // 进入页面时仅初始化一次倒计时目标
-  const countdownTarget = useMemo(() => Date.now() + 5000, []);
+  // 路由复用页面时，按状态重置倒计时目标。
+  const countdownTarget = useMemo(() => Date.now() + 5000, [status]);
   const [autoJumpEnabled, setAutoJumpEnabled] = useState(status === 404);
+  useEffect(() => setAutoJumpEnabled(status === 404), [status]);
   // React Router 把 idx 写进 history.state；未知路径走 Navigate replace 时
   // navigationType 是 REPLACE，但上一页仍在栈里，idx > 0 才能返回。
   const historyState = window.history.state as { back?: unknown; idx?: number; position?: number } | null;
@@ -56,6 +57,11 @@ export default function ExceptionPage({ status }: ExceptionPageProps) {
     }
   };
 
+  const goHome = () => {
+    setAutoJumpEnabled(false);
+    navigate('/dashboard', { replace: true });
+  };
+
   return (
     <div className="min-h-screen bg-(--tiger-bg-page,#f8fafc) p-4 flex flex-col items-center justify-center">
       <div className="w-full max-w-md">
@@ -66,10 +72,7 @@ export default function ExceptionPage({ status }: ExceptionPageProps) {
           extra={
             <div className="flex justify-center gap-2">
               <Button
-                onClick={() => {
-                  setAutoJumpEnabled(false);
-                  navigate('/dashboard');
-                }}
+                onClick={goHome}
               >
                 返回首页
               </Button>
@@ -86,7 +89,7 @@ export default function ExceptionPage({ status }: ExceptionPageProps) {
                 format="s"
                 suffix="秒"
                 title="即将自动返回首页"
-                onFinish={() => navigate('/dashboard')}
+                onFinish={goHome}
               />
             )}
             {!canGoBack && (

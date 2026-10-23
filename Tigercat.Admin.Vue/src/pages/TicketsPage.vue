@@ -2,6 +2,8 @@
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button } from '@expcat/tigercat-vue/Button'
+import { Alert } from '@expcat/tigercat-vue/Alert'
+import { Pagination } from '@expcat/tigercat-vue/Pagination'
 import { Empty } from '@expcat/tigercat-vue/Empty'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Input } from '@expcat/tigercat-vue/Input'
@@ -17,7 +19,6 @@ import { Mentions } from '@expcat/tigercat-vue/Mentions'
 import { Descriptions } from '@expcat/tigercat-vue/Descriptions'
 import { Rate } from '@expcat/tigercat-vue/Rate'
 import { Drawer } from '@expcat/tigercat-vue/Drawer'
-import { Upload } from '@expcat/tigercat-vue/Upload'
 import { Popover } from '@expcat/tigercat-vue/Popover'
 import { Textarea } from '@expcat/tigercat-vue/Textarea'
 import { RadioGroup } from '@expcat/tigercat-vue/RadioGroup'
@@ -28,7 +29,6 @@ import type {
   ChatMessage,
   CommentNode,
   MentionOption,
-  UploadFile,
   DescriptionsItem,
   WorkflowActionBarItem,
 } from '@expcat/tigercat-core'
@@ -45,6 +45,7 @@ import {
   TICKET_WORKFLOW_ACTIONS,
   updateTicket,
 } from '../utils/tickets'
+import { ApiError } from '../utils/request'
 import { createComment, fetchComments } from '../utils/comments'
 import { fetchRelatedApproval } from '../utils/approvals'
 import type { CommentItem, Ticket, TicketPriority, TicketStatus } from '../utils/types'
@@ -93,6 +94,16 @@ const readErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback
 
 // ── 工单数据（Api / MockApi）────────────────────────
+let listController: AbortController | null = null
+let detailController: AbortController | null = null
+const errorMessage = ref('')
+const detailError = ref('')
+const notesError = ref('')
+const notesLoading = ref(false)
+const page = ref(1)
+const total = ref(0)
+const acting = ref(false)
+const creating = ref(false)
 const tickets = ref<TicketView[]>([])
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -102,6 +113,7 @@ const statusFilter = ref<'all' | TicketStatus>('all')
 const statusFilters: { value: 'all' | TicketStatus; label: string }[] = [
   { value: 'all', label: '全部' },
   { value: 'open', label: '待受理' },
+  { value: 'accepted', label: '已受理' },
   { value: 'progress', label: '处理中' },
   { value: 'resolved', label: '已解决' },
   { value: 'closed', label: '已关闭' },
@@ -117,7 +129,7 @@ const requestedTicketId = computed(() => {
   return value ? String(value) : ''
 })
 const selectedId = ref<string | null>(null)
-const selected = computed(() => tickets.value.find((t) => t.id === selectedId.value) ?? null)
+const selected = ref<TicketView | null>(null)
 const relatedApprovalId = ref<string | null>(null)
 const hasActiveTicketFilters = computed(
   () => Boolean(keyword.value.trim()) || statusFilter.value !== 'all',
@@ -126,6 +138,7 @@ const hasActiveTicketFilters = computed(
 function clearTicketFilters() {
   keyword.value = ''
   statusFilter.value = 'all'
+  page.value = 1
 }
 
 watch(
@@ -141,60 +154,85 @@ watch(
   { immediate: true },
 )
 
+function updateTicketView(ticket: Ticket) {
+  tickets.value = tickets.value.map((item) => item.id === ticket.id ? toTicketView(ticket, item.notes) : item)
+  if (selected.value?.id === ticket.id) selected.value = toTicketView(ticket, selected.value.notes)
+}
+
+async function loadNotes(id: string, signal?: AbortSignal) {
+  notesError.value = ''
+  notesLoading.value = true
+  try {
+    const payload = await fetchComments('ticket', id, signal)
+    if (signal?.aborted) return
+    if (selected.value?.id === id) selected.value = { ...selected.value, notes: toCommentNodes(payload.data ?? []) }
+  } catch (error) {
+    if (!signal?.aborted) notesError.value = readErrorMessage(error, '内部备注加载失败')
+  } finally {
+    if (!signal?.aborted) notesLoading.value = false
+  }
+}
+
 async function loadTicketDetail(id: string) {
+  detailController?.abort()
+  const controller = new AbortController()
+  detailController = controller
+  selectedId.value = id
+  selected.value = null
+  draft.value = ''
+  noteDraft.value = ''
+  detailError.value = ''
+  notesError.value = ''
   detailLoading.value = true
   try {
-    const [ticketPayload, commentsPayload] = await Promise.all([
-      fetchTicket(id),
-      fetchComments('ticket', id),
-    ])
-    const notes = toCommentNodes(commentsPayload.data ?? [])
-    tickets.value = tickets.value.map((item) =>
-      item.id === id ? toTicketView(ticketPayload.data, notes) : item,
-    )
-  } catch (error: unknown) {
-    Message.error({ content: readErrorMessage(error, '工单详情加载失败'), duration: 3000 })
+    const payload = await fetchTicket(id, controller.signal)
+    if (controller.signal.aborted) return
+    selected.value = toTicketView(payload.data)
+    void loadNotes(id, controller.signal)
+  } catch (error) {
+    if (controller.signal.aborted) return
+    detailError.value = error instanceof ApiError && error.status === 404 ? `没有找到工单 ${id}`
+      : error instanceof ApiError && error.status === 403 ? '当前账号无权查看该工单'
+      : readErrorMessage(error, '工单详情加载失败')
   } finally {
-    detailLoading.value = false
+    if (!controller.signal.aborted) detailLoading.value = false
   }
 }
 
 async function loadTickets() {
+  listController?.abort()
+  const controller = new AbortController()
+  listController = controller
   loading.value = true
+  errorMessage.value = ''
+  tickets.value = []
+  total.value = 0
   try {
-    const payload = await fetchTickets({
-      page: 1,
-      pageSize: 50,
-      status: statusFilter.value,
-      keyword: keyword.value,
-    })
-    const prevNotes = new Map(tickets.value.map((item) => [item.id, item.notes]))
-    const items = (payload.data.items ?? []).map((item) =>
-      toTicketView(item, prevNotes.get(item.id) ?? []),
-    )
-    tickets.value = items
-    if (requestedTicketId.value && items.some((item) => item.id === requestedTicketId.value)) {
-      selectedId.value = requestedTicketId.value
-    } else if (!selectedId.value || !items.some((item) => item.id === selectedId.value)) {
-      selectedId.value = items[0]?.id ?? null
-    }
-    if (selectedId.value) {
-      await loadTicketDetail(selectedId.value)
-    }
-  } catch (error: unknown) {
-    Message.error({ content: readErrorMessage(error, '工单列表加载失败'), duration: 3000 })
+    const payload = await fetchTickets({ page: page.value, pageSize: 50, status: statusFilter.value, keyword: keyword.value }, controller.signal)
+    if (controller.signal.aborted) return
+    const items = payload.data.items ?? []
+    const lastPage = Math.max(1, Math.ceil(payload.data.total / 50))
+    if (page.value > lastPage) { page.value = lastPage; return }
+    tickets.value = items.map((item) => toTicketView(item))
+    total.value = payload.data.total
+    if (!requestedTicketId.value && items[0]) void router.replace({ path: '/tickets', query: { ticket: items[0].id } })
+  } catch (error) {
+    if (!controller.signal.aborted) errorMessage.value = readErrorMessage(error, '工单列表加载失败')
   } finally {
-    loading.value = false
+    if (!controller.signal.aborted) loading.value = false
   }
 }
 
 function selectTicket(id: string) {
-  selectedId.value = id
-  void loadTicketDetail(id)
+  if (acting.value) return
+  void router.push({ path: '/tickets', query: { ticket: id } })
 }
 
-watch([keyword, statusFilter], () => {
-  void loadTickets()
+watch([keyword, statusFilter], () => { page.value = 1 })
+watch([keyword, statusFilter, page, requestedTicketId], () => { void loadTickets() })
+watch(requestedTicketId, () => {
+  if (requestedTicketId.value) void loadTicketDetail(requestedTicketId.value)
+  else { detailController?.abort(); selected.value = null; selectedId.value = null }
 })
 
 const selectedDescriptions = computed<DescriptionsItem[]>(() => {
@@ -222,21 +260,20 @@ const selectedDescriptions = computed<DescriptionsItem[]>(() => {
 
 const workflowSteps = computed(() => (selected.value ? getTicketWorkflowSteps(selected.value) : []))
 const workflowActionsDisabled = computed(
-  () => selected.value?.status === 'resolved' || selected.value?.status === 'closed',
+  () => acting.value || detailLoading.value || selected.value?.status === 'resolved' || selected.value?.status === 'closed',
 )
 
 async function handleWorkflowAction(item: WorkflowActionBarItem) {
   const t = selected.value
-  if (!t) return
+  if (!t || workflowActionsDisabled.value) return
+  acting.value = true
   try {
     if (item.action === 'transfer' || item.action === 'comment') {
       const text = item.action === 'transfer'
         ? '已转交（演示写回）。完整实例状态机见审批中心。'
         : '已添加评论（演示写回）。'
       const payload = await sendTicketMessage(t.id, text)
-      tickets.value = tickets.value.map((row) =>
-        row.id === t.id ? toTicketView(payload.data, row.notes) : row,
-      )
+      updateTicketView(payload.data)
       Message.success({
         content: item.action === 'transfer' ? '已写回工单对话（转交演示）' : '已写回工单对话（评论）',
         duration: 2200,
@@ -249,12 +286,13 @@ async function handleWorkflowAction(item: WorkflowActionBarItem) {
       return
     }
     const payload = await updateTicket(t.id, { status: nextStatus })
-    tickets.value = tickets.value.map((item) =>
-      item.id === t.id ? toTicketView(payload.data, item.notes) : item,
-    )
+    updateTicketView(payload.data)
+    void loadTickets()
     Message.success({ content: `已写回工单状态：${nextStatus}`, duration: 2200 })
   } catch (error: unknown) {
     Message.error({ content: readErrorMessage(error, '审批动作写回失败'), duration: 3000 })
+  } finally {
+    acting.value = false
   }
 }
 
@@ -263,15 +301,18 @@ const draft = ref('')
 async function handleSend(value: string) {
   const t = selected.value
   const text = value.trim()
-  if (!t || !text) return
+  if (!t || !text || acting.value) return
+  const controller = detailController
+  acting.value = true
   try {
     const payload = await sendTicketMessage(t.id, text)
+    if (controller !== detailController || controller?.signal.aborted) return
     draft.value = ''
-    tickets.value = tickets.value.map((item) =>
-      item.id === t.id ? toTicketView(payload.data, item.notes) : item,
-    )
+    updateTicketView(payload.data)
   } catch (error: unknown) {
     Message.error({ content: readErrorMessage(error, '发送工单消息失败'), duration: 3000 })
+  } finally {
+    acting.value = false
   }
 }
 
@@ -280,16 +321,19 @@ const noteDraft = ref('')
 async function handleAddNote() {
   const t = selected.value
   const text = noteDraft.value.trim()
-  if (!t || !text) return
+  if (!t || !text || notesLoading.value || notesError.value || acting.value) return
+  const controller = detailController
+  acting.value = true
   try {
     const payload = await createComment({ targetType: 'ticket', targetId: t.id, body: text })
-    tickets.value = tickets.value.map((item) =>
-      item.id === t.id ? { ...item, notes: [...item.notes, payload.data as CommentNode] } : item,
-    )
+    if (controller !== detailController || controller?.signal.aborted) return
+    if (selected.value?.id === t.id) selected.value = { ...selected.value, notes: [...selected.value.notes, payload.data as CommentNode] }
     noteDraft.value = ''
     Message.success({ content: '已添加内部备注', duration: 2000 })
   } catch (error: unknown) {
     Message.error({ content: readErrorMessage(error, '添加内部备注失败'), duration: 3000 })
+  } finally {
+    acting.value = false
   }
 }
 
@@ -300,27 +344,29 @@ function requestClose() {
   confirmingClose.value = true
 }
 async function confirmClose() {
+  if (acting.value) return
   const t = selected.value
   if (!t) {
     confirmingClose.value = false
     return
   }
+  acting.value = true
   try {
     const payload = await updateTicket(t.id, { status: 'closed' })
-    tickets.value = tickets.value.map((item) =>
-      item.id === t.id ? toTicketView(payload.data, item.notes) : item,
-    )
+    updateTicketView(payload.data)
     confirmingClose.value = false
+    void loadTickets()
     Message.success({ content: '工单已关闭', duration: 2000 })
   } catch (error: unknown) {
     Message.error({ content: readErrorMessage(error, '关闭工单失败'), duration: 3000 })
+  } finally {
+    acting.value = false
   }
 }
 
 // ── 新建工单 ───────────────────────────────────────
 const drawerOpen = ref(false)
 const form = ref({ title: '', category: '缺陷', priority: 'medium' as TicketPriority, description: '' })
-const formFiles = ref<UploadFile[]>([])
 let drawerTrigger: HTMLElement | null = null
 function captureDrawerTrigger() {
   drawerTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -331,15 +377,17 @@ function focusDrawerTrigger() {
 function openDrawer() {
   captureDrawerTrigger()
   form.value = { title: '', category: '缺陷', priority: 'medium', description: '' }
-  formFiles.value = []
   drawerOpen.value = true
 }
 async function submitTicket() {
+  if (creating.value) return
   const title = form.value.title.trim()
-  if (!title) {
-    Message.warning({ content: '请填写工单标题', duration: 2000 })
+  if (!title || title.length > 120 || form.value.description.length > 2000) {
+    document.getElementById('ticket-title')?.focus()
+    Message.warning({ content: '请填写 1–120 字标题，描述不超过 2000 字', duration: 2000 })
     return
   }
+  creating.value = true
   try {
     const payload = await createTicket({
       title,
@@ -350,11 +398,13 @@ async function submitTicket() {
     statusFilter.value = 'all'
     keyword.value = ''
     drawerOpen.value = false
-    selectedId.value = payload.data.id
-    await loadTickets()
+    page.value = 1
+    await router.push({ path: '/tickets', query: { ticket: payload.data.id } })
     Message.success({ content: `工单 ${payload.data.id} 已创建`, duration: 2400 })
   } catch (error: unknown) {
     Message.error({ content: readErrorMessage(error, '创建工单失败'), duration: 3000 })
+  } finally {
+    creating.value = false
   }
 }
 
@@ -369,8 +419,11 @@ onMounted(() => {
   syncWide()
   mql.addEventListener('change', syncWide)
   void loadTickets()
+  if (requestedTicketId.value) void loadTicketDetail(requestedTicketId.value)
 })
 onBeforeUnmount(() => {
+  listController?.abort()
+  detailController?.abort()
   mql?.removeEventListener('change', syncWide)
 })
 /** ChatWindow fills this box; textarea resize would fight the Resizable bottom handle. */
@@ -412,7 +465,7 @@ const chatStatus = computed(() =>
       <div class="flex items-center gap-2">
         <Text weight="bold">工单列表</Text>
         <Text weight="bold" class="tabular-nums text-[var(--tiger-primary,#2563eb)]">{{ openCount }}</Text>
-        <Text size="sm" color="secondary">个待跟进</Text>
+        <Text size="sm" color="secondary">个本页待跟进 / 共 {{ total }} 条</Text>
       </div>
       <Button @click="openDrawer">
         <Icon name="plus" :size="16" class="mr-1" />
@@ -429,7 +482,7 @@ const chatStatus = computed(() =>
       >
         <!-- 左：列表 -->
         <div class="flex min-w-0 flex-col gap-3 lg:h-full lg:overflow-hidden lg:pr-1">
-          <Input v-model="keyword" placeholder="搜索标题 / 提交人 / 工单号" clearable />
+          <Input v-model="keyword" :disabled="acting" aria-label="搜索工单" placeholder="搜索标题 / 提交人 / 工单号" clearable />
           <div class="flex flex-wrap gap-2">
             <button
               v-for="f in statusFilters"
@@ -441,6 +494,8 @@ const chatStatus = computed(() =>
                   ? 'bg-(--tiger-primary,#3b82f6) text-white'
                   : 'bg-(--tiger-bg-hover,#f1f5f9) text-(--tiger-text-secondary,#64748b)'
               "
+              :disabled="acting"
+              :aria-pressed="statusFilter === f.value"
               @click="statusFilter = f.value"
             >
               {{ f.label }}
@@ -458,6 +513,8 @@ const chatStatus = computed(() =>
                   ? 'border-(--tiger-primary,#3b82f6) bg-(--tiger-primary,#3b82f6)/5'
                   : 'border-(--tiger-border,#e5e7eb) hover:bg-(--tiger-bg-hover,#f1f5f9)'
               "
+              :disabled="acting"
+              :aria-pressed="t.id === selectedId"
               @click="selectTicket(t.id)"
             >
               <div class="flex items-center justify-between gap-2">
@@ -476,8 +533,9 @@ const chatStatus = computed(() =>
               </div>
             </button>
 
+            <div v-if="errorMessage" role="alert"><Alert type="error" :title="errorMessage" /><Button @click="loadTickets">重试列表</Button></div>
             <MutedPanel
-              v-if="loading && filteredTickets.length === 0"
+              v-else-if="loading && filteredTickets.length === 0"
               compact
               description="正在加载工单…"
             />
@@ -498,6 +556,7 @@ const chatStatus = computed(() =>
               </template>
             </Empty>
           </div>
+          <Pagination :current="page" :page-size="50" :total="total" :disabled="acting" @change="(current: number) => page = current" />
         </div>
 
         <!-- 桌面详情内滚；窄屏随主区滚动，操作条保持在可视区底部。 -->
@@ -506,6 +565,7 @@ const chatStatus = computed(() =>
           data-ticket-detail-pane
         >
           <template v-if="selected">
+            <MutedPanel v-if="!loading && !tickets.some((item) => item.id === selected?.id)" compact description="当前工单不在本页筛选结果中，详情按工单号独立加载。" />
             <div class="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-2">
               <div class="flex min-w-0 flex-1 basis-full items-start gap-2 lg:basis-0">
                 <Text size="lg" weight="bold" class="min-w-0 break-words">{{ selected.title }}</Text>
@@ -525,7 +585,7 @@ const chatStatus = computed(() =>
                 <Button
                   variant="outline"
                   size="sm"
-                  :disabled="selected.status === 'closed'"
+                  :disabled="acting || selected.status === 'closed'"
                   @click="requestClose"
                 >
                   关闭工单
@@ -604,6 +664,7 @@ const chatStatus = computed(() =>
                   :status-variant="chatStatus.variant"
                   :show-avatar="false"
                   :show-name="false"
+                  :disabled="acting"
                   @send="handleSend"
                 />
               </Resizable>
@@ -620,6 +681,7 @@ const chatStatus = computed(() =>
                   :status-variant="chatStatus.variant"
                   :show-avatar="false"
                   :show-name="false"
+                  :disabled="acting"
                   @send="handleSend"
                 />
               </div>
@@ -627,8 +689,9 @@ const chatStatus = computed(() =>
 
             <Card class="mt-4">
               <template #header><Text weight="bold">内部备注</Text></template>
+              <div v-if="notesError" role="alert"><Alert type="error" :title="notesError" /><Button :disabled="acting || notesLoading" @click="loadNotes(selected.id, detailController?.signal)">重试备注</Button></div>
               <CommentThread
-                v-if="selected.notes.length"
+                v-else-if="selected.notes.length"
                 :nodes="selected.notes"
                 :show-reply="false"
                 :show-like="false"
@@ -637,14 +700,16 @@ const chatStatus = computed(() =>
               />
               <MutedPanel v-else compact description="还没有内部备注，可在下方 @ 同事记录处理进展。" />
               <Divider spacing="sm" />
+              <Text v-if="notesLoading" size="sm" color="secondary">正在加载内部备注…</Text>
               <Mentions
+                :disabled="acting || notesLoading || Boolean(notesError)"
                 v-model="noteDraft"
                 :options="assignees"
                 :rows="2"
-                placeholder="输入内部备注，使用 @ 指派同事"
+                placeholder="输入内部备注，使用 @ 提及同事"
               />
               <div class="mt-2 flex justify-end">
-                <Button size="sm" :disabled="!noteDraft.trim()" @click="handleAddNote">
+                <Button size="sm" :disabled="acting || notesLoading || Boolean(notesError) || !noteDraft.trim()" @click="handleAddNote">
                   添加备注
                 </Button>
               </div>
@@ -666,7 +731,8 @@ const chatStatus = computed(() =>
           </template>
 
           <div v-else class="flex h-full items-center justify-center">
-            <MutedPanel v-if="loading" description="正在加载工单…" />
+            <div v-if="detailError" role="alert"><Alert type="error" :title="detailError" /><Button @click="loadTicketDetail(requestedTicketId)">重试详情</Button></div>
+            <MutedPanel v-else-if="detailLoading || loading" description="正在加载工单…" />
             <Empty
               v-else
               preset="no-data"
@@ -684,19 +750,20 @@ const chatStatus = computed(() =>
       title="新建工单"
       width="420px"
       :mask="true"
-      :mask-closable="true"
-      @update:open="(v: boolean) => (drawerOpen = v)"
-      @close="drawerOpen = false"
+      :mask-closable="!creating"
+      :closable="!creating"
+      :keyboard="!creating"
+      @close="!creating && (drawerOpen = false)"
       @after-close="focusDrawerTrigger"
     >
       <div class="space-y-4">
         <div>
           <Text weight="medium" class="mb-1 block">标题</Text>
-          <Input v-model="form.title" placeholder="简要描述问题或需求" />
+          <Input id="ticket-title" aria-label="工单标题" :disabled="creating" v-model="form.title" placeholder="简要描述问题或需求" />
         </div>
         <div>
           <Text weight="medium" class="mb-1 block">分类</Text>
-          <RadioGroup v-model="form.category">
+          <RadioGroup v-model="form.category" aria-label="工单分类" :disabled="creating">
             <Radio value="缺陷">缺陷</Radio>
             <Radio value="需求">需求</Radio>
             <Radio value="咨询">咨询</Radio>
@@ -704,7 +771,7 @@ const chatStatus = computed(() =>
         </div>
         <div>
           <Text weight="medium" class="mb-1 block">优先级</Text>
-          <RadioGroup v-model="form.priority">
+          <RadioGroup v-model="form.priority" aria-label="工单优先级" :disabled="creating">
             <Radio value="high">高</Radio>
             <Radio value="medium">中</Radio>
             <Radio value="low">低</Radio>
@@ -712,19 +779,15 @@ const chatStatus = computed(() =>
         </div>
         <div>
           <Text weight="medium" class="mb-1 block">描述</Text>
-          <Textarea v-model="form.description" :rows="4" placeholder="补充复现步骤或背景信息" />
+          <Textarea :disabled="creating" v-model="form.description" :rows="4" placeholder="补充复现步骤或背景信息" />
         </div>
         <div>
           <Text weight="medium" class="mb-1 block">附件</Text>
-          <Upload v-model:file-list="formFiles" :auto-upload="false" :multiple="true" drag>
-            <div class="p-4 text-center text-sm text-(--tiger-text-secondary,#64748b)">
-              点击或拖拽文件到此处（演示，不会真正上传）
-            </div>
-          </Upload>
+          <Text size="sm" color="secondary">附件尚未接入上传；当前仅保存标题、分类、优先级和描述。</Text>
         </div>
         <div class="flex justify-end gap-2 pt-2">
-          <Button variant="outline" @click="drawerOpen = false">取消</Button>
-          <Button @click="submitTicket">创建工单</Button>
+          <Button variant="outline" :disabled="creating" @click="drawerOpen = false">取消</Button>
+          <Button :loading="creating" @click="submitTicket">创建工单</Button>
         </div>
       </div>
     </Drawer>
@@ -736,16 +799,17 @@ const chatStatus = computed(() =>
       title="确认关闭工单"
       width="360px"
       :mask="true"
-      :mask-closable="true"
-      @update:open="(v: boolean) => (confirmingClose = v)"
-      @close="confirmingClose = false"
+      :mask-closable="!acting"
+      :closable="!acting"
+      :keyboard="!acting"
+      @close="!acting && (confirmingClose = false)"
       @after-close="focusDrawerTrigger"
     >
       <div class="space-y-4">
         <MutedPanel description="关闭后工单将标记为“已关闭”，演示环境下可重新创建。" />
         <div class="flex justify-end gap-2">
-          <Button variant="outline" @click="confirmingClose = false">取消</Button>
-          <Button danger @click="confirmClose">确认关闭</Button>
+          <Button variant="outline" :disabled="acting" @click="confirmingClose = false">取消</Button>
+          <Button danger :loading="acting" @click="confirmClose">确认关闭</Button>
         </div>
       </div>
     </Drawer>

@@ -10,7 +10,7 @@ import { APPROVAL_DETAIL_SCHEMA } from './approvals';
 
 export const DESIGNER_STORAGE_KEY = 'tigercat-admin:workflow-designer-draft';
 export const DESIGNER_PUBLISH_BLOCKED = '存在阻塞项，无法发布';
-export const DESIGNER_PUBLISH_OK = '已发布（演示，不写回引擎）';
+export const DESIGNER_PUBLISH_OK = '本机演示校验通过，草稿已保存（未发布到引擎）';
 export const DESIGNER_SAVE_OK = '已保存草稿（本机，不写回引擎）';
 
 export const DESIGNER_VALIDATION_LABELS = {
@@ -64,14 +64,14 @@ const DEFAULT_DESIGNER_STEPS: WorkflowTimelineStep[] = [
     title: '主管会签',
     signMode: 'countersign',
     actors: [
-      { id: 'li', name: '李四' },
-      { id: 'qian', name: '钱七' },
+      { id: 'wang', name: '王经理' },
+      { id: 'li', name: '李总监' },
     ],
     approverPolicy: {
       type: 'fixed',
       actors: [
-        { id: 'li', name: '李四' },
-        { id: 'qian', name: '钱七' },
+        { id: 'wang', name: '王经理' },
+        { id: 'li', name: '李总监' },
       ],
     },
     buttonPolicy: demoButtons(),
@@ -147,7 +147,19 @@ export function designerIssueText(issue: WorkflowDesignerIssue): string {
 export function persistDesignerDraft(steps: WorkflowTimelineStep[]) {
   try {
     localStorage.setItem(DESIGNER_STORAGE_KEY, JSON.stringify(steps));
+    return true;
   } catch {
-    /* ignore quota / private mode */
+    return false;
   }
+}
+
+export function loadDesignerDraft(): WorkflowTimelineStep[] {
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(DESIGNER_STORAGE_KEY) ?? 'null');
+    if (Array.isArray(stored) && stored.every((step) => step && typeof step.key === 'string')) {
+      validateWorkflowDesigner(stored);
+      return stored;
+    }
+  } catch { /* Invalid local drafts fall back to the existing seed. */ }
+  return cloneDesignerDemoSteps();
 }

@@ -1,3 +1,4 @@
+import { FILE_DETAIL_PAGE, IMPORT_RESULT_PAGE } from '../utils/page-map';
 import {
   createRouter,
   createWebHashHistory,
@@ -8,6 +9,7 @@ import { LoadingBar } from '@expcat/tigercat-vue/LoadingBar';
 import {
   SESSION_KEY,
   safeParse,
+  getSafeReturnTo,
   createPermissionContext,
   type Session,
 } from '../utils';
@@ -91,6 +93,18 @@ const router = createRouter({
           redirect: '/dashboard',
         },
         ...buildVueSchemaChildren(),
+        {
+          path: 'files/:id',
+          name: 'files-detail',
+          component: FILE_DETAIL_PAGE,
+          meta: { menuKey: 'files', requiresPermission: 'media:view' },
+        },
+        {
+          path: 'import/:id',
+          name: 'import-result',
+          component: IMPORT_RESULT_PAGE,
+          meta: { menuKey: 'import', requiresPermission: 'user:create' },
+        },
         {
           path: 'projects/:id',
           name: 'projects-detail',
@@ -178,7 +192,7 @@ router.beforeEach(async (to, _from, next) => {
       safeParse<Session>(localStorage.getItem(SESSION_KEY))?.token,
     ) && permission.loaded.value;
     if (stillAuthed) {
-      next({ name: 'dashboard' });
+      next(getSafeReturnTo(to.query.redirect));
       return;
     }
     next();

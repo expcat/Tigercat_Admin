@@ -3,8 +3,7 @@ import { Alert } from '@expcat/tigercat-react/Alert';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Message } from '@expcat/tigercat-react/Message';
 import { Text } from '@expcat/tigercat-react/Text';
-import { WorkflowDesigner } from '@expcat/tigercat-react/WorkflowDesigner';
-import { WorkflowViewer } from '@expcat/tigercat-react/WorkflowViewer';
+import { WorkflowDesigner, WorkflowViewer } from '../utils/lazyTigercat';
 import type { WorkflowTimelineStep } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { MutedPanel } from '../components/PageFragments';
@@ -19,16 +18,24 @@ import {
   designerBlockingIssues,
   designerIssueText,
   persistDesignerDraft,
+  loadDesignerDraft,
 } from '../utils/workflow-designer';
 
 function WorkflowDesignerPage() {
-  const [steps, setSteps] = useState<WorkflowTimelineStep[]>(() => cloneDesignerDemoSteps());
+  const [steps, setSteps] = useState<WorkflowTimelineStep[]>(() => loadDesignerDraft());
   const stepCount = useMemo(() => countWorkflowSteps(steps), [steps]);
   const blockingIssues = useMemo(() => designerBlockingIssues(steps), [steps]);
   const issueMessages = useMemo(() => blockingIssues.map(designerIssueText), [blockingIssues]);
 
   function saveDraft() {
-    persistDesignerDraft(steps);
+    if (blockingIssues.length > 0) {
+      Message.error({ content: '存在阻塞项，无法保存草稿', duration: 3000 });
+      return;
+    }
+    if (!persistDesignerDraft(steps)) {
+      Message.error({ content: '本机存储不可用，草稿未保存', duration: 3000 });
+      return;
+    }
     Message.success({ content: DESIGNER_SAVE_OK, duration: 2500 });
   }
 
@@ -37,7 +44,10 @@ function WorkflowDesignerPage() {
       Message.error({ content: DESIGNER_PUBLISH_BLOCKED, duration: 3000 });
       return;
     }
-    persistDesignerDraft(steps);
+    if (!persistDesignerDraft(steps)) {
+      Message.error({ content: '本机存储不可用，草稿未保存', duration: 3000 });
+      return;
+    }
     Message.success({ content: DESIGNER_PUBLISH_OK, duration: 2500 });
   }
 
@@ -49,13 +59,13 @@ function WorkflowDesignerPage() {
         subtitle="纵向摘要卡流程画布 + 右侧 Inspector。点选节点编辑审批人、按钮和表单权限。"
         tags={[
           { label: '演示', variant: 'primary' },
-          { label: 'v3.0.0-rc.1', variant: 'info' },
+          { label: 'v3.0.0-rc.2', variant: 'info' },
         ]}
       />
 
       <MutedPanel
         compact
-        description="左侧是纵向流程画布（轨道与插入点）。点选节点后右侧 Inspector 四 Tab 编辑；保存或发布前拦截阻塞项。"
+        description="左侧是纵向流程画布（轨道与插入点）。点选节点后右侧 Inspector 四 Tab 编辑；保存或发布前拦截阻塞项。草稿仅保存在此浏览器；“发布”为本机演示，不连接流程引擎。"
       />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -65,7 +75,7 @@ function WorkflowDesignerPage() {
         <Button variant="outline" onClick={saveDraft}>
           保存草稿
         </Button>
-        <Button onClick={publishDesigner}>发布</Button>
+        <Button onClick={publishDesigner}>发布（本机演示）</Button>
         <Text size="sm" color="secondary">
           当前 {stepCount} 个节点
         </Text>

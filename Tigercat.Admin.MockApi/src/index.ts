@@ -1,3 +1,5 @@
+import { prepareUserImport, publicImportRow, publicImportJob, matchesImportPassword, isImportPasswordHash, type ImportJobItem } from './import-users';
+import type { ImageAnnotation } from '@expcat/tigercat-core';
 import {
   cloneMenuSchemaPayload,
   createMenuNode,
@@ -96,6 +98,7 @@ type MediaItem = {
   uploadedBy: string | null;
   createdAt: string;
   referenceCount: number;
+  annotations?: ImageAnnotation[];
 };
 
 type MediaReference = {
@@ -235,10 +238,6 @@ type CalendarEventItem = {
 
 type ArticleEditorType = 'rich' | 'markdown' | 'code';
 type JobStatus = 'running' | 'paused' | 'failed';
-type ImportJobStatus = 'pending' | 'running' | 'completed' | 'failed';
-type ImportMode = 'append' | 'overwrite' | 'upsert';
-type ImportConflict = 'skip' | 'overwrite' | 'error';
-
 type ArticleItem = {
   id: string;
   title: string;
@@ -248,6 +247,7 @@ type ArticleItem = {
   category: string;
   column: string[];
   published: boolean;
+  attachmentIds?: number[];
 };
 
 type JobItem = {
@@ -266,25 +266,6 @@ type JobItem = {
   start: string;
   end: string;
   color: string;
-};
-
-type ImportJobResultItem = {
-  imported: number;
-  skipped: number;
-  message: string;
-};
-
-type ImportJobItem = {
-  id: string;
-  source: string;
-  target: string[];
-  mappings: string[];
-  mode: ImportMode;
-  conflict: ImportConflict;
-  batchSize: number;
-  status: ImportJobStatus;
-  progress: number;
-  result: ImportJobResultItem | null;
 };
 
 type DemoState = {
@@ -616,13 +597,55 @@ function media(
   };
 }
 
-function mediaReferencesFor(item: MediaItem): MediaReference[] {
-  if (item.referenceCount <= 0) return [];
-  if (item.originalFileName.toLowerCase().includes('avatar')) {
-    return [{ id: item.id * 10 + 1, referenceType: 'user.avatar', referenceKey: '1', displayName: '用户头像：admin' }];
+function mediaReferencesFor(state: DemoState, item: MediaItem): MediaReference[] {
+  const references: MediaReference[] = [];
+  if (state.settings.some((setting) => setting.key === 'site.logo' && setting.value === item.url)) {
+    references.push({ id: item.id * 1000, referenceType: 'site.logo', referenceKey: 'site.logo', displayName: '站点 Logo' });
   }
+  for (const user of state.users.filter((user) => user.avatarMediaId === item.id)) {
+    references.push({ id: item.id * 1000 + user.id, referenceType: 'user.avatar', referenceKey: String(user.id), displayName: `用户头像：${user.username}` });
+  }
+  for (const [index, article] of state.articles.entries()) {
+    if (article.attachmentIds?.includes(item.id)) references.push({
+      id: item.id * 1000 + 500 + index, referenceType: 'content.attachment',
+      referenceKey: `${article.id}:${item.id}`, displayName: `文章附件：${article.id}`,
+    });
+  }
+  return references;
+}
 
-  return [{ id: item.id * 10 + 1, referenceType: 'site.logo', referenceKey: 'site.logo', displayName: '站点 Logo' }];
+function mediaResponse(state: DemoState, item: MediaItem) {
+  return { ...item, referenceCount: mediaReferencesFor(state, item).length };
+}
+
+function articleResponse(state: DemoState, article: ArticleItem) {
+  return { ...article, attachments: state.media.filter((item) => article.attachmentIds?.includes(item.id))
+    .sort((a, b) => a.id - b.id).map((item) => mediaResponse(state, item)) };
+}
+
+function clearMediaReferences(state: DemoState, item: MediaItem) {
+  for (const setting of state.settings.filter((setting) => setting.key === 'site.logo' && setting.value === item.url)) setting.value = '';
+  for (const user of state.users.filter((user) => user.avatarMediaId === item.id)) {
+    user.avatarMediaId = null;
+    user.avatarUrl = null;
+  }
+  for (const article of state.articles) article.attachmentIds = article.attachmentIds?.filter((id) => id !== item.id);
+}
+
+function isValidAnnotation(value: unknown): value is ImageAnnotation {
+  if (!value || typeof value !== 'object') return false;
+  const shape = value as Record<string, unknown>;
+  if (typeof shape.id !== 'string' || !shape.id.trim()) return false;
+  for (const field of ['label', 'color']) if (field in shape && typeof shape[field] !== 'string') return false;
+  if ('data' in shape && (!shape.data || typeof shape.data !== 'object' || Array.isArray(shape.data))) return false;
+  const finite = (item: unknown) => typeof item === 'number' && Number.isFinite(item);
+  if (shape.type === 'rectangle' || shape.type === 'ellipse') {
+    return finite(shape.x) && finite(shape.y) && finite(shape.width) && Number(shape.width) >= 0 && finite(shape.height) && Number(shape.height) >= 0;
+  }
+  if (shape.type !== 'polygon' && shape.type !== 'freehand') return false;
+  return Array.isArray(shape.points) && shape.points.length >= (shape.type === 'polygon' ? 3 : 2) &&
+    shape.points.every((point: unknown) => !!point && typeof point === 'object' &&
+      finite((point as Record<string, unknown>).x) && finite((point as Record<string, unknown>).y));
 }
 
 function toStaticMediaUrl(publicId: string, name: string, contentType: string): string {
@@ -972,22 +995,6 @@ function seedJobs(): JobItem[] {
 
 const ARTICLE_EDITOR_TYPES: ArticleEditorType[] = ['rich', 'markdown', 'code'];
 const JOB_STATUSES: JobStatus[] = ['running', 'paused', 'failed'];
-const IMPORT_MODES: ImportMode[] = ['append', 'overwrite', 'upsert'];
-const IMPORT_CONFLICTS: ImportConflict[] = ['skip', 'overwrite', 'error'];
-const IMPORT_MODE_LABELS: Record<ImportMode, string> = {
-  append: '追加',
-  overwrite: '覆盖',
-  upsert: '更新插入',
-};
-const IMPORT_TARGET_LABELS: Record<string, string> = {
-  hr: '人力资源',
-  employees: '员工表',
-  departments: '部门表',
-  crm: '客户管理',
-  customers: '客户表',
-  contacts: '联系人表',
-};
-
 function normalizeStringList(value: unknown, itemMaxLength: number, maxCount: number): string[] | null {
   if (!Array.isArray(value)) return [];
   const items = value
@@ -1013,22 +1020,37 @@ function applyJobStatusMachine(job: JobItem, wasEnabled: boolean) {
   if (!job.nextRun || job.nextRun === '—') job.nextRun = '待调度';
 }
 
-function advanceImportJob(job: ImportJobItem) {
-  if (job.status === 'completed' || job.status === 'failed') return;
-  job.status = 'running';
-  job.progress = Math.min(100, job.progress + 25);
-  if (job.progress < 100) return;
-  job.progress = 100;
-  job.status = 'completed';
-  const modeLabel = IMPORT_MODE_LABELS[job.mode];
-  const targetText = job.target.length
-    ? job.target.map((segment) => IMPORT_TARGET_LABELS[segment] ?? segment).join(' / ')
-    : '未选择';
-  job.result = {
-    imported: job.mappings.length,
-    skipped: job.conflict === 'skip' ? 1 : 0,
-    message: `已按「${modeLabel}」模式导入至 ${targetText}，映射 ${job.mappings.length} 个字段。`,
-  };
+function processImportJobs(storageKey: string) {
+  const state = readState(storageKey);
+  let changed = false;
+  for (const job of state.importJobs) {
+    if (job.status !== 'pending' && job.status !== 'running') continue;
+    const row = job.rows?.find(row => row.status === 'pending');
+    if (!row) {
+      job.status = 'failed';
+      job.result = { imported: 0, skipped: 0, failed: 0, message: '任务没有可处理的 CSV 行，请重新选择文件导入' };
+    } else {
+      job.status = 'running';
+      if (!row.passwordHash) row.status = row.message === '用户名已存在，跳过' ? 'skipped' : 'failed';
+      else if (state.users.some(user => user.username === row.username)) { row.status = 'skipped'; row.message = '用户名已存在，跳过'; }
+      else if (row.roles.some(id => !state.roles.some(role => role.id === id))) { row.status = 'failed'; row.message = '角色已变更，请重新校验角色 ID'; }
+      else {
+        const user: DemoUser = { id: state.nextUserId++, username: row.username, displayName: row.displayName,
+          status: 0, avatarMediaId: null, avatarUrl: null, createdAt: new Date().toISOString(), updatedAt: null, roleIds: row.roles };
+        state.users.push(user); state.passwords[user.username] = row.passwordHash;
+        row.userId = user.id; row.status = 'success'; row.message = '已创建用户';
+      }
+      row.passwordHash = null;
+      job.processed++;
+      job.progress = Math.floor(job.processed * 100 / job.total);
+      if (job.processed === job.total) job.status = 'completed';
+      const imported = job.rows.filter(r => r.status === 'success').length, skipped = job.rows.filter(r => r.status === 'skipped').length, failed = job.rows.filter(r => r.status === 'failed').length;
+      job.result = { imported, skipped, failed, message: `已处理 ${job.processed}/${job.total} 行，成功 ${imported}，跳过 ${skipped}，失败 ${failed}。` };
+    }
+    changed = true;
+  }
+  if (changed) writeState(storageKey, state);
+  return state.importJobs.some(job => job.status === 'pending' || job.status === 'running');
 }
 
 function nowTicketLabel() {
@@ -1307,6 +1329,20 @@ function makeExportFile(rows: Array<Record<string, unknown>>, fields: string[], 
   return makeBlob(`\uFEFF${csv}`, `${entityName}.csv`, 'text/csv; charset=utf-8');
 }
 
+function statsTrend(users: DemoUser[], days: number) {
+  const today = new Date().toISOString().slice(0, 10);
+  const todayUtc = Date.parse(`${today}T00:00:00Z`);
+  const counts = new Map<string, number>();
+  for (const user of users) {
+    const date = new Date(user.createdAt).toISOString().slice(0, 10);
+    counts.set(date, (counts.get(date) ?? 0) + 1);
+  }
+  return Array.from({ length: days }, (_, index) => {
+    const date = new Date(todayUtc - (days - index - 1) * 86400000).toISOString().slice(0, 10);
+    return { date, count: counts.get(date) ?? 0 };
+  });
+}
+
 function filterAuditLogs(items: AuditLogItem[], url: URL): AuditLogItem[] {
   const keyword = url.searchParams.get('keyword')?.trim().toLowerCase();
   const category = url.searchParams.get('category')?.trim();
@@ -1314,7 +1350,7 @@ function filterAuditLogs(items: AuditLogItem[], url: URL): AuditLogItem[] {
   const actor = url.searchParams.get('actor')?.trim().toLowerCase();
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
-  let next = [...items];
+  let next = items.slice(0, 1000);
   if (keyword) {
     next = next.filter((item) => `${item.title} ${item.description} ${item.eventType}`.toLowerCase().includes(keyword));
   }
@@ -1503,7 +1539,7 @@ function parseBody(value: BodyInit | null | undefined): unknown {
   }
 }
 
-async function handleRequest(input: RequestInfo | URL, init: RequestInit, storageKey: string): Promise<Response> {
+async function handleRequest(input: RequestInfo | URL, init: RequestInit, storageKey: string, resumeImports: () => void): Promise<Response> {
   const request = input instanceof Request ? input : null;
   const method = (init.method ?? request?.method ?? 'GET').toUpperCase();
   const rawUrl = typeof input === 'string' || input instanceof URL ? String(input) : input.url;
@@ -1526,7 +1562,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     const username = String(body.username ?? '').trim().toLowerCase();
     const password = String(body.password ?? '');
     const expected = state.passwords[username];
-    if (!expected || expected !== password) {
+    if (!expected || !(isImportPasswordHash(expected) ? await matchesImportPassword(expected, password) : expected === password)) {
       return makeError('账号或密码错误', 401);
     }
     if (state.twoFactorByUser[username]) {
@@ -1658,13 +1694,8 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/stats/trend' && method === 'GET') {
-    const days = Math.min(Math.max(Number(url.searchParams.get('days') ?? '7'), 1), 30);
-    return makeJson({
-      points: Array.from({ length: days }, (_, index) => ({
-        date: new Date(Date.now() - (days - index - 1) * 86400000).toISOString().slice(0, 10),
-        count: 2 + index + (index % 3),
-      })),
-    });
+    const days = Math.min(Math.max(Math.trunc(Number(url.searchParams.get('days') ?? '7') || 7), 1), 90);
+    return makeJson({ points: statsTrend(state.users, days) });
   }
 
   if (path === '/api/users' && method === 'GET') {
@@ -1909,22 +1940,33 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     return makeJson({ message: '标记已读成功' });
   }
 
+  if (path === '/api/tasks' || path.startsWith('/api/tasks/')) {
+    const denied = requireMenuPermission(state, request, init,
+      method === 'GET' ? 'task:view' : path === '/api/tasks' && method === 'POST' ? 'task:create' : 'task:edit');
+    if (denied) return denied;
+  }
+
   if (path === '/api/tasks' && method === 'GET') {
     const keyword = url.searchParams.get('keyword')?.trim().toLowerCase();
     const status = url.searchParams.get('status');
     const assignee = url.searchParams.get('assignee')?.trim().toLowerCase();
+    const assigneeExact = url.searchParams.get('assigneeExact')?.trim().toLowerCase();
+    const unfinished = url.searchParams.get('unfinished');
     const blocked = url.searchParams.get('blocked');
     const dueFrom = url.searchParams.get('dueFrom');
     const dueTo = url.searchParams.get('dueTo');
-    let items = [...state.tasks];
+    let items = [...state.tasks].reverse();
     if (keyword) items = items.filter((item) => `${item.title} ${item.description ?? ''} ${item.assignee}`.toLowerCase().includes(keyword));
     if (status) items = items.filter((item) => item.status === status);
     if (assignee) items = items.filter((item) => item.assignee.toLowerCase().includes(assignee));
+    if (assigneeExact) items = items.filter((item) => item.assignee.toLowerCase() === assigneeExact);
+    if (unfinished === 'true') items = items.filter((item) => item.status !== 'done');
     if (blocked === 'true') items = items.filter((item) => Boolean(item.blocked));
     if (blocked === 'false') items = items.filter((item) => !item.blocked);
     if (dueFrom) items = items.filter((item) => new Date(item.dueAt).getTime() >= new Date(dueFrom).getTime());
     if (dueTo) items = items.filter((item) => new Date(item.dueAt).getTime() <= new Date(dueTo).getTime());
-    return makeJson(page(items, url));
+    items.sort((a, b) => a.status.localeCompare(b.status) || new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime());
+    return makeJson(pageItems(items, url, 100));
   }
 
   if (path === '/api/tasks' && method === 'POST') {
@@ -1952,8 +1994,13 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   const taskMatch = path.match(/^\/api\/tasks\/([^/]+)$/);
+  if (taskMatch && method === 'GET') {
+    const item = state.tasks.find((taskItem) => taskItem.id === decodeURIComponent(taskMatch[1]));
+    return item ? makeJson(item) : makeError('任务不存在', 404);
+  }
+
   if (taskMatch && method === 'PUT') {
-    const item = state.tasks.find((taskItem) => taskItem.id === taskMatch[1]);
+    const item = state.tasks.find((taskItem) => taskItem.id === decodeURIComponent(taskMatch[1]));
     if (!item) return makeError('任务不存在', 404);
     item.title = String(body.title ?? item.title);
     item.description = (body.description as string | undefined) ?? item.description;
@@ -1971,7 +2018,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
 
   const taskStatusMatch = path.match(/^\/api\/tasks\/([^/]+)\/status$/);
   if (taskStatusMatch && method === 'PUT') {
-    const item = state.tasks.find((taskItem) => taskItem.id === taskStatusMatch[1]);
+    const item = state.tasks.find((taskItem) => taskItem.id === decodeURIComponent(taskStatusMatch[1]));
     if (!item) return makeError('任务不存在', 404);
     if (item.blocked && body.status === 'done') return makeError('阻塞任务不能直接移动到已完成');
     item.status = (body.status as TaskItem['status']) ?? item.status;
@@ -1983,10 +2030,11 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
 
   const taskCompleteMatch = path.match(/^\/api\/tasks\/([^/]+)\/complete$/);
   if (taskCompleteMatch && method === 'POST') {
-    const item = state.tasks.find((taskItem) => taskItem.id === taskCompleteMatch[1]);
+    const item = state.tasks.find((taskItem) => taskItem.id === decodeURIComponent(taskCompleteMatch[1]));
     if (!item) return makeError('任务不存在', 404);
     if (!body.confirm) return makeError('完成任务前需要确认', 400);
     if (item.blocked) return makeError('阻塞任务不能直接完成', 400);
+    if (String(body.completionNote ?? '').trim().length > 500) return makeError('完成说明长度不能超过 500', 400);
     item.status = 'done';
     item.completionNote = String(body.completionNote ?? '') || null;
     item.updatedAt = new Date().toISOString();
@@ -2016,7 +2064,9 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/audit-logs/retention-policy' && method === 'PUT') {
-    state.retentionDays = Number(body.retentionDays ?? state.retentionDays);
+    const days = Number(body.retentionDays);
+    if (!Number.isInteger(days) || days < 1 || days > 3650) return makeError('保留天数必须在 1 到 3650 之间', 400);
+    state.retentionDays = days;
     writeState(storageKey, state);
     return makeJson({ retentionDays: state.retentionDays, updatedAtUtc: new Date().toISOString() });
   }
@@ -2068,6 +2118,12 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     return makeExportFile(rows, fields, format, 'audit-logs');
   }
 
+  if (/^\/api\/audit-logs\/[^/]+$/.test(path) && method === 'GET') {
+    const id = decodeURIComponent(path.split('/').pop()!);
+    const item = state.auditLogs.slice(0, 1000).find((log) => log.id === id);
+    return item ? makeJson(item) : makeError('审计日志不存在', 404);
+  }
+
   if (path === '/api/export/reports' && method === 'GET') {
     const reportType = (url.searchParams.get('type') ?? '').trim().toLowerCase();
     if (!REPORT_TYPES.includes(reportType as (typeof REPORT_TYPES)[number])) {
@@ -2112,7 +2168,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   if (path === '/api/export/overview' && method === 'GET') {
     const format = parseExportFormat(url);
     if (format instanceof Response) return format;
-    const days = Math.min(Math.max(Number(url.searchParams.get('days') ?? '7') || 7, 1), 90);
+    const days = Math.min(Math.max(Math.trunc(Number(url.searchParams.get('days') ?? '7') || 7), 1), 90);
     const rows: Array<Record<string, unknown>> = [
       { section: 'overview', key: 'totalUsers', label: '总用户数', value: String(state.users.length) },
       { section: 'overview', key: 'activeUsers', label: '活跃用户', value: String(state.users.filter((item) => item.status === 0).length) },
@@ -2120,14 +2176,8 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
       { section: 'overview', key: 'totalRoles', label: '总角色数', value: String(state.roles.length) },
       { section: 'overview', key: 'totalPermissions', label: '总权限数', value: String(permissions.length) },
     ];
-    for (let index = 0; index < days; index += 1) {
-      const date = new Date(Date.now() - (days - index - 1) * 86400000).toISOString().slice(0, 10);
-      rows.push({
-        section: 'trend',
-        key: date,
-        label: date,
-        value: String(2 + index + (index % 3)),
-      });
+    for (const { date, count } of statsTrend(state.users, days)) {
+      rows.push({ section: 'trend', key: date, label: date, value: String(count) });
     }
     return makeExportFile(rows, OVERVIEW_FIELDS, format, 'overview');
   }
@@ -2139,39 +2189,65 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     return makeBlob(`entity,id,name\n${entity},1,static-demo\n`, `${entity}.${format}`);
   }
 
+  if (path === '/api/media' || path.startsWith('/api/media/')) {
+    if (!/^\/api\/media\/[^/]+\/content$/.test(path)) {
+      const code = method === 'GET' ? 'media:view' : method === 'DELETE' || path.endsWith('batch-delete') || path.endsWith('cleanup') ? 'media:delete' : 'media:upload';
+      const denied = requireMenuPermission(state, request, init, code);
+      if (denied) return denied;
+    }
+  }
+
   if (path === '/api/media' && method === 'GET') {
     const keyword = url.searchParams.get('keyword')?.trim().toLowerCase();
-    const contentType = url.searchParams.get('contentType');
-    let items = [...state.media];
+    const contentType = url.searchParams.get('contentType')?.toLowerCase();
+    let items = state.media.map((item) => mediaResponse(state, item));
     if (keyword) items = items.filter((item) => item.originalFileName.toLowerCase().includes(keyword));
     if (contentType) items = items.filter((item) => item.contentType.startsWith(contentType));
+    const sortBy = url.searchParams.get('sortBy');
+    const direction = url.searchParams.get('sortOrder')?.toLowerCase() === 'desc' ? -1 : 1;
+    items.sort((a, b) => {
+      const compare = sortBy === 'size' ? a.sizeBytes - b.sizeBytes :
+        sortBy === 'name' ? a.originalFileName.localeCompare(b.originalFileName) :
+        sortBy === 'type' ? a.contentType.localeCompare(b.contentType) : a.createdAt.localeCompare(b.createdAt);
+      return direction * (compare || a.id - b.id);
+    });
     return makeJson(page(items, url));
   }
 
   if (path === '/api/media' && method === 'POST') {
-    let fileName = `demo-upload-${state.nextMediaId}.png`;
-    let contentType = 'image/png';
-    let sizeBytes = 1024;
-    const requestBody = init.body;
-    if (requestBody instanceof FormData) {
-      const file = requestBody.get('file');
-      if (file instanceof File) {
-        fileName = file.name || fileName;
-        contentType = file.type || contentType;
-        sizeBytes = file.size || sizeBytes;
-      }
+    const form = init.body instanceof FormData ? init.body : await request?.formData();
+    const file = form?.get('file');
+    if (!(file instanceof File)) return makeError('请选择要上传的文件', 400);
+    if (!file.size) return makeError('不能上传空文件', 400);
+    if (file.size > 10 * 1024 * 1024) return makeError('文件大小不能超过 10485760 字节', 400);
+    const usage = form?.get('usage');
+    if ((usage === 'logo' || usage === 'avatar') && !file.type.startsWith('image/')) return makeError('Logo / 头像必须为图片', 400);
+    const bytes = await file.arrayBuffer();
+    const sha256Hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error('文件读取失败'));
+      reader.readAsDataURL(file);
+    });
+    let width: number | null = null;
+    let height: number | null = null;
+    if (file.type.startsWith('image/')) {
+      try {
+        const image = await createImageBitmap(file);
+        width = image.width;
+        height = image.height;
+        image.close();
+      } catch { return makeError('图片内容无效', 400); }
     }
-    const duplicate = state.media.find((item) =>
-      item.originalFileName === fileName &&
-      item.contentType === contentType &&
-      item.sizeBytes === sizeBytes);
-    if (duplicate) {
-      return makeError('文件已存在，可复用已有媒体资源', 409, { existing: duplicate });
-    }
-
+    init.signal?.throwIfAborted();
+    // File decoding can overlap another upload. Persist against the latest state.
+    Object.assign(state, readState(storageKey));
+    const duplicate = state.media.find((item) => item.sha256Hash === sha256Hash);
+    if (duplicate) return makeError('文件已存在，可复用已有媒体资源', 409, { existing: mediaResponse(state, duplicate) });
     const id = state.nextMediaId++;
-    const publicId = `demo-upload-${id}`;
-    const item = media(id, publicId, fileName, contentType, sizeBytes, fileName.split('.').pop() ?? 'file', 0);
+    const item = media(id, `demo-upload-${id}`, file.name, file.type || 'application/octet-stream', file.size, file.name.split('.').pop() ?? '', 0);
+    Object.assign(item, { url: dataUrl, width, height, sha256Hash, createdAt: new Date().toISOString(), uploadedBy: sessionUsername(request, init), annotations: [] });
     state.media.unshift(item);
     writeState(storageKey, state);
     return makeJson(item, { status: 201 });
@@ -2181,49 +2257,38 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   if (mediaDetailMatch && method === 'GET') {
     const item = state.media.find((mediaItem) => mediaItem.id === Number(mediaDetailMatch[1]));
     if (!item) return makeError('媒体资源不存在', 404);
-    return makeJson({ ...item, references: mediaReferencesFor(item) });
+    return makeJson({ ...mediaResponse(state, item), references: mediaReferencesFor(state, item), annotations: item.annotations ?? [] });
+  }
+
+  const annotationMatch = path.match(/^\/api\/media\/(\d+)\/annotations$/);
+  if (annotationMatch && method === 'PUT') {
+    const item = state.media.find((mediaItem) => mediaItem.id === Number(annotationMatch[1]));
+    if (!item) return makeError('媒体资源不存在', 404);
+    if (!item.contentType.startsWith('image/') || !Array.isArray(body.annotations) || body.annotations.length > 100 || !body.annotations.every(isValidAnnotation)) {
+      return makeError('图片标注无效，最多 100 个区域', 400);
+    }
+    if (JSON.stringify(body.annotations).length > 64000) return makeError('标注数据不能超过 64000 字符', 400);
+    item.annotations = body.annotations;
+    writeState(storageKey, state);
+    return makeJson({ ...mediaResponse(state, item), references: mediaReferencesFor(state, item), annotations: item.annotations });
   }
 
   const mediaContentMatch = path.match(/^\/api\/media\/([^/]+)\/content$/);
   if (mediaContentMatch && method === 'GET') {
     const item = state.media.find((mediaItem) => mediaItem.publicId === mediaContentMatch[1]);
     if (!item) return new Response(null, { status: 404 });
-    return new Response(new Blob(['static demo media content'], { type: item.contentType }), {
-      status: 200,
-      headers: { 'Cache-Control': 'public,max-age=3600', 'X-Content-Type-Options': 'nosniff' },
-    });
+    return fetch(item.url);
   }
 
   if (path === '/api/media/batch-delete' && method === 'POST') {
-    const ids = Array.isArray(body.ids) ? body.ids.map((id) => Number(id)).filter(Number.isFinite) : [];
+    const ids = Array.isArray(body.ids) ? [...new Set(body.ids.map(Number).filter((id) => Number.isInteger(id) && id > 0))] : [];
     const force = body.force === true;
-    if (ids.length === 0) return makeError('请选择要删除的媒体资源', 400);
-
+    if (!ids.length) return makeError('请选择要删除的媒体资源', 400);
     const selected = state.media.filter((item) => ids.includes(item.id));
     if (selected.length !== ids.length) return makeError('以下媒体资源 ID 不存在', 404);
-
-    const references = selected.flatMap(mediaReferencesFor);
-    if (references.length > 0 && !force) {
-      return makeError('选中的媒体资源正在被引用，不能批量删除', 409, references);
-    }
-
-    if (force) {
-      for (const item of selected) {
-        for (const reference of mediaReferencesFor(item)) {
-          if (reference.referenceType === 'site.logo') {
-            const settingItem = state.settings.find((settingValue) => settingValue.key === 'site.logo');
-            if (settingItem) settingItem.value = '';
-          }
-          if (reference.referenceType === 'user.avatar') {
-            for (const user of state.users.filter((userItem) => userItem.avatarMediaId === item.id)) {
-              user.avatarMediaId = null;
-              user.avatarUrl = null;
-            }
-          }
-        }
-      }
-    }
-
+    const references = selected.flatMap((item) => mediaReferencesFor(state, item));
+    if (references.length && !force) return makeError('选中的媒体资源正在被引用，不能批量删除', 409, references);
+    if (force) selected.forEach((item) => clearMediaReferences(state, item));
     state.media = state.media.filter((item) => !ids.includes(item.id));
     writeState(storageKey, state);
     return makeJson({ message: `成功删除 ${selected.length} 个媒体资源` });
@@ -2233,13 +2298,13 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     return makeJson({ dryRun: body.dryRun !== false, matchedCount: 0, deletedCount: 0, items: [] });
   }
 
-  const mediaDeleteMatch = path.match(/^\/api\/media\/(\d+)$/);
-  if (mediaDeleteMatch && method === 'DELETE') {
-    const item = state.media.find((mediaItem) => mediaItem.id === Number(mediaDeleteMatch[1]));
+  if (mediaDetailMatch && method === 'DELETE') {
+    const item = state.media.find((mediaItem) => mediaItem.id === Number(mediaDetailMatch[1]));
     if (!item) return makeError('媒体资源不存在', 404);
     const force = url.searchParams.get('force') === 'true';
-    const references = mediaReferencesFor(item);
-    if (references.length > 0 && !force) return makeError('媒体资源正在被引用，不能删除', 409, references);
+    const references = mediaReferencesFor(state, item);
+    if (references.length && !force) return makeError('媒体资源正在被引用，不能删除', 409, references);
+    if (force) clearMediaReferences(state, item);
     state.media = state.media.filter((mediaItem) => mediaItem.id !== item.id);
     writeState(storageKey, state);
     return makeJson({ message: '删除成功' });
@@ -2490,7 +2555,16 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   const PROJECT_STATUSES: ProjectStatus[] = ['planning', 'active', 'paused', 'done'];
   const CALENDAR_TYPES: CalendarEventType[] = ['meeting', 'review', 'release', 'reminder'];
   const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-  const timePattern = /^\d{2}:\d{2}$/;
+  const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+  const isCalendarDate = (value: string) => {
+    const date = new Date(`${value}T00:00:00Z`);
+    return datePattern.test(value) && Number(value.slice(0, 4)) > 0
+      && Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+  };
+
+  if (path === '/api/projects' || path.startsWith('/api/projects/') || path === '/api/calendar/events') {
+    if (!sessionUsername(request, init)) return makeError('未授权', 401);
+  }
 
   if (path === '/api/projects' && method === 'GET') {
     const keyword = url.searchParams.get('keyword')?.trim().toLowerCase();
@@ -2516,8 +2590,8 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   if (path === '/api/calendar/events' && method === 'GET') {
     const from = url.searchParams.get('from')?.trim();
     const to = url.searchParams.get('to')?.trim();
-    if (from && !datePattern.test(from)) return makeError('开始日期格式无效，需为 YYYY-MM-DD', 400);
-    if (to && !datePattern.test(to)) return makeError('结束日期格式无效，需为 YYYY-MM-DD', 400);
+    if (from && !isCalendarDate(from)) return makeError('开始日期格式无效，需为 YYYY-MM-DD', 400);
+    if (to && !isCalendarDate(to)) return makeError('结束日期格式无效，需为 YYYY-MM-DD', 400);
     if (from && to && from > to) return makeError('开始日期不能晚于结束日期', 400);
     let items = [...state.calendarEvents];
     if (from) items = items.filter((item) => item.date >= from);
@@ -2529,15 +2603,18 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   if (path === '/api/calendar/events' && method === 'POST') {
     const title = String(body.title ?? '').trim();
     if (!title) return makeError('日程标题不能为空', 400);
+    if (title.length > 120) return makeError('日程标题长度不能超过 120', 400);
     const date = String(body.date ?? '').trim();
-    if (!datePattern.test(date)) return makeError('日期格式无效，需为 YYYY-MM-DD', 400);
+    if (!isCalendarDate(date)) return makeError('日期格式无效，需为 YYYY-MM-DD', 400);
     const start = String(body.start ?? '').trim();
     if (!timePattern.test(start)) return makeError('开始时间格式无效，需为 HH:mm', 400);
     const end = String(body.end ?? '').trim();
     if (!timePattern.test(end)) return makeError('结束时间格式无效，需为 HH:mm', 400);
+    if (end <= start) return makeError('结束时间必须晚于开始时间（同一天）', 400);
     const type = String(body.type ?? '').trim().toLowerCase();
     if (!CALENDAR_TYPES.includes(type as CalendarEventType)) return makeError('无效的日程类型', 400);
     const location = String(body.location ?? '').trim() || '—';
+    if (location.length > 200) return makeError('地点长度不能超过 200', 400);
     const item: CalendarEventItem = {
       id: nextMockId(state, 'e'),
       date,
@@ -2552,15 +2629,17 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     return makeJson(item);
   }
 
+  if (path.startsWith('/api/content/articles') && !sessionUsername(request, init)) return makeError('未授权', 401);
+
   if (path === '/api/content/articles' && method === 'GET') {
-    const items = [...state.articles].sort((a, b) => a.id.localeCompare(b.id));
+    const items = [...state.articles].sort((a, b) => a.id.localeCompare(b.id)).map((item) => articleResponse(state, item));
     return makeJson(items);
   }
 
   const articleMatch = path.match(/^\/api\/content\/articles\/([^/]+)$/);
   if (articleMatch && method === 'GET') {
     const item = state.articles.find((article) => article.id === decodeURIComponent(articleMatch[1]));
-    return item ? makeJson(item) : makeError('文章不存在', 404);
+    return item ? makeJson(articleResponse(state, item)) : makeError('文章不存在', 404);
   }
 
   if (articleMatch && method === 'PUT') {
@@ -2579,6 +2658,14 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     if (!tags) return makeError('标签最多 12 个，且单项长度不能超过 40', 400);
     const column = body.column == null ? item.column : normalizeStringList(body.column, 40, 8);
     if (!column) return makeError('栏目路径无效', 400);
+    if (title.length > 120 || String(body.body ?? item.body).length > 20000 || String(body.category ?? item.category).trim().length > 40) return makeError('文章字段长度超出限制', 400);
+    if (body.attachmentIds != null) {
+      if (!Array.isArray(body.attachmentIds) || body.attachmentIds.some((id) => typeof id !== 'number' || !Number.isInteger(id) || id <= 0)) return makeError('附件 ID 必须为正整数', 400);
+      const ids = [...new Set(body.attachmentIds as number[])];
+      if (ids.length > 12) return makeError('附件最多 12 个', 400);
+      if (ids.some((id) => !state.media.some((media) => media.id === id))) return makeError('附件不存在或已删除，请重新选择', 400);
+      item.attachmentIds = ids;
+    }
     item.title = title;
     item.editorType = editorType as ArticleEditorType;
     if (body.body != null) item.body = String(body.body);
@@ -2587,7 +2674,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     item.column = column;
     item.published = published;
     writeState(storageKey, state);
-    return makeJson(item);
+    return makeJson(articleResponse(state, item));
   }
 
   if (path === '/api/jobs' && method === 'GET') {
@@ -2649,52 +2736,31 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     return makeJson(item);
   }
 
-  if (path === '/api/import-jobs' && method === 'POST') {
-    const source = String(body.source ?? '').trim() || '示例数据（未选择文件）';
-    const target = normalizeStringList(body.target, 40, 8);
-    if (!target || target.length === 0) return makeError('请选择目标数据表', 400);
-    const mappings = normalizeStringList(body.mappings, 40, 50);
-    if (!mappings || mappings.length === 0) return makeError('请至少映射一个字段', 400);
-    const mode = String(body.mode ?? 'append').trim().toLowerCase();
-    if (!IMPORT_MODES.includes(mode as ImportMode)) return makeError('无效的导入模式', 400);
-    const conflict = String(body.conflict ?? 'skip').trim().toLowerCase();
-    if (!IMPORT_CONFLICTS.includes(conflict as ImportConflict)) return makeError('无效的冲突策略', 400);
-    const batchSize = Number(body.batchSize ?? 1000);
-    if (!Number.isFinite(batchSize) || batchSize < 100 || batchSize > 5000) {
-      return makeError('批量大小需在 100-5000 之间', 400);
-    }
-    const item: ImportJobItem = {
-      id: `IMP-${state.nextImportJobNumber++}`,
-      source,
-      target,
-      mappings,
-      mode: mode as ImportMode,
-      conflict: conflict as ImportConflict,
-      batchSize,
-      status: 'running',
-      progress: 0,
-      result: null,
-    };
-    state.importJobs.push(item);
-    writeState(storageKey, state);
-    window.setTimeout(() => {
-      const current = readState(storageKey);
-      const found = current.importJobs.find((job) => job.id === item.id);
-      if (found) {
-        advanceImportJob(found);
-        writeState(storageKey, current);
-      }
-    }, 220);
-    return makeJson(item);
+  if (path === '/api/import-jobs/preview' && method === 'POST' || path === '/api/import-jobs' && method === 'POST') {
+    const denied = requireMenuPermission(state, request, init, 'user:create');
+    if (denied) return denied;
+    try {
+      const creating = path === '/api/import-jobs';
+      const prepared = await prepareUserImport(body, state, creating);
+      if (!creating) return makeJson({ ...prepared, rows: prepared.rows.map(publicImportRow) });
+      // Re-read after async password hashing so another request cannot overwrite newer users/jobs.
+      const latest = readState(storageKey);
+      const item: ImportJobItem = { id: `IMP-${latest.nextImportJobNumber++}`, source: String(body.source).trim(), resource: 'users',
+        mode: 'append', conflict: 'skip', status: 'pending', progress: 0, total: prepared.total, processed: 0,
+        result: { imported: 0, skipped: 0, failed: 0, message: '等待逐行处理' }, rows: prepared.rows.map(row => ({ ...row, status: 'pending' })) };
+      latest.importJobs.push(item);
+      writeState(storageKey, latest);
+      resumeImports();
+      return makeJson(publicImportJob(item));
+    } catch (error) { return makeError(error instanceof Error ? error.message : 'CSV 解析失败', 400); }
   }
-
   const importMatch = path.match(/^\/api\/import-jobs\/([^/]+)$/);
   if (importMatch && method === 'GET') {
-    const item = state.importJobs.find((job) => job.id === decodeURIComponent(importMatch[1]));
+    const denied = requireMenuPermission(state, request, init, 'user:create');
+    if (denied) return denied;
+    const item = state.importJobs.find(job => job.id === decodeURIComponent(importMatch[1]));
     if (!item) return makeError('导入任务不存在', 404);
-    advanceImportJob(item);
-    writeState(storageKey, state);
-    return makeJson(item);
+    return makeJson(publicImportJob(item));
   }
 
   return makeError(`演示模式尚未覆盖接口：${method} ${path}`, 404);
@@ -2713,11 +2779,21 @@ export function installTigercatMockApi(options: InstallOptions = {}) {
   target.__tigercatMockApiInstalled = true;
 
   const storageKey = options.storageKey ?? DEFAULT_STORAGE_KEY;
+  // Only active imports schedule work; refresh resumes durable pending rows.
+  let importTimer: number | undefined;
+  const resumeImports = () => {
+    if (importTimer !== undefined) return;
+    importTimer = window.setTimeout(() => {
+      importTimer = undefined;
+      if (processImportJobs(storageKey)) resumeImports();
+    }, 250);
+  };
+  if (readState(storageKey).importJobs.some(job => job.status === 'pending' || job.status === 'running')) resumeImports();
   const nativeFetch = window.fetch.bind(window);
 
   window.fetch = (input: RequestInfo | URL, init: RequestInit = {}) => {
     if (!shouldIntercept(input)) return nativeFetch(input, init);
-    return handleRequest(input, init, storageKey);
+    return handleRequest(input, init, storageKey, resumeImports);
   };
 }
 

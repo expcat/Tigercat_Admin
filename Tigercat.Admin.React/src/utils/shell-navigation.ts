@@ -12,6 +12,7 @@ import type { MenuSchemaPayload } from './types';
 
 export type ShellPageKey =
   | 'home'
+  | 'workspace'
   | 'analytics'
   | 'monitor'
   | 'tickets'
@@ -54,6 +55,12 @@ const pageNodes: Record<ShellPageKey, MenuSchemaNode> = {
     icon: 'dashboard',
     permission: 'dashboard:view',
     path: '/dashboard',
+  },
+  workspace: {
+    key: 'workspace',
+    label: '我的工作台',
+    icon: 'clipboard',
+    path: '/workspace',
   },
   analytics: {
     key: 'analytics',
@@ -120,6 +127,7 @@ const pageNodes: Record<ShellPageKey, MenuSchemaNode> = {
     label: '数据导入',
     icon: 'upload',
     path: '/import',
+    permission: 'user:create',
   },
   performance: {
     key: 'performance',
@@ -214,6 +222,7 @@ const pageNodes: Record<ShellPageKey, MenuSchemaNode> = {
 
 export const SHELL_MENU_SCHEMA: MenuSchema = [
   pageNodes.home,
+  pageNodes.workspace,
   {
     key: 'analyticsGroup',
     label: '数据分析',
@@ -279,6 +288,7 @@ export const BUNDLED_MENU_SCHEMA_PAYLOAD: MenuSchemaPayload = {
 
 export const SHELL_MENU_ROUTES: Record<ShellPageKey, string> = {
   home: '/dashboard',
+  workspace: '/workspace',
   analytics: '/analytics',
   monitor: '/monitor',
   projects: '/projects',
@@ -425,8 +435,10 @@ export async function loadShellMenuSchema(): Promise<MenuSchemaPayload> {
   if (!menuSchemaRequest) {
     menuSchemaRequest = (async () => {
       try {
+        const headers = getAuthHeaders();
+        if (!new Headers(headers).has('Authorization')) return bundledPayload();
         const res = await apiRequest<MenuSchemaPayload>('/api/menus/schema', {
-          headers: getAuthHeaders(),
+          headers,
         });
         if (
           isUsableSchema(res.data?.items) &&

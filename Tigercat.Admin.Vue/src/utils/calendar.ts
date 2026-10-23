@@ -1,26 +1,7 @@
 import { apiRequest } from './request';
 import { getAuthHeaders } from './auth';
 
-export type CalendarEventType = 'meeting' | 'review' | 'release' | 'reminder';
-
-export interface CalendarEvent {
-  id: string;
-  date: string;
-  start: string;
-  end: string;
-  title: string;
-  type: CalendarEventType;
-  location: string;
-}
-
-export interface CreateCalendarEventPayload {
-  date: string;
-  start: string;
-  end: string;
-  title: string;
-  type: CalendarEventType;
-  location: string;
-}
+import type { CalendarEvent, CalendarEventType, CreateCalendarEventPayload } from './types';
 
 export const CALENDAR_EVENT_COLORS: Record<CalendarEventType, string> = {
   meeting: '#2563eb',
@@ -44,6 +25,12 @@ export function formatCalendarDate(value: Date): string {
   return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
 }
 
+export function parseCalendarDate(value: unknown): Date | null {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isFinite(date.getTime()) && formatCalendarDate(date) === value ? date : null;
+}
+
 export function calendarQueryRange(selected: Date): { from: string; to: string } {
   const today = new Date();
   const monthStart = new Date(selected.getFullYear(), selected.getMonth(), 1);
@@ -54,10 +41,11 @@ export function calendarQueryRange(selected: Date): { from: string; to: string }
   return { from: formatCalendarDate(from), to: formatCalendarDate(to) };
 }
 
-export function fetchCalendarEvents(from: string, to: string) {
+export function fetchCalendarEvents(from: string, to: string, signal?: AbortSignal) {
   const params = new URLSearchParams({ from, to });
   return apiRequest<CalendarEvent[]>(`/api/calendar/events?${params}`, {
     headers: getAuthHeaders(),
+    signal,
   });
 }
 

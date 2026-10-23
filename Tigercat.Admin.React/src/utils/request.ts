@@ -36,7 +36,7 @@ export const apiRequest = async <T = any>(
   const response = await fetch(path, {
     ...restOptions,
     headers: {
-      'Content-Type': 'application/json',
+      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(optionHeaders || {}),
     },
   });

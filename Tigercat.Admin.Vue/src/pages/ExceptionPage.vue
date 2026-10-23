@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Result } from '@expcat/tigercat-vue/Result'
@@ -34,25 +34,29 @@ const content = computed(() => {
   } as const
 })
 
-// Capture the countdown target once when the page is entered.
-const countdownTarget = Date.now() + 5000
+// Reset the countdown when the router reuses this page for another status.
+const countdownTarget = ref(Date.now() + 5000)
 const autoJumpEnabled = ref(props.status === 404)
-const canGoBack = computed(() => {
+watch(() => props.status, (status) => {
+  countdownTarget.value = Date.now() + 5000
+  autoJumpEnabled.value = status === 404
+})
+function canGoBack() {
   const state = window.history.state as { back?: unknown; idx?: number; position?: number } | null
   if (state?.back != null) return true
   if (typeof state?.idx === 'number' && state.idx > 0) return true
   if (typeof state?.position === 'number' && state.position > 0) return true
   return window.history.length > 1
-})
+}
 
 function goHome() {
   autoJumpEnabled.value = false
-  router.push('/dashboard')
+  router.replace('/dashboard')
 }
 
 function goBack() {
   autoJumpEnabled.value = false
-  if (canGoBack.value) {
+  if (canGoBack()) {
     router.back()
   } else {
     router.push('/dashboard')
@@ -80,7 +84,7 @@ function goBack() {
             @finish="goHome"
           />
           <Empty
-            v-if="!canGoBack"
+            v-if="!canGoBack()"
             class="mt-4"
             description="没有可返回的历史记录"
             :show-image="false"

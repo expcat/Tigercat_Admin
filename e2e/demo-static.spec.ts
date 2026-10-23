@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 async function login(
   page: import('@playwright/test').Page,
@@ -67,8 +68,44 @@ test.describe('静态演示模式', () => {
     await expect(page.getByText('设置已保存').first()).toBeVisible();
 
     await page.goto('/#/tasks');
-    await expect(page.getByText('当前看板共').first()).toBeVisible();
+    await expect(page.getByText(/已加载 \d+ \/ \d+ 个匹配任务/)).toBeVisible();
   });
+});
+
+test('仪表盘、报表和审计按所选格式下载 API 文件', async ({ page }) => {
+  await login(page);
+  const downloads: import('@playwright/test').Download[] = [];
+  page.on('download', (download) => downloads.push(download));
+
+  for (const [path, field] of [
+    ['dashboard', 'value'],
+    ['reports', 'value'],
+    ['audit-logs', 'eventType'],
+  ] as const) {
+    await page.goto(`/#/${path}`);
+    for (const [format, label] of [
+      ['csv', 'CSV'],
+      ['json', 'JSON'],
+      ['xlsx', 'Excel'],
+    ] as const) {
+      const button = page.getByRole('button', { name: `导出 ${label}`, exact: true });
+      const previousCount = downloads.length;
+      const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        button.click(),
+      ]);
+      expect(download.suggestedFilename()).toMatch(new RegExp(`\\.${format}$`));
+      const content = await readFile((await download.path())!);
+      expect(content.length).toBeGreaterThan(0);
+      if (format === 'json') {
+        const rows = JSON.parse(content.toString());
+        expect(rows.length).toBeGreaterThan(0);
+        expect(rows[0]).toHaveProperty(field);
+      }
+      await expect(button).toBeEnabled();
+      expect(downloads).toHaveLength(previousCount + 1);
+    }
+  }
 });
 
 test.describe('全局 Shell 挂件', () => {
@@ -91,6 +128,16 @@ test.describe('全局 Shell 挂件', () => {
     const viewAll = page.getByRole('button', { name: '查看全部通知' });
     await expect(viewAll).toBeVisible();
 
+    const recentItems = viewAll.locator('..').locator('..').locator('ul > li > button');
+    await expect(recentItems.first()).toBeVisible();
+    await recentItems.first().click();
+    const viewAction = page.getByRole('button', { name: '查看', exact: true });
+    await expect(viewAction).toHaveCount(1);
+    await viewAction.click();
+    await expect(page).toHaveURL(/#\/notifications$/);
+    await expect(viewAction).toHaveCount(0);
+
+    await page.locator('[data-tour="notification-bell"]').click();
     await viewAll.click();
     await expect(page).toHaveURL(/#\/notifications$/);
   });
@@ -146,7 +193,7 @@ test.describe('阶段 1 — 个人中心与数据分析', () => {
     await login(page);
 
     await page.goto('/#/profile');
-    await expect(page.getByText('个人中心').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: '个人中心', exact: true })).toBeVisible();
 
     await page.getByText('安全设置', { exact: true }).click();
     await expect(page.getByText('两步验证').first()).toBeVisible();
@@ -165,7 +212,7 @@ test.describe('阶段 1 — 个人中心与数据分析', () => {
     await page.getByText('个人中心').click();
 
     await expect(page).toHaveURL(/#\/profile$/);
-    await expect(page.getByText('个人中心').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: '个人中心', exact: true })).toBeVisible();
   });
 });
 
@@ -225,25 +272,25 @@ test.describe('阶段 2 — 协作沟通', () => {
     const designer = page.getByRole('region', { name: '流程设计器' });
     await expect(designer).toBeVisible();
     await expect(designer.getByRole('group', { name: '主管会签' })).toBeVisible();
-    await expect(designer.getByText('李四, 钱七')).toBeVisible();
+    await expect(designer.getByText('王经理, 李总监')).toBeVisible();
     await expect(page.getByRole('region', { name: '节点设置' })).toContainText('选中节点后在此编辑');
     await expect(designer.getByRole('button', { name: '在后方插入 (主管会签)' })).toBeVisible();
 
     await page.getByText('流程预览').click();
     const preview = page.getByLabel('审批流程');
-    await expect(preview.getByText('李四', { exact: true })).toBeVisible();
-    await expect(preview.getByText('钱七', { exact: true })).toBeVisible();
+    await expect(preview.getByText('王经理', { exact: true })).toBeVisible();
+    await expect(preview.getByText('李总监', { exact: true })).toBeVisible();
 
-    await designer.getByRole('group', { name: '主管会签' }).getByText('李四, 钱七').click();
+    await designer.getByRole('group', { name: '主管会签' }).getByText('王经理, 李总监').click();
     await expect(page.getByRole('region', { name: '节点设置' }).getByLabel('标题')).toHaveValue(
       '主管会签',
     );
-    await expect(page.getByLabel('审批人 1')).toHaveValue('李四');
-    await expect(page.getByLabel('审批人 2')).toHaveValue('钱七');
+    await expect(page.getByLabel('审批人 1')).toHaveValue('王经理');
+    await expect(page.getByLabel('审批人 2')).toHaveValue('李总监');
 
     await expect(page.getByText('当前 7 个节点')).toBeVisible();
     await expect(page.getByRole('button', { name: '恢复默认' })).toBeVisible();
-    await expect(page.locator('#main-content-scroll').getByRole('button', { name: '发布', exact: true }).first()).toBeVisible();
+    await expect(page.locator('#main-content-scroll').getByRole('button', { name: '发布（本机演示）', exact: true }).first()).toBeVisible();
     await page.getByRole('button', { name: '添加步骤' }).click();
     await expect(page.getByText('当前 8 个节点')).toBeVisible();
 
@@ -257,11 +304,22 @@ test.describe('阶段 2 — 协作沟通', () => {
 
   test('团队日历可展示日程并打开新建事件', async ({ page }) => {
     await login(page);
+    await page.evaluate(async () => {
+      const session = JSON.parse(localStorage.getItem('tigercat.admin.session') || 'null');
+      const today = new Date();
+      const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const response = await fetch('/api/calendar/events', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, start: '10:00', end: '11:00', title: 'UP05 今日演示日程', type: 'meeting' }),
+      });
+      if (!response.ok) throw new Error('Calendar fixture creation failed');
+    });
 
     await page.goto('/#/calendar');
     await expect(page.getByText('团队日历').first()).toBeVisible();
-    // 默认日期 2026-06-29 含两条日程。
-    await expect(page.getByText('迭代站会').first()).toBeVisible();
+    // 默认打开当天，展示刚写入的共享日程。
+    await expect(page.getByText('UP05 今日演示日程').first()).toBeVisible();
     // 精确匹配分区标题，避免与无日程时倒计时标题「暂无即将到来的日程」产生包含歧义。
     await expect(page.getByText('即将到来', { exact: true })).toBeVisible();
 
@@ -323,10 +381,10 @@ test.describe('阶段 4 — 运维自动化', () => {
 
     await page.goto('/#/jobs');
     await expect(page.getByText('定时任务').first()).toBeVisible();
-    // 任务表格默认渲染示例任务，执行时间轴与运行阶段卡片可见。
+    // 配置和接口示例字段可见，不表示真实执行。
     await expect(page.getByText('每日对账批处理').first()).toBeVisible();
-    await expect(page.getByText('执行时间轴', { exact: true })).toBeVisible();
-    await expect(page.getByText('运行阶段', { exact: true })).toBeVisible();
+    await expect(page.getByText('执行时间轴（示例）', { exact: true })).toBeVisible();
+    await expect(page.getByText('运行阶段（示例）', { exact: true })).toBeVisible();
 
     // 新建任务抽屉可打开。
     await page.getByRole('button', { name: '新建任务' }).click();
@@ -340,18 +398,22 @@ test.describe('阶段 4 — 运维自动化', () => {
 
     await page.goto('/#/import');
     await expect(page.getByText('数据导入').first()).toBeVisible();
-    await expect(page.getByText('导入模式', { exact: true })).toBeVisible();
+    const next = page.getByRole('button', { name: '下一步', exact: true });
+    await expect(next).toBeDisabled();
+    await page.getByLabel('选择 UTF-8 CSV 文件').setInputFiles({
+      name: 'users.csv', mimeType: 'text/csv',
+      buffer: Buffer.from(`username,password\nup12_demo_${Date.now()},ImportSecret42!\n`),
+    });
 
-    // 逐步推进向导到最后一步并执行导入。
-    const next = page.getByRole('button', { name: '下一步' });
+    // 读取实际 CSV 后确认映射并校验，再提交用户导入。
     await next.click();
-    await next.click();
-    await next.click();
+    await page.getByRole('button', { name: '校验并预览', exact: true }).click();
+    await expect(page.getByText('校验通过 1，跳过 0，失败 0', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: '开始导入' }).click();
 
-    // 导入完成后展示结果页。
-    await expect(page.getByText('导入完成').first()).toBeVisible();
-    await expect(page.getByRole('button', { name: '再次导入' })).toBeVisible();
+    await expect(page).toHaveURL(/#\/import\/IMP-/);
+    await expect(page.getByText('导入完成 · 已处理 1/1 行', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '返回数据导入' })).toBeVisible();
   });
 });
 
@@ -375,24 +437,85 @@ test.describe('阶段 5 — 帮助与报表', () => {
     await page.getByText('为什么某些菜单看不到？').click();
     await expect(page.getByText('左侧菜单会根据角色权限码过滤').first()).toBeVisible();
 
+    const articles = page.getByRole('list', { name: '帮助文章', exact: true }).locator('li');
+    const more = page.getByRole('button', { name: '加载更多文章', exact: true });
+    await expect(articles).toHaveCount(5);
+    await more.click();
+    await expect(articles).toHaveCount(10);
+    await more.click();
+    await expect(articles).toHaveCount(15);
+    await expect(more).toHaveCount(0);
+    const search = page.getByRole('textbox', { name: '搜索帮助文章' });
+    await search.fill('CSV');
+    await expect(articles).toHaveCount(2);
+    await expect(page.getByRole('link', { name: '打开：CSV 用户导入与结果恢复' })).toBeVisible();
+    await search.fill('没有这样的帮助文章');
+    await expect(page.getByText('没有匹配的帮助文章', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '清空搜索' }).click();
+    await expect(articles).toHaveCount(5);
+    await search.fill('媒体详情');
+    await page.getByRole('link', { name: '打开：文件上传与媒体详情' }).press('Enter');
+    await expect(page).toHaveURL(/#\/files$/);
+    await page.goto('/#/about');
+    await expect(page.locator('#about-info').getByText('static-demo', { exact: true })).toBeVisible();
+    await expect(page.getByText('Tigercat UI 3.0.0-rc.2', { exact: true })).toBeVisible();
+
     expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
   });
 
-  test('报表打印加载并可切换报表类型', async ({ page }) => {
+  test('关于页服务失败关闭提示后仍失败，重试按真实响应恢复', async ({ page }) => {
     await login(page);
+    await page.evaluate(() => {
+      const originalFetch = window.fetch;
+      window.fetch = async (input, init) => {
+        if (String(input) !== '/api/info') return originalFetch(input, init);
+        return !(window as Window & { up10InfoReady?: boolean }).up10InfoReady
+          ? new Response(JSON.stringify({ success: false, message: '服务暂不可用' }), { status: 503 })
+          : new Response(JSON.stringify({ success: true, data: { name: '测试服务', version: 'api-test-1.7', description: '重连成功' } }));
+      };
+      window.location.hash = '#/about';
+    });
+    const overview = page.locator('#about-info');
+    await expect(page.getByText('服务暂不可用', { exact: true })).toBeVisible();
+    await expect(overview.getByText('连接失败', { exact: true })).toBeVisible();
+    await page.getByRole('alert').getByRole('button').click();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(overview.getByText('连接失败', { exact: true })).toBeVisible();
+    await expect(overview.getByText('已连接', { exact: true })).toHaveCount(0);
+    await page.evaluate(() => { (window as Window & { up10InfoReady?: boolean }).up10InfoReady = true; });
+    await overview.getByRole('button', { name: '重新连接服务', exact: true }).press('Enter');
+    await expect(overview.getByText('已连接', { exact: true })).toBeVisible();
+    await expect(overview.getByText('api-test-1.7', { exact: true })).toBeVisible();
+    await expect(overview.getByText('3.0.0-rc.2', { exact: true })).toHaveCount(0);
+  });
 
+  test('报表预览与导出使用相同系统统计及 UTC 天数', async ({ page }) => {
+    await login(page);
     await page.goto('/#/reports');
-    await expect(page.getByText('报表打印').first()).toBeVisible();
-    // 打印布局内的报表区块与明细渲染。
-    await expect(page.getByText('关键指标', { exact: true })).toBeVisible();
-    await expect(page.getByText('渠道明细', { exact: true })).toBeVisible();
-    await expect(page.getByText('自然搜索', { exact: true })).toBeVisible();
-    await expect(page.getByText('报表生成完成').first()).toBeVisible();
-    await expect(page.getByRole('button', { name: '打印', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '打印', exact: true })).toBeEnabled();
+    await expect(page.locator('[data-section="trend"]')).toHaveCount(7);
 
-    // 切换到销售周报，统计区间随之更新。
-    await page.getByText('销售周报').first().click();
-    await expect(page.getByText('2026-06-25 ~ 2026-07-01').first()).toBeVisible();
+    for (const days of [1, 30, 90]) {
+      await page.getByText(`近 ${days} 天`, { exact: true }).click();
+      await expect(page.locator('[data-section="trend"]')).toHaveCount(days);
+      const previewRows = await page.getByTestId('report-data').locator('tbody tr').evaluateAll((rows) =>
+        rows.map((row) => {
+          const [section, key, label, value] = Array.from(row.querySelectorAll('td'), (cell) => cell.textContent?.trim());
+          return { section, key, label, value };
+        }),
+      );
+      const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        page.getByRole('button', { name: '导出 JSON', exact: true }).click(),
+      ]);
+      const exportedRows = JSON.parse(await readFile((await download.path())!, 'utf8'));
+      expect(exportedRows).toEqual(previewRows);
+      const trend = exportedRows.filter((row: { section: string }) => row.section === 'trend');
+      const today = new Date().toISOString().slice(0, 10);
+      expect(trend.at(-1).key).toBe(today);
+      expect(trend[0].key).toBe(new Date(Date.parse(`${today}T00:00:00Z`) - (days - 1) * 86400000).toISOString().slice(0, 10));
+      await expect(page.getByTestId('report-period')).toHaveText(`${trend[0].key} ~ ${today}`);
+    }
   });
 });
 

@@ -1,15 +1,18 @@
-import { useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
+import { Button } from '@expcat/tigercat-react/Button';
+import { CopyButton } from '@expcat/tigercat-react/CopyButton';
+import { usePermission } from '../utils/permission';
+import type { InfoResponse } from '../utils/types';
 import { Alert } from '@expcat/tigercat-react/Alert';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Tag } from '@expcat/tigercat-react/Tag';
 import { Text } from '@expcat/tigercat-react/Text';
 import {
   NavigationMenu,
-  NavigationMenuContent,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-  NavigationMenuTrigger,
 } from '@expcat/tigercat-react/NavigationMenu';
 import type { TagVariant } from '@expcat/tigercat-core';
 import { apiRequest } from '../utils';
@@ -28,12 +31,6 @@ import {
 } from '../components/Icons';
 import { PageHeader } from '../components/PageHeader';
 
-interface InfoResponse {
-  name: string;
-  version: string;
-  description: string;
-}
-
 const getInfoCards = (info: InfoResponse | null) => [
   {
     label: '服务名称',
@@ -42,8 +39,8 @@ const getInfoCards = (info: InfoResponse | null) => [
     iconClassName: 'bg-(--tiger-primary)/10 text-(--tiger-primary)',
   },
   {
-    label: '当前版本',
-    value: info?.version || 'v1.0.0',
+    label: 'API 服务版本',
+    value: info?.version || '—',
     icon: <TagIcon size={20} />,
     iconClassName: 'bg-(--tiger-primary)/10 text-(--tiger-primary)',
   },
@@ -57,26 +54,26 @@ const getInfoCards = (info: InfoResponse | null) => [
 
 const highlights = [
   {
-    title: '清晰导航体验',
-    description: '统一的侧边栏布局，快速定位关键模块。',
+    title: '内容与媒体',
+    description: '上传文件、查看媒体详情、标注与引用，并复制资源链接。',
     icon: <CompassIcon size={24} className="text-(--tiger-primary)" />,
     className: 'from-(--tiger-bg-hover,#f8fafc) to-(--tiger-bg-card,#ffffff)',
   },
   {
-    title: '安全认证体系',
-    description: '基于令牌的认证机制，保障后台安全。',
+    title: 'CSV 用户导入',
+    description: 'UTF-8 CSV 字段映射、预览校验与逐行结果，刷新可恢复导入任务。',
     icon: <LockIcon size={24} className="text-(--tiger-primary)" />,
     className: 'from-(--tiger-bg-hover,#f8fafc) to-(--tiger-bg-card,#ffffff)',
   },
   {
-    title: '快速响应接口',
-    description: '轻量化 API 提供稳定的管理体验。',
+    title: '协作与审批',
+    description: '我的工作台汇集任务、共享通知与团队日程，审批明确使用独立演示身份。',
     icon: <ZapIcon size={24} className="text-(--tiger-warning,#d97706)" />,
     className: 'from-(--tiger-bg-hover,#f8fafc) to-(--tiger-bg-card,#ffffff)',
   },
   {
-    title: '一致视觉语言',
-    description: '保持与首页一致的风格与组件呈现。',
+    title: '报表与外观',
+    description: '统计预览、导出与打印共用数据，支持窄屏及深浅色主题。',
     icon: <PaletteIcon size={24} className="text-(--tiger-success,#16a34a)" />,
     className: 'from-(--tiger-bg-hover,#f8fafc) to-(--tiger-bg-card,#ffffff)',
   },
@@ -98,19 +95,16 @@ const ABOUT_SECTIONS = [
     key: 'info',
     href: '#about-info',
     label: '服务信息',
-    description: '查看服务名称、版本与连接状态',
   },
   {
     key: 'features',
     href: '#about-features',
     label: '特性',
-    description: '浏览产品亮点与体验说明',
   },
   {
     key: 'stack',
     href: '#about-stack',
     label: '技术栈',
-    description: '了解前端、构建与 UI 组件',
   },
 ] as const;
 
@@ -127,26 +121,35 @@ function AboutPage() {
 
   const connectionStatus = loading
     ? { variant: 'primary' as const, label: '连接中' }
-    : errorMessage
+    : !info
       ? { variant: 'danger' as const, label: '连接失败' }
       : { variant: 'success' as const, label: '已连接' };
 
-  useEffect(() => {
-    const loadInfo = async () => {
-      setLoading(true);
-      setErrorMessage('');
-      try {
-        const payload = await apiRequest<InfoResponse>('/api/info');
-        setInfo(payload.data);
-      } catch (error: unknown) {
-        setErrorMessage(getFriendlyErrorMessage(error));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadInfo();
+  const infoRequest = useRef<AbortController | null>(null);
+  const { has: hasPerm } = usePermission();
+  const loadInfo = useCallback(async () => {
+    infoRequest.current?.abort();
+    const request = new AbortController();
+    infoRequest.current = request;
+    setLoading(true);
+    setInfo(null);
+    setErrorMessage('');
+    try {
+      const { data } = await apiRequest<InfoResponse>('/api/info', { signal: request.signal });
+      if (request.signal.aborted) return;
+      if (!data) throw new Error('服务信息为空，请重试。');
+      setInfo(data);
+    } catch (error: unknown) {
+      if (!request.signal.aborted) setErrorMessage(getFriendlyErrorMessage(error));
+    } finally {
+      if (!request.signal.aborted) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadInfo();
+    return () => infoRequest.current?.abort();
+  }, [loadInfo]);
 
   const handleAlertClose = () => {
     setErrorMessage('');
@@ -173,7 +176,7 @@ function AboutPage() {
     },
     {
       label: 'UI 组件',
-      value: 'Tigercat UI',
+      value: 'Tigercat UI 3.0.0-rc.2',
       icon: <PaletteIcon size={20} />,
       iconClassName: 'bg-(--tiger-primary)/10 text-(--tiger-primary)',
     },
@@ -206,7 +209,7 @@ function AboutPage() {
       <PageHeader
         title="关于 Tigercat"
         subtitle="了解平台版本与服务信息"
-        icon={<InfoIcon size={24} className="text-white" />}
+        icon={<InfoIcon size={24} className="text-(--tiger-primary)" />}
         tags={[
           { label: '系统信息', variant: 'primary' },
           { label: connectionStatus.label, variant: connectionStatus.variant },
@@ -217,14 +220,11 @@ function AboutPage() {
         <NavigationMenuList>
           {ABOUT_SECTIONS.map((section) => (
             <NavigationMenuItem key={section.key} value={section.key}>
-              <NavigationMenuTrigger>{section.label}</NavigationMenuTrigger>
-              <NavigationMenuContent>
-                <NavigationMenuLink
-                  href={section.href}
-                  onClick={(event) => scrollToAboutSection(event, section.href)}>
-                  {section.description}
-                </NavigationMenuLink>
-              </NavigationMenuContent>
+              <NavigationMenuLink
+                href={section.href}
+                onClick={(event) => scrollToAboutSection(event, section.href)}>
+                {section.label}
+              </NavigationMenuLink>
             </NavigationMenuItem>
           ))}
         </NavigationMenuList>
@@ -242,23 +242,30 @@ function AboutPage() {
 
       <div id="about-info">
       <Card header={<Text weight="bold">服务概览</Text>}>
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <Tag variant={connectionStatus.variant}>{connectionStatus.label}</Tag>
+          <Button variant="outline" size="sm" loading={loading} disabled={loading} onClick={loadInfo}>重新连接服务</Button>
+          {info && <CopyButton text={`服务：${info.name}\nAPI 服务版本：${info.version}\n描述：${info.description}\nTigercat UI：3.0.0-rc.2`} label="复制服务信息" />}
+        </div>
         {loading ? (
           <div className="flex items-center justify-center py-10">
             <Text size="sm" color="secondary">
               正在加载服务信息...
             </Text>
           </div>
+        ) : !info ? (
+          <Text tag="p" size="sm" color="secondary">尚未获取服务信息，请重新连接服务。</Text>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {getInfoCards(info).map((item) => (
               <div
                 key={item.label}
-                className="flex items-center gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-hover,#f8fafc)">
+                className="min-w-0 flex items-center gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-hover,#f8fafc)">
                 <div
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center ${item.iconClassName}`}>
+                  className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center ${item.iconClassName}`}>
                   {item.icon}
                 </div>
-                <div>
+                <div className="min-w-0 break-words">
                   <Text size="xs" color="secondary">
                     {item.label}
                   </Text>
@@ -297,15 +304,25 @@ function AboutPage() {
       </Card>
       </div>
 
+      <Card header={<Text weight="bold">常用入口</Text>}>
+        <div className="flex flex-wrap gap-4">
+          <RouterLink className="p2-text-primary underline" to="/workspace">我的工作台</RouterLink>
+          {hasPerm('media:view') && <RouterLink className="p2-text-primary underline" to="/files">文件管理与媒体详情</RouterLink>}
+          {hasPerm('user:create') && <RouterLink className="p2-text-primary underline" to="/import">CSV 导入与结果</RouterLink>}
+          <RouterLink className="p2-text-primary underline" to="/reports">报表预览与打印</RouterLink>
+          <RouterLink className="p2-text-primary underline" to="/help">帮助中心</RouterLink>
+        </div>
+      </Card>
+
       <div id="about-stack">
       <Card header={<Text weight="bold">技术栈</Text>}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {techStack.map((item) => (
             <div
               key={item.label}
-              className="flex items-center gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-hover,#f8fafc)">
+              className="min-w-0 flex items-center gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-hover,#f8fafc)">
               <div
-                className={`w-10 h-10 rounded-lg flex items-center justify-center ${item.iconClassName}`}>
+                className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center ${item.iconClassName}`}>
                 {item.icon}
               </div>
               <div>
@@ -327,9 +344,9 @@ function AboutPage() {
           {systemInfo.map((item) => (
             <div
               key={item.label}
-              className="flex items-center gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-hover,#f8fafc)">
+              className="min-w-0 flex items-center gap-3 p-4 rounded-xl border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-hover,#f8fafc)">
               <div
-                className={`w-10 h-10 rounded-lg flex items-center justify-center ${item.iconClassName}`}>
+                className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center ${item.iconClassName}`}>
                 {item.icon}
               </div>
               <div>

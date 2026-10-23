@@ -8,6 +8,8 @@ import { appLocale } from './utils/tigercatText'
 import {
   SESSION_KEY,
   safeParse,
+  getSafeReturnTo,
+  getSessionToken,
   apiRequest,
   createPermissionContext,
   PERMISSION_KEY,
@@ -86,35 +88,6 @@ const authHeaders = computed<Record<string, string>>(() => {
   return headers
 })
 
-function normalizeReturnPath(value: string): string {
-  let next = value.trim()
-  if (next.startsWith('#/')) next = next.slice(1)
-  const hashIdx = next.indexOf('#/')
-  if (hashIdx >= 0) next = next.slice(hashIdx + 1)
-  if (!next.startsWith('/')) next = `/${next}`
-  return next
-}
-
-function getSafeReturnTo(value: unknown): string {
-  if (typeof value !== 'string' || value.length === 0) {
-    return '/dashboard'
-  }
-
-  const path = normalizeReturnPath(value)
-  if (!path.startsWith('/') || path.startsWith('//') || path === '/login' || path === '/register') {
-    return '/dashboard'
-  }
-
-  if (path === '/forgot-password' || path === '/register-success') {
-    return '/dashboard'
-  }
-
-  if (path === '/403' || path === '/404' || path === '/500') {
-    return '/dashboard'
-  }
-
-  return path
-}
 
 const persistSession = (nextSession: Session | null) => {
   if (!nextSession) {
@@ -126,6 +99,7 @@ const persistSession = (nextSession: Session | null) => {
 }
 
 const onLoginSuccess = async (nextSession: Session) => {
+  const returnTo = getSafeReturnTo(route.query.redirect)
   persistSession(nextSession)
   // Guest 401 falls back to bundled schema; SPA login must refetch live tree
   // (iframeSrc-only nodes) before the first protected navigation.
@@ -134,7 +108,8 @@ const onLoginSuccess = async (nextSession: Session) => {
     permission.load(nextSession.token),
     resetShellMenuSchema(),
   ])
-  router.push(getSafeReturnTo(route.query.redirect))
+  if (getSessionToken() !== nextSession.token) return
+  router.replace(returnTo)
 }
 
 const loadHome = async (tokenOverride?: string) => {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, inject, onMounted, h, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, h, nextTick } from 'vue'
 import { Avatar } from '@expcat/tigercat-vue/Avatar'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Checkbox } from '@expcat/tigercat-vue/Checkbox'
@@ -22,7 +22,7 @@ import { CropUpload } from '../utils/lazyTigercat'
 import type { TableColumn, TableCardLayoutItem, SortState, TableToolbarFilterValue, TableToolbarAction } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
-import { apiRequest, debounce, loadWorkbenchState, saveWorkbenchState, clearWorkbenchSelection, type Session } from '../utils'
+import { apiRequest, getAuthHeaders, safeParse, SESSION_KEY, loadWorkbenchState, saveWorkbenchState, clearWorkbenchSelection, loadUserViews, saveUserViews, userViewSnapshot, type Session, type WorkbenchState, type UserViewsState } from '../utils'
 import { exportData, type ExportFormat } from '../utils/export'
 import type { RoleInfo, UserItem, PagedResult, MessageResult } from '../utils/types'
 import { usePermission } from '../utils/permission'
@@ -98,12 +98,9 @@ function confirmContextDelete() {
 }
 
 // ---- Session ----
-const session = inject<import('vue').Ref<Session | null>>('session')!
-const authHeaders = computed<Record<string, string>>(() => {
-  const headers: Record<string, string> = {}
-  if (session.value?.token) headers.Authorization = `Bearer ${session.value.token}`
-  return headers
-})
+const account = safeParse<Session>(localStorage.getItem(SESSION_KEY))?.username ?? ''
+const userViews = ref(loadUserViews(account))
+const viewName = ref(userViews.value.activeViewName ?? '')
 
 const DEFAULT_EXPORT_FIELDS = ['id', 'username', 'displayName', 'status', 'createdAt', 'updatedAt', 'roles']
 const USER_CARD_LAYOUT: TableCardLayoutItem[] = [
@@ -118,12 +115,25 @@ const savedWorkbench = loadWorkbenchState('users', {
   selectedRowKeys: [],
   hiddenColumnKeys: [],
   exportState: { format: 'csv', fields: DEFAULT_EXPORT_FIELDS },
-})
+}, account)
+const restoredView = userViews.value.views.find(view => view.name === userViews.value.activeViewName)
+if (restoredView) {
+  savedWorkbench.queryState = { ...restoredView.queryState, page: 1 }
+  savedWorkbench.hiddenColumnKeys = restoredView.hiddenColumnKeys
+  savedWorkbench.selectedRowKeys = []
+}
 const savedQuery = savedWorkbench.queryState
+
+function persistWorkbench(state: Partial<WorkbenchState>) {
+  saveWorkbenchState('users', state, account)
+}
 
 // ---- State ----
 const users = ref<UserItem[]>([])
 const loading = ref(false)
+const loadError = ref('')
+let requestController: AbortController | null = null
+let searchTimer: ReturnType<typeof setTimeout> | undefined
 const keyword = ref(savedQuery.keyword ?? '')
 const currentPage = ref(savedQuery.page ?? 1)
 const pageSize = ref(savedQuery.pageSize ?? 10)
@@ -191,7 +201,7 @@ const FORMAT_OPTIONS = [
 ]
 
 function persistQuery() {
-  saveWorkbenchState('users', {
+  persistWorkbench({
     queryState: {
       page: currentPage.value,
       pageSize: pageSize.value,
@@ -205,11 +215,18 @@ function persistQuery() {
 
 // ---- API calls ----
 async function loadUsers() {
+  clearTimeout(searchTimer)
+  requestController?.abort()
+  const request = new AbortController()
+  requestController = request
   loading.value = true
+  loadError.value = ''
   try {
+    const page = currentPage.value
+    const ps = pageSize.value
     const params = new URLSearchParams({
-      page: String(currentPage.value),
-      pageSize: String(pageSize.value),
+      page: String(page),
+      pageSize: String(ps),
     })
     if (keyword.value.trim()) {
       params.set('keyword', keyword.value.trim())
@@ -222,21 +239,35 @@ async function loadUsers() {
       params.set('status', String(statusFilter.value))
     }
     const res = await apiRequest<PagedResult<UserItem>>(`/api/users?${params}`, {
-      headers: authHeaders.value,
+      headers: getAuthHeaders(),
+      signal: request.signal,
     })
+    if (request.signal.aborted) return
+    const lastPage = Math.max(1, Math.ceil(res.data.total / ps))
+    if (page > lastPage) {
+      currentPage.value = lastPage
+      persistQuery()
+      void loadUsers()
+      return
+    }
     users.value = res.data.items
     total.value = res.data.total
   } catch (e: any) {
+    if (request.signal.aborted) return
+    users.value = []
+    total.value = 0
+    loadError.value = e.message || '加载用户列表失败'
     Message.error({ content: e.message || '加载用户列表失败', duration: 3000 })
   } finally {
-    loading.value = false
+    if (!request.signal.aborted) loading.value = false
   }
 }
 
 async function loadRoles() {
+  if (!hasPerm('role:view')) return
   try {
     const res = await apiRequest<{ items: RoleInfo[] }>('/api/roles?pageSize=100', {
-      headers: authHeaders.value,
+      headers: getAuthHeaders(),
     })
     allRoles.value = res.data.items.map((r: any) => ({ id: r.id, name: r.name }))
   } catch {
@@ -281,7 +312,7 @@ async function handleSubmit() {
       }
       await apiRequest(`/api/users/${editingId.value}`, {
         method: 'PUT',
-        headers: authHeaders.value,
+        headers: getAuthHeaders(),
         body: JSON.stringify(body),
       })
       Message.success({ content: '用户更新成功', duration: 3000 })
@@ -289,7 +320,7 @@ async function handleSubmit() {
       // Create
       await apiRequest('/api/users', {
         method: 'POST',
-        headers: authHeaders.value,
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           username: formData.value.username.trim(),
           password: formData.value.password,
@@ -313,11 +344,11 @@ async function handleDelete(user: UserItem) {
   try {
     await apiRequest(`/api/users/${userId}`, {
       method: 'DELETE',
-      headers: authHeaders.value,
+      headers: getAuthHeaders(),
     })
     Message.success({ content: '删除成功', duration: 3000 })
     selectedRowKeys.value = selectedRowKeys.value.filter(k => k !== userId)
-    saveWorkbenchState('users', { selectedRowKeys: selectedRowKeys.value })
+    persistWorkbench({ selectedRowKeys: selectedRowKeys.value })
     await loadUsers()
   } catch (e: any) {
     Message.error({ content: e.message || '删除失败', duration: 3000 })
@@ -330,7 +361,7 @@ async function handleBatchDelete(keys = selectedRowKeys.value) {
     return
   }
   selectedRowKeys.value = keys.map(Number).filter(id => Number.isFinite(id))
-  saveWorkbenchState('users', { selectedRowKeys: selectedRowKeys.value })
+  persistWorkbench({ selectedRowKeys: selectedRowKeys.value })
   batchDeleteConfirmVisible.value = true
 }
 
@@ -338,16 +369,17 @@ async function confirmBatchDelete() {
   try {
     const res = await apiRequest<MessageResult>('/api/users/batch-delete', {
       method: 'POST',
-      headers: authHeaders.value,
+      headers: getAuthHeaders(),
       body: JSON.stringify({ ids: selectedRowKeys.value }),
     })
     Message.success({ content: res.data.message || '批量删除成功', duration: 3000 })
     batchDeleteConfirmVisible.value = false
     selectedRowKeys.value = []
-    clearWorkbenchSelection('users')
+    clearWorkbenchSelection('users', account)
     await loadUsers()
   } catch (e: any) {
     Message.error({ content: e.message || '批量删除失败', duration: 3000 })
+    return false
   }
 }
 
@@ -357,7 +389,7 @@ async function handleBatchStatus(status: 0 | 1, keys = selectedRowKeys.value) {
     return
   }
   selectedRowKeys.value = keys.map(Number).filter(id => Number.isFinite(id))
-  saveWorkbenchState('users', { selectedRowKeys: selectedRowKeys.value })
+  persistWorkbench({ selectedRowKeys: selectedRowKeys.value })
   batchStatusValue.value = status
   batchStatusConfirmVisible.value = true
 }
@@ -366,16 +398,17 @@ async function confirmBatchStatus() {
   try {
     const res = await apiRequest<MessageResult>('/api/users/batch-status', {
       method: 'POST',
-      headers: authHeaders.value,
+      headers: getAuthHeaders(),
       body: JSON.stringify({ ids: selectedRowKeys.value, status: batchStatusValue.value }),
     })
     Message.success({ content: res.data.message || '批量状态更新成功', duration: 3000 })
     batchStatusConfirmVisible.value = false
     selectedRowKeys.value = []
-    clearWorkbenchSelection('users')
+    clearWorkbenchSelection('users', account)
     await loadUsers()
   } catch (e: any) {
     Message.error({ content: e.message || '批量状态更新失败', duration: 3000 })
+    return false
   }
 }
 
@@ -428,7 +461,7 @@ const hiddenColumnKeys = computed(() => Array.from(hiddenColumns.value))
 
 function handleHiddenColumnsChange(nextHiddenKeys: string[]) {
   hiddenColumns.value = new Set(nextHiddenKeys)
-  saveWorkbenchState('users', { hiddenColumnKeys: nextHiddenKeys })
+  persistWorkbench({ hiddenColumnKeys: nextHiddenKeys })
 }
 
 const columns = computed<TableColumn[]>(() => {
@@ -553,6 +586,7 @@ const columns = computed<TableColumn[]>(() => {
 
 // ---- Pagination ----
 const paginationConfig = computed(() => ({
+  remote: true,
   current: currentPage.value,
   pageSize: pageSize.value,
   total: total.value,
@@ -587,7 +621,7 @@ function handlePageSizeChange(page: { current: number; pageSize: number }) {
 
 function handleSelectionChange(keys: (string | number)[]) {
   selectedRowKeys.value = keys.map(Number).filter(id => Number.isFinite(id))
-  saveWorkbenchState('users', { selectedRowKeys: selectedRowKeys.value })
+  persistWorkbench({ selectedRowKeys: selectedRowKeys.value })
 }
 
 // ---- Sort ----
@@ -616,16 +650,71 @@ function handleToolbarFiltersChange(filters: Record<string, TableToolbarFilterVa
 }
 
 // ---- Search ----
-const debouncedLoad = debounce(() => {
-  currentPage.value = 1
-  persistQuery()
-  loadUsers()
-}, 300)
-
 function handleSearch(val: string) {
   keyword.value = val
+  currentPage.value = 1
   persistQuery()
-  debouncedLoad()
+  clearTimeout(searchTimer)
+  requestController?.abort()
+  loading.value = true
+  searchTimer = setTimeout(() => { void loadUsers() }, 300)
+}
+
+const currentView = computed(() => userViewSnapshot({
+  keyword: keyword.value, pageSize: pageSize.value, status: statusFilter.value,
+  sortBy: sortState.value.key, sortOrder: sortState.value.direction,
+}, hiddenColumnKeys.value))
+const activeView = computed(() => userViews.value.views.find(view => view.name === userViews.value.activeViewName))
+const viewModified = computed(() => activeView.value && JSON.stringify(currentView.value) !==
+  JSON.stringify(userViewSnapshot(activeView.value.queryState, activeView.value.hiddenColumnKeys)))
+
+function persistViews(next: UserViewsState) {
+  try {
+    saveUserViews(account, next)
+    userViews.value = next
+    return true
+  } catch {
+    Message.error({ content: '保存用户视图失败，请检查浏览器存储后重试', duration: 3000 })
+    return false
+  }
+}
+
+function switchUserView(value: unknown) {
+  const name = typeof value === 'string' && value ? value : null
+  const view = userViews.value.views.find(item => item.name === name)
+  if (!persistViews({ ...userViews.value, activeViewName: view?.name ?? null })) return
+  viewName.value = view?.name ?? ''
+  selectedRowKeys.value = []
+  clearWorkbenchSelection('users', account)
+  if (view) {
+    const query = view.queryState
+    keyword.value = query.keyword
+    pageSize.value = query.pageSize
+    statusFilter.value = query.status
+    sortState.value = { key: query.sortBy, direction: query.sortOrder }
+    currentPage.value = 1
+    hiddenColumns.value = new Set(view.hiddenColumnKeys)
+    persistWorkbench({ hiddenColumnKeys: view.hiddenColumnKeys })
+    persistQuery()
+  }
+  void loadUsers()
+}
+
+function saveUserView() {
+  const name = viewName.value.trim()
+  if (!name) return
+  const view = { name, ...currentView.value }
+  const views = [...userViews.value.views.filter(item => item.name !== name), view]
+  if (persistViews({ views, activeViewName: name })) {
+    viewName.value = name
+    Message.success({ content: '用户视图已保存', duration: 3000 })
+  }
+}
+
+function deleteUserView() {
+  if (persistViews({ views: userViews.value.views.filter(view => view.name !== userViews.value.activeViewName), activeViewName: null })) {
+    viewName.value = ''
+  }
 }
 
 // ---- Bulk actions ----
@@ -717,7 +806,7 @@ function toggleExportField(key: string) {
   } else {
     exportFields.value = [...exportFields.value, key]
   }
-  saveWorkbenchState('users', {
+  persistWorkbench({
     exportState: { format: exportFormat.value, fields: exportFields.value },
   })
 }
@@ -725,7 +814,7 @@ function toggleExportField(key: string) {
 function handleExportFormatChange(value: unknown) {
   const format = value as ExportFormat
   exportFormat.value = format
-  saveWorkbenchState('users', {
+  persistWorkbench({
     exportState: { format, fields: exportFields.value },
   })
 }
@@ -733,11 +822,11 @@ function handleExportFormatChange(value: unknown) {
 async function handleExport() {
   if (exportFields.value.length === 0) {
     Message.error({ content: '请至少选择一个导出字段', duration: 3000 })
-    return
+    return false
   }
   if (total.value === 0) {
     Message.error({ content: '当前筛选没有可导出的结果', duration: 3000 })
-    return
+    return false
   }
   exporting.value = true
   try {
@@ -751,12 +840,13 @@ async function handleExport() {
         sortOrder: sortState.value.direction ?? undefined,
         status: statusFilter.value,
       },
-      headers: authHeaders.value,
+      headers: getAuthHeaders(),
     })
     Message.success({ content: '导出成功', duration: 3000 })
     exportModalVisible.value = false
   } catch (e: any) {
     Message.error({ content: e.message || '导出失败', duration: 3000 })
+    return false
   } finally {
     exporting.value = false
   }
@@ -764,8 +854,13 @@ async function handleExport() {
 
 // ---- Lifecycle ----
 onMounted(() => {
+  persistWorkbench(savedWorkbench)
   loadUsers()
   loadRoles()
+})
+onBeforeUnmount(() => {
+  clearTimeout(searchTimer)
+  requestController?.abort()
 })
 </script>
 
@@ -805,6 +900,25 @@ onMounted(() => {
 
     <div class="p2-muted-panel px-4 py-3 text-sm">
       {{ serverPaginationHint }}
+    </div>
+
+    <div class="p2-muted-panel space-y-2 p-4">
+      <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <Select aria-label="用户筛选视图" placeholder="选择已保存视图" class="w-full sm:w-52"
+          :model-value="userViews.activeViewName ?? undefined" clearable
+          :options="userViews.views.map(view => ({ label: view.name, value: view.name }))"
+          @update:model-value="switchUserView" />
+        <Input aria-label="视图名称" placeholder="视图名称" :maxlength="40" class="w-full sm:w-52" v-model="viewName" />
+        <Button variant="outline" :disabled="!account || !viewName.trim()" @click="saveUserView">保存视图</Button>
+        <Button variant="ghost" :disabled="!userViews.activeViewName" @click="deleteUserView">删除视图</Button>
+      </div>
+      <p class="p2-text-secondary text-sm" role="status">
+        <template v-if="activeView">当前视图：{{ activeView.name }}{{ viewModified ? '（已修改，尚未保存）' : '' }}。</template>
+        视图仅保存在当前浏览器的当前账号下，包含筛选、排序、每页条数和可见列；切换或重新载入视图不会恢复勾选项。
+      </p>
+    </div>
+    <div v-if="loadError" role="alert" class="p2-muted-panel flex items-center justify-between gap-3 p-4">
+      <span>{{ loadError }}</span><Button variant="outline" @click="loadUsers">重试加载用户</Button>
     </div>
 
     <ContextMenu as-child>

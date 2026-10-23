@@ -1,5 +1,7 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@expcat/tigercat-react/Button';
+import { Alert } from '@expcat/tigercat-react/Alert';
+import { Pagination } from '@expcat/tigercat-react/Pagination';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Message } from '@expcat/tigercat-react/Message';
 import { Tag } from '@expcat/tigercat-react/Tag';
@@ -21,21 +23,18 @@ import type { ImageAnnotation as ImageAnnotationItem } from '@expcat/tigercat-co
 import { PageHeader } from '../components/PageHeader';
 import { ImageIcon, ActivityIcon } from '../components/Icons';
 
-type AlbumKey = 'all' | 'product' | 'team' | 'empty';
+import { useNavigate } from 'react-router-dom';
+import { usePermission } from '../utils/permission';
+import { gallerySampleFile, getMediaDetail, listMedia, saveMediaAnnotations, uploadOrReuseMedia } from '../utils/media';
+import type { AlbumKey, GalleryImage } from '../utils/types';
 
 const ALBUM_OPTIONS = [
   { label: '全部', value: 'all' },
   { label: '产品', value: 'product' },
   { label: '团队', value: 'team' },
+  { label: '已保存', value: 'media' },
   { label: '空相册', value: 'empty' },
 ];
-
-interface GalleryImage {
-  id: string;
-  title: string;
-  album: Exclude<AlbumKey, 'all' | 'empty'>;
-  hue: number;
-}
 
 function makePlaceholder(label: string, hue: number, w = 480, h = 320): string {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="hsl(${hue},72%,56%)"/><stop offset="100%" stop-color="hsl(${(hue + 40) % 360},70%,42%)"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><text x="50%" y="50%" fill="rgba(255,255,255,0.92)" font-family="system-ui,sans-serif" font-size="30" font-weight="600" text-anchor="middle" dominant-baseline="middle">${label}</text></svg>`;
@@ -55,7 +54,7 @@ const IMAGES: GalleryImage[] = [
 const MASONRY_COLUMNS = { xs: 1, sm: 2, lg: 3 };
 const ASPECT_RATIOS = ['16/9', '4/3', '1/1'] as const;
 
-const srcOf = (img: GalleryImage) => makePlaceholder(img.title, img.hue);
+const srcOf = (img: GalleryImage) => img.media?.url ?? makePlaceholder(img.title, img.hue);
 
 function aspectRatioOf(img: GalleryImage): (typeof ASPECT_RATIOS)[number] {
   const index = IMAGES.findIndex((item) => item.id === img.id);
@@ -66,24 +65,42 @@ const compareBeforeSrc = makePlaceholder('改版前', 210);
 const compareAfterSrc = makePlaceholder('改版后', 20);
 
 function GalleryPage() {
+  const navigate = useNavigate();
+  const { has } = usePermission();
+  const canView = has('media:view');
+  const canUpload = has('media:upload');
   const [album, setAlbum] = useState<AlbumKey>('all');
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [mediaImages, setMediaImages] = useState<GalleryImage[]>([]);
+  const [mediaPage, setMediaPage] = useState(1);
+  const [mediaTotal, setMediaTotal] = useState(0);
+  const [reload, setReload] = useState(0);
+  const annotationController = useRef<AbortController | null>(null);
+  const refresh = () => setReload((value) => value + 1);
+  useEffect(() => {
+    if (!canView) return;
+    const controller = new AbortController();
+    setLoading(true);
+    setLoadError('');
+    void listMedia({ page: mediaPage, pageSize: 12, contentType: 'image/', sortOrder: 'desc' }, controller.signal)
+      .then(({ data }) => {
+        if (controller.signal.aborted) return;
+        setMediaImages(data.items.map((media) => ({ id: `media-${media.id}`, title: media.originalFileName, album: 'media', hue: 210, media })));
+        setMediaTotal(data.total);
+      }).catch((error) => { if (!controller.signal.aborted) setLoadError(error instanceof Error ? error.message : '图库加载失败'); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [canView, mediaPage, reload]);
+  useEffect(() => () => annotationController.current?.abort(), []);
 
   const filtered = useMemo<GalleryImage[]>(() => {
     if (album === 'empty') return [];
-    if (album === 'all') return IMAGES;
-    return IMAGES.filter((i) => i.album === album);
-  }, [album]);
+    const images = [...IMAGES, ...mediaImages];
+    return album === 'all' ? images : images.filter((image) => image.album === album);
+  }, [album, mediaImages]);
   const filteredSrcs = useMemo(() => filtered.map(srcOf), [filtered]);
   const featured = useMemo(() => IMAGES.slice(0, 4), []);
-
-  const refresh = () => {
-    setLoading(true);
-    window.setTimeout(() => {
-      setLoading(false);
-      Message.success({ content: '图库已刷新（演示）', duration: 1800 });
-    }, 650);
-  };
 
   // 大图查看
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -103,38 +120,95 @@ function GalleryPage() {
     setPreviewOpen(true);
   };
 
-  // 标注
   const [annotateOpen, setAnnotateOpen] = useState(false);
-  const [annotateSrc, setAnnotateSrc] = useState('');
+  const [annotateImage, setAnnotateImage] = useState<GalleryImage | null>(null);
   const [annotations, setAnnotations] = useState<ImageAnnotationItem[]>([]);
-  const openAnnotate = (img: GalleryImage) => {
-    setAnnotateSrc(srcOf(img));
+  const [annotationLoading, setAnnotationLoading] = useState(false);
+  const [annotationSaving, setAnnotationSaving] = useState(false);
+  const [annotationError, setAnnotationError] = useState('');
+  const [annotationSaveError, setAnnotationSaveError] = useState('');
+  const [annotationMediaId, setAnnotationMediaId] = useState<number | null>(null);
+  const openAnnotate = async (img: GalleryImage) => {
+    annotationController.current?.abort();
+    const controller = new AbortController();
+    annotationController.current = controller;
+    setAnnotateImage(img);
+    setAnnotationMediaId(img.media?.id ?? null);
     setAnnotations([]);
+    setAnnotationError('');
+    setAnnotationSaveError('');
     setAnnotateOpen(true);
+    setAnnotationLoading(!!img.media);
+    if (!img.media) return;
+    try {
+      const { data } = await getMediaDetail(img.media.id, controller.signal);
+      if (!controller.signal.aborted) setAnnotations(data.annotations);
+    } catch (error) {
+      if (!controller.signal.aborted) setAnnotationError(error instanceof Error ? error.message : '标注加载失败');
+    } finally {
+      if (!controller.signal.aborted) setAnnotationLoading(false);
+    }
+  };
+  const closeAnnotate = () => {
+    if (annotationSaving) return;
+    annotationController.current?.abort();
+    setAnnotateOpen(false);
+  };
+  const saveAnnotations = async () => {
+    if (!annotateImage || !canUpload || annotationSaving || annotationLoading || annotationError) return;
+    setAnnotationSaving(true);
+    setAnnotationSaveError('');
+    try {
+      let id = annotationMediaId;
+      if (!id) {
+        const file = await gallerySampleFile(srcOf(annotateImage), annotateImage.title);
+        const media = await uploadOrReuseMedia(file);
+        id = media.id;
+        setAnnotationMediaId(id);
+      }
+      await saveMediaAnnotations(id, annotations);
+      Message.success({ content: '标注已保存，刷新后可继续编辑', duration: 2200 });
+      setAnnotateOpen(false);
+      setAlbum('media');
+      setMediaPage(1);
+      refresh();
+    } catch (error) {
+      setAnnotationSaveError(error instanceof Error ? error.message : '标注保存失败，请重试');
+    } finally { setAnnotationSaving(false); }
   };
 
-  // 裁剪
   const [cropOpen, setCropOpen] = useState(false);
-  const [cropSrc, setCropSrc] = useState('');
+  const [cropImage, setCropImage] = useState<GalleryImage | null>(null);
+  const [cropReady, setCropReady] = useState(false);
+  const [cropSaving, setCropSaving] = useState(false);
+  const [cropError, setCropError] = useState('');
   const cropperRef = useRef<ImageCropperRef>(null);
   const openCrop = (img: GalleryImage) => {
-    setCropSrc(srcOf(img));
+    setCropImage(img);
+    setCropReady(false);
+    setCropError('');
     setCropOpen(true);
   };
+  const closeCrop = () => { if (!cropSaving) setCropOpen(false); };
   const applyCrop = async () => {
+    if (!cropImage || !cropReady || !canUpload || cropSaving) return;
+    setCropSaving(true);
+    setCropError('');
     try {
       const result = await cropperRef.current?.getCropResult();
-      if (result) {
-        const { width, height } = result.cropRect;
-        Message.success({
-          content: `已裁剪区域 ${Math.round(width)} × ${Math.round(height)}（演示）`,
-          duration: 2200,
-        });
-      }
-    } catch {
-      Message.warning({ content: '裁剪未完成（演示）', duration: 1800 });
-    }
-    setCropOpen(false);
+      if (!result) throw new Error('裁剪器尚未就绪');
+      const decoded = await createImageBitmap(result.blob);
+      const { width, height } = decoded;
+      decoded.close();
+      await uploadOrReuseMedia(new File([result.blob], `${cropImage.title}-crop.png`, { type: result.blob.type || 'image/png' }));
+      Message.success({ content: `裁剪已保存：${width} × ${height} 像素`, duration: 2600 });
+      setCropOpen(false);
+      setAlbum('media');
+      setMediaPage(1);
+      refresh();
+    } catch (error) {
+      setCropError(error instanceof Error ? error.message : '裁剪保存失败，请重试');
+    } finally { setCropSaving(false); }
   };
 
   return (
@@ -179,6 +253,8 @@ function GalleryPage() {
         </div>
       </Card>
 
+      {loadError && <Alert type="error" title="已保存图片加载失败" description={loadError} action={<Button onClick={refresh}>重试</Button>} />}
+      {!canView && <Alert type="info" title="当前账号无媒体读取权限，仅展示示例素材" />}
       {loading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, n) => (
@@ -204,7 +280,7 @@ function GalleryPage() {
                       {img.title}
                     </Text>
                     <Tag size="sm" variant="info">
-                      {img.album === 'product' ? '产品' : '团队'}
+                      {img.album === 'product' ? '产品' : img.album === 'team' ? '团队' : '已保存'}
                     </Tag>
                   </div>
                 </div>
@@ -215,9 +291,10 @@ function GalleryPage() {
                   <Button size="sm" variant="ghost" onClick={() => openAnnotate(img)}>
                     标注
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => openCrop(img)}>
+                  <Button size="sm" variant="ghost" disabled={!canUpload} onClick={() => openCrop(img)}>
                     裁剪
                   </Button>
+                  {img.media && <Button size="sm" variant="ghost" onClick={() => navigate(`/files/${img.media!.id}`)}>媒体详情</Button>}
                 </div>
               </Card>
             ))}
@@ -229,6 +306,7 @@ function GalleryPage() {
         </Card>
       )}
 
+      {canView && (album === 'media' || album === 'all') && <Pagination current={mediaPage} pageSize={12} total={mediaTotal} onChange={setMediaPage} />}
       <Card header={<Text weight="bold">版本对比</Text>}>
         <Text size="sm" color="secondary" className="mb-3 block">
           拖动滑块对比改版前后的产品封面（演示占位图，不接入上传）。
@@ -256,35 +334,31 @@ function GalleryPage() {
 
       <ImagePreview images={filteredSrcs} open={previewOpen} onOpenChange={setPreviewOpen} />
 
-      <Drawer placement="right" open={annotateOpen} title="图片标注" width="560px" mask maskClosable onClose={() => setAnnotateOpen(false)}>
-        {annotateOpen && (
-          <div className="space-y-3">
-            <ImageAnnotation
-              src={annotateSrc}
-              value={annotations}
-              tools={['select', 'rectangle', 'ellipse']}
-              defaultTool="rectangle"
-              onChange={(next) => setAnnotations(next)}
-            />
-            <Text size="sm" color="secondary">
-              已标注 {annotations.length} 个区域（演示，刷新后重置）。
-            </Text>
+      <Drawer placement="right" open={annotateOpen} title="图片标注" width="560px" mask maskClosable={!annotationSaving} closable={!annotationSaving} onClose={closeAnnotate}>
+        {annotateOpen && annotateImage && <div className="space-y-3">
+          {annotationError ? <Alert type="error" title={annotationError} action={<Button onClick={() => void openAnnotate(annotateImage)}>重试</Button>} /> : annotationLoading ? <Text>正在读取标注…</Text> :
+            <ImageAnnotation src={srcOf(annotateImage)} value={annotations} disabled={annotationSaving} readonly={!canUpload}
+              tools={['select', 'rectangle', 'ellipse', 'polygon', 'freehand']} defaultTool="rectangle" onChange={setAnnotations} />}
+          <Text size="sm" color="secondary">已标注 {annotations.length} 个区域；保存后可从“已保存”相册恢复。</Text>
+          {annotationSaveError && <Alert type="error" title={annotationSaveError} />}
+          {!canUpload && <Text color="secondary">当前账号无标注写入权限</Text>}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" disabled={annotationSaving} onClick={closeAnnotate}>取消</Button>
+            <Button disabled={!canUpload || annotationSaving || annotationLoading || !!annotationError} onClick={() => void saveAnnotations()}>{annotationSaving ? '正在保存…' : '保存标注'}</Button>
           </div>
-        )}
+        </div>}
       </Drawer>
 
-      <Drawer placement="right" open={cropOpen} title="图片裁剪" width="560px" mask maskClosable onClose={() => setCropOpen(false)}>
-        {cropOpen && (
-          <div className="space-y-3">
-            <ImageCropper ref={cropperRef} src={cropSrc} aspectRatio={16 / 9} />
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setCropOpen(false)}>
-                取消
-              </Button>
-              <Button onClick={applyCrop}>应用裁剪</Button>
-            </div>
+      <Drawer placement="right" open={cropOpen} title="图片裁剪" width="560px" mask maskClosable={!cropSaving} closable={!cropSaving} onClose={closeCrop}>
+        {cropOpen && cropImage && <div className="space-y-3">
+          <div inert={cropSaving}><ImageCropper ref={cropperRef} src={srcOf(cropImage)} aspectRatio={16 / 9}
+            onReady={() => setCropReady(true)} onError={(error) => { setCropReady(false); setCropError(error.message); }} /></div>
+          {cropError && <Alert type="error" title={cropError} />}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" disabled={cropSaving} onClick={closeCrop}>取消</Button>
+            <Button disabled={!canUpload || !cropReady || cropSaving} onClick={() => void applyCrop()}>{cropSaving ? '正在保存…' : '应用裁剪'}</Button>
           </div>
-        )}
+        </div>}
       </Drawer>
     </div>
   );

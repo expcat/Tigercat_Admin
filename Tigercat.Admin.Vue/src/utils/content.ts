@@ -1,28 +1,8 @@
 import { apiRequest } from './request';
 import { getAuthHeaders } from './auth';
 
-export type ArticleEditorType = 'rich' | 'markdown' | 'code';
-
-export interface Article {
-  id: string;
-  title: string;
-  editorType: ArticleEditorType;
-  body: string;
-  tags: string[];
-  category: string;
-  column: string[];
-  published: boolean;
-}
-
-export interface SaveArticlePayload {
-  title: string;
-  editorType: ArticleEditorType;
-  body: string;
-  tags: string[];
-  category: string;
-  column: string[];
-  published: boolean;
-}
+import type { Article, ArticleEditorType, SaveArticlePayload } from './types';
+export type { Article, ArticleEditorType, SaveArticlePayload } from './types';
 
 export function fetchArticles() {
   return apiRequest<Article[]>('/api/content/articles', {
@@ -30,9 +10,10 @@ export function fetchArticles() {
   });
 }
 
-export function fetchArticle(id: string) {
+export function fetchArticle(id: string, signal?: AbortSignal) {
   return apiRequest<Article>(`/api/content/articles/${encodeURIComponent(id)}`, {
     headers: getAuthHeaders(),
+    signal,
   });
 }
 

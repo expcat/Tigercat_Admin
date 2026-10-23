@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Form } from '@expcat/tigercat-react/Form';
@@ -10,7 +10,6 @@ import { Alert } from '@expcat/tigercat-react/Alert';
 import { Countdown } from '@expcat/tigercat-react/Countdown';
 import { InputOTP } from '@expcat/tigercat-react/InputOTP';
 import {
-  debounce,
   useAuthForm,
   apiRequest,
   DEMO_OTP_CODE,
@@ -19,15 +18,26 @@ import {
   type LoginData,
   type Session,
 } from '../utils';
+import type { FormRules } from '@expcat/tigercat-core';
 import { LogoIcon } from '../components/Icons';
 
+const authRules: FormRules = {
+  username: { required: true, transform: (value) => String(value ?? '').trim(), message: '请输入用户名' },
+  password: { required: true, message: '请输入密码' },
+};
+
 interface LoginPageProps {
-  onSuccess: (session: Session) => void;
+  onSuccess: (session: Session) => void | Promise<void>;
 }
 
 function LoginPage({ onSuccess }: LoginPageProps) {
   const navigate = useNavigate();
-  const { form, errors, setField, validateForm } = useAuthForm({
+  const location = useLocation();
+  const requestRef = useRef<AbortController | null>(null);
+  const usernameRef = useRef<HTMLInputElement>(null);
+  const otpRef = useRef<HTMLInputElement>(null);
+  useEffect(() => () => requestRef.current?.abort(), []);
+  const { form, setField } = useAuthForm({
     username: '',
     password: '',
   });
@@ -52,103 +62,81 @@ function LoginPage({ onSuccess }: LoginPageProps) {
     setStep('otp');
   };
 
-  const doLogin = useMemo(
-    () =>
-      debounce(async () => {
-        try {
-          const payload = await apiRequest<LoginData>('/api/auth/login', {
-            method: 'POST',
-            body: JSON.stringify(form),
-          });
-          const data = payload?.data;
-          if (data?.requiresTwoFactor) {
-            startOtp(data.username || form.username || '', data.challengeId);
-            return;
-          }
-          if (!data?.token || !data.username || !data.expiresAt) {
-            throw new Error('API request failed');
-          }
-          onSuccess({
-            token: data.token,
-            username: data.username,
-            expiresAt: data.expiresAt,
-          });
-        } catch (error: any) {
-          Message.error({
-            content: error.message,
-            duration: 3000,
-          });
-        } finally {
-          setLoading(false);
-        }
-      }, 300),
-    [form, onSuccess],
-  );
-
-  const doVerify = useMemo(
-    () =>
-      debounce(async () => {
-        try {
-          const payload = await apiRequest<Session>('/api/auth/two-factor/verify', {
-            method: 'POST',
-            body: JSON.stringify({
-              username: otpUsername,
-              code: otpCode,
-              challengeId: otpChallengeId || undefined,
-            }),
-          });
-          const data = payload?.data;
-          if (!data?.token || !data.username || !data.expiresAt) {
-            throw new Error('API request failed');
-          }
-          onSuccess({
-            token: data.token,
-            username: data.username,
-            expiresAt: data.expiresAt,
-          });
-        } catch (error: any) {
-          const content = error.message || '验证码错误';
-          setOtpNotice('');
-          setOtpError(content);
-          Message.error({
-            content,
-            duration: 3000,
-          });
-        } finally {
-          setLoading(false);
-        }
-      }, 300),
-    [otpCode, otpUsername, otpChallengeId, onSuccess],
-  );
-
-  const handleLogin = () => {
-    if (!validateForm()) return;
+  const handleLogin = async (resend = false) => {
+    if (requestRef.current && !requestRef.current.signal.aborted) return;
+    const request = new AbortController();
+    requestRef.current = request;
     setLoading(true);
-    doLogin();
+    setOtpError('');
+    setOtpNotice('');
+    try {
+      const payload = await apiRequest<LoginData>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ ...form, username: form.username?.trim() }),
+        signal: request.signal,
+      });
+      if (request.signal.aborted) return;
+      const data = payload?.data;
+      if (data?.requiresTwoFactor) {
+        startOtp(data.username || form.username?.trim() || '', data.challengeId);
+        if (resend) setOtpNotice('验证码已重新获取，演示验证码：' + DEMO_OTP_CODE);
+      } else {
+        if (!data?.token || !data.username || !data.expiresAt) throw new Error('登录响应不完整，请重试');
+        await onSuccess({ token: data.token, username: data.username, expiresAt: data.expiresAt });
+      }
+    } catch (error: unknown) {
+      if (request.signal.aborted) return;
+      const content = error instanceof Error ? error.message : '登录失败，请重试';
+      if (resend) setOtpError(content);
+      Message.error({ content, duration: 3000 });
+    } finally {
+      if (requestRef.current === request && !request.signal.aborted) {
+        requestRef.current = null;
+        setLoading(false);
+      }
+    }
   };
 
-  const handleVerify = () => {
-    if (otpCode.length !== OTP_LENGTH) {
-      Message.warning({ content: '请输入 6 位验证码', duration: 2000 });
-      return;
-    }
+  const handleVerify = async () => {
+    if (requestRef.current || otpCode.length !== OTP_LENGTH) return;
+    const request = new AbortController();
+    requestRef.current = request;
     setLoading(true);
-    doVerify();
+    setOtpError('');
+    setOtpNotice('');
+    try {
+      const payload = await apiRequest<Session>('/api/auth/two-factor/verify', {
+        method: 'POST',
+        body: JSON.stringify({ username: otpUsername, code: otpCode, challengeId: otpChallengeId || undefined }),
+        signal: request.signal,
+      });
+      if (request.signal.aborted) return;
+      const data = payload?.data;
+      if (!data?.token || !data.username || !data.expiresAt) throw new Error('登录响应不完整，请重试');
+      await onSuccess(data);
+    } catch (error: unknown) {
+      if (request.signal.aborted) return;
+      const content = error instanceof Error ? error.message : '验证码校验失败，请重试';
+      setOtpError(content);
+      Message.error({ content, duration: 3000 });
+      requestAnimationFrame(() => otpRef.current?.focus());
+    } finally {
+      if (requestRef.current === request && !request.signal.aborted) {
+        requestRef.current = null;
+        setLoading(false);
+      }
+    }
   };
 
   const handleResend = () => {
-    if (!otpCanResend) return;
-    setOtpCode('');
-    setOtpCanResend(false);
-    setOtpDeadline(Date.now() + OTP_RESEND_MS);
-    setOtpError('');
-    const notice = '已重新发送，演示验证码：' + DEMO_OTP_CODE;
-    setOtpNotice(notice);
-    Message.success({ content: notice, duration: 2000 });
+    if (otpCanResend && !loading) void handleLogin(true);
   };
 
   const backToLogin = () => {
+    requestRef.current?.abort();
+    requestRef.current = null;
     setStep('login');
+    requestAnimationFrame(() => usernameRef.current?.focus());
     setOtpCode('');
     setOtpUsername('');
     setOtpChallengeId('');
@@ -160,11 +148,11 @@ function LoginPage({ onSuccess }: LoginPageProps) {
   };
 
   const goToRegister = () => {
-    navigate('/register');
+    navigate('/register', { state: location.state });
   };
 
   const goToForgotPassword = () => {
-    navigate('/forgot-password');
+    navigate('/forgot-password', { state: location.state });
   };
 
   return (
@@ -232,14 +220,15 @@ function LoginPage({ onSuccess }: LoginPageProps) {
             </div>
 
             <Card variant="transparent" className="p-0">
-              <Form value={form as unknown as Record<string, unknown>} labelWidth={88}>
+              <Form value={form as unknown as Record<string, unknown>} rules={authRules} labelWidth={88} loading={loading} onSubmit={({ valid }) => { if (valid) void handleLogin(); }}>
                 <FormItem name="username" label="用户名">
                   <Input
+                    ref={usernameRef}
                     value={form.username || ''}
                     placeholder="请输入用户名"
                     onChange={(value) => setField('username', value)}
-                    status={errors?.username ? 'error' : undefined}
-                    errorMessage={errors?.username}
+                    autoComplete="username"
+                    disabled={loading}
                   />
                 </FormItem>
                 <FormItem name="password" label="密码">
@@ -248,8 +237,8 @@ function LoginPage({ onSuccess }: LoginPageProps) {
                     type="password"
                     placeholder="请输入密码"
                     onChange={(value) => setField('password', value)}
-                    status={errors?.password ? 'error' : undefined}
-                    errorMessage={errors?.password}
+                    autoComplete="current-password"
+                    disabled={loading}
                   />
                 </FormItem>
                 <div className="mt-2 mb-2 text-right">
@@ -266,8 +255,7 @@ function LoginPage({ onSuccess }: LoginPageProps) {
                     variant="primary"
                     block
                     loading={loading}
-                    type="button"
-                    onClick={handleLogin}
+                    type="submit"
                   >
                     登录
                   </Button>
@@ -306,12 +294,16 @@ function LoginPage({ onSuccess }: LoginPageProps) {
                 {otpNotice ? <Alert type="success" title={otpNotice} showIcon /> : null}
                 <div data-testid="auth-otp-input" className="flex justify-center">
                   <InputOTP
+                    ref={otpRef}
                     value={otpCode}
                     length={OTP_LENGTH}
                     type="numeric"
                     autoFocus
                     ariaLabel="验证码"
-                    onChange={setOtpCode}
+                    disabled={loading}
+                    status={otpError ? 'error' : undefined}
+                    onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void handleVerify(); } }}
+                    onChange={(value) => { setOtpCode(value); setOtpError(''); }}
                   />
                 </div>
                 <div className="flex items-center justify-center min-h-8">
@@ -319,17 +311,18 @@ function LoginPage({ onSuccess }: LoginPageProps) {
                     <Countdown
                       value={otpDeadline}
                       format="s"
-                      suffix="秒后可重发"
-                      title="验证码已发送"
+                      suffix="秒后可重新获取"
+                      title="演示验证码"
                       onFinish={() => setOtpCanResend(true)}
                     />
                   ) : (
                     <button
                       type="button"
                       className="text-sm font-medium text-[var(--tiger-primary,#3b82f6)] hover:underline"
+                      disabled={loading}
                       onClick={handleResend}
                     >
-                      重新发送验证码
+                      重新获取验证码
                     </button>
                   )}
                 </div>

@@ -3,12 +3,10 @@ import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Tag } from '@expcat/tigercat-react/Tag';
 import { Text } from '@expcat/tigercat-react/Text';
+import { VirtualList, VirtualTable, TaskBoard } from '../utils/lazyTigercat';
 import { useDrag } from '@expcat/tigercat-react/useDrag';
 import { Tabs } from '@expcat/tigercat-react/Tabs';
 import { TabPane } from '@expcat/tigercat-react/TabPane';
-import { VirtualList } from '@expcat/tigercat-react/VirtualList';
-import { VirtualTable } from '@expcat/tigercat-react/VirtualTable';
-import { TaskBoard } from '@expcat/tigercat-react/TaskBoard';
 import type {
   DragItem,
   TaskBoardSwimlane,
@@ -258,10 +256,15 @@ function PerformancePage() {
     getDropZoneProps,
     reorder,
     isDragging,
+    state,
+    startDrag,
+    drop,
+    endDrag,
   } = useDrag({
     containerId: 'performance-queue',
     config: { axis: 'vertical', dragClass: 'opacity-50' },
     onDrop: handleDragDrop,
+    onDragEnd: ({ cancelled }) => { if (cancelled) setLastReorder('已取消排序，顺序未改变'); },
   });
 
   const kanbanCardCount = countKanbanCards(kanbanColumns);
@@ -269,8 +272,19 @@ function PerformancePage() {
 
   const handleTabChange = (key: string | number) => {
     if (key === 'list' || key === 'table' || key === 'drag' || key === 'kanban') {
+      endDrag(true);
       setActiveTab(key);
     }
+  };
+
+  const handleDragKeyDown = (item: QueueItem, event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === ' ' || event.key === 'Enter') {
+      event.preventDefault();
+      if (!isDragging) startDrag(item);
+      else if (state.draggedItem?.id === item.id) drop();
+      return;
+    }
+    asDivProps(getDragItemProps(item)).onKeyDown?.(event);
   };
 
   function handleDragDrop() {
@@ -343,7 +357,7 @@ function PerformancePage() {
 
       <PageActionPanel
         title="页面内造数，不走后端"
-        description="四个演示都在本页内存生成。VirtualList / VirtualTable 用子路径导入；拖拽使用包入口的 useDrag（v1.5.0 没有 /Drag 组件）；看板用 TaskBoard 泳道，区别于「任务面板」接后端任务流的那一块。"
+        description="四组数据均为页面内存示例，刷新后恢复初始值。日志与表格在各自区域内滚动；排序和看板移动仅影响本页。"
       />
 
       <Tabs activeKey={activeTab} lazy onChange={handleTabChange}>
@@ -390,11 +404,12 @@ function PerformancePage() {
           <div className="space-y-4" data-testid="performance-virtual-table">
             <MutedPanel
               title="VirtualTable"
-              description="10,000 行多列表格，开启 stickyHeader，并设置 rowHeight / height。窄屏下表格区域可横向滚动。"
+              description="10,000 行多列表格，开启 stickyHeader，并设置 virtualItemHeight / virtualHeight。窄屏下表格区域可横向滚动。"
             />
             <Card className="overflow-hidden p-0">
               <div className="overflow-x-auto">
                 <VirtualTable
+                  className="whitespace-nowrap"
                   dataSource={tableRows}
                   columns={TABLE_COLUMNS}
                   rowKey="id"
@@ -413,13 +428,13 @@ function PerformancePage() {
           <div className="space-y-4" data-testid="performance-drag-list">
             <MutedPanel
               title="useDrag"
-              description="这是包入口的 useDrag 可排序队列，不是 TaskBoard。拖动卡片调整顺序后，下方展示最新排列结果。"
+              description="拖动卡片可调整顺序。键盘聚焦卡片后按空格或 Enter 开始，方向键移动，再按空格或 Enter 提交，Esc 取消。触摸时按住卡片移动，松开提交。"
             />
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Text size="sm" color="secondary">
-                {isDragging ? '正在拖拽…' : lastReorder}
-              </Text>
-              <Button variant="outline" size="sm" onClick={resetDragItems}>
+              <div role="status"><Text size="sm" color="secondary">
+                {isDragging ? `正在拖拽，目标第 ${state.targetIndex + 1} 位` : lastReorder}
+              </Text></div>
+              <Button variant="outline" size="sm" disabled={isDragging} onClick={resetDragItems}>
                 恢复顺序
               </Button>
             </div>
@@ -432,7 +447,14 @@ function PerformancePage() {
                   <div
                     key={item.id}
                     {...itemProps}
-                    className={`cursor-grab rounded-lg border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-card,#fff) p-3 select-none ${itemProps.className ?? ''}`}>
+                    tabIndex={0}
+                    role="button"
+                    aria-roledescription="可排序任务"
+                    aria-label={`${item.data.title}，第 ${item.index + 1} 位`}
+                    aria-pressed={isDragging && state.draggedItem?.id === item.id}
+                    onKeyDown={(event) => handleDragKeyDown(item, event)}
+                    onBlur={() => { if (state.draggedItem?.id === item.id) endDrag(true); }}
+                    className={`touch-none cursor-grab rounded-lg border border-(--tiger-border,#e5e7eb) bg-(--tiger-bg-card,#fff) p-3 select-none ${itemProps.className ?? ''}`}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <Text weight="medium">{item.data.title}</Text>

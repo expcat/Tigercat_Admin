@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { notification } from '@expcat/tigercat-react';
+import { notification } from '@expcat/tigercat-react/notification';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Dropdown, DropdownItem, DropdownMenu } from '@expcat/tigercat-react/Dropdown';
 import { BackTop } from '@expcat/tigercat-react/BackTop';

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { Avatar } from '@expcat/tigercat-vue/Avatar'
-import { Icon as TigerIcon } from '@expcat/tigercat-vue/Icon'
-import type { IconDefinition } from '@expcat/tigercat-core/icons/registry'
+import { FullscreenButton } from '@expcat/tigercat-vue/FullscreenButton'
+import { Message } from '@expcat/tigercat-vue/Message'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,26 +21,7 @@ import NotificationBell from './NotificationBell.vue'
 import ThemeConfigDrawer from './ThemeConfigDrawer.vue'
 import type { ThemeMode, ThemePreferences } from '../utils/types'
 import { resolveEffectiveMode } from '../utils/theme'
-import {
-  isDocumentFullscreen,
-  toggleDocumentFullscreen,
-} from '../utils/fullscreen'
-
-const ENTER_FULLSCREEN_ICON: IconDefinition = {
-  viewBox: '0 0 24 24',
-  mode: 'stroke',
-  paths: [
-    'M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 20.25h-4.5m4.5 0v-4.5m0 4.5L15 15',
-  ],
-}
-
-const EXIT_FULLSCREEN_ICON: IconDefinition = {
-  viewBox: '0 0 24 24',
-  mode: 'stroke',
-  paths: [
-    'M9 9 3.75 3.75M9 9H4.5M9 9V4.5M15 9l5.25-5.25M15 9h4.5M15 9V4.5M9 15l-5.25 5.25M9 15H4.5M9 15v4.5M15 15l5.25 5.25M15 15h4.5M15 15v4.5',
-  ],
-}
+import { usePermission } from '../utils/permission'
 
 interface Session {
   username: string
@@ -67,28 +48,12 @@ defineEmits<{
 }>()
 
 const themeDrawerOpen = ref(false)
-const fullscreen = ref(false)
+const { has } = usePermission()
 const themeMode = computed(() => props.themePrefs.mode)
-const fullscreenIcon = computed(() =>
-  fullscreen.value ? EXIT_FULLSCREEN_ICON : ENTER_FULLSCREEN_ICON,
-)
 
-function syncFullscreen() {
-  fullscreen.value = isDocumentFullscreen()
+function handleFullscreenError() {
+  Message.error({ content: '全屏切换失败，请重试', duration: 3000 })
 }
-
-function handleToggleFullscreen() {
-  void toggleDocumentFullscreen().catch(() => undefined)
-}
-
-onMounted(() => {
-  syncFullscreen()
-  document.addEventListener('fullscreenchange', syncFullscreen)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('fullscreenchange', syncFullscreen)
-})
 
 function getThemeIcon(mode: ThemeMode): string {
   if (mode === 'system') return 'monitor'
@@ -146,16 +111,12 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
       >
         演示模式
       </Tag>
-      <button
-        type="button"
+      <FullscreenButton
         data-testid="shell-fullscreen-toggle"
-        :aria-label="fullscreen ? '退出全屏' : '进入全屏'"
-        :title="fullscreen ? '退出全屏' : '进入全屏'"
-        class="hidden h-10 w-10 items-center justify-center rounded-lg text-(--tiger-text,#1f2937) transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9) lg:flex"
-        @click="handleToggleFullscreen"
-      >
-        <TigerIcon :icon="fullscreenIcon" size="md" />
-      </button>
+        :labels="{ enterAriaLabel: '进入全屏', exitAriaLabel: '退出全屏' }"
+        class="!hidden h-10 w-10 shrink-0 lg:!inline-flex"
+        @error="handleFullscreenError"
+      />
       <button
         type="button"
         data-testid="shell-theme-config-trigger"
@@ -168,7 +129,7 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
         <Icon name="palette" :size="20" />
       </button>
       <slot name="chat-dock" />
-      <NotificationBell />
+      <NotificationBell v-if="has('notification:view')" />
       <Dropdown trigger="click" placement="bottom-end" :show-arrow="false">
         <template #trigger="{ open }">
           <button

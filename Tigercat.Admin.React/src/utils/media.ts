@@ -1,10 +1,12 @@
+import type { ImageAnnotation } from '@expcat/tigercat-core';
 import { getAuthHeaders } from './auth';
 import { ApiError, apiRequest } from './request';
-import type { MediaDetail, MediaItem, MessageResult, PagedResult } from './types';
+import type { DuplicateMediaResult, MediaDetail, MediaItem, MessageResult, PagedResult } from './types';
 
 export async function uploadMediaFile(
   file: File,
   usage?: 'logo' | 'avatar' | 'file',
+  signal?: AbortSignal,
 ): Promise<MediaItem> {
   const form = new FormData();
   form.append('file', file);
@@ -12,34 +14,22 @@ export async function uploadMediaFile(
     form.append('usage', usage);
   }
 
-  const response = await fetch('/api/media', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: form,
+  const response = await apiRequest<MediaItem>('/api/media', {
+    method: 'POST', headers: getAuthHeaders(), body: form, signal,
   });
-
-  const payload = await response.json().catch(() => null);
-  if (!response.ok || payload?.success === false) {
-    throw new ApiError(
-      payload?.message || response.statusText || '上传失败',
-      response.status,
-      payload?.code,
-      payload?.data,
-    );
-  }
-
-  return payload.data as MediaItem;
+  return response.data;
 }
 
 export function uploadMediaBlob(
   blob: Blob,
   fileName: string,
   usage: 'logo' | 'avatar' | 'file',
+  signal?: AbortSignal,
 ): Promise<MediaItem> {
   const file = new File([blob], fileName, {
     type: blob.type || 'image/png',
   });
-  return uploadMediaFile(file, usage);
+  return uploadMediaFile(file, usage, signal);
 }
 
 export function listMedia(params: {
@@ -49,7 +39,7 @@ export function listMedia(params: {
   contentType?: string;
   sortBy?: string;
   sortOrder?: string;
-}) {
+}, signal?: AbortSignal) {
   const search = new URLSearchParams({
     page: String(params.page ?? 1),
     pageSize: String(params.pageSize ?? 100),
@@ -61,12 +51,14 @@ export function listMedia(params: {
 
   return apiRequest<PagedResult<MediaItem>>(`/api/media?${search}`, {
     headers: getAuthHeaders(),
+    signal,
   });
 }
 
-export function getMediaDetail(id: number) {
+export function getMediaDetail(id: number, signal?: AbortSignal) {
   return apiRequest<MediaDetail>(`/api/media/${id}`, {
     headers: getAuthHeaders(),
+    signal,
   });
 }
 
@@ -84,4 +76,44 @@ export function batchDeleteMedia(ids: number[], force = false) {
     headers: getAuthHeaders(),
     body: JSON.stringify({ ids, force }),
   });
+}
+
+export function saveMediaAnnotations(id: number, annotations: ImageAnnotation[]) {
+  return apiRequest<MediaDetail>(`/api/media/${id}/annotations`, {
+    method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ annotations }),
+  });
+}
+
+/** Reuse the server's identical resource for attachment/crop saves. */
+export async function uploadOrReuseMedia(file: File, signal?: AbortSignal): Promise<MediaItem> {
+  try {
+    return await uploadMediaFile(file, 'file', signal);
+  } catch (error) {
+    const existing = error instanceof ApiError && error.status === 409
+      ? (error.data as DuplicateMediaResult | undefined)?.existing : undefined;
+    if (existing) return existing;
+    throw error;
+  }
+}
+
+export function formatMediaBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+/** Materialize a gallery example only when the user saves its annotations. */
+export async function gallerySampleFile(src: string, name: string): Promise<File> {
+  const image = new Image();
+  image.src = src;
+  await image.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('无法生成图片');
+  context.drawImage(image, 0, 0);
+  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(
+    (value) => value ? resolve(value) : reject(new Error('无法生成图片')), 'image/png'));
+  return new File([blob], `${name}.png`, { type: 'image/png' });
 }

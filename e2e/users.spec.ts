@@ -1,4 +1,4 @@
-import { escapeRegExp, expect, test, uniqueSuffix } from './fixtures/auth';
+import { escapeRegExp, expect, SESSION_KEY, test, uniqueSuffix } from './fixtures/auth';
 import type { Page } from '@playwright/test';
 
 const SEARCH_PLACEHOLDER = '搜索用户名或显示名...';
@@ -267,5 +267,128 @@ test.describe('用户管理主流程', () => {
     await expect(userRow(page, username).getByRole('checkbox')).toBeChecked();
 
     await deleteUser(page, username);
+  });
+
+  test('命名视图保存筛选排序与列，切换和重载不恢复选择且按账号隔离', async ({ page, logout }) => {
+    test.setTimeout(60_000);
+    const signIn = async (account: string, password: string) => {
+      await page.goto('/login');
+      await page.getByRole('textbox', { name: '用户名', exact: true }).fill(account);
+      await page.getByRole('textbox', { name: '密码', exact: true }).fill(password);
+      await page.getByRole('button', { name: '登录', exact: true }).click();
+      await expect(page).toHaveURL(/\/(dashboard|users)$/);
+    };
+    const username = `e2e_view_${uniqueSuffix()}`;
+    await gotoUsers(page);
+    await createUser(page, { username, password: 'e2e_pass123', role: 'Admin' });
+    try {
+      // InMemory API tests keep authentication records separate from management users.
+      const registration = await page.request.post('/api/auth/register', {
+        data: { username, password: 'e2e_pass123' },
+      });
+      expect(registration.ok()).toBe(true);
+      await searchUser(page, 'admin');
+      await page.getByRole('button', { name: /^按 用户名 排序/ }).click();
+      await page.waitForLoadState('networkidle');
+      await checkUserRow(page, 'admin');
+      await page.getByRole('button', { name: '打开列设置' }).click();
+      const createdAtColumn = page.getByRole('checkbox', { name: '创建时间', exact: true });
+      await createdAtColumn.focus();
+      await page.keyboard.press('Space');
+      await expect(createdAtColumn).not.toBeChecked();
+      await page.keyboard.press('Escape');
+      await page.getByRole('textbox', { name: '视图名称', exact: true }).fill('管理员视图');
+      await page.getByRole('button', { name: '保存视图', exact: true }).click();
+
+      await searchUser(page, username);
+      await page.getByRole('textbox', { name: '视图名称', exact: true }).fill('测试用户视图');
+      await page.getByRole('button', { name: '保存视图', exact: true }).click();
+      await checkUserRow(page, username);
+      await page.getByRole('combobox', { name: '用户筛选视图' }).click();
+      await page.getByRole('option', { name: '管理员视图', exact: true }).click();
+      await expect(page.getByPlaceholder(SEARCH_PLACEHOLDER)).toHaveValue('admin');
+      await expect(userRow(page, 'admin').getByRole('checkbox')).not.toBeChecked();
+      await expect(page.getByRole('columnheader', { name: /创建时间/ })).toHaveCount(0);
+      await expect(page.getByRole('columnheader', { name: /用户名/ })).toHaveAttribute('aria-sort', 'ascending');
+      await checkUserRow(page, 'admin');
+      await page.reload();
+      await expect(page.getByPlaceholder(SEARCH_PLACEHOLDER)).toHaveValue('admin');
+      await expect(userRow(page, 'admin').getByRole('checkbox')).not.toBeChecked();
+      const snapshot = await page.evaluate(() => JSON.parse(localStorage.getItem('tigercat.admin.workbench.users.admin.views') || 'null'));
+      expect(snapshot.views).toHaveLength(2);
+      expect(snapshot.views[0]).not.toHaveProperty('selectedRowKeys');
+      expect(snapshot.views[0].queryState).not.toHaveProperty('page');
+
+      await logout();
+      await signIn(username, 'e2e_pass123');
+      await gotoUsers(page);
+      await expect(page.getByPlaceholder(SEARCH_PLACEHOLDER)).toHaveValue('');
+      await page.getByRole('combobox', { name: '用户筛选视图' }).click();
+      await expect(page.getByRole('option', { name: '管理员视图', exact: true })).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await page.getByRole('textbox', { name: '视图名称', exact: true }).fill('其他账号视图');
+      await page.getByRole('button', { name: '保存视图', exact: true }).click();
+      await page.getByRole('banner').getByRole('button', { name: username, exact: true }).click();
+      await page.getByText('退出登录', { exact: true }).click();
+      await expect(page).toHaveURL(/\/login$/);
+      await signIn('admin', 'admin123');
+      await gotoUsers(page);
+      await expect(page.getByRole('combobox', { name: '用户筛选视图' })).toContainText('管理员视图');
+      await page.getByRole('combobox', { name: '用户筛选视图' }).click();
+      await page.getByRole('option', { name: '测试用户视图', exact: true }).click();
+      await page.getByRole('button', { name: '删除视图', exact: true }).click();
+      await page.reload();
+      await page.getByRole('combobox', { name: '用户筛选视图' }).click();
+      await expect(page.getByRole('option', { name: '测试用户视图', exact: true })).toHaveCount(0);
+      await expect(page.getByRole('option', { name: '管理员视图', exact: true })).toBeVisible();
+      await page.keyboard.press('Escape');
+    } finally {
+      if (!page.isClosed()) {
+        const account = await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.username, SESSION_KEY);
+        if (account !== 'admin') {
+          await page.evaluate(key => localStorage.removeItem(key), SESSION_KEY);
+          await signIn('admin', 'admin123');
+        }
+        await gotoUsers(page);
+        await deleteUser(page, username);
+      }
+    }
+  });
+
+  test('批量状态请求失败保留选择与确认框，取消不提交且可以重试', async ({ page }) => {
+    const username = `e2e_retry_${uniqueSuffix()}`;
+    await gotoUsers(page);
+    await createUser(page, { username, password: 'e2e_pass123', role: 'Viewer' });
+    let attempts = 0;
+    await page.route('**/api/users/batch-status', async route => {
+      attempts += 1;
+      if (attempts === 1) {
+        await route.fulfill({ status: 500, json: { success: false, message: '批量操作暂时失败' } });
+      } else {
+        await route.continue();
+      }
+    });
+    try {
+      await searchUser(page, username);
+      await checkUserRow(page, username);
+      await page.getByRole('button', { name: '批量禁用', exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: '确认批量禁用' });
+      await dialog.getByRole('button', { name: '确认禁用', exact: true }).click();
+      await expect(page.getByText('批量操作暂时失败', { exact: true })).toBeVisible();
+      await expect(dialog).toBeVisible();
+      await expect(userRow(page, username).getByRole('checkbox')).toBeChecked();
+      await dialog.getByRole('button', { name: '取消', exact: true }).click();
+      await expect(dialog).toBeHidden();
+      expect(attempts).toBe(1);
+      await page.getByRole('button', { name: '批量禁用', exact: true }).click();
+      await dialog.getByRole('button', { name: '确认禁用', exact: true }).click();
+      await expect(dialog).toBeHidden();
+      await expect(userRow(page, username).getByText('禁用', { exact: true })).toBeVisible();
+      await expect(userRow(page, username).getByRole('checkbox')).not.toBeChecked();
+      expect(attempts).toBe(2);
+    } finally {
+      await page.unroute('**/api/users/batch-status');
+      await deleteUser(page, username);
+    }
   });
 });

@@ -33,12 +33,17 @@ export function TagsView({
   onCloseAll,
 }: TagsViewProps) {
   const tabListRef = useRef<HTMLDivElement>(null);
+  const restoreTabFocus = useRef(false);
   useLayoutEffect(() => {
     const list = tabListRef.current;
     if (!list) return;
     const revealActiveTab = () => {
-      list.querySelector<HTMLElement>('[data-active="true"]')
-        ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      const activeTab = list.querySelector<HTMLElement>('[data-active="true"]');
+      activeTab?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      if (activeTab && restoreTabFocus.current) {
+        activeTab.focus();
+        restoreTabFocus.current = false;
+      }
     };
     revealActiveTab();
     const observer = new ResizeObserver(revealActiveTab);
@@ -83,6 +88,7 @@ export function TagsView({
                 onSelect(key);
               }}
               onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) return;
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
                   onSelect(key);
@@ -95,6 +101,7 @@ export function TagsView({
                 closeAriaLabel={`关闭${title}`}
                 className="whitespace-nowrap"
                 onClose={(event) => {
+                  restoreTabFocus.current = event.currentTarget === document.activeElement;
                   event.preventDefault();
                   event.stopPropagation();
                   onClose(key);

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Alert } from '@expcat/tigercat-react/Alert';
 import { Button } from '@expcat/tigercat-react/Button';
 import { DataTableWithToolbar } from '@expcat/tigercat-react/DataTableWithToolbar';
 import { Message } from '@expcat/tigercat-react/Message';
@@ -21,9 +22,10 @@ import {
   createApproval,
   EMPTY_APPROVAL_CREATE,
   fetchApprovals,
+  fetchApprovalContacts,
   isApprovalLane,
 } from '../utils/approvals';
-import type { ApprovalLane, ApprovalListItem, ApprovalStatus } from '../utils/types';
+import type { ApprovalLane, ApprovalListItem, ApprovalStatus, ApprovalContactUser } from '../utils/types';
 
 function readErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
@@ -32,6 +34,11 @@ function readErrorMessage(error: unknown, fallback: string) {
 function ApprovalsPage() {
   const navigate = useNavigate();
   const createFormRef = useRef<FormHandle>(null);
+  const listController = useRef<AbortController | null>(null);
+  const creatingRef = useRef(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [contactsError, setContactsError] = useState('');
+  const [contacts, setContacts] = useState<ApprovalContactUser[]>([]);
   const [lane, setLane] = useState<ApprovalLane>('todo');
   const [keyword, setKeyword] = useState('');
   const [page, setPage] = useState(1);
@@ -43,27 +50,54 @@ function ApprovalsPage() {
   const [creating, setCreating] = useState(false);
   const [createForm, setCreateForm] = useState<FormValues>({ ...EMPTY_APPROVAL_CREATE });
 
-  const loadList = useCallback(async () => {
-    setLoading(true);
+  const createSchema = useMemo(() => ({
+    ...APPROVAL_CREATE_SCHEMA,
+    fields: APPROVAL_CREATE_SCHEMA.fields?.map((field) => field.name === 'assignee'
+      ? { ...field, options: contacts.map((user) => ({ value: user.id, label: `${user.name}（${user.username}）` })) }
+      : field),
+  }), [contacts]);
+
+  const loadContacts = useCallback(async () => {
+    setContactsError('');
     try {
-      const payload = await fetchApprovals({ lane, keyword, page, pageSize });
+      const payload = await fetchApprovalContacts();
+      setContacts(payload.data.users ?? []);
+    } catch (error) {
+      setContacts([]);
+      setContactsError(readErrorMessage(error, '通讯录加载失败'));
+    }
+  }, []);
+
+  const loadList = useCallback(async () => {
+    listController.current?.abort();
+    const controller = new AbortController();
+    listController.current = controller;
+    setLoading(true);
+    setErrorMessage('');
+    setItems([]);
+    setTotal(0);
+    try {
+      const payload = await fetchApprovals({ lane, keyword, page, pageSize }, controller.signal);
+      if (controller.signal.aborted) return;
+      const lastPage = Math.max(1, Math.ceil(payload.data.total / pageSize));
+      if (page > lastPage) { setPage(lastPage); return; }
       setItems(payload.data.items ?? []);
       setTotal(payload.data.total ?? 0);
     } catch (error: unknown) {
-      Message.error({ content: readErrorMessage(error, '审批列表加载失败'), duration: 3000 });
+      if (!controller.signal.aborted) setErrorMessage(readErrorMessage(error, '审批列表加载失败'));
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [keyword, lane, page, pageSize]);
 
   useEffect(() => {
     void loadList();
+    return () => listController.current?.abort();
   }, [loadList]);
 
+  useEffect(() => { void loadContacts(); }, [loadContacts]);
   useEffect(() => {
-    const reload = () => {
-      void loadList();
-    };
+    const reload = () => { setPage(1); void loadList(); };
     window.addEventListener(APPROVAL_DEMO_ACTOR_EVENT, reload);
     return () => window.removeEventListener(APPROVAL_DEMO_ACTOR_EVENT, reload);
   }, [loadList]);
@@ -73,13 +107,19 @@ function ApprovalsPage() {
   };
 
   const handleCreate = async () => {
+    if (creatingRef.current) return;
     const valid = await createFormRef.current?.validate();
-    if (!valid) return;
+    if (!valid || creatingRef.current) return;
     const body = approvalCreateFromValues(createForm);
     if (!body.title) {
       Message.warning({ content: '请填写审批标题', duration: 2000 });
       return;
     }
+    if (!contacts.some((user) => user.id === body.assignee)) {
+      Message.warning({ content: '请从通讯录选择处理人', duration: 2000 });
+      return;
+    }
+    creatingRef.current = true;
     setCreating(true);
     try {
       const payload = await createApproval(body);
@@ -91,6 +131,7 @@ function ApprovalsPage() {
     } catch (error: unknown) {
       Message.error({ content: readErrorMessage(error, '发起审批失败'), duration: 3000 });
     } finally {
+      creatingRef.current = false;
       setCreating(false);
     }
   };
@@ -162,6 +203,7 @@ function ApprovalsPage() {
         title: '操作',
         width: 100,
         align: 'center',
+        fixed: 'end',
         render: (record) => (
           <Button size="sm" variant="ghost" onClick={() => openDetail(record.id)}>
             查看
@@ -215,6 +257,7 @@ function ApprovalsPage() {
         </div>
       </div>
 
+      {errorMessage ? <div role="alert"><Alert type="error" title={errorMessage} /><Button variant="outline" onClick={() => void loadList()}>重试</Button></div> : null}
       <DataTableWithToolbar
         columns={columns as unknown as TableColumn<Record<string, unknown>>[]}
         dataSource={items as unknown as Record<string, unknown>[]}
@@ -226,6 +269,7 @@ function ApprovalsPage() {
         cardBreakpoint="md"
         emptyText="当前列表没有审批"
         pagination={{
+          remote: true,
           current: page,
           pageSize,
           total,
@@ -246,10 +290,13 @@ function ApprovalsPage() {
       <Modal
         open={createOpen}
         title="发起审批"
-        onClose={() => setCreateOpen(false)}
+        closable={!creating}
+        maskClosable={!creating}
+        keyboard={!creating}
+        onClose={() => { if (!creating) setCreateOpen(false); }}
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+            <Button variant="outline" disabled={creating} onClick={() => setCreateOpen(false)}>
               取消
             </Button>
             <Button loading={creating} onClick={() => void handleCreate()}>
@@ -257,12 +304,14 @@ function ApprovalsPage() {
             </Button>
           </div>
         }>
+        {contactsError ? <div role="alert"><Alert type="error" title={contactsError} /><Button variant="outline" onClick={() => void loadContacts()}>重试通讯录</Button></div> : null}
         <SchemaForm
+          disabled={creating}
           ref={createFormRef}
-          schema={APPROVAL_CREATE_SCHEMA}
+          schema={createSchema}
           value={createForm}
           showActions={false}
-          labelWidth={96}
+          labelPosition="top"
           ariaLabel="发起审批表单"
           onChange={setCreateForm}
         />

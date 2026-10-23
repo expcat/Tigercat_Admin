@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { NotificationItem } from '@expcat/tigercat-core';
-import { notification } from '@expcat/tigercat-react';
+import { notification } from '@expcat/tigercat-react/notification';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Form } from '@expcat/tigercat-react/Form';
 import { FormItem } from '@expcat/tigercat-react/FormItem';
 import { Input } from '@expcat/tigercat-react/Input';
-import { Message } from '@expcat/tigercat-react/Message';
+import { Alert } from '@expcat/tigercat-react/Alert';
 import { Modal } from '@expcat/tigercat-react/Modal';
 import { Select } from '@expcat/tigercat-react/Select';
 import { Text } from '@expcat/tigercat-react/Text';
@@ -28,6 +28,8 @@ import {
   PageActionPanel,
 } from '../components/PageFragments';
 import {
+  getRequiredPermissionForLink,
+  isSafeInternalLink,
   buildNotificationGroups,
   countUnreadNotifications,
   createNotification,
@@ -43,17 +45,10 @@ import type {
   AdminNotificationGroupKey,
   AdminNotificationItem,
   AdminNotificationToastType,
+  NotificationCreateForm,
 } from '../utils/types';
 
-type CreateFormState = {
-  title: string;
-  description: string;
-  groupKey: AdminNotificationGroupKey;
-  toastType: AdminNotificationToastType;
-  linkUrl: string;
-};
-
-const EMPTY_CREATE_FORM: CreateFormState = {
+const EMPTY_CREATE_FORM: NotificationCreateForm = {
   title: '',
   description: '',
   groupKey: 'ops',
@@ -83,20 +78,6 @@ const formatDateTime = (value: string) =>
     minute: '2-digit',
   });
 
-const LINK_PERMISSION_MAP: Array<[RegExp, string]> = [
-  [/^\/users(?:[/?#]|$)/, 'user:view'],
-  [/^\/roles(?:[/?#]|$)/, 'role:view'],
-  [/^\/files(?:[/?#]|$)/, 'media:view'],
-  [/^\/tasks(?:[/?#]|$)/, 'task:view'],
-  [/^\/audit-logs(?:[/?#]|$)/, 'audit:view'],
-  [/^\/settings(?:[/?#]|$)/, 'setting:view'],
-];
-
-const getRequiredPermissionForLink = (linkUrl: string) =>
-  LINK_PERMISSION_MAP.find(([pattern]) => pattern.test(linkUrl))?.[1] ?? null;
-
-const isSafeInternalLink = (linkUrl: string) =>
-  linkUrl.startsWith('/') && !linkUrl.startsWith('//');
 
 function showNotification(
   type: AdminNotificationToastType,
@@ -123,34 +104,50 @@ function NotificationsPage() {
   const navigate = useNavigate();
   const { has: hasPerm } = usePermission();
   const canCreate = hasPerm('notification:create');
+  const canEdit = hasPerm('notification:edit');
+  const loadController = useRef<AbortController | null>(null);
+  const readLocked = useRef(false);
+  const submittingRef = useRef(false);
+  const createTrigger = useRef<HTMLElement | null>(null);
+  const [savingRead, setSavingRead] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [createError, setCreateError] = useState('');
   const [notifications, setNotifications] = useState<AdminNotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [createForm, setCreateForm] = useState<CreateFormState>({ ...EMPTY_CREATE_FORM });
+  const [createForm, setCreateForm] = useState<NotificationCreateForm>({ ...EMPTY_CREATE_FORM });
 
   const loadNotifications = useCallback(async () => {
+    loadController.current?.abort();
+    const controller = new AbortController();
+    loadController.current = controller;
     setLoading(true);
     setErrorMessage('');
+    setNotifications([]);
+    setTotal(0);
 
     try {
-      const payload = await fetchNotifications();
+      const payload = await fetchNotifications(controller.signal);
+      if (controller.signal.aborted) return;
       setNotifications(payload.data.items);
+      setTotal(payload.data.total);
     } catch (error) {
+      if (controller.signal.aborted) return;
       const message =
         error instanceof Error && error.message
           ? error.message
           : '通知加载失败，请稍后重试。';
       setErrorMessage(message);
-      showNotification('error', '通知加载失败', message);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadNotifications();
+    void loadNotifications();
+    return () => loadController.current?.abort();
   }, [loadNotifications]);
 
   const notificationGroups = useMemo(
@@ -185,128 +182,100 @@ function NotificationsPage() {
     );
   }, []);
 
-  const handleItemClick = useCallback(
-    async (item: NotificationItem) => {
-      const currentItem = findNotificationById(notifications, item.id);
-      if (!currentItem) {
-        return;
-      }
-
-      if (currentItem.linkUrl) {
-        if (!isSafeInternalLink(currentItem.linkUrl)) {
-          showNotification('error', '无法打开通知链接', '通知链接不是安全的站内路径。');
-          return;
-        }
-
-        const requiredPermission = getRequiredPermissionForLink(currentItem.linkUrl);
-        if (requiredPermission && !hasPerm(requiredPermission)) {
-          showNotification('warning', '权限不足', '当前账号无权访问这条通知指向的页面。');
-          return;
-        }
-
-        if (!currentItem.read) {
-          setNotifications((prev) => setNotificationReadState(prev, item.id, true));
-          try {
-            await persistReadState(String(item.id), true);
-            notifyNotificationsChanged();
-          } catch {
-            setNotifications((prev) => setNotificationReadState(prev, item.id, false));
-          }
-        }
-
-        navigate(currentItem.linkUrl);
-        return;
-      }
-
-      showNotification(
-        currentItem.toastType,
-        currentItem.title,
-        currentItem.description,
-      );
-    },
-    [hasPerm, navigate, notifications, persistReadState],
-  );
-
-  const handleItemReadChange = useCallback(
-    async (item: NotificationItem, read: boolean) => {
-      const currentItem = findNotificationById(notifications, item.id);
+  const handleItemReadChange = async (item: NotificationItem, read: boolean): Promise<boolean> => {
+    if (!canEdit) {
+      showNotification('warning', '权限不足', '当前账号没有修改通知已读状态的权限。');
+      return false;
+    }
+    const currentItem = findNotificationById(notifications, item.id);
+    if (!currentItem || loading || submittingRef.current || readLocked.current) return false;
+    readLocked.current = true;
+    setSavingRead(true);
+    try {
+      await persistReadState(String(item.id), read);
       setNotifications((prev) => setNotificationReadState(prev, item.id, read));
+      notifyNotificationsChanged();
+      return true;
+    } catch (error) {
+      showNotification('error', '通知状态保存失败', error instanceof Error ? error.message : '请重试。');
+      return false;
+    } finally {
+      readLocked.current = false;
+      setSavingRead(false);
+    }
+  };
 
-      try {
-        await persistReadState(String(item.id), read);
-        notifyNotificationsChanged();
-      } catch (error) {
-        setNotifications((prev) =>
-          setNotificationReadState(prev, item.id, !read),
-        );
-        showNotification(
-          'error',
-          '通知状态保存失败',
-          error instanceof Error ? error.message : '请稍后重试。',
-        );
+  const handleItemClick = async (item: NotificationItem) => {
+    if (loading || submittingRef.current || readLocked.current) return;
+    const currentItem = findNotificationById(notifications, item.id);
+    if (!currentItem) return;
+    if (currentItem.linkUrl) {
+      if (!isSafeInternalLink(currentItem.linkUrl)) {
+        showNotification('error', '无法打开通知链接', '通知链接不是安全的站内路径。');
         return;
       }
-
-      if (currentItem) {
-        showNotification(
-          'info',
-          read ? '通知已标记为已读' : '通知已恢复为未读',
-          currentItem.title,
-        );
-      }
-    },
-    [notifications, persistReadState],
-  );
-
-  const handleMarkAllRead = useCallback(
-    async (groupKey: string | number | undefined, items: NotificationItem[]) => {
-      try {
-        await apiRequest('/api/notifications/mark-read', {
-          method: 'POST',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            groupKey: groupKey ? String(groupKey) : null,
-          }),
-        });
-        notifyNotificationsChanged();
-        await loadNotifications();
-      } catch (error) {
-        showNotification(
-          'error',
-          '批量已读失败',
-          error instanceof Error ? error.message : '请稍后重试。',
-        );
+      const requiredPermission = getRequiredPermissionForLink(currentItem.linkUrl);
+      if (requiredPermission && !hasPerm(requiredPermission)) {
+        showNotification('warning', '权限不足', '当前账号无权访问这条通知指向的页面。');
         return;
       }
+      if (!currentItem.read && canEdit && !await handleItemReadChange(item, true)) return;
+      navigate(currentItem.linkUrl);
+      return;
+    }
+    showNotification(currentItem.toastType, currentItem.title, currentItem.description);
+  };
 
-      const groupTitle = groupKey
-        ? getNotificationGroupLabel(groupKey as AdminNotificationGroupKey)
-        : '全部通知';
-      showNotification(
-        'success',
-        `${groupTitle}已全部标记为已读`,
-        `本次共处理 ${items.length} 条通知。`,
-      );
-    },
-    [loadNotifications],
-  );
+  const handleMarkAllRead = async (groupKey: string | number | undefined) => {
+    if (!canEdit) {
+      showNotification('warning', '权限不足', '当前账号没有修改通知已读状态的权限。');
+      return;
+    }
+    if (loading || submittingRef.current || readLocked.current) return;
+    readLocked.current = true;
+    setSavingRead(true);
+    try {
+      await apiRequest('/api/notifications/mark-read', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ groupKey: groupKey ? String(groupKey) : null }),
+      });
+      notifyNotificationsChanged();
+      await loadNotifications();
+      const groupTitle = groupKey ? getNotificationGroupLabel(groupKey as AdminNotificationGroupKey) : '全部通知';
+      showNotification('success', `${groupTitle}已全部标记为已读`, '已保存共享通知的已读状态。');
+    } catch (error) {
+      showNotification('error', '批量已读失败', error instanceof Error ? error.message : '请重试。');
+    } finally {
+      readLocked.current = false;
+      setSavingRead(false);
+    }
+  };
 
   const openCreateModal = () => {
+    if (!canCreate) return;
+    createTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setCreateError('');
     setCreateForm({ ...EMPTY_CREATE_FORM });
     setCreateOpen(true);
   };
 
   const submitCreate = async () => {
+    if (!canCreate || submittingRef.current) return;
+    setCreateError('');
     const title = createForm.title.trim();
     if (!title) {
-      Message.warning({ content: '请填写通知标题', duration: 2000 });
+      setCreateError('请填写通知标题');
+      document.getElementById('notification-title')?.focus();
       return;
     }
     const linkUrl = createForm.linkUrl?.trim() ?? '';
     if (linkUrl && !isSafeInternalLink(linkUrl)) {
-      Message.error({ content: '通知链接必须是站内路径', duration: 3000 });
+      setCreateError('通知链接必须是安全站内路径');
+      document.getElementById('notification-link')?.focus();
       return;
     }
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       await createNotification({
@@ -321,11 +290,9 @@ function NotificationsPage() {
       showNotification('success', '通知已创建', title);
       await loadNotifications();
     } catch (error) {
-      Message.error({
-        content: error instanceof Error ? error.message : '创建通知失败',
-        duration: 3000,
-      });
+      setCreateError(error instanceof Error ? error.message : '创建通知失败');
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -334,7 +301,7 @@ function NotificationsPage() {
     <div className="space-y-6">
       <PageHeader
         title="通知中心"
-        subtitle="集中查看系统运维、安全提醒与版本动态，并在同一页验证 Badge 与 Notification 交互。"
+        subtitle="查看系统运维、安全提醒与版本动态。通知及已读状态由所有账号共享。"
         icon={<BellIcon size={24} className="text-white" />}
         tags={[
           { label: 'NotificationCenter', variant: 'primary' },
@@ -345,15 +312,15 @@ function NotificationsPage() {
 
       <PageActionPanel
         title="通知收件箱"
-        description="通知来自后端数据源，未读状态、分组和批量已读会持久化保存。"
+        description={`共 ${total} 条共享通知，当前加载前 ${notifications.length} 条；下方未读统计仅覆盖这些记录。${canEdit ? '' : '当前账号仅可查看。'}`}
         actions={
           <>
             {canCreate && (
               <PermissionGuard code="notification:create">
-                <Button onClick={openCreateModal}>创建通知</Button>
+                <Button disabled={savingRead || submitting} onClick={openCreateModal}>创建通知</Button>
               </PermissionGuard>
             )}
-            <Button variant="outline" onClick={loadNotifications}>
+            <Button variant="outline" disabled={loading || savingRead || submitting} onClick={() => void loadNotifications()}>
               刷新通知
             </Button>
           </>
@@ -364,7 +331,7 @@ function NotificationsPage() {
         <Card>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Text color="danger">{errorMessage}</Text>
-            <Button variant="outline" onClick={loadNotifications}>
+            <Button variant="outline" disabled={loading || savingRead || submitting} onClick={() => void loadNotifications()}>
               重试
             </Button>
           </div>
@@ -373,8 +340,8 @@ function NotificationsPage() {
 
       <MetricGrid columns={4}>
         <MetricCard
-          title="未读总数"
-          description={`全部分组合计 ${unreadCount} 条未读通知。`}
+          title="当前加载未读"
+          description={`已加载记录中 ${unreadCount} 条未读通知。`}
           badge={unreadCount}
           icon={<BellIcon size={20} />}
         />
@@ -401,6 +368,8 @@ function NotificationsPage() {
       <Card title="通知中心组件验证">
         <NotificationCenter
           title="后台通知"
+          loading={loading || savingRead || submitting}
+          manageReadState={false}
           groups={notificationGroups}
           emptyText={loading ? '正在加载通知...' : '暂无通知'}
           markAllReadText="全部标记为已读"
@@ -430,15 +399,21 @@ function NotificationsPage() {
       <Modal
         open={createOpen}
         title="创建通知"
-        showDefaultFooter
-        okText={submitting ? '创建中...' : '创建'}
-        cancelText="取消"
-        onOk={() => void submitCreate()}
-        onCancel={() => setCreateOpen(false)}>
+        closable={!submitting}
+        maskClosable={!submitting}
+        keyboard={!submitting}
+        onCancel={() => { if (!submittingRef.current) setCreateOpen(false); }}
+        onAfterClose={() => createTrigger.current?.focus()}
+        footer={<div className="flex justify-end gap-2">
+          <Button variant="outline" disabled={submitting} onClick={() => setCreateOpen(false)}>取消</Button>
+          <Button loading={submitting} onClick={() => void submitCreate()}>创建</Button>
+        </div>}>
         <div className="p2-modal-scroll">
-          <Form value={createForm as Record<string, unknown>} labelWidth={88}>
+          {createError && <Alert type="error" title="通知尚未创建" description={createError} />}
+          <Form value={createForm as unknown as Record<string, unknown>} labelPosition="top" disabled={submitting}>
             <FormItem label="标题" name="title">
               <Input
+                id="notification-title"
                 value={createForm.title}
                 placeholder="请输入通知标题"
                 onChange={(val) =>
@@ -484,6 +459,7 @@ function NotificationsPage() {
             </FormItem>
             <FormItem label="链接" name="linkUrl">
               <Input
+                id="notification-link"
                 value={createForm.linkUrl ?? ''}
                 placeholder="站内路径，例如 /monitor（选填）"
                 onChange={(val) =>

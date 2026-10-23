@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Result } from '@expcat/tigercat-react/Result';
@@ -8,10 +8,11 @@ import { LogoIcon } from '../components/Icons';
 
 function RegisterSuccessPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const countdownTarget = useMemo(() => Date.now() + 5000, []);
 
   const goToLogin = () => {
-    navigate('/login');
+    navigate('/login', { replace: true, state: location.state });
   };
 
   return (
@@ -63,7 +64,7 @@ function RegisterSuccessPage() {
                 format="s"
                 suffix="秒"
                 title="即将自动返回登录"
-                onFinish={() => navigate('/login')}
+                onFinish={goToLogin}
               />
             </div>
             <div className="flex justify-center">

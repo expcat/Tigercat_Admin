@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
-import { Message } from '@expcat/tigercat-react/Message';
+import { useNavigate } from 'react-router-dom';
 import { Text } from '@expcat/tigercat-react/Text';
 import { Statistic } from '@expcat/tigercat-react/Statistic';
 import { Progress } from '@expcat/tigercat-react/Progress';
@@ -115,7 +115,7 @@ const baseChannels = [
   { name: '线下活动', visits: 4200, orders: 130, conversion: 2.7, trend: '下降' },
 ];
 const tableColumns: TableColumn[] = [
-  { key: 'channel', title: '渠道' },
+  { key: 'channel', title: '渠道', cardTitle: true },
   { key: 'visits', title: '访问量', align: 'right' },
   { key: 'orders', title: '订单数', align: 'right' },
   { key: 'conversion', title: '转化率', align: 'right' },
@@ -133,6 +133,8 @@ const customLabels = ['1月', '2月', '3月', '4月', '5月', '6月'];
 const PAGE_SIZE = 5;
 
 function AnalyticsPage() {
+  const navigate = useNavigate();
+  const loadingTimer = useRef<number | undefined>(undefined);
   const [range, setRange] = useState<string | number>('30');
   const [dateRange, setDateRange] = useState<
     [DatePickerInputDate | null, DatePickerInputDate | null] | null
@@ -141,22 +143,28 @@ function AnalyticsPage() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), 500);
-    return () => window.clearTimeout(timer);
+    loadingTimer.current = window.setTimeout(() => setLoading(false), 500);
+    return () => window.clearTimeout(loadingTimer.current);
   }, []);
 
   const triggerLoading = () => {
     setLoading(true);
-    window.setTimeout(() => setLoading(false), 420);
+    window.clearTimeout(loadingTimer.current);
+    loadingTimer.current = window.setTimeout(() => setLoading(false), 420);
   };
 
   const factor = useMemo(() => {
-    const v = String(range);
-    return v === '7' ? 0.4 : v === '90' ? 2.2 : 1;
-  }, [range]);
+    if (dateRange?.[0] && dateRange[1]) {
+      const [start, end] = dateRange.map((value) => new Date(value!));
+      const days = Math.round((Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) - Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) / 86400000) + 1;
+      if (days > 0) return days / 30;
+    }
+    return Number(range) / 30;
+  }, [range, dateRange]);
 
   const handleRangeChange = (value: string | number) => {
     setRange(value);
+    setDateRange(null);
     setPage(1);
     triggerLoading();
   };
@@ -164,8 +172,10 @@ function AnalyticsPage() {
     setPage(1);
     triggerLoading();
   };
-  const handleExport = () => {
-    Message.success({ content: '报表已导出（演示）', duration: 2400 });
+  const handleDateRangeChange = (value: typeof dateRange) => {
+    setDateRange(value);
+    setPage(1);
+    triggerLoading();
   };
 
   const kpis = useMemo(
@@ -292,9 +302,9 @@ function AnalyticsPage() {
       <PageHeader
         icon={<TrendingUpIcon size={24} />}
         title="数据分析"
-        subtitle="一站式 BI 看板，聚合趋势、构成、转化与渠道明细"
+        subtitle="图表与渠道明细使用示例数据，可调整区间查看不同规模"
         tags={[
-          { label: '实时演示', variant: 'success' },
+          { label: '示例数据', variant: 'success' },
           { label: 'BI', variant: 'primary' },
         ]}
       />
@@ -302,13 +312,13 @@ function AnalyticsPage() {
       {/* 工具栏 */}
       <Card>
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <Segmented value={range} onChange={handleRangeChange} options={rangeOptions} />
+          <Segmented value={dateRange?.[0] && dateRange[1] ? '' : range} onChange={handleRangeChange} options={rangeOptions} />
           <div className="flex min-w-0 flex-wrap items-center gap-3">
             <DatePicker
               className="w-full max-w-56"
               range
               value={dateRange}
-              onChange={(r) => setDateRange(r)}
+              onChange={handleDateRangeChange}
               placeholder="自定义区间"
               clearable
             />
@@ -316,13 +326,15 @@ function AnalyticsPage() {
               <Button variant="outline" onClick={handleRefresh}>
                 刷新
               </Button>
-              <Button variant="outline" onClick={handleExport}>
-                导出
+              <Button variant="outline" onClick={() => navigate('/reports')}>
+                系统统计报表
               </Button>
             </ButtonGroup>
           </div>
         </div>
       </Card>
+
+      <p className="text-sm text-(--tiger-text-secondary)">区间控制示例规模；能力、散点与组织图为固定示例。真实系统统计请前往「系统统计报表」。</p>
 
       {/* KPI */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -444,7 +456,7 @@ function AnalyticsPage() {
           <Skeleton rows={6} />
         ) : (
           <>
-            <Table columns={tableColumns} dataSource={pagedRows} pagination={false} striped />
+            <Table columns={tableColumns} dataSource={pagedRows} pagination={false} responsiveMode="card" cardBreakpoint="md" striped />
             <div className="mt-4 flex justify-end">
               <Pagination current={page} total={allRows.length} pageSize={PAGE_SIZE} onChange={(c) => setPage(c)} />
             </div>

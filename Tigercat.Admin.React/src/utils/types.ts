@@ -1,4 +1,19 @@
-import type { MenuSchema } from '@expcat/tigercat-core';
+import type { ImageAnnotation } from '@expcat/tigercat-core';
+import type { MenuSchema, TimelineItem } from '@expcat/tigercat-core';
+
+export interface InfoResponse {
+  name: string;
+  version: string;
+  description: string;
+}
+
+export interface HelpArticle {
+  key: string;
+  title: string;
+  description: string;
+  href: string;
+  permission?: string;
+}
 
 export interface Session {
   token: string;
@@ -143,6 +158,7 @@ export interface MediaItem {
 
 export interface MediaDetail extends Omit<MediaItem, 'referenceCount'> {
   references: MediaReference[];
+  annotations: ImageAnnotation[];
 }
 
 export interface DuplicateMediaResult {
@@ -488,4 +504,168 @@ export interface ThemePreferences {
   mode: ThemeMode;
   primaryColor: string;
   compactMode: boolean;
+}
+
+// ---- Projects / calendar ----
+
+export type ProjectStatus = 'planning' | 'active' | 'paused' | 'done';
+export type ProjectStatusFilter = 'all' | ProjectStatus;
+export type ProjectDetailTab = 'overview' | 'members' | 'activity';
+
+export interface ProjectMember {
+  id: string;
+  name: string;
+  role: string;
+  color: string;
+}
+
+export interface ProjectRecord {
+  id: string;
+  name: string;
+  summary: string;
+  owner: string;
+  department: string;
+  status: ProjectStatus;
+  progress: number;
+  milestone: number;
+  budget: number;
+  startAt: string;
+  endAt: string;
+  members: ProjectMember[];
+  activities: TimelineItem[];
+}
+
+export type CalendarEventType = 'meeting' | 'review' | 'release' | 'reminder';
+
+export interface CalendarEvent {
+  id: string;
+  date: string;
+  start: string;
+  end: string;
+  title: string;
+  type: CalendarEventType;
+  location: string;
+}
+
+export interface CreateCalendarEventPayload {
+  date: string;
+  start: string;
+  end: string;
+  title: string;
+  type: CalendarEventType;
+  location: string;
+}
+
+export interface NotificationCreateForm {
+  title: string;
+  description: string;
+  groupKey: AdminNotificationGroupKey;
+  toastType: AdminNotificationToastType;
+  linkUrl: string;
+}
+
+export type ArticleEditorType = 'rich' | 'markdown' | 'code';
+
+export interface Article {
+  id: string;
+  title: string;
+  editorType: ArticleEditorType;
+  body: string;
+  tags: string[];
+  category: string;
+  column: string[];
+  published: boolean;
+  attachments: MediaItem[];
+}
+
+export interface SaveArticlePayload extends Omit<Article, 'id' | 'attachments'> {
+  attachmentIds: number[];
+}
+
+export type AlbumKey = 'all' | 'product' | 'team' | 'media' | 'empty';
+export interface GalleryImage {
+  id: string;
+  title: string;
+  album: 'product' | 'team' | 'media';
+  hue: number;
+  media?: MediaItem;
+}
+
+export type ImportMappings = { username: number | null; password: number | null; displayName: number | null; roleIds: number | null };
+export type ImportFile = { source: string; csv: string };
+export type ImportRowStatus = 'ready' | 'pending' | 'success' | 'skipped' | 'failed';
+export type ImportRow = {
+  rowNumber: number; username: string; displayName: string | null; roleIds: string;
+  status: ImportRowStatus; message: string; userId: number | null;
+}
+export interface ImportPreview {
+  headers: string[]; mappings: ImportMappings; total: number; valid: number; skipped: number; failed: number;
+  passwordHint: string; rows: ImportRow[];
+}
+export interface ImportJob {
+  id: string; source: string; resource: 'users'; mode: 'append'; conflict: 'skip';
+  status: 'pending' | 'running' | 'completed' | 'failed'; progress: number; total: number; processed: number;
+  result: { imported: number; skipped: number; failed: number; message: string };
+  rows: ImportRow[];
+}
+
+// ---- Jobs configuration (no scheduler) ----
+
+export type JobStatus = 'running' | 'paused' | 'failed';
+
+export interface Job {
+  id: string;
+  name: string;
+  cron: string;
+  concurrency: number;
+  timeout: string;
+  batchSize: string;
+  enabled: boolean;
+  status: JobStatus;
+  lastRun: string;
+  nextRun: string;
+  progress: number;
+  phase: number;
+  start: string;
+  end: string;
+  color: string;
+}
+
+export interface CreateJobPayload {
+  name: string;
+  cron: string;
+  concurrency: number;
+  timeout: string;
+  batchSize: string;
+  enabled: boolean;
+}
+
+export type UpdateJobPayload = Partial<CreateJobPayload> & {
+  status?: JobStatus;
+};
+
+export type JobForm = Omit<CreateJobPayload, 'concurrency'> & {
+  concurrency: number | null;
+};
+
+// ---- Personal workspace: scoped views over existing shared domains ----
+export type WorkspaceSectionKey = 'tasks' | 'notifications' | 'calendar' | 'approvals';
+
+export interface WorkspaceEntry {
+  id: string;
+  title: string;
+  description: string;
+  href?: string;
+  permission?: string;
+}
+
+export interface WorkspaceSectionData {
+  items: WorkspaceEntry[];
+  total: number | null;
+  note?: string;
+}
+
+export interface WorkspaceSectionState extends WorkspaceSectionData {
+  loading: boolean;
+  error: string;
 }

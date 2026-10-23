@@ -194,10 +194,10 @@ async function expectOutsideClickClosesOverlay(
   await trigger.click();
   await expect(overlay).toBeVisible();
   await overlay.click({ trial: true });
-  // Modal pickers make the background inert; click its visible position as a user would.
-  const outsideBox = await page.getByRole('banner').locator('.p2-header-title').boundingBox();
+  // Modal pickers make the background inert; the banner's far edge stays outside the picker.
+  const outsideBox = await page.getByRole('banner').boundingBox();
   if (!outsideBox) throw new Error('Outside target is not visible');
-  await page.mouse.click(outsideBox.x + outsideBox.width / 2, outsideBox.y + outsideBox.height / 2);
+  await page.mouse.click(outsideBox.x + outsideBox.width - 8, outsideBox.y + outsideBox.height / 2);
   await expect(overlay).toBeHidden();
 }
 
@@ -250,11 +250,13 @@ test.describe('页面 Drawer 焦点恢复', () => {
 
     await page.goto(appPath(testInfo, '/reports'));
     await expect(page.getByText('报表打印').first()).toBeVisible();
-    await page.getByText('销售周报', { exact: true }).click();
-    await expect(page.getByText('Tigercat 后台 · 销售周报').first()).toBeVisible();
+    const range = page.getByRole('radio', { name: '近 90 天', exact: true });
+    await range.focus();
+    await page.keyboard.press('Space');
+    await expect(page.locator('[data-section="trend"]')).toHaveCount(90);
   });
 
-  test('大数据页「恢复顺序」按钮可键盘聚焦', async ({ page }, testInfo) => {
+  test('大数据页键盘排序提交、取消与焦点释放', async ({ page }, testInfo) => {
     await loginAsAdmin(page, testInfo);
     await page.goto(appPath(testInfo, '/performance'));
     await expect(page.getByText('大数据演示').first()).toBeVisible();
@@ -263,6 +265,25 @@ test.describe('页面 Drawer 焦点恢复', () => {
     await expect(restore).toBeVisible();
     await restore.focus();
     await expectFocused(restore);
+    const card = page.locator('[data-drag-id="queue-1"]');
+    await card.focus();
+    await card.press('Space');
+    await card.press('ArrowDown');
+    await card.press('Escape');
+    await expect(page.getByText('已取消排序，顺序未改变', { exact: true })).toBeVisible();
+    await expect(card).toHaveAttribute('data-drag-index', '0');
+    await expectFocused(card);
+    await card.press('Enter');
+    await card.press('ArrowDown');
+    await card.press('Enter');
+    await expect(card).toHaveAttribute('data-drag-index', '1');
+    await expectFocused(card);
+    await expect(page.locator('[data-dragging]')).toHaveCount(0);
+    await card.press('Space');
+    await card.press('Tab');
+    await expect(page.locator('[data-dragging]')).toHaveCount(0);
+    await restore.click();
+    await expect(card).toHaveAttribute('data-drag-index', '0');
   });
 });
 
@@ -327,15 +348,21 @@ test.describe('日历 / 导入 / 任务剩余弹层', () => {
     await expectFocused(trigger);
   });
 
-  test('/import Cascader 浮层 Esc 与外部点击关闭', async ({ page }, testInfo) => {
+  test('/import 映射 Select 关闭与取消后焦点恢复', async ({ page }, testInfo) => {
     await loginAsAdmin(page, testInfo);
     await page.goto(appPath(testInfo, '/import'));
-    await expect(page.getByText('数据导入').first()).toBeVisible();
-
-    const cascaderTrigger = page.getByRole('combobox').filter({ hasText: '人力资源 / 员工表' });
-    const cascaderDropdown = page.locator('[data-tiger-cascader-dropdown]');
-    await expectEscClosesOverlay(page, cascaderTrigger, cascaderDropdown);
-    await expectOutsideClickClosesOverlay(page, cascaderTrigger, cascaderDropdown);
+    const file = page.getByLabel('选择 UTF-8 CSV 文件');
+    await file.setInputFiles({ name: 'focus.csv', mimeType: 'text/csv', buffer: Buffer.from('username,password\nfocus_user,secret42') });
+    await page.getByRole('button', { name: '下一步', exact: true }).click();
+    await expectFocused(page.getByRole('heading', { name: '映射字段', exact: true }));
+    const select = page.getByRole('combobox', { name: '用户名（必填）' });
+    const options = page.getByRole('listbox');
+    await expectEscClosesOverlay(page, select, options);
+    await expectOutsideClickClosesOverlay(page, select, options);
+    await page.getByRole('button', { name: '取消导入', exact: true }).click();
+    await expect(file).toBeVisible();
+    await expectFocused(file);
+    await expect(page.getByRole('button', { name: '下一步', exact: true })).toBeDisabled();
   });
 
   test('/jobs 新建任务 Drawer 内 CronEditor 可见且 Esc 关闭 Drawer', async ({
@@ -370,7 +397,7 @@ test.describe('个人中心 / 数据分析浮层焦点', () => {
     test.setTimeout(60_000);
     await loginAsAdmin(page, testInfo);
     await page.goto(appPath(testInfo, '/profile'));
-    await expect(page.getByText('个人中心').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: '个人中心', exact: true })).toBeVisible();
 
     const basicTab = page.getByRole('tab', { name: '基本资料' });
     await basicTab.focus();

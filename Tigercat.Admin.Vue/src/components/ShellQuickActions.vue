@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { notification } from '@expcat/tigercat-vue'
+import { notification } from '@expcat/tigercat-vue/notification'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Dropdown, DropdownItem, DropdownMenu } from '@expcat/tigercat-vue/Dropdown'
 import { BackTop } from '@expcat/tigercat-vue/BackTop'

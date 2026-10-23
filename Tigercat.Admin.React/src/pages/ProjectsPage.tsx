@@ -1,10 +1,11 @@
+import type { ProjectRecord, ProjectStatusFilter } from '../utils/types';
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Avatar } from '@expcat/tigercat-react/Avatar';
 import { AvatarGroup } from '@expcat/tigercat-react/AvatarGroup';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Input } from '@expcat/tigercat-react/Input';
-import { Message } from '@expcat/tigercat-react/Message';
+import { Button } from '@expcat/tigercat-react/Button';
 import { Tag } from '@expcat/tigercat-react/Tag';
 import { Text } from '@expcat/tigercat-react/Text';
 import { Statistic } from '@expcat/tigercat-react/Statistic';
@@ -23,8 +24,6 @@ import {
   PROJECT_PAGE_SIZE,
   PROJECT_STATUS_FILTERS,
   PROJECT_STATUS_META,
-  type ProjectRecord,
-  type ProjectStatusFilter,
 } from '../utils/projects';
 
 const readErrorMessage = (error: unknown, fallback: string) =>
@@ -32,10 +31,25 @@ const readErrorMessage = (error: unknown, fallback: string) =>
 
 function ProjectsPage() {
   const navigate = useNavigate();
-  const [keyword, setKeyword] = useState('');
-  const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>('all');
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const keyword = searchParams.get('keyword') ?? '';
+  const rawStatus = searchParams.get('status');
+  const statusFilter: ProjectStatusFilter = PROJECT_STATUS_FILTERS.some(item => item.value === rawStatus) ? rawStatus as ProjectStatusFilter : 'all';
+  const rawPage = Number(searchParams.get('page'));
+  const page = Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+  const [retryVersion, setRetryVersion] = useState(0);
+  const [loadError, setLoadError] = useState('');
+  const [statsError, setStatsError] = useState('');
+  const [statsTotal, setStatsTotal] = useState<number | null>(null);
+  const updateQuery = (patch: Record<string, string>) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(patch).forEach(([key, value]) => {
+      if (!value || value === 'all' || (key === 'page' && value === '1')) next.delete(key);
+      else next.set(key, value);
+    });
+    setSearchParams(next, { replace: true });
+  };
+  const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [statsProjects, setStatsProjects] = useState<ProjectRecord[]>([]);
@@ -58,60 +72,68 @@ function ProjectsPage() {
   }, [statsProjects]);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     const loadProjects = async () => {
       setLoading(true);
+      setLoadError('');
+      setProjects([]);
+      setTotal(0);
       try {
         const payload = await fetchProjects({
           page,
           pageSize: PROJECT_PAGE_SIZE,
           status: statusFilter,
           keyword,
-        });
-        if (cancelled) {
+        }, controller.signal);
+        if (controller.signal.aborted) {
           return;
         }
+        const lastPage = Math.max(1, Math.ceil(payload.data.total / PROJECT_PAGE_SIZE));
+        if (page > lastPage) { updateQuery({ page: String(lastPage) }); return; }
         setProjects(payload.data.items ?? []);
         setTotal(payload.data.total ?? 0);
       } catch (error: unknown) {
-        if (!cancelled) {
-          Message.error({ content: readErrorMessage(error, '项目列表加载失败'), duration: 3000 });
+        if (!controller.signal.aborted) {
+          setLoadError(readErrorMessage(error, '项目列表加载失败'));
         }
       } finally {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setLoading(false);
         }
       }
     };
     void loadProjects();
     return () => {
-      cancelled = true;
+      controller.abort();
     };
-  }, [keyword, statusFilter, page]);
+  }, [keyword, statusFilter, page, retryVersion]);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     const loadStats = async () => {
+      setStatsError('');
+      setStatsTotal(null);
       try {
-        const payload = await fetchProjects({ page: 1, pageSize: 200 });
-        if (!cancelled) {
+        const payload = await fetchProjects({ page: 1, pageSize: 200 }, controller.signal);
+        if (!controller.signal.aborted) {
           setStatsProjects(payload.data.items ?? []);
+          setStatsTotal(payload.data.total);
         }
       } catch {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setStatsProjects([]);
+          setStatsError('项目统计加载失败');
         }
       }
     };
     void loadStats();
     return () => {
-      cancelled = true;
+      controller.abort();
     };
-  }, []);
+  }, [retryVersion]);
 
   const handleKeywordChange = (value: string | number) => {
-    setKeyword(String(value));
-    setPage(1);
+    updateQuery({ keyword: String(value), page: '1' });
   };
 
   const handleStatusChange = (value: string | number) => {
@@ -123,13 +145,13 @@ function ProjectsPage() {
       next === 'paused' ||
       next === 'done'
     ) {
-      setStatusFilter(next);
-      setPage(1);
+      updateQuery({ status: next, page: '1' });
     }
   };
 
   const openProject = (id: string) => {
-    navigate(`/projects/${id}`);
+    const search = searchParams.toString();
+    navigate(`/projects/${encodeURIComponent(id)}${search ? `?${search}` : ''}`);
   };
 
   return (
@@ -147,29 +169,31 @@ function ProjectsPage() {
       <MetricGrid columns={4}>
         <MetricCard
           title="项目总数"
-          value={statsProjects.length}
-          description="全部项目"
+          value={statsTotal ?? '—'}
+          description="接口返回的全部项目总数"
           icon={<PackageIcon size={20} />}
         />
         <MetricCard
           title="进行中"
-          value={activeCount}
-          description="当前推进中的项目"
+          value={statsTotal === null ? '—' : activeCount}
+          description={`已加载 ${statsProjects.length} 条中的进行中数量`}
           icon={<TrendingUpIcon size={20} />}
         />
         <MetricCard
           title="已完成"
-          value={doneCount}
-          description="已发布归档"
+          value={statsTotal === null ? '—' : doneCount}
+          description={`已加载 ${statsProjects.length} 条中的已完成数量`}
           icon={<CheckCircleIcon size={20} />}
         />
         <MetricCard
           title="平均进度"
-          value={avgProgress}
-          description="全部项目进度均值"
+          value={statsTotal === null ? '—' : avgProgress}
+          description={`已加载 ${statsProjects.length} 条的进度均值（最多 200 条）`}
           icon={<ClockIcon size={20} />}
         />
       </MetricGrid>
+
+      {statsError && <div role="alert" className="flex flex-wrap items-center gap-3"><Text color="danger">{statsError}</Text><Button variant="outline" onClick={() => setRetryVersion(value => value + 1)}>重试项目统计</Button></div>}
 
       <PageActionPanel
         title="筛选项目"
@@ -184,6 +208,8 @@ function ProjectsPage() {
               className="w-full sm:w-64"
             />
             <Segmented
+              size="sm"
+              aria-label="项目状态"
               value={statusFilter}
               options={PROJECT_STATUS_FILTERS}
               onChange={handleStatusChange}
@@ -192,7 +218,7 @@ function ProjectsPage() {
         }
       />
 
-      {projects.length > 0 ? (
+      {loadError ? <Card><div role="alert" className="space-y-3"><Text color="danger">{loadError}</Text><Button variant="outline" onClick={() => setRetryVersion(value => value + 1)}>重试项目列表</Button></div></Card> : projects.length > 0 ? (
         <Row
           data-testid="projects-grid"
           gutter={[16, 16]}
@@ -220,7 +246,7 @@ function ProjectsPage() {
             current={page}
             total={total}
             pageSize={PROJECT_PAGE_SIZE}
-            onChange={setPage}
+            onChange={(value) => updateQuery({ page: String(value) })}
           />
         </div>
       ) : null}

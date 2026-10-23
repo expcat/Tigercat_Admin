@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { inject, ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { Button } from '@expcat/tigercat-vue/Button'
+import { usePermission } from '../utils/permission'
 import { Alert } from '@expcat/tigercat-vue/Alert'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Loading } from '@expcat/tigercat-vue/Loading'
@@ -15,14 +17,11 @@ import { Col } from '@expcat/tigercat-vue/Col'
 import type { Session, StatsOverview, StatsTrend } from '../utils'
 import { apiRequest, getAuthHeaders } from '../utils'
 import {
-  DATA_EXPORT_PLACEHOLDER_ROWS,
   DATA_EXPORT_TRIGGER_FORMATS,
   EXPORT_FORMAT_LABELS,
   EXPORT_FORMATS,
   OVERVIEW_EXPORT_FIELDS,
   exportOverview,
-  handleDataExportError,
-  skipClientDataExport,
   toExportColumns,
   type ExportFormat,
 } from '../utils/export'
@@ -36,20 +35,17 @@ const homeMessage = inject<import('vue').Ref<string>>('homeMessage', ref(''))
 const homeError = inject<import('vue').Ref<string>>('homeError', ref(''))
 const session = inject<import('vue').Ref<Session | null>>('session', ref(null))
 
-// 认证 headers
-const authHeaders = computed<Record<string, string>>(() => {
-  const headers: Record<string, string> = {}
-  if (session.value?.token) headers.Authorization = `Bearer ${session.value.token}`
-  return headers
-})
+const { has: hasPerm } = usePermission()
 
 // --- 统计数据状态 ---
 const overview = ref<StatsOverview | null>(null)
 const trend = ref<StatsTrend | null>(null)
-const statsLoading = ref(false)
-const trendLoading = ref(false)
+const statsLoading = ref(true)
+const trendLoading = ref(true)
+const trendError = ref('')
+const reload = ref(0)
 const statsError = ref('')
-let trendRequestId = 0
+
 
 // 时间范围（天数）
 const trendDays = ref<number>(7)
@@ -91,7 +87,7 @@ const trendChartData = computed(() => {
 })
 
 const distributionChartData = computed(() => {
-  if (!overview.value) return []
+  if (!overview.value || overview.value.totalUsers === 0) return []
   return [
     { value: overview.value.activeUsers, label: '启用' },
     { value: overview.value.disabledUsers, label: '停用' },
@@ -105,48 +101,37 @@ const chartSuccess = 'var(--tiger-success, #16a34a)'
 const chartWarning = 'var(--tiger-warning, #d97706)'
 const chartInfo = 'var(--tiger-info, #3b82f6)'
 
-// --- API 请求 ---
-async function fetchOverview() {
-  const res = await apiRequest<StatsOverview>('/api/stats/overview', {
-    headers: authHeaders.value,
-  })
-  overview.value = res.data
-}
-
-async function fetchTrend() {
-  const id = ++trendRequestId
-  const res = await apiRequest<StatsTrend>(`/api/stats/trend?days=${trendDays.value}`, {
-    headers: authHeaders.value,
-  })
-  // 仅当此请求仍是最新请求时才更新数据，避免竞态
-  if (id === trendRequestId) {
-    trend.value = res.data
-  }
-}
-
-async function loadStats() {
+watch(reload, async (_, __, onCleanup) => {
+  const controller = new AbortController()
+  onCleanup(() => controller.abort())
   statsLoading.value = true
   statsError.value = ''
+  overview.value = null
   try {
-    await Promise.all([fetchOverview(), fetchTrend()])
-  } catch (e: any) {
-    statsError.value = e.message || '加载统计数据失败'
+    const res = await apiRequest<StatsOverview>('/api/stats/overview', { headers: getAuthHeaders(), signal: controller.signal })
+    if (!controller.signal.aborted) overview.value = res.data
+  } catch (error) {
+    if (!controller.signal.aborted) statsError.value = error instanceof Error ? error.message : '加载统计数据失败'
   } finally {
-    statsLoading.value = false
+    if (!controller.signal.aborted) statsLoading.value = false
   }
-}
+}, { immediate: true })
 
-// 切换时间范围时重新加载趋势
-watch(trendDays, async () => {
+watch([trendDays, reload], async (_, __, onCleanup) => {
+  const controller = new AbortController()
+  onCleanup(() => controller.abort())
   trendLoading.value = true
+  trendError.value = ''
+  trend.value = null
   try {
-    await fetchTrend()
-  } catch (e: any) {
-    statsError.value = e.message || '加载趋势数据失败'
+    const res = await apiRequest<StatsTrend>(`/api/stats/trend?days=${trendDays.value}`, { headers: getAuthHeaders(), signal: controller.signal })
+    if (!controller.signal.aborted) trend.value = res.data
+  } catch (error) {
+    if (!controller.signal.aborted) trendError.value = error instanceof Error ? error.message : '加载趋势数据失败'
   } finally {
-    trendLoading.value = false
+    if (!controller.signal.aborted) trendLoading.value = false
   }
-})
+}, { immediate: true })
 
 async function onExport(format: ExportFormat) {
   exporting.value = true
@@ -164,7 +149,7 @@ async function onExport(format: ExportFormat) {
   }
 }
 
-onMounted(loadStats)
+
 
 const router = useRouter()
 
@@ -198,17 +183,17 @@ const ANNOUNCEMENTS = [
       :title="`欢迎回来，${session?.username || 'Admin'}！`"
       :subtitle="homeMessage || '今天是个好日子，让我们开始工作吧！'"
       :tags="[
-        { label: '管理员', variant: 'primary' },
+        { label: '当前账号', variant: 'primary' },
         { label: '已认证', variant: 'success' },
       ]"
     />
 
     <!-- 加载错误提示 -->
     <Alert
-      v-if="homeError || statsError"
+      v-if="homeError || statsError || trendError"
       type="error"
       title="数据加载失败"
-      :description="homeError || statsError"
+      :description="homeError || statsError || trendError"
       closable
     />
 
@@ -218,7 +203,7 @@ const ANNOUNCEMENTS = [
       :pause-on-hover="true"
       :gap="24"
       :repeat="2"
-      aria-label="运维公告"
+      aria-label="运维公告示例"
       class-name="rounded-lg border border-(--tiger-border,#e5e7eb)/30 bg-(--tiger-bg-card,#ffffff) px-3 py-2"
     >
       <span
@@ -227,7 +212,7 @@ const ANNOUNCEMENTS = [
         class="inline-flex items-center gap-2 whitespace-nowrap text-sm text-(--tiger-text,#0f172a)"
       >
         <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-(--tiger-primary,#3b82f6)"></span>
-        <span class="text-(--tiger-text-secondary,#64748b)">{{ item }}</span>
+        <span class="text-(--tiger-text-secondary,#64748b)">示例：{{ item }}</span>
       </span>
     </Marquee>
 
@@ -236,7 +221,7 @@ const ANNOUNCEMENTS = [
         v-for="format in EXPORT_FORMATS"
         :key="format"
         :columns="exportColumns"
-        :data-source="DATA_EXPORT_PLACEHOLDER_ROWS"
+        :data-source="[]"
         :formats="DATA_EXPORT_TRIGGER_FORMATS"
         file-name="overview"
         :labels="{
@@ -244,12 +229,12 @@ const ANNOUNCEMENTS = [
           exportingText: '导出中...',
           triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
         }"
-        :disabled="exporting"
-        :cell-formatter="skipClientDataExport"
-        @error="(error: unknown) => handleDataExportError(error, format, onExport, (message) => Message.error({ content: message, duration: 3000 }))"
+        :disabled="exporting || statsLoading || trendLoading || !!statsError || !!trendError"
+        :custom-export="() => onExport(format)"
       />
     </div>
 
+    <Button v-if="statsError || trendError" variant="outline" @click="reload++">重试统计</Button>
     <!-- 统计卡片 -->
     <MetricGrid :columns="4">
       <MetricCard
@@ -341,7 +326,7 @@ const ANNOUNCEMENTS = [
         </template>
         <div class="grid grid-cols-2 gap-3">
           <button
-            v-for="action in quickActions"
+            v-for="action in quickActions.filter((action) => action.key === 'users' ? hasPerm('user:view') : action.key === 'roles' ? hasPerm('role:view') : action.key === 'logs' ? hasPerm('audit:view') : true)"
             :key="action.key"
             @click="handleQuickAction(action.key)"
             class="p2-action-tile group flex min-h-24 flex-col items-center justify-center p-4 transition-all duration-300 hover:shadow-md"
@@ -405,7 +390,7 @@ const ANNOUNCEMENTS = [
           </MetricCard>
         </Col>
         <Col :span="{ xs: 24, sm: 12, lg: 6 }">
-          <MetricCard title="API 状态" value="在线" :framed="false">
+          <MetricCard title="API 状态" :value="statsLoading || trendLoading ? '检查中' : statsError || trendError ? '请求失败' : '在线'" :framed="false">
             <template #icon><Icon name="globe" :size="20" /></template>
           </MetricCard>
         </Col>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
@@ -14,11 +14,9 @@ import { Switch } from '@expcat/tigercat-vue/Switch'
 import { Tag } from '@expcat/tigercat-vue/Tag'
 import { Text } from '@expcat/tigercat-vue/Text'
 import { ColorPicker } from '@expcat/tigercat-vue/ColorPicker'
-import { Upload } from '@expcat/tigercat-vue/Upload'
 import { Collapse } from '@expcat/tigercat-vue/Collapse'
 import { CollapsePanel } from '@expcat/tigercat-vue/CollapsePanel'
 import { Skeleton } from '@expcat/tigercat-vue/Skeleton'
-import type { UploadRequestOptions } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import AppLogo from '../components/AppLogo.vue'
 import { apiRequest, getAuthHeaders } from '../utils'
@@ -32,8 +30,13 @@ import { WATERMARK_SETTING_KEY, useWatermarkEnabled } from '../utils/watermark'
 const settings = ref<SettingItem[]>([])
 const editValues = ref<Record<string, string>>({})
 const loading = ref(true)
+const loadError = ref('')
 const saving = ref(false)
 const saveConfirmOpen = ref(false)
+const logoUploading = ref(false)
+const logoInputRef = ref<HTMLInputElement | null>(null)
+let logoUploadController: AbortController | null = null
+onBeforeUnmount(() => logoUploadController?.abort())
 const openSettingGroups = ref<(string | number)[]>(Object.keys(SETTINGS_GROUP_LABELS))
 const { has: hasPerm } = usePermission()
 const { watermarkEnabled, setWatermarkEnabled } = useWatermarkEnabled()
@@ -49,11 +52,13 @@ const hasDefaultOverrides = computed(() =>
   settings.value.some(s => editValues.value[s.key] !== s.defaultValue)
 )
 const currentLogoUrl = computed(() => editValues.value['site.logo'] || '')
+const savedLogoUrl = computed(() => settings.value.find(item => item.key === 'site.logo')?.value || '')
 
 /* ── API 操作 ────────────────────────────────── */
 async function fetchSettings() {
   try {
     loading.value = true
+    loadError.value = ''
     const res = await apiRequest<SettingItem[]>('/api/settings', {
       headers: getAuthHeaders(),
     })
@@ -62,6 +67,7 @@ async function fetchSettings() {
     for (const s of res.data) values[s.key] = s.value
     editValues.value = values
   } catch (e: any) {
+    loadError.value = e.message || '加载设置失败'
     Message.error({ content: e.message || '加载设置失败', duration: 3000 })
   } finally {
     loading.value = false
@@ -75,16 +81,19 @@ async function handleSave() {
   if (entries.length === 0) return
   try {
     saving.value = true
-    await apiRequest<SettingItem[]>('/api/settings', {
+    const res = await apiRequest<SettingItem[]>('/api/settings', {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify({ settings: entries }),
     })
+    const updated = settings.value.map(item => res.data.find(value => value.key === item.key) ?? item)
+    settings.value = updated
+    editValues.value = Object.fromEntries(updated.map(item => [item.key, item.value]))
     saveConfirmOpen.value = false
     Message.success({ content: '设置已保存', duration: 3000 })
-    await fetchSettings()
   } catch (e: any) {
     Message.error({ content: e.message || '保存失败', duration: 3000 })
+    return false
   } finally {
     saving.value = false
   }
@@ -97,20 +106,42 @@ function handleRestoreDefaults() {
   Message.success({ content: '已恢复默认值，请确认保存修改', duration: 3000 })
 }
 
-function handleLogoUpload(options: UploadRequestOptions) {
-  void (async () => {
-    try {
-      options.onProgress?.(20)
-      const media = await uploadMediaFile(options.file, 'logo')
-      options.onProgress?.(100)
-      options.onSuccess?.(media)
-      editValues.value = { ...editValues.value, 'site.logo': media.url }
-      Message.success({ content: 'Logo 已上传，请保存设置以持久化引用', duration: 3000 })
-    } catch (e: any) {
-      options.onError?.(e)
-      Message.error({ content: e.message || 'Logo 上传失败', duration: 3000 })
+async function handleLogoUpload(file: File) {
+  if (!canEdit.value || logoUploadController) return
+  if (!file.type.startsWith('image/') || file.size > 2 * 1024 * 1024) {
+    Message.warning({ content: '请选择不超过 2 MB 的图片', duration: 3000 })
+    return
+  }
+  const controller = new AbortController()
+  logoUploadController = controller
+  logoUploading.value = true
+  try {
+    const media = await uploadMediaFile(file, 'logo', controller.signal)
+    if (controller.signal.aborted) return
+    editValues.value = { ...editValues.value, 'site.logo': media.url }
+    Message.success({ content: 'Logo 已上传，请保存设置以持久化引用', duration: 3000 })
+  } catch (e: any) {
+    if (!controller.signal.aborted) Message.error({ content: e.message || 'Logo 上传失败', duration: 3000 })
+  } finally {
+    if (logoUploadController === controller) {
+      logoUploadController = null
+      if (!controller.signal.aborted) logoUploading.value = false
     }
-  })()
+  }
+}
+
+function cancelLogoUpload() {
+  logoUploadController?.abort()
+  logoUploadController = null
+  logoUploading.value = false
+  requestAnimationFrame(() => document.getElementById('logo-upload-select')?.focus())
+}
+
+function handleLogoInputChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (file) void handleLogoUpload(file)
 }
 
 function scrollToTargetSetting() {
@@ -166,6 +197,13 @@ function handleSettingGroupsChange(keys: (string | number)[]) {
       </div>
     </Card>
 
+    <Card v-else-if="loadError">
+      <div role="alert" class="flex flex-wrap items-center justify-between gap-3">
+        <span>{{ loadError }}</span>
+        <Button variant="outline" @click="fetchSettings">重试加载设置</Button>
+      </div>
+    </Card>
+
     <template v-else>
       <Card title="站点 Logo" class="overflow-hidden">
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
@@ -193,17 +231,18 @@ function handleSettingGroupsChange(keys: (string | number)[]) {
               </div>
             </div>
 
-            <Upload
-              accept="image/*"
-              :disabled="!canEdit"
-              list-type="picture-card"
-              :show-file-list="false"
-              :max-size="2 * 1024 * 1024"
-              :custom-request="handleLogoUpload"
-            />
+            <div class="flex flex-wrap items-center gap-3">
+              <Button id="logo-upload-select" variant="outline" :disabled="!canEdit || logoUploading || saving" @click="logoInputRef?.click()">
+                {{ logoUploading ? '正在上传…' : '选择 Logo 图片' }}
+              </Button>
+              <input ref="logoInputRef" type="file" accept="image/*" class="hidden" @change="handleLogoInputChange" />
+              <Button v-if="logoUploading" variant="outline" @click="cancelLogoUpload">取消上传</Button>
+              <Text size="sm" color="secondary">图片不超过 2 MB</Text>
+            </div>
 
-            <div class="p2-muted-panel px-4 py-3 text-sm">
-              当前持久化值：{{ editValues['site.logo'] || '未设置' }}
+            <div class="p2-muted-panel space-y-1 break-all px-4 py-3 text-sm">
+              <p>当前表单值：{{ currentLogoUrl || '未设置' }}</p>
+              <p>当前持久化值：{{ savedLogoUrl || '未设置' }}</p>
             </div>
           </div>
 
@@ -329,11 +368,11 @@ function handleSettingGroupsChange(keys: (string | number)[]) {
           placement="top"
           @confirm="handleRestoreDefaults"
         >
-          <Button variant="outline" :disabled="!hasDefaultOverrides || saving">
+          <Button variant="outline" :disabled="!hasDefaultOverrides || saving || logoUploading">
             恢复默认值
           </Button>
         </Popconfirm>
-        <Button variant="primary" :disabled="!hasChanges || saving" @click="saveConfirmOpen = true">
+        <Button variant="primary" :disabled="!hasChanges || saving || logoUploading" @click="saveConfirmOpen = true">
           {{ saving ? '保存中…' : '保存修改' }}
         </Button>
       </div>

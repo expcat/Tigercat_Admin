@@ -1,7 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Avatar } from '@expcat/tigercat-react/Avatar';
-import { Icon } from '@expcat/tigercat-react/Icon';
-import type { IconDefinition } from '@expcat/tigercat-core/icons/registry';
+import { FullscreenButton } from '@expcat/tigercat-react/FullscreenButton';
+import { Message } from '@expcat/tigercat-react/Message';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -28,28 +28,9 @@ import {
 } from './Icons';
 import type { ThemeMode, ThemePreferences } from '../utils/types';
 import { resolveEffectiveMode } from '../utils/theme';
+import { usePermission } from '../utils/permission';
 import { NotificationBell } from './NotificationBell';
 import { ThemeConfigDrawer } from './ThemeConfigDrawer';
-import {
-  isDocumentFullscreen,
-  toggleDocumentFullscreen,
-} from '../utils/fullscreen';
-
-const ENTER_FULLSCREEN_ICON: IconDefinition = {
-  viewBox: '0 0 24 24',
-  mode: 'stroke',
-  paths: [
-    'M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 20.25h-4.5m4.5 0v-4.5m0 4.5L15 15',
-  ],
-};
-
-const EXIT_FULLSCREEN_ICON: IconDefinition = {
-  viewBox: '0 0 24 24',
-  mode: 'stroke',
-  paths: [
-    'M9 9 3.75 3.75M9 9H4.5M9 9V4.5M15 9l5.25-5.25M15 9h4.5M15 9V4.5M9 15l-5.25 5.25M9 15H4.5M9 15v4.5M15 15l5.25 5.25M15 15h4.5M15 15v4.5',
-  ],
-};
 
 interface MainHeaderProps {
   session: { username: string } | null;
@@ -101,19 +82,16 @@ export function MainHeader({
   demoMode,
   chatDock,
 }: MainHeaderProps) {
+  const { has } = usePermission();
   const [themeDrawerOpen, setThemeDrawerOpen] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
   const themeMode = themePrefs.mode;
   const accountLabel = session?.username ?? '账户';
   const currentBreadcrumbItems =
     breadcrumbItems.length > 0 ? breadcrumbItems : [pageTitle];
 
-  useEffect(() => {
-    const syncFullscreen = () => setFullscreen(isDocumentFullscreen());
-    syncFullscreen();
-    document.addEventListener('fullscreenchange', syncFullscreen);
-    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
-  }, []);
+  const handleFullscreenError = () => {
+    Message.error({ content: '全屏切换失败，请重试', duration: 3000 });
+  };
 
   return (
     <Header role="banner" height="auto" className="p2-main-header flex min-h-16 flex-nowrap items-center justify-between gap-2 px-3 py-2 z-10 sm:gap-3 sm:px-4 md:px-6">
@@ -153,20 +131,15 @@ export function MainHeader({
             演示模式
           </Tag>
         )}
-        <button
-          type="button"
+        <FullscreenButton
           data-testid="shell-fullscreen-toggle"
-          aria-label={fullscreen ? '退出全屏' : '进入全屏'}
-          title={fullscreen ? '退出全屏' : '进入全屏'}
-          className="hidden h-10 w-10 items-center justify-center rounded-lg text-(--tiger-text,#1f2937) transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9) lg:flex"
-          onClick={() => {
-            void toggleDocumentFullscreen().catch(() => undefined);
-          }}>
-          <Icon
-            icon={fullscreen ? EXIT_FULLSCREEN_ICON : ENTER_FULLSCREEN_ICON}
-            size="md"
-          />
-        </button>
+          labels={{
+            enterAriaLabel: '进入全屏',
+            exitAriaLabel: '退出全屏',
+          }}
+          className="!hidden h-10 w-10 shrink-0 lg:!inline-flex"
+          onError={handleFullscreenError}
+        />
         <button
           type="button"
           data-testid="shell-theme-config-trigger"
@@ -177,7 +150,7 @@ export function MainHeader({
           <PaletteIcon size={20} />
         </button>
         {chatDock}
-        <NotificationBell />
+        {has('notification:view') && <NotificationBell />}
         <Dropdown
           trigger="click"
           placement="bottom-end"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, ref } from 'vue'
+import { computed, h, onMounted, onBeforeUnmount, ref } from 'vue'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Empty } from '@expcat/tigercat-vue/Empty'
@@ -49,6 +49,7 @@ const canDelete = computed(() => hasPerm('menu:delete'))
 
 const schema = ref<MenuSchemaPayload>({ items: [], bottomItems: [] })
 const loading = ref(false)
+const loadError = ref('')
 const selectedKey = ref<string | null>(null)
 const modalVisible = ref(false)
 const modalTitle = ref('新增菜单节点')
@@ -60,6 +61,7 @@ const previewRoleId = ref<number | null>(null)
 const previewCodes = ref<string[]>([])
 const previewError = ref('')
 const previewLoading = ref(false)
+let previewRequest: AbortController | null = null
 
 const treeData = computed(() => toMenuTreeData(schema.value))
 const selectedKeys = computed(() => (selectedKey.value ? [selectedKey.value] : []))
@@ -117,6 +119,7 @@ function readErrorMessage(error: unknown, fallback: string) {
 
 async function loadSchema() {
   loading.value = true
+  loadError.value = ''
   try {
     const res = await fetchMenuSchema()
     schema.value = res.data
@@ -128,6 +131,7 @@ async function loadSchema() {
       selectedKey.value = null
     }
   } catch (error: unknown) {
+    loadError.value = readErrorMessage(error, '菜单加载失败')
     Message.error({ content: readErrorMessage(error, '菜单 schema 加载失败'), duration: 3000 })
   } finally {
     loading.value = false
@@ -170,7 +174,7 @@ function openEdit() {
 async function submitForm() {
   if (!editingKey.value && !formData.value.key.trim()) {
     Message.warning({ content: '请输入菜单节点 key', duration: 2000 })
-    return
+    return false
   }
   submitting.value = true
   try {
@@ -186,6 +190,7 @@ async function submitForm() {
     await loadSchema()
   } catch (error: unknown) {
     Message.error({ content: readErrorMessage(error, '保存失败'), duration: 3000 })
+    return false
   } finally {
     submitting.value = false
   }
@@ -205,25 +210,31 @@ async function handleDelete() {
 }
 
 async function handlePreviewRoleChange(value: unknown) {
-  const id = typeof value === 'number' ? value : Number(value)
-  previewRoleId.value = Number.isFinite(id) ? id : null
+  previewRequest?.abort()
+  const id = value == null || value === '' ? NaN : Number(value)
+  const nextId = Number.isFinite(id) && id > 0 ? id : null
+  previewRoleId.value = nextId
   previewCodes.value = []
-  if (!previewRoleId.value) return
-  previewLoading.value = true
   previewError.value = ''
+  previewLoading.value = false
+  if (!nextId) return
+  const request = new AbortController()
+  previewRequest = request
+  previewLoading.value = true
   try {
-    const res = await fetchRoleDetail(previewRoleId.value)
-    previewCodes.value = (res.data.permissions ?? []).map((item) => item.code)
+    const res = await fetchRoleDetail(nextId, request.signal)
+    if (!request.signal.aborted) previewCodes.value = (res.data.permissions ?? []).map((item) => item.code)
   } catch (error: unknown) {
-    previewError.value = readErrorMessage(error, '角色权限加载失败')
+    if (!request.signal.aborted) previewError.value = readErrorMessage(error, '角色权限加载失败')
   } finally {
-    previewLoading.value = false
+    if (!request.signal.aborted) previewLoading.value = false
   }
 }
 
 onMounted(async () => {
   await Promise.all([loadSchema(), loadRoles()])
 })
+onBeforeUnmount(() => previewRequest?.abort())
 </script>
 
 <template>
@@ -281,7 +292,12 @@ onMounted(async () => {
           选择节点后可新增子项、编辑或删除。仪表盘节点不可删除；有子节点时请先删子项。
         </Text>
         <div v-if="loading" class="p2-text-secondary mb-3">菜单树加载中...</div>
+        <div v-if="loadError" role="alert" class="flex flex-wrap items-center justify-between gap-3">
+          <span>{{ loadError }}</span>
+          <Button variant="outline" @click="loadSchema">重试加载菜单</Button>
+        </div>
         <Tree
+          v-else
           :tree-data="treeData"
           :selected-keys="selectedKeys"
           default-expand-all
@@ -296,12 +312,12 @@ onMounted(async () => {
       <Card>
         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
           <Text weight="medium">角色预览</Text>
-          <Tag v-if="previewRoleId != null" size="sm" variant="primary">
+          <Tag v-if="previewRoleId != null && !previewLoading && !previewError" size="sm" variant="primary">
             {{ previewRouteTotal }} 条路由记录
           </Tag>
         </div>
         <Text size="sm" color="secondary" class="mb-3 block">
-          使用 filterMenuByPermission 与 menuSchemaToMenuItems 按角色权限过滤，不裁剪服务端 schema。
+          选择角色，预览其有权访问的侧栏菜单和路由数量。
         </Text>
         <Select
           :model-value="previewRoleId ?? undefined"
@@ -311,11 +327,12 @@ onMounted(async () => {
           class="mb-3"
           @update:model-value="handlePreviewRoleChange"
         />
-        <Text v-if="previewError" size="sm" color="danger" class="mb-3 block">
-          {{ previewError }}
-        </Text>
+        <div v-if="previewError" role="alert" class="mb-3 flex flex-wrap items-center gap-2">
+          <Text size="sm" color="danger">{{ previewError }}</Text>
+          <Button size="sm" variant="outline" @click="roles.length ? handlePreviewRoleChange(previewRoleId) : loadRoles()">重试预览</Button>
+        </div>
         <Empty
-          v-if="!previewRoleId"
+          v-else-if="!previewRoleId"
           description="选择一个角色，查看该角色侧栏会看到的菜单"
         />
         <div v-else-if="previewLoading" class="p2-text-secondary py-8 text-center">

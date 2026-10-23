@@ -192,10 +192,10 @@ export function notifyNotificationsChanged(): void {
   window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
 }
 
-export function fetchNotifications() {
+export function fetchNotifications(signal?: AbortSignal) {
   return apiRequest<PagedResult<AdminNotificationItem>>(
     '/api/notifications?page=1&pageSize=100',
-    { headers: getAuthHeaders() },
+    { headers: getAuthHeaders(), signal },
   );
 }
 
@@ -206,3 +206,19 @@ export function createNotification(payload: CreateNotificationPayload) {
     body: JSON.stringify(payload),
   });
 }
+
+const LINK_PERMISSION_MAP: Array<[RegExp, string]> = [
+  [/^\/users(?:[/?#]|$)/, 'user:view'],
+  [/^\/roles(?:[/?#]|$)/, 'role:view'],
+  [/^\/menus(?:[/?#]|$)/, 'menu:view'],
+  [/^\/files(?:[/?#]|$)/, 'media:view'],
+  [/^\/tasks(?:[/?#]|$)/, 'task:view'],
+  [/^\/audit-logs(?:[/?#]|$)/, 'audit:view'],
+  [/^\/settings(?:[/?#]|$)/, 'setting:view'],
+];
+
+export const getRequiredPermissionForLink = (linkUrl: string) =>
+  LINK_PERMISSION_MAP.find(([pattern]) => pattern.test(linkUrl))?.[1] ?? null;
+
+export const isSafeInternalLink = (linkUrl: string) =>
+  linkUrl.startsWith('/') && !linkUrl.startsWith('//') && !/[\\\s]/.test(linkUrl);

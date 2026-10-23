@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
   SESSION_KEY,
-  isGuestAuthPath,
+  getSafeReturnTo,
   safeParse,
   type Session,
   usePermission,
@@ -15,13 +15,7 @@ export function GuestRoute() {
 
   if (isAuthed) {
     const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
-    const target =
-      typeof returnTo === 'string' &&
-      returnTo.startsWith('/') &&
-      !returnTo.startsWith('//') &&
-      !isGuestAuthPath(returnTo)
-        ? returnTo
-        : '/dashboard';
+    const target = getSafeReturnTo(returnTo);
     return <Navigate to={target} replace />;
   }
 

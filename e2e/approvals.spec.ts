@@ -149,6 +149,34 @@ test.describe('审批中心 mock 流转', () => {
     await expect(page.getByText('王经理').first()).toBeVisible();
   });
 
+  test('评论失败在弹层内提示并保留草稿，可原按钮重试和恢复焦点', async ({ page }) => {
+    await page.goto('/approvals');
+    await page.getByRole('button', { name: '发起审批' }).click();
+    await page.getByPlaceholder('例如：请假、报销或工单升级').fill(`评论失败 ${uniqueSuffix()}`);
+    await page.getByRole('button', { name: '提交', exact: true }).click();
+    const commentTrigger = page.getByRole('button', { name: '评论', exact: true });
+    await expect(commentTrigger).toBeVisible();
+    await commentTrigger.click();
+    const dialog = page.getByRole('dialog', { name: '添加评论' });
+    await dialog.getByLabel('评论意见').fill('保留草稿再重试');
+    await page.route('**/api/approvals/*/actions', (route) => route.fulfill({
+      status: 500, contentType: 'application/json',
+      body: JSON.stringify({ success: false, code: 500, message: 'UP06 评论保存故障' }),
+    }), { times: 1 });
+    await dialog.getByRole('button', { name: '提交评论' }).click();
+    await expect(dialog.getByText('评论尚未保存')).toBeVisible();
+    await expect(dialog.getByText('UP06 评论保存故障')).toBeVisible();
+    await expect(dialog.getByLabel('评论意见')).toHaveValue('保留草稿再重试');
+    await dialog.getByRole('button', { name: '提交评论' }).click();
+    await expect(dialog).toBeHidden();
+    await expect(commentTrigger).toBeFocused();
+    await commentTrigger.press('Enter');
+    await expect(dialog.getByLabel('评论意见')).toHaveValue('');
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(commentTrigger).toBeFocused();
+  });
+
   test('采购财务节点金额仅财务身份可编，关联工单隐藏', async ({ page }) => {
     await page.goto('/approvals/AP-1007');
     await expect(page.getByText('申请表单', { exact: true })).toBeVisible();
@@ -226,7 +254,7 @@ test.describe('审批中心 mock 流转', () => {
     await expect(page.getByText('当前 7 个节点')).toBeVisible();
     await expect(page.getByText('存在阻塞项，无法发布')).toHaveCount(0);
 
-    await designer.getByRole('group', { name: '主管会签' }).getByText('李四, 钱七').click();
+    await designer.getByRole('group', { name: '主管会签' }).getByText('王经理, 李总监').click();
     const inspector = page.getByRole('region', { name: '节点设置' });
     await expect(inspector).toBeVisible();
     await expect(inspector.getByLabel('标题')).toHaveValue('主管会签');
@@ -234,8 +262,8 @@ test.describe('审批中心 mock 流转', () => {
     await expect(inspector.getByRole('tab', { name: '操作按钮' })).toBeVisible();
     await expect(inspector.getByRole('tab', { name: '表单权限' })).toBeVisible();
     await expect(inspector.getByRole('tab', { name: '高级' })).toBeVisible();
-    await expect(inspector.getByLabel('审批人 1')).toHaveValue('李四');
-    await expect(inspector.getByLabel('审批人 2')).toHaveValue('钱七');
+    await expect(inspector.getByLabel('审批人 1')).toHaveValue('王经理');
+    await expect(inspector.getByLabel('审批人 2')).toHaveValue('李总监');
 
     await inspector.getByRole('tab', { name: '操作按钮' }).click();
     await expect(inspector.getByRole('tab', { name: '操作按钮' })).toHaveAttribute('aria-selected', 'true');
@@ -249,14 +277,14 @@ test.describe('审批中心 mock 流转', () => {
     await inspector.getByRole('tab', { name: '高级' }).click();
     await expect(inspector.getByLabel('自动通过/拒绝')).toBeVisible();
 
-    await page.locator('#main-content-scroll').getByRole('button', { name: '发布', exact: true }).first().click();
-    await expect(page.getByText('已发布（演示，不写回引擎）').first()).toBeVisible();
+    await page.locator('#main-content-scroll').getByRole('button', { name: '发布（本机演示）', exact: true }).first().click();
+    await expect(page.getByText('本机演示校验通过，草稿已保存（未发布到引擎）').first()).toBeVisible();
 
     await page.getByRole('button', { name: '添加步骤' }).click();
     await expect(page.getByText('当前 8 个节点')).toBeVisible();
     await expect(page.getByText('存在阻塞项，无法发布').first()).toBeVisible();
     await expect(page.getByText('该审批节点没有审批人').first()).toBeVisible();
-    await page.locator('#main-content-scroll').getByRole('button', { name: '发布', exact: true }).first().click();
+    await page.locator('#main-content-scroll').getByRole('button', { name: '发布（本机演示）', exact: true }).first().click();
     await expect(page.getByText('存在阻塞项，无法发布').first()).toBeVisible();
 
     await page.getByRole('button', { name: '恢复默认' }).click();

@@ -72,6 +72,43 @@ test.describe('全局水印与主题配置抽屉', () => {
     await expect(page).toHaveURL(/#\/settings$/);
   });
 
+  test('Header 全屏按钮同步进入、退出和外部退出状态', async ({ page }) => {
+    await login(page);
+    const toggle = page.getByTestId('shell-fullscreen-toggle');
+    await expect(toggle).toHaveAccessibleName('进入全屏');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    await toggle.click();
+    await expect(toggle).toHaveAccessibleName('退出全屏');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement === document.documentElement)).toBe(true);
+
+    await toggle.click();
+    await expect(toggle).toHaveAccessibleName('进入全屏');
+    await toggle.click();
+    await expect(toggle).toHaveAccessibleName('退出全屏');
+    await page.evaluate(() => document.exitFullscreen());
+    await expect(toggle).toHaveAccessibleName('进入全屏');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('Header 全屏请求失败给出反馈并保留未全屏状态', async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    await login(page);
+    await page.evaluate(() => {
+      document.documentElement.requestFullscreen = () => Promise.reject(new Error('Fullscreen denied for test'));
+    });
+
+    const toggle = page.getByTestId('shell-fullscreen-toggle');
+    await toggle.click();
+    await expect(page.getByText('全屏切换失败，请重试', { exact: true })).toBeVisible();
+    await expect(toggle).toHaveAccessibleName('进入全屏');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(await page.evaluate(() => document.fullscreenElement)).toBeNull();
+    expect(pageErrors).toEqual([]);
+  });
+
   test('Header 调色板打开主题抽屉并可切换外观', async ({ page }) => {
     await login(page);
 

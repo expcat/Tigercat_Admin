@@ -45,6 +45,12 @@ const pageNodes: Record<string, MockMenuSchemaNode> = {
     permission: 'dashboard:view',
     path: '/dashboard',
   },
+  workspace: {
+    key: 'workspace',
+    label: '我的工作台',
+    icon: 'clipboard',
+    path: '/workspace',
+  },
   analytics: {
     key: 'analytics',
     label: '数据分析看板',
@@ -110,6 +116,7 @@ const pageNodes: Record<string, MockMenuSchemaNode> = {
     label: '数据导入',
     icon: 'upload',
     path: '/import',
+    permission: 'user:create',
   },
   performance: {
     key: 'performance',
@@ -197,6 +204,7 @@ const pageNodes: Record<string, MockMenuSchemaNode> = {
 
 export const MOCK_MENU_SCHEMA_ITEMS: MockMenuSchemaNode[] = [
   pageNodes.home,
+  pageNodes.workspace,
   {
     key: 'analyticsGroup',
     label: '数据分析',

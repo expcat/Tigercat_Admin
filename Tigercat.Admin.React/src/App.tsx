@@ -1,3 +1,4 @@
+import { FILE_DETAIL_PAGE as FileDetailPage, IMPORT_RESULT_PAGE as ImportResultPage } from './utils/page-map';
 import {
   Component,
   lazy,
@@ -51,6 +52,8 @@ import {
   SESSION_KEY,
   GUEST_AUTH_PATHS,
   safeParse,
+  getSafeReturnTo,
+  getSessionToken,
   apiRequest,
   normalizeInput,
   Session,
@@ -131,36 +134,6 @@ class RouteErrorBoundary extends Component<
     }
     return this.props.children;
   }
-}
-
-function normalizeReturnPath(value: string): string {
-  let next = value.trim();
-  if (next.startsWith('#/')) next = next.slice(1);
-  const hashIdx = next.indexOf('#/');
-  if (hashIdx >= 0) next = next.slice(hashIdx + 1);
-  if (!next.startsWith('/')) next = `/${next}`;
-  return next;
-}
-
-function getSafeReturnTo(value: unknown): string {
-  if (typeof value !== 'string' || value.length === 0) {
-    return '/dashboard';
-  }
-
-  const path = normalizeReturnPath(value);
-  if (!path.startsWith('/') || path.startsWith('//') || path === '/login' || path === '/register') {
-    return '/dashboard';
-  }
-
-  if (path === '/forgot-password' || path === '/register-success') {
-    return '/dashboard';
-  }
-
-  if (path === '/403' || path === '/404' || path === '/500') {
-    return '/dashboard';
-  }
-
-  return path;
 }
 
 function GuestLayout({ children }: { children: React.ReactNode }) {
@@ -402,6 +375,7 @@ function App() {
   }, []);
 
   const onLoginSuccess = async (nextSession: Session) => {
+    const returnTo = getSafeReturnTo((location.state as LocationState | null)?.returnTo);
     persistSession(nextSession);
     // Guest 401 falls back to bundled schema; SPA login must refetch live tree
     // (iframeSrc-only nodes) before the first protected navigation.
@@ -410,7 +384,8 @@ function App() {
       permission.load(nextSession.token),
       resetShellMenuSchema(),
     ]);
-    navigate(getSafeReturnTo((location.state as LocationState | null)?.returnTo), {
+    if (getSessionToken() !== nextSession.token) return;
+    navigate(returnTo, {
       replace: true,
     });
   };
@@ -624,6 +599,8 @@ function App() {
             />
           }>
           {renderSchemaBusinessRoutes(boundRoutes)}
+          <Route element={<PermissionRoute code="media:view" />}><Route path="/files/:id" element={<FileDetailPage />} /></Route>
+          <Route element={<PermissionRoute code="user:create" />}><Route path="/import/:id" element={<ImportResultPage />} /></Route>
           <Route path="/projects/:id" element={<ProjectDetailPage />} />
           <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
         </Route>

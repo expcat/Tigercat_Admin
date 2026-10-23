@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type {
-  DismissActionEvent,
   InputType,
   TaskBoardCardMoveEvent,
   TaskBoardColumn,
   TaskBoardColumnMoveEvent
 } from '@expcat/tigercat-core'
-import { notification } from '@expcat/tigercat-vue'
+import { notification } from '@expcat/tigercat-vue/notification'
 
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
@@ -15,8 +14,10 @@ import { Modal } from '@expcat/tigercat-vue/Modal'
 import { Select } from '@expcat/tigercat-vue/Select'
 import { Tag } from '@expcat/tigercat-vue/Tag'
 import { Text } from '@expcat/tigercat-vue/Text'
-import { TaskBoard } from '@expcat/tigercat-vue/TaskBoard'
-import { computed, onMounted, ref, watch } from 'vue'
+import { TaskBoard } from '../utils/lazyTigercat'
+import { usePermission } from '../utils/permission'
+import { ApiError } from '../utils/request'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
@@ -47,7 +48,21 @@ const dueTo = ref('')
 const dateInputType = 'date' as unknown as InputType
 const columns = ref<AdminTaskBoardColumn[]>([])
 const selectedTask = ref<AdminTaskBoardCard | null>(null)
-const detailOpen = ref(false)
+const { has } = usePermission()
+const canView = computed(() => has('task:view'))
+const canCreate = computed(() => has('task:create'))
+const canEdit = computed(() => has('task:edit'))
+const queryTaskId = computed(() => typeof route.query.taskId === 'string' ? route.query.taskId : route.query.taskId == null ? null : '')
+const detailOpen = computed(() => queryTaskId.value !== null)
+const detailLoading = ref(false)
+const detailError = ref('')
+const loadError = ref('')
+const serverTotal = ref(0)
+const saving = ref(false)
+let listRequest: AbortController | null = null
+let detailRequest: AbortController | null = null
+let mutationPending = false
+let detailTrigger: HTMLElement | null = null
 const completionNote = ref('')
 const completing = ref(false)
 const loading = ref(true)
@@ -73,47 +88,75 @@ const handleColumnsChange = (nextColumns: TaskBoardColumn[]) => {
 }
 
 const loadTasks = async () => {
+  listRequest?.abort()
+  const controller = new AbortController()
+  listRequest = controller
   loading.value = true
-
+  loadError.value = ''
+  columns.value = []
+  serverTotal.value = 0
   try {
+    if (!canView.value) throw new Error('无权查看任务面板。')
+    if (dueFrom.value && dueTo.value && dueFrom.value > dueTo.value) throw new Error('开始日期不能晚于结束日期。')
     const params = new URLSearchParams({ page: '1', pageSize: '200' })
     if (filterText.value.trim()) params.set('keyword', filterText.value.trim())
     if (assigneeFilter.value.trim()) params.set('assignee', assigneeFilter.value.trim())
     if (blockedFilter.value) params.set('blocked', blockedFilter.value)
-    if (dueFrom.value.trim()) params.set('dueFrom', new Date(dueFrom.value).toISOString())
-    if (dueTo.value.trim()) params.set('dueTo', new Date(`${dueTo.value}T23:59:59`).toISOString())
-
+    if (dueFrom.value) params.set('dueFrom', new Date(`${dueFrom.value}T00:00:00`).toISOString())
+    if (dueTo.value) params.set('dueTo', new Date(`${dueTo.value}T23:59:59.999`).toISOString())
     const payload = await apiRequest<PagedResult<AdminTaskBoardCard>>(`/api/tasks?${params}`, {
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(), signal: controller.signal,
     })
-    const nextColumns = buildTaskBoardColumnsFromTasks(payload.data.items)
-    columns.value = nextColumns
-    const queryTaskId = typeof route.query.taskId === 'string' ? route.query.taskId : ''
-    const targetId = queryTaskId || selectedTask.value?.id
-    const target = targetId ? findTaskBoardCard(nextColumns, targetId) : undefined
-    if (queryTaskId && target) {
-      selectedTask.value = target
-      completionNote.value = target.completionNote ?? ''
-      detailOpen.value = true
-    } else if (target) {
-      selectedTask.value = target
-    }
-    lastAction.value = `已同步 ${payload.data.total} 个后端任务。`
+    if (controller.signal.aborted) return
+    columns.value = buildTaskBoardColumnsFromTasks(payload.data.items)
+    serverTotal.value = payload.data.total
+    lastAction.value = `已加载 ${payload.data.items.length} / ${payload.data.total} 个匹配任务，最多显示前 200 条。`
   } catch (error: unknown) {
-    const message = error instanceof Error && error.message
-      ? error.message
-      : '任务加载失败，请稍后重试。'
-    lastAction.value = message
-    notification.error({
-      title: '任务加载失败',
-      description: message
-    })
+    if (!controller.signal.aborted) loadError.value = error instanceof Error ? error.message : '任务加载失败，请重试。'
   } finally {
-    loading.value = false
+    if (!controller.signal.aborted) loading.value = false
+  }
+}
+
+const loadTaskDetail = async () => {
+  detailRequest?.abort()
+  const controller = new AbortController()
+  detailRequest = controller
+  selectedTask.value = null
+  completionNote.value = ''
+  detailError.value = ''
+  const targetId = queryTaskId.value
+  detailLoading.value = targetId !== null
+  if (targetId === null) return
+  try {
+    if (!targetId.trim()) throw new Error('缺少任务编号')
+    if (!canView.value) throw new Error('无权查看该任务')
+    const payload = await apiRequest<AdminTaskBoardCard>(`/api/tasks/${encodeURIComponent(targetId)}`, {
+      headers: getAuthHeaders(), signal: controller.signal,
+    })
+    if (controller.signal.aborted) return
+    selectedTask.value = payload.data
+    completionNote.value = payload.data.completionNote ?? ''
+  } catch (error: unknown) {
+    if (controller.signal.aborted) return
+    const message = error instanceof ApiError && error.status === 404 ? '任务不存在或已被移除'
+      : error instanceof ApiError && error.status === 403 ? '无权查看该任务'
+      : error instanceof Error ? error.message : '任务详情加载失败，请重试'
+    detailError.value = `${message}（ID：${targetId || '空'}）`
+  } finally {
+    if (!controller.signal.aborted) detailLoading.value = false
   }
 }
 
 const handleCardAdd = async (columnId: string | number) => {
+  if (!canCreate.value || mutationPending || loading.value) return
+  const column = columns.value.find(item => item.id === String(columnId))
+  if (column?.wipLimit && column.cards.length >= column.wipLimit) {
+    notification.warning({ title: '已达到 WIP 限制', description: '请先完成或移出当前视图中的任务。' })
+    return
+  }
+  mutationPending = true
+  saving.value = true
   try {
     await apiRequest<AdminTaskBoardCard>('/api/tasks', {
       method: 'POST',
@@ -140,6 +183,9 @@ const handleCardAdd = async (columnId: string | number) => {
       title: '新增任务失败',
       description: error instanceof Error ? error.message : '请稍后重试。'
     })
+  } finally {
+    mutationPending = false
+    saving.value = false
   }
 }
 
@@ -151,10 +197,13 @@ const handleColumnAdd = () => {
 }
 
 const handleCardMove = async (event: TaskBoardCardMoveEvent) => {
+  if (!canEdit.value || mutationPending) return
+  mutationPending = true
+  saving.value = true
   const description = describeTaskMove(event, columns.value)
   lastAction.value = description
   try {
-    await apiRequest<AdminTaskBoardCard>(`/api/tasks/${event.cardId}/status`, {
+    await apiRequest<AdminTaskBoardCard>(`/api/tasks/${encodeURIComponent(event.cardId)}/status`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify({ status: String(event.toColumnId) })
@@ -170,6 +219,9 @@ const handleCardMove = async (event: TaskBoardCardMoveEvent) => {
       title: '任务流转失败',
       description: error instanceof Error ? error.message : '请稍后重试。'
     })
+  } finally {
+    mutationPending = false
+    saving.value = false
   }
 }
 
@@ -183,29 +235,25 @@ const handleColumnMove = (event: TaskBoardColumnMoveEvent) => {
 }
 
 const handleResetBoard = () => {
-  filterText.value = ''
-  assigneeFilter.value = ''
-  blockedFilter.value = ''
-  dueFrom.value = ''
-  dueTo.value = ''
   void loadTasks()
+  if (detailOpen.value) void loadTaskDetail()
 }
 
 const openTaskDetail = (card: AdminTaskBoardCard) => {
-  selectedTask.value = card
-  completionNote.value = card.completionNote ?? ''
-  detailOpen.value = true
+  detailTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
   void router.replace({ path: '/tasks', query: { taskId: card.id } })
 }
 
 const closeTaskDetail = () => {
-  detailOpen.value = false
-  void router.replace('/tasks')
+  if (!mutationPending) void router.replace('/tasks')
 }
 
-const handleCompleteTask = async (event: DismissActionEvent) => {
-  event.preventDefault()
-  if (!selectedTask.value) return
+function focusDetailTrigger() {
+  ;(detailTrigger?.isConnected ? detailTrigger : document.querySelector<HTMLElement>('[data-testid="tasks-refresh"]'))?.focus()
+}
+
+const handleCompleteTask = async () => {
+  if (!canEdit.value || mutationPending || !selectedTask.value) return
 
   if (selectedTask.value.blocked || selectedTask.value.status === 'done') {
     notification.warning({
@@ -217,9 +265,10 @@ const handleCompleteTask = async (event: DismissActionEvent) => {
     return
   }
 
+  mutationPending = true
   completing.value = true
   try {
-    const payload = await apiRequest<AdminTaskBoardCard>(`/api/tasks/${selectedTask.value.id}/complete`, {
+    const payload = await apiRequest<AdminTaskBoardCard>(`/api/tasks/${encodeURIComponent(selectedTask.value.id)}/complete`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({
@@ -227,7 +276,7 @@ const handleCompleteTask = async (event: DismissActionEvent) => {
         completionNote: completionNote.value
       })
     })
-    selectedTask.value = payload.data
+    if (queryTaskId.value === payload.data.id) selectedTask.value = payload.data
     await loadTasks()
     notification.success({
       title: '任务已完成',
@@ -239,11 +288,13 @@ const handleCompleteTask = async (event: DismissActionEvent) => {
       description: error instanceof Error ? error.message : '请稍后重试。'
     })
   } finally {
+    mutationPending = false
     completing.value = false
   }
 }
 
 const beforeCardMove = (event: TaskBoardCardMoveEvent) => {
+  if (!canEdit.value || loading.value || mutationPending) return false
   if (event.toColumnId !== 'done') {
     return true
   }
@@ -261,17 +312,16 @@ const beforeCardMove = (event: TaskBoardCardMoveEvent) => {
   return false
 }
 
-onMounted(loadTasks)
-watch([filterText, assigneeFilter, blockedFilter, dueFrom, dueTo], () => {
-  void loadTasks()
-})
+watch([filterText, assigneeFilter, blockedFilter, dueFrom, dueTo, canView], () => void loadTasks(), { immediate: true })
+watch([queryTaskId, canView], () => void loadTaskDetail(), { immediate: true })
+onBeforeUnmount(() => { listRequest?.abort(); detailRequest?.abort() })
 </script>
 
 <template>
   <div class="space-y-6">
     <PageHeader
       title="任务面板"
-      subtitle="用 TaskBoard 把后续异步任务做成可拖拽的阶段看板，验证增列、加卡片、WIP 与移动规则。"
+      subtitle="查看任务、按条件筛选，并流转阶段或确认完成。"
       icon="clipboard"
       :tags="[
         { label: 'TaskBoard', variant: 'primary' },
@@ -286,35 +336,40 @@ watch([filterText, assigneeFilter, blockedFilter, dueFrom, dueTo], () => {
     >
       <template #actions>
           <Input
-            :value="filterText"
+            :model-value="filterText"
+            :disabled="saving || completing"
             placeholder="搜索任务标题或说明"
             class="w-full sm:w-64"
-            @change="(value) => filterText = String(value ?? '')"
+            @update:model-value="(value) => filterText = String(value ?? '')"
           />
           <Input
-            :value="assigneeFilter"
-            placeholder="负责人"
+            :model-value="assigneeFilter"
+            :disabled="saving || completing"
+            placeholder="负责人（包含匹配）"
             class="w-full sm:w-40"
-            @change="(value) => assigneeFilter = String(value ?? '')"
+            @update:model-value="(value) => assigneeFilter = String(value ?? '')"
           />
           <Input
-            :value="dueFrom"
+            :model-value="dueFrom"
+            :disabled="saving || completing"
             :type="dateInputType"
             placeholder="开始日期"
             aria-label="开始日期"
             class="w-full sm:w-44"
-            @change="(value) => dueFrom = String(value ?? '')"
+            @update:model-value="(value) => dueFrom = String(value ?? '')"
           />
           <Input
-            :value="dueTo"
+            :model-value="dueTo"
+            :disabled="saving || completing"
             :type="dateInputType"
             placeholder="结束日期"
             aria-label="结束日期"
             class="w-full sm:w-44"
-            @change="(value) => dueTo = String(value ?? '')"
+            @update:model-value="(value) => dueTo = String(value ?? '')"
           />
           <Select
-            :value="blockedFilter"
+            :model-value="blockedFilter"
+            :disabled="saving || completing"
             :options="[
               { label: '全部阻塞状态', value: '' },
               { label: '仅阻塞', value: 'true' },
@@ -322,19 +377,19 @@ watch([filterText, assigneeFilter, blockedFilter, dueFrom, dueTo], () => {
             ]"
             :clearable="false"
             class="w-full sm:w-44"
-            @change="(value) => blockedFilter = String(value ?? '')"
+            @update:model-value="(value) => blockedFilter = String(value ?? '')"
           />
-          <Button variant="outline" @click="handleResetBoard">
+          <Button variant="outline" data-testid="tasks-refresh" :disabled="saving || completing" @click="handleResetBoard">
             刷新看板
           </Button>
       </template>
     </PageActionPanel>
 
     <MetricGrid>
-      <MetricCard title="任务总数" :description="`当前看板共 ${totalCount} 个异步任务。`">
+      <MetricCard title="任务总数" :value="loading || loadError ? '—' : serverTotal" :description="`当前显示 ${totalCount} 条；统计与 WIP 限于已加载任务。`">
         <template #icon><Icon name="clipboard" :size="20" /></template>
       </MetricCard>
-      <MetricCard title="超期任务" :description="`还有 ${overdueCount} 个任务超过计划时间。`">
+      <MetricCard title="超期任务" :description="`已加载任务中有 ${overdueCount} 个超过计划时间。`">
         <template #icon><Icon name="clock" :size="20" /></template>
       </MetricCard>
       <MetricCard title="阻塞项" :description="`当前有 ${blockedCount} 个任务被阻塞，不能直接移动到已完成。`">
@@ -349,16 +404,18 @@ watch([filterText, assigneeFilter, blockedFilter, dueFrom, dueTo], () => {
         :description="loading ? '正在同步后端任务...' : lastAction"
       />
 
-      <TaskBoard
+      <div v-if="loadError" role="alert" class="space-y-3"><Text color="danger">{{ loadError }}</Text><Button variant="outline" @click="handleResetBoard">重试任务列表</Button></div>
+      <TaskBoard v-else
         :columns="columns"
-        :filter-text="filterText"
         show-card-count
-        allow-add-card
+        :allow-add-card="canCreate && !loading && !saving && !completing"
+        :draggable="canEdit && !loading && !saving && !completing"
+        :column-draggable="!loading && !saving && !completing"
         :allow-add-column="false"
         enforce-wip-limit
         :before-card-move="beforeCardMove"
         @update:columns="handleColumnsChange"
-        @card-add="handleCardAdd"
+        v-on="canCreate && !loading && !saving && !completing ? { 'card-add': handleCardAdd } : {}"
         @column-add="handleColumnAdd"
         @card-move="handleCardMove"
         @column-move="handleColumnMove"
@@ -400,23 +457,31 @@ watch([filterText, assigneeFilter, blockedFilter, dueFrom, dueTo], () => {
           </div>
         </template>
       </TaskBoard>
+      <Text v-if="!loading && !loadError && totalCount === 0" color="secondary">没有符合条件的任务。</Text>
     </Card>
 
     <Modal
-      v-model:open="detailOpen"
+      :open="detailOpen"
       title="任务详情"
-      show-default-footer
-      :ok-text="completing ? '完成中...' : '确认完成'"
-      cancel-text="关闭"
-      :confirm-loading="completing"
-      @ok="handleCompleteTask"
+      :mask-closable="!completing"
+      :keyboard="!completing"
+      :closable="!completing"
+      @update:open="(open) => { if (!open) closeTaskDetail() }"
       @cancel="closeTaskDetail"
+      @after-close="focusDetailTrigger"
     >
+      <template #footer>
+        <Button variant="outline" :disabled="completing" @click="closeTaskDetail">关闭</Button>
+        <Button v-if="selectedTask && canEdit" :disabled="completing || selectedTask.blocked || selectedTask.status === 'done'" @click="handleCompleteTask">{{ completing ? '完成中...' : '确认完成' }}</Button>
+      </template>
+      <Text v-if="detailLoading">正在加载任务 {{ queryTaskId }}…</Text>
+      <div v-else-if="detailError" role="alert" class="space-y-3"><Text color="danger">{{ detailError }}</Text><Button variant="outline" @click="loadTaskDetail">重试任务详情</Button></div>
       <div v-if="selectedTask" class="space-y-4">
         <div>
-          <Text weight="bold">{{ selectedTask.title }}</Text>
+          <!-- 退出过渡期间 Text 仍可能渲染插槽，详情此时已被清空。 -->
+          <Text weight="bold">{{ selectedTask?.title }}</Text>
           <Text v-if="selectedTask.description" color="secondary" class="mt-1">
-            {{ selectedTask.description }}
+            {{ selectedTask?.description }}
           </Text>
         </div>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -438,14 +503,16 @@ watch([filterText, assigneeFilter, blockedFilter, dueFrom, dueTo], () => {
         <Input
           :model-value="completionNote"
           placeholder="完成说明"
-          :disabled="selectedTask.blocked || selectedTask.status === 'done'"
+          aria-label="完成说明"
+          :max-length="500"
+          :disabled="!canEdit || completing || selectedTask.blocked || selectedTask.status === 'done'"
           @update:model-value="(value) => completionNote = String(value ?? '')"
         />
         <Text v-if="selectedTask.blocked" color="danger">
           阻塞任务需要先清除阻塞状态，才能确认完成。
         </Text>
       </div>
-      <Text v-else color="secondary">请选择任务。</Text>
+
     </Modal>
   </div>
 </template>

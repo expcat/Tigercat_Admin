@@ -81,11 +81,10 @@ const chatOpen = ref(false)
 const selectedMenuKey = ref('home')
 const activeMenu = ref<ShellPageKey>('home')
 
-const pageTitle = computed(() =>
-  getShellPageTitle(selectedMenuKey.value, schemaNodes.value),
-)
+const detailTitle = computed(() => /^\/files\/.+/.test(route.path) ? '媒体详情' : /^\/import\/.+/.test(route.path) ? '导入结果' : '')
+const pageTitle = computed(() => detailTitle.value || getShellPageTitle(selectedMenuKey.value, schemaNodes.value))
 const breadcrumbItems = computed(() =>
-  getShellBreadcrumbItems(selectedMenuKey.value, schemaNodes.value),
+  [...getShellBreadcrumbItems(selectedMenuKey.value, schemaNodes.value), ...(detailTitle.value ? [detailTitle.value] : [])],
 )
 
 const navigateToPage = (key: string) => {

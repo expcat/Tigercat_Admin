@@ -1,4 +1,6 @@
+import type { CalendarEvent, CalendarEventType } from '../utils/types';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Input } from '@expcat/tigercat-react/Input';
@@ -34,9 +36,8 @@ import {
   createCalendarEvent,
   fetchCalendarEvents,
   formatCalendarDate,
+  parseCalendarDate,
   toCalendarCellEvents,
-  type CalendarEvent,
-  type CalendarEventType,
 } from '../utils/calendar';
 
 const TYPE_META: Record<CalendarEventType, { label: string; variant: TagVariant }> = {
@@ -68,10 +69,21 @@ function renderDateCell(_date: Date, extra: CalendarDateCellExtra) {
 }
 
 function CalendarPage() {
+  const [searchParams] = useSearchParams();
+  const queryDate = searchParams.get('date');
+  const queryEventId = searchParams.get('eventId');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date('2026-06-29T00:00:00'));
+  const [selectedDate, setSelectedDate] = useState<Date>(() => parseCalendarDate(queryDate) ?? new Date());
+  const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [reloadVersion, setReloadVersion] = useState(0);
+  const [clockNow, setClockNow] = useState(Date.now());
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const submitPending = useRef(false);
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form, setForm] = useState<{
     title: string;
@@ -82,7 +94,7 @@ function CalendarPage() {
     location: string;
   }>({
     title: '',
-    date: new Date('2026-06-29T00:00:00'),
+    date: new Date(),
     start: '10:00',
     end: '11:00',
     type: 'meeting',
@@ -93,32 +105,55 @@ function CalendarPage() {
   const monthKey = `${selectedDate.getFullYear()}-${selectedDate.getMonth()}`;
 
   useEffect(() => {
-    let cancelled = false;
+    setSelectedDate(parseCalendarDate(queryDate) ?? new Date());
+    setActiveEventId(null);
+  }, [queryDate, queryEventId]);
+
+  useEffect(() => {
+    if (loading || loadError || !parseCalendarDate(queryDate) || selectedKey !== queryDate || !queryEventId) return;
+    const target = events.find(event => event.id === queryEventId && event.date === queryDate);
+    if (!target) return;
+    const trigger = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-calendar-event]'))
+      .find(button => button.dataset.calendarEvent === target.id);
+    trigger?.scrollIntoView({ block: 'nearest' });
+    trigger?.focus();
+    setActiveEventId(target.id);
+  }, [events, loading, loadError, selectedKey, queryDate, queryEventId]);
+
+  const targetError = (queryDate !== null || queryEventId !== null) && !parseCalendarDate(queryDate)
+    ? '日程定位日期无效，已显示今天。'
+    : queryEventId && !loading && !loadError && selectedKey === queryDate && !events.some(event => event.id === queryEventId && event.date === queryDate)
+      ? '指定日程不存在于该日期或已被移除，请核对链接。' : '';
+
+  useEffect(() => {
+    const controller = new AbortController();
     const loadEvents = async () => {
       setLoading(true);
+      setLoadError('');
+      setEvents([]);
       try {
         const range = calendarQueryRange(selectedDate);
-        const payload = await fetchCalendarEvents(range.from, range.to);
-        if (!cancelled) {
+        const payload = await fetchCalendarEvents(range.from, range.to, controller.signal);
+        if (!controller.signal.aborted) {
           setEvents(payload.data ?? []);
         }
       } catch (error: unknown) {
-        if (!cancelled) {
-          Message.error({ content: readErrorMessage(error, '日程加载失败'), duration: 3000 });
+        if (!controller.signal.aborted) {
+          setLoadError(readErrorMessage(error, '日程加载失败'));
         }
       } finally {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setLoading(false);
         }
       }
     };
     void loadEvents();
     return () => {
-      cancelled = true;
+      controller.abort();
     };
     // selectedDate is read inside to compute the visible-month range; monthKey is the refetch trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthKey]);
+  }, [monthKey, reloadVersion]);
 
   const eventsForSelected = useMemo(
     () =>
@@ -144,7 +179,7 @@ function CalendarPage() {
         .sort((a, b) => a.ts - b.ts),
     [events],
   );
-  const nextEvent = useMemo(() => upcoming.find((e) => e.ts > Date.now()) ?? null, [upcoming]);
+  const nextEvent = useMemo(() => upcoming.find((e) => e.ts > clockNow) ?? null, [upcoming, clockNow]);
   const countdownTarget = nextEvent ? new Date(nextEvent.ts) : null;
 
   const cellEvents = useMemo(() => toCalendarCellEvents(events), [events]);
@@ -152,14 +187,14 @@ function CalendarPage() {
   const upcomingList: ListItem[] = useMemo(
     () =>
       upcoming
-        .filter((e) => e.ts > Date.now())
+        .filter((e) => e.ts > clockNow)
         .slice(0, 5)
         .map((e) => ({
           key: e.id,
           title: `${e.date} ${e.start} · ${e.title}`,
           description: `${TYPE_META[e.type].label} · ${e.location}`,
         })),
-    [upcoming],
+    [upcoming, clockNow],
   );
 
   const drawerTriggerRef = useRef<HTMLElement | null>(null);
@@ -167,6 +202,7 @@ function CalendarPage() {
   const openDrawer = () => {
     drawerTriggerRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setSubmitError('');
     setForm({
       title: '',
       date: selectedDate,
@@ -178,42 +214,40 @@ function CalendarPage() {
     setDrawerOpen(true);
   };
 
-  const toDateStr = (value: Date | null): string => {
-    if (!value) return selectedKey;
-    return formatCalendarDate(value);
-  };
-  const asTime = (value: string, fallback: string): string =>
-    value ? value : fallback;
-
   const submitEvent = async () => {
+    if (submitPending.current) return;
     const title = form.title.trim();
-    if (!title) {
-      Message.warning({ content: '请填写日程标题', duration: 2000 });
+    const date = form.date;
+    const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+    const invalidField = !title || title.length > 120 ? 'title' : !date || !Number.isFinite(date.getTime()) ? 'date'
+      : !timePattern.test(form.start) ? 'start' : !timePattern.test(form.end) || form.end <= form.start ? 'end'
+      : form.location.trim().length > 200 ? 'location' : '';
+    if (invalidField) {
+      const message = invalidField === 'title' ? '请填写 1–120 字的日程标题' : invalidField === 'date' ? '请选择有效日期'
+        : invalidField === 'location' ? '地点长度不能超过 200' : '请填写有效时间，结束时间必须晚于开始时间（同一天）';
+      setSubmitError(message);
+      formRef.current?.querySelector<HTMLElement>(`[data-field="${invalidField}"] input`)?.focus();
       return;
     }
-    const date = toDateStr(form.date);
+    setSubmitError('');
+    submitPending.current = true;
     setSubmitting(true);
     try {
-      await createCalendarEvent({
-        date,
-        start: asTime(form.start, '10:00'),
-        end: asTime(form.end, '11:00'),
-        title,
-        type: form.type,
-        location: form.location.trim() || '—',
-      });
-      setSelectedDate(new Date(`${date}T00:00:00`));
+      const dateKey = formatCalendarDate(date!);
+      await createCalendarEvent({ date: dateKey, start: form.start, end: form.end, title, type: form.type, location: form.location.trim() || '—' });
+      setSelectedDate(new Date(`${dateKey}T00:00:00`));
       setDrawerOpen(false);
+      setReloadVersion(value => value + 1);
+      setClockNow(Date.now());
       Message.success({ content: `日程「${title}」已创建`, duration: 2400 });
-      const range = calendarQueryRange(new Date(`${date}T00:00:00`));
-      const payload = await fetchCalendarEvents(range.from, range.to);
-      setEvents(payload.data ?? []);
     } catch (error: unknown) {
-      Message.error({ content: readErrorMessage(error, '创建日程失败'), duration: 3000 });
+      setSubmitError(readErrorMessage(error, '创建日程失败，请重试'));
     } finally {
+      submitPending.current = false;
       setSubmitting(false);
     }
   };
+
 
   return (
     <div className="space-y-6">
@@ -236,26 +270,27 @@ function CalendarPage() {
                 format="DD 天 HH:mm:ss"
                 title={`距离「${nextEvent.title}」`}
                 size="lg"
-                onFinish={() =>
-                  Message.info({ content: '有一个日程已到开始时间（演示）', duration: 2600 })
-                }
+                onFinish={() => { setClockNow(Date.now()); Message.info({ content: '有一个日程已到开始时间', duration: 2600 }); }}
               />
               <Text size="sm" color="secondary" className="mt-1 block">
                 {nextEvent.date} {nextEvent.start} · {TYPE_META[nextEvent.type].label}
               </Text>
             </>
           ) : (
-            <Statistic title="暂无即将到来的日程" value="—" />
+            <Statistic title={loading ? '正在加载日程…' : loadError ? '日程加载失败' : '暂无即将到来的日程'} value="—" />
           )}
         </Card>
         <Card>
-          <Statistic title="今日日程" value={todayCount} suffix="项" />
+          <Statistic title="今日日程" value={loading || loadError ? '—' : todayCount} suffix="项" />
         </Card>
         <Card>
-          <Statistic title="本月日程" value={monthCount} suffix="项" />
+          <Statistic title="所选月日程" value={loading || loadError ? '—' : monthCount} suffix="项" />
         </Card>
       </div>
 
+      <MutedPanel compact description={`共享日程按填写的日期与时间展示，不自动换算时区；倒计时按本机时区 ${timeZone} 计算。`} />
+      {targetError && <Text tag="p" role="alert" color="danger">{targetError}</Text>}
+      {loadError && <div role="alert" className="flex flex-wrap items-center gap-3"><Text color="danger">{loadError}</Text><Button variant="outline" onClick={() => setReloadVersion(value => value + 1)}>重试日程</Button></div>}
       <div className="flex items-center justify-end">
         <Button onClick={openDrawer}>
           <span className="mr-1 inline-flex align-middle">
@@ -273,7 +308,8 @@ function CalendarPage() {
             fullscreen
             events={cellEvents}
             dateCellRender={renderDateCell}
-            onChange={(d) => setSelectedDate(d)}
+            onChange={(d) => { setSelectedDate(d); setActiveEventId(null); }}
+            onPanelChange={(d) => { setSelectedDate(d); setActiveEventId(null); }}
           />
           <MutedPanel
             compact
@@ -290,14 +326,16 @@ function CalendarPage() {
                 <Badge content={eventsForSelected.length} variant="primary" standalone />
               </div>
             }>
-            {loading && events.length === 0 ? (
+            {loadError ? <MutedPanel compact description="日程尚未加载，请重试。" /> : loading ? (
               <MutedPanel compact description="正在加载日程…" />
             ) : eventsForSelected.length ? (
               <div className="space-y-2">
                 {eventsForSelected.map((e) => (
                   <Popover
                     key={e.id}
-                    trigger="hover"
+                    open={activeEventId === e.id}
+                    onOpenChange={(open) => setActiveEventId(open ? e.id : null)}
+                    trigger="click"
                     placement="left"
                     width={260}
                     content={
@@ -312,7 +350,7 @@ function CalendarPage() {
                         <div>地点：{e.location}</div>
                       </div>
                     }>
-                    <div className="flex items-center gap-3 rounded-lg border border-(--tiger-border,#e5e7eb) p-3 transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9)">
+                    <button type="button" data-calendar-event={e.id} className="flex w-full items-center gap-3 rounded-lg border border-(--tiger-border,#e5e7eb) p-3 text-left transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9)">
                       <Badge type="dot" variant={TYPE_META[e.type].variant as BadgeVariant} />
                       <div className="min-w-0 flex-1">
                         <Text weight="medium" className="block truncate">
@@ -325,7 +363,7 @@ function CalendarPage() {
                       <Tag variant={TYPE_META[e.type].variant} size="sm">
                         {TYPE_META[e.type].label}
                       </Tag>
-                    </div>
+                    </button>
                   </Popover>
                 ))}
               </div>
@@ -335,7 +373,7 @@ function CalendarPage() {
           </Card>
 
           <Card header={<Text weight="bold">即将到来</Text>}>
-            {upcomingList.length ? (
+            {loadError || loading ? <MutedPanel compact description={loading ? '正在加载日程…' : '日程尚未加载，请重试。'} /> : upcomingList.length ? (
               <List dataSource={upcomingList} />
             ) : (
               <MutedPanel compact description="近期没有更多日程安排。" />
@@ -351,34 +389,38 @@ function CalendarPage() {
         title="新建事件"
         width="420px"
         mask
-        maskClosable
-        onClose={() => setDrawerOpen(false)}
+        maskClosable={!submitting}
+        keyboard={!submitting}
+        closable={!submitting}
+        initialFocus="#calendar-title"
+        onClose={() => { if (!submitPending.current) setDrawerOpen(false); }}
         onAfterClose={() => drawerTriggerRef.current?.focus()}>
-        <div className="space-y-4">
-          <div>
+        <form ref={formRef} className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submitEvent(); }}>
+          {submitError && <div role="alert"><Text color="danger">{submitError}</Text></div>}
+          <div data-field="title">
             <Text weight="medium" className="mb-1 block">
               标题
             </Text>
-            <Input value={form.title} onChange={(v) => setForm((s) => ({ ...s, title: String(v) }))} placeholder="例如：迭代评审会" />
+            <Input id="calendar-title" aria-label="日程标题" maxLength={120} value={form.title} onChange={(v) => setForm((s) => ({ ...s, title: String(v) }))} placeholder="例如：迭代评审会" />
           </div>
-          <div>
+          <div data-field="date">
             <Text weight="medium" className="mb-1 block">
               日期
             </Text>
             <DatePicker value={form.date} onChange={(d) => setForm((s) => ({ ...s, date: d }))} placeholder="选择日期" />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div data-field="start">
               <Text weight="medium" className="mb-1 block">
                 开始
               </Text>
-              <TimePicker value={form.start} onChange={(t) => setForm((s) => ({ ...s, start: t ?? '10:00' }))} showSeconds={false} />
+              <TimePicker value={form.start} onChange={(t) => setForm((s) => ({ ...s, start: t ?? '' }))} showSeconds={false} />
             </div>
-            <div>
+            <div data-field="end">
               <Text weight="medium" className="mb-1 block">
                 结束
               </Text>
-              <TimePicker value={form.end} onChange={(t) => setForm((s) => ({ ...s, end: t ?? '11:00' }))} showSeconds={false} />
+              <TimePicker value={form.end} onChange={(t) => setForm((s) => ({ ...s, end: t ?? '' }))} showSeconds={false} />
             </div>
           </div>
           <div>
@@ -392,21 +434,21 @@ function CalendarPage() {
               <Radio value="reminder">提醒</Radio>
             </RadioGroup>
           </div>
-          <div>
+          <div data-field="location">
             <Text weight="medium" className="mb-1 block">
               地点
             </Text>
-            <Input value={form.location} onChange={(v) => setForm((s) => ({ ...s, location: String(v) }))} placeholder="会议室 / 线上链接（选填）" />
+            <Input aria-label="地点" maxLength={200} value={form.location} onChange={(v) => setForm((s) => ({ ...s, location: String(v) }))} placeholder="会议室 / 线上链接（选填）" />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDrawerOpen(false)}>
+            <Button variant="outline" disabled={submitting} onClick={() => setDrawerOpen(false)}>
               取消
             </Button>
-            <Button disabled={submitting} onClick={() => void submitEvent()}>
+            <Button type="submit" disabled={submitting}>
               创建事件
             </Button>
           </div>
-        </div>
+        </form>
       </Drawer>
     </div>
   );

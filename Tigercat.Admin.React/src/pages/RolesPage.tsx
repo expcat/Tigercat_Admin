@@ -31,7 +31,6 @@ import {
 import {
   apiRequest,
   normalizeInput,
-  debounce,
   getAuthHeaders,
   exportData,
   loadWorkbenchState,
@@ -102,6 +101,9 @@ function RolesPage() {
   // ---- State ----
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const requestRef = useRef<AbortController | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [keyword, setKeyword] = useState(savedQuery.keyword ?? '');
   const [currentPage, setCurrentPage] = useState(savedQuery.page ?? 1);
   const [pageSize, setPageSize] = useState(savedQuery.pageSize ?? 10);
@@ -174,8 +176,13 @@ function RolesPage() {
   }, []);
 
   // ---- API calls ----
-  const loadRoles = useCallback(async () => {
+  const loadRoles = useCallback(async (): Promise<void> => {
+    clearTimeout(searchTimer.current);
+    requestRef.current?.abort();
+    const request = new AbortController();
+    requestRef.current = request;
     setLoading(true);
+    setLoadError('');
     try {
       const {
         page,
@@ -198,19 +205,32 @@ function RolesPage() {
         `/api/roles?${params}`,
         {
           headers: getAuthHeaders(),
+          signal: request.signal,
         },
       );
+      if (request.signal.aborted) return;
+      const lastPage = Math.max(1, Math.ceil(res.data.total / ps));
+      if (page > lastPage) {
+        persistQuery({ page: lastPage });
+        setCurrentPage(lastPage);
+        void loadRoles();
+        return;
+      }
       setRoles(res.data.items);
       setTotal(res.data.total);
     } catch (e: any) {
+      if (request.signal.aborted) return;
+      setRoles([]);
+      setTotal(0);
+      setLoadError(e.message || '加载角色列表失败');
       Message.error({
         content: e.message || '加载角色列表失败',
         duration: 3000,
       });
     } finally {
-      setLoading(false);
+      if (!request.signal.aborted) setLoading(false);
     }
-  }, []);
+  }, [persistQuery]);
 
   const loadPermissions = useCallback(async () => {
     try {
@@ -226,6 +246,10 @@ function RolesPage() {
   useEffect(() => {
     loadRoles();
     loadPermissions();
+    return () => {
+      clearTimeout(searchTimer.current);
+      requestRef.current?.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -395,21 +419,15 @@ function RolesPage() {
   };
 
   // ---- Search with debounce ----
-  const debouncedLoad = useMemo(
-    () =>
-      debounce(() => {
-        persistQuery({ page: 1 });
-        setCurrentPage(1);
-        loadRoles();
-      }, 300),
-    [loadRoles, persistQuery],
-  );
-
   const handleSearch = (val: string) => {
     const normalized = normalizeInput(val);
-    persistQuery({ keyword: normalized });
+    persistQuery({ keyword: normalized, page: 1 });
     setKeyword(normalized);
-    debouncedLoad();
+    setCurrentPage(1);
+    clearTimeout(searchTimer.current);
+    requestRef.current?.abort();
+    setLoading(true);
+    searchTimer.current = setTimeout(() => { void loadRoles(); }, 300);
   };
 
   // ---- Column visibility ----
@@ -561,6 +579,7 @@ function RolesPage() {
   const paginationConfig = useMemo(
     () => ({
       current: currentPage,
+      remote: true,
       pageSize,
       total,
       showSizeChanger: true,
@@ -675,6 +694,10 @@ function RolesPage() {
       <div className="p2-muted-panel px-4 py-3 text-sm">
         {serverPaginationHint}
       </div>
+
+      {loadError && <div role="alert" className="p2-muted-panel flex items-center justify-between gap-3 p-4">
+        <span>{loadError}</span><Button variant="outline" onClick={() => { void loadRoles(); }}>重试加载角色</Button>
+      </div>}
 
       <DataTableWithToolbar
         columns={columns as unknown as TableColumn<Record<string, unknown>>[]}

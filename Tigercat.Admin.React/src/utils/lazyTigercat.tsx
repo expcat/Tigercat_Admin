@@ -131,3 +131,28 @@ export const Gantt = lazyNamed(
   () => import('@expcat/tigercat-react/Gantt'),
   'Gantt',
 );
+
+export const TaskBoard = lazyNamed(
+  () => import('@expcat/tigercat-react/TaskBoard'),
+  'TaskBoard',
+);
+
+export const WorkflowDesigner = lazyNamed(
+  () => import('@expcat/tigercat-react/WorkflowDesigner'),
+  'WorkflowDesigner',
+);
+
+export const WorkflowViewer = lazyNamed(
+  () => import('@expcat/tigercat-react/WorkflowViewer'),
+  'WorkflowViewer',
+);
+
+export const VirtualList = lazyNamed(
+  () => import('@expcat/tigercat-react/VirtualList'),
+  'VirtualList',
+);
+
+export const VirtualTable = lazyNamed(
+  () => import('@expcat/tigercat-react/VirtualTable'),
+  'VirtualTable',
+);

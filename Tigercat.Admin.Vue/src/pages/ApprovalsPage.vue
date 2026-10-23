@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, h, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { Alert } from '@expcat/tigercat-vue/Alert'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { DataTableWithToolbar } from '@expcat/tigercat-vue/DataTableWithToolbar'
 import { Message } from '@expcat/tigercat-vue/Message'
@@ -21,15 +22,26 @@ import {
   createApproval,
   EMPTY_APPROVAL_CREATE,
   fetchApprovals,
+  fetchApprovalContacts,
   isApprovalLane,
 } from '../utils/approvals'
-import type { ApprovalLane, ApprovalListItem, ApprovalStatus } from '../utils/types'
+import type { ApprovalLane, ApprovalListItem, ApprovalStatus, ApprovalContactUser } from '../utils/types'
 
 function readErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
 }
 
 const router = useRouter()
+let listController: AbortController | null = null
+const errorMessage = ref('')
+const contactsError = ref('')
+const contacts = ref<ApprovalContactUser[]>([])
+const createSchema = computed(() => ({
+  ...APPROVAL_CREATE_SCHEMA,
+  fields: APPROVAL_CREATE_SCHEMA.fields?.map((field) => field.name === 'assignee'
+    ? { ...field, options: contacts.value.map((user) => ({ value: user.id, label: `${user.name}（${user.username}）` })) }
+    : field),
+}))
 const lane = ref<ApprovalLane>('todo')
 const keyword = ref('')
 const page = ref(1)
@@ -46,22 +58,42 @@ function openDetail(id: string) {
   void router.push(`/approvals/${encodeURIComponent(id)}`)
 }
 
-async function loadList() {
-  loading.value = true
+async function loadContacts() {
+  contactsError.value = ''
   try {
-    const payload = await fetchApprovals({
-      lane: lane.value,
-      keyword: keyword.value,
-      page: page.value,
-      pageSize: pageSize.value,
-    })
+    const payload = await fetchApprovalContacts()
+    contacts.value = payload.data.users ?? []
+  } catch (error) {
+    contacts.value = []
+    contactsError.value = readErrorMessage(error, '通讯录加载失败')
+  }
+}
+
+async function loadList() {
+  listController?.abort()
+  const controller = new AbortController()
+  listController = controller
+  loading.value = true
+  errorMessage.value = ''
+  items.value = []
+  total.value = 0
+  try {
+    const payload = await fetchApprovals({ lane: lane.value, keyword: keyword.value, page: page.value, pageSize: pageSize.value }, controller.signal)
+    if (controller.signal.aborted) return
+    const lastPage = Math.max(1, Math.ceil(payload.data.total / pageSize.value))
+    if (page.value > lastPage) { page.value = lastPage; return }
     items.value = payload.data.items ?? []
     total.value = payload.data.total ?? 0
   } catch (error: unknown) {
-    Message.error({ content: readErrorMessage(error, '审批列表加载失败'), duration: 3000 })
+    if (!controller.signal.aborted) errorMessage.value = readErrorMessage(error, '审批列表加载失败')
   } finally {
-    loading.value = false
+    if (!controller.signal.aborted) loading.value = false
   }
+}
+
+function reloadActor() {
+  page.value = 1
+  void loadList()
 }
 
 watch([lane, keyword, page, pageSize], () => {
@@ -69,11 +101,13 @@ watch([lane, keyword, page, pageSize], () => {
 }, { immediate: true })
 
 onMounted(() => {
-  window.addEventListener(APPROVAL_DEMO_ACTOR_EVENT, loadList)
+  void loadContacts()
+  window.addEventListener(APPROVAL_DEMO_ACTOR_EVENT, reloadActor)
 })
 
 onUnmounted(() => {
-  window.removeEventListener(APPROVAL_DEMO_ACTOR_EVENT, loadList)
+  listController?.abort()
+  window.removeEventListener(APPROVAL_DEMO_ACTOR_EVENT, reloadActor)
 })
 
 function handleCreateModelChange(values: FormValues) {
@@ -88,11 +122,16 @@ function handleLaneChange(value: string | number) {
 }
 
 async function handleCreate() {
+  if (creating.value) return
   const valid = await createFormRef.value?.validate()
-  if (!valid) return
+  if (!valid || creating.value) return
   const body = approvalCreateFromValues(createForm.value)
   if (!body.title) {
     Message.warning({ content: '请填写审批标题', duration: 2000 })
+    return
+  }
+  if (!contacts.value.some((user) => user.id === body.assignee)) {
+    Message.warning({ content: '请从通讯录选择处理人', duration: 2000 })
     return
   }
   creating.value = true
@@ -158,6 +197,7 @@ const columns = computed<TableColumn<ApprovalListItem>[]>(() => [
     title: '操作',
     width: 100,
     align: 'center',
+    fixed: 'end',
     render: (record) =>
       h(Button, { size: 'sm', variant: 'ghost', onClick: () => openDetail(record.id) }, () => '查看'),
   },
@@ -178,6 +218,7 @@ const tableToolbar = computed(() => ({
 }))
 
 const paginationConfig = computed(() => ({
+  remote: true,
   current: page.value,
   pageSize: pageSize.value,
   total: total.value,
@@ -213,6 +254,7 @@ function handlePageSizeChange(next: { current: number; pageSize: number }) {
       </div>
     </div>
 
+    <div v-if="errorMessage" role="alert"><Alert type="error" :title="errorMessage" /><Button variant="outline" @click="loadList">重试</Button></div>
     <DataTableWithToolbar
       :columns="columns as any"
       :data-source="items as any"
@@ -230,19 +272,25 @@ function handlePageSizeChange(next: { current: number; pageSize: number }) {
     />
 
     <Modal
-      v-model:open="createOpen"
+      :open="createOpen"
+      :closable="!creating"
+      :mask-closable="!creating"
+      :keyboard="!creating"
+      @close="!creating && (createOpen = false)"
       title="发起审批"
-      show-default-footer
-      :ok-text="creating ? '提交中…' : '提交'"
-      cancel-text="取消"
-      @ok="handleCreate"
     >
+      <template #footer>
+        <Button variant="outline" :disabled="creating" @click="createOpen = false">取消</Button>
+        <Button :loading="creating" @click="handleCreate">提交</Button>
+      </template>
+      <div v-if="contactsError" role="alert"><Alert type="error" :title="contactsError" /><Button variant="outline" @click="loadContacts">重试通讯录</Button></div>
       <SchemaForm
         ref="createFormRef"
-        :schema="APPROVAL_CREATE_SCHEMA"
+        :schema="createSchema"
+        :disabled="creating"
         :model-value="createForm"
         :show-actions="false"
-        :label-width="96"
+        label-position="top"
         aria-label="发起审批表单"
         @update:model-value="handleCreateModelChange"
       />

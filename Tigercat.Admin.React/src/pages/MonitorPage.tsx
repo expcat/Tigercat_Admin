@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Loading } from '@expcat/tigercat-react/Loading';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
-import { Message } from '@expcat/tigercat-react/Message';
 import { Tag } from '@expcat/tigercat-react/Tag';
 import { Text } from '@expcat/tigercat-react/Text';
 import { Statistic } from '@expcat/tigercat-react/Statistic';
@@ -33,7 +33,6 @@ import {
   ZapIcon,
 } from '../components/Icons';
 import {
-  fetchMonitorSnapshot,
   startMonitorLive,
   type MonitorNode,
   type MonitorNodeStatus,
@@ -79,16 +78,6 @@ const NODE_STATUS_META: Record<MonitorNodeStatus, { label: string; variant: TagV
   critical: { label: '异常', variant: 'danger' },
 };
 
-const SEED_NODES: Array<Pick<MonitorNode, 'id' | 'name' | 'zone'>> = [
-  { id: 'api-hz-1', name: 'api-hz-1', zone: '华东' },
-  { id: 'api-bj-1', name: 'api-bj-1', zone: '华北' },
-  { id: 'worker-hz-1', name: 'worker-hz-1', zone: '华东' },
-  { id: 'cache-hz-1', name: 'cache-hz-1', zone: '华东' },
-];
-
-const SEED_QPS = [820, 846, 831, 874, 902, 888, 915, 940, 928, 961, 974, 952, 981, 996, 1012, 998, 1024, 1040, 1031, 1056];
-const SEED_LATENCY = [38, 36, 41, 39, 42, 40, 44, 43, 41, 45, 47, 44, 46, 48, 45, 43, 42, 44, 46, 45];
-
 function formatClock(date: Date): string {
   return date.toLocaleTimeString('zh-CN', {
     hour12: false,
@@ -96,13 +85,6 @@ function formatClock(date: Date): string {
     minute: '2-digit',
     second: '2-digit',
   });
-}
-
-function healthFromLoad(cpu: number, memory: number): MonitorNodeStatus {
-  const load = Math.max(cpu, memory);
-  if (load >= 85) return 'critical';
-  if (load >= 70) return 'warning';
-  return 'healthy';
 }
 
 function progressVariant(value: number): ProgressVariant {
@@ -124,17 +106,6 @@ function chartTimeTicks(series: LineChartDatum[]) {
     .map(({ x }) => x);
 }
 
-function seedWindow(
-  values: number[],
-  now: Date,
-  intervalMs: number,
-): LineChartDatum[] {
-  return values.map((y, index) => ({
-    x: formatClock(new Date(now.getTime() - (values.length - 1 - index) * intervalMs)),
-    y,
-  }));
-}
-
 function nodeStatus(value: string | undefined): MonitorNodeStatus {
   if (value === 'warning' || value === 'critical' || value === 'healthy') {
     return value;
@@ -152,50 +123,10 @@ function toActivityItems(events: MonitorSnapshot['events']): ActivityItem[] {
   }));
 }
 
-function createSeedSnapshot(): MonitorViewState {
-  const now = new Date();
-  const intervalMs = Number(DEFAULT_INTERVAL) * 1000;
-  const nodes: MonitorNode[] = [
-    { ...SEED_NODES[0], cpu: 46, memory: 58, status: 'healthy' },
-    { ...SEED_NODES[1], cpu: 62, memory: 71, status: 'warning' },
-    { ...SEED_NODES[2], cpu: 38, memory: 44, status: 'healthy' },
-    { ...SEED_NODES[3], cpu: 51, memory: 63, status: 'healthy' },
-  ].map((node) => ({ ...node, status: healthFromLoad(node.cpu, node.memory) }));
-
+function createEmptySnapshot(): MonitorViewState {
   return {
-    cpu: 54,
-    memory: 61,
-    disk: 67,
-    qps: SEED_QPS[SEED_QPS.length - 1],
-    latency: SEED_LATENCY[SEED_LATENCY.length - 1],
-    qpsSeries: seedWindow(SEED_QPS, now, intervalMs),
-    latencySeries: seedWindow(SEED_LATENCY, now, intervalMs),
-    nodes,
-    events: [
-      {
-        id: 'evt-seed-1',
-        title: 'API 网关流量升高',
-        description: '入口 QPS 超过近窗均值',
-        time: formatDisplayDateTime(new Date(now.getTime() - 9000)),
-        status: { label: '告警', variant: 'warning' as TagVariant },
-      },
-      {
-        id: 'evt-seed-2',
-        title: '工作节点恢复',
-        description: '心跳已恢复，流量重新接入',
-        time: formatDisplayDateTime(new Date(now.getTime() - 6000)),
-        status: { label: '恢复', variant: 'success' as TagVariant },
-      },
-      {
-        id: 'evt-seed-3',
-        title: '缓存命中率回升',
-        description: '热点 key 预热完成',
-        time: formatDisplayDateTime(new Date(now.getTime() - 3000)),
-        status: { label: '正常', variant: 'success' as TagVariant },
-      },
-    ].reverse(),
-    lastTickAt: formatClock(now),
-    tickCount: 3,
+    cpu: 0, memory: 0, disk: 0, qps: 0, latency: 0,
+    qpsSeries: [], latencySeries: [], nodes: [], events: [], lastTickAt: '--', tickCount: 0,
   };
 }
 
@@ -227,59 +158,37 @@ const readErrorMessage = (error: unknown, fallback: string) =>
 function MonitorPage() {
   const [intervalSec, setIntervalSec] = useState<IntervalSec>(DEFAULT_INTERVAL);
   const [paused, setPaused] = useState(false);
-  const [snapshot, setSnapshot] = useState<MonitorViewState>(createSeedSnapshot);
+  const [snapshot, setSnapshot] = useState<MonitorViewState>(createEmptySnapshot);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [initialized, setInitialized] = useState(false);
-  const initializedRef = useRef(false);
-
-  const loadSnapshot = useCallback(async () => {
-    if (!initializedRef.current) {
-      setLoading(true);
-    }
-    try {
-      const payload = await fetchMonitorSnapshot();
-      setSnapshot((prev) => applyRemoteSnapshot(prev, payload.data));
-      setErrorMessage('');
-      initializedRef.current = true;
-      setInitialized(true);
-    } catch (error) {
-      const message = readErrorMessage(error, '监控快照加载失败，请稍后重试。');
-      setErrorMessage(message);
-      Message.error({ content: message, duration: 3000 });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     if (paused) {
+      setLoading(false);
       return;
     }
 
-    if (!initializedRef.current) {
-      setLoading(true);
-    }
+    setLoading(true);
 
     const stop = startMonitorLive(
       Number(intervalSec),
       (data) => {
         setSnapshot((prev) => applyRemoteSnapshot(prev, data));
         setErrorMessage('');
-        initializedRef.current = true;
         setInitialized(true);
         setLoading(false);
       },
       (error) => {
         const message = readErrorMessage(error, '监控快照加载失败，请稍后重试。');
         setErrorMessage(message);
-        Message.error({ content: message, duration: 3000 });
         setLoading(false);
       },
     );
 
     return stop;
-  }, [paused, intervalSec]);
+  }, [paused, intervalSec, reload]);
 
   const handleIntervalChange = (value: string | number) => {
     const next = String(value);
@@ -308,7 +217,7 @@ function MonitorPage() {
       <PageHeader
         icon={<MonitorIcon size={24} />}
         title="实时监控"
-        subtitle="推送监控快照，展示资源水位、吞吐延迟与节点事件"
+        subtitle="演示监控快照，展示资源水位、吞吐延迟与节点事件"
         tags={[
           { label: '实时快照', variant: 'success' },
           { label: '登录可见', variant: 'info' },
@@ -317,7 +226,7 @@ function MonitorPage() {
 
       <PageActionPanel
         title="刷新控制"
-        description="优先经 SignalR /hubs/monitor 按 2 / 3 / 5 秒推送，默认 3 秒；连接失败时回退轮询 GET /api/monitor/snapshot。暂停后停止推送与请求，卸载时断开。"
+        description="按所选间隔更新演示快照，默认 3 秒。暂停后保留最后快照，继续时恢复更新。"
         actions={
           <>
             <Segmented
@@ -326,7 +235,7 @@ function MonitorPage() {
               options={intervalOptions}
             />
             <Tag variant={paused ? 'warning' : 'success'} size="sm">
-              {paused ? '已暂停' : loading && !initialized ? '加载中' : '刷新中'}
+              {paused ? '已暂停' : errorMessage ? '连接失败' : loading ? '加载中' : '刷新中'}
             </Tag>
             <Tag variant="info" size="sm">
               最近 {snapshot.lastTickAt}
@@ -341,14 +250,15 @@ function MonitorPage() {
       {errorMessage && (
         <Card>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Text color="secondary">{errorMessage}</Text>
-            <Button variant="outline" onClick={() => void loadSnapshot()}>
+            <div role="alert"><Text color="secondary">{errorMessage}</Text></div>
+            <Button variant="outline" onClick={() => { setPaused(false); setReload((value) => value + 1); }}>
               重试
             </Button>
           </div>
         </Card>
       )}
 
+      {!initialized ? (loading ? <div className="flex h-40 items-center justify-center" role="status" aria-label="监控加载中"><Loading /></div> : <ChartEmptyState description={paused ? '监控已暂停，继续后加载快照' : '暂无监控快照，请重试'} />) : <>
       <MetricGrid columns={4}>
         <MetricCard
           title="当前 QPS"
@@ -499,9 +409,10 @@ function MonitorPage() {
         </Card>
       </div>
 
+      </>}
       <MutedPanel
         title="演示说明"
-        description="本页优先使用 SignalR 推送监控快照，WebSocket 不可用时轮询 GET /api/monitor/snapshot。服务端用内存步进生成指标，不读取真实主机。QPS 与延迟在前端拼接最近 20 点；事件流按接口返回封顶。暂停后不再推送或请求。"
+        description="指标由服务端生成演示快照，不读取真实主机。QPS 与延迟显示最近 20 个采样点；暂停后停止更新。"
       />
     </div>
   );

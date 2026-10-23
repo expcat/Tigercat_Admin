@@ -2,38 +2,10 @@ import type {
   ProgressStatus,
   SegmentedOption,
   TagVariant,
-  TimelineItem,
 } from '@expcat/tigercat-core';
 import { apiRequest } from './request';
 import { getAuthHeaders } from './auth';
-import type { PagedResult } from './types';
-
-export type ProjectStatus = 'planning' | 'active' | 'paused' | 'done';
-export type ProjectStatusFilter = 'all' | ProjectStatus;
-export type ProjectDetailTab = 'overview' | 'members' | 'activity';
-
-export interface ProjectMember {
-  id: string;
-  name: string;
-  role: string;
-  color: string;
-}
-
-export interface ProjectRecord {
-  id: string;
-  name: string;
-  summary: string;
-  owner: string;
-  department: string;
-  status: ProjectStatus;
-  progress: number;
-  milestone: number;
-  budget: number;
-  startAt: string;
-  endAt: string;
-  members: ProjectMember[];
-  activities: TimelineItem[];
-}
+import type { PagedResult, ProjectStatus, ProjectStatusFilter, ProjectDetailTab, ProjectRecord } from './types';
 
 export const PROJECT_PAGE_SIZE = 6;
 
@@ -72,7 +44,7 @@ export function fetchProjects(query: {
   pageSize?: number;
   status?: ProjectStatusFilter;
   keyword?: string;
-}) {
+}, signal?: AbortSignal) {
   const params = new URLSearchParams({
     page: String(query.page ?? 1),
     pageSize: String(query.pageSize ?? PROJECT_PAGE_SIZE),
@@ -81,12 +53,14 @@ export function fetchProjects(query: {
   if (query.keyword?.trim()) params.set('keyword', query.keyword.trim());
   return apiRequest<PagedResult<ProjectRecord>>(`/api/projects?${params}`, {
     headers: getAuthHeaders(),
+    signal,
   });
 }
 
-export function fetchProject(id: string) {
+export function fetchProject(id: string, signal?: AbortSignal) {
   return apiRequest<ProjectRecord>(`/api/projects/${encodeURIComponent(id)}`, {
     headers: getAuthHeaders(),
+    signal,
   });
 }
 
@@ -113,10 +87,8 @@ export function getProjectProgressStatus(
 }
 
 export function getProjectRemainDays(project: ProjectRecord): number {
-  const end = Date.parse(`${project.endAt}T00:00:00+08:00`);
-  if (Number.isNaN(end)) {
-    return 0;
-  }
-  const diff = end - Date.parse('2026-08-23T00:00:00+08:00');
-  return Math.max(0, Math.ceil(diff / 86400000));
+  const [year, month, day] = project.endAt.split('-').map(Number);
+  const today = new Date();
+  const diff = Date.UTC(year, month - 1, day) - Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  return Number.isFinite(diff) ? Math.max(0, Math.round(diff / 86400000)) : 0;
 }

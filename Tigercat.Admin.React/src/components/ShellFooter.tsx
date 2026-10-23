@@ -17,7 +17,7 @@ export function ShellFooter() {
             Tigercat Admin
           </Text>
           <Tag size="sm" variant="default">
-            UI 3.0.0-rc.1
+            UI 3.0.0-rc.2
           </Tag>
         </Space>
         <Text size="sm" color="secondary">

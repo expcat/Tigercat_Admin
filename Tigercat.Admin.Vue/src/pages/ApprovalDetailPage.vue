@@ -8,8 +8,8 @@ import { Form } from '@expcat/tigercat-vue/Form'
 import { FormItem } from '@expcat/tigercat-vue/FormItem'
 import { Message } from '@expcat/tigercat-vue/Message'
 import { Modal } from '@expcat/tigercat-vue/Modal'
-import { Radio } from '@expcat/tigercat-vue/Radio'
-import { RadioGroup } from '@expcat/tigercat-vue/RadioGroup'
+import { AssigneePicker } from '@expcat/tigercat-vue/AssigneePicker'
+import { Alert } from '@expcat/tigercat-vue/Alert'
 import { SchemaForm } from '@expcat/tigercat-vue/SchemaForm'
 import { TabPane } from '@expcat/tigercat-vue/TabPane'
 import { Tabs } from '@expcat/tigercat-vue/Tabs'
@@ -17,10 +17,11 @@ import { Tag } from '@expcat/tigercat-vue/Tag'
 import { Text } from '@expcat/tigercat-vue/Text'
 import { Textarea } from '@expcat/tigercat-vue/Textarea'
 import { WorkflowDetailShell } from '@expcat/tigercat-vue/WorkflowDetailShell'
-import { WorkflowViewer } from '@expcat/tigercat-vue/WorkflowViewer'
+import { WorkflowViewer } from '../utils/lazyTigercat'
 import { WorkflowActionBar, WorkflowTimeline } from '@expcat/tigercat-vue/WorkflowTimeline'
 import type {
   FieldPermission,
+  FormHandle,
   FormValues,
   WorkflowActionBarItem,
   WorkflowActionPayload,
@@ -45,7 +46,6 @@ import {
   approvalViewerRole,
   contactActorOf,
   currentApprovalStep,
-  FALLBACK_APPROVAL_CONTACTS,
   fetchApproval,
   fetchApprovalContacts,
   getApprovalDemoActor,
@@ -53,7 +53,7 @@ import {
   toWorkflowSteps,
   workflowActionToPayload,
 } from '../utils/approvals'
-import type { ApprovalAction, ApprovalContactUser, ApprovalDetail, ApprovalStatus } from '../utils/types'
+import type { ApprovalAction, ApprovalActionPayload, ApprovalContactUser, ApprovalDetail, ApprovalStatus } from '../utils/types'
 
 function readErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
@@ -61,13 +61,20 @@ function readErrorMessage(error: unknown, fallback: string) {
 
 const route = useRoute()
 const router = useRouter()
+let detailController: AbortController | null = null
+let actionLocked = false
+const detailFormRef = ref<FormHandle | null>(null)
+const errorMessage = ref('')
+const actionError = ref('')
+const contactsError = ref('')
+const failedAction = ref<ApprovalActionPayload | null>(null)
 const loading = ref(false)
 const missing = ref(false)
 const detail = ref<ApprovalDetail | null>(null)
 const acting = ref(false)
 const activeTab = ref('progress')
 const actorId = ref(getApprovalDemoActor())
-const contacts = ref<ApprovalContactUser[]>(FALLBACK_APPROVAL_CONTACTS)
+const contacts = ref<ApprovalContactUser[]>([])
 const formModel = ref<FormValues>({})
 const commentOpen = ref(false)
 const commentDraft = ref('')
@@ -110,35 +117,42 @@ const pickerContacts = computed(() =>
 const canAct = computed(() => actorHasOpenTask(detail.value, actorId.value) || (currentStep.value?.kind === 'start' && isStarter.value))
 
 async function loadContacts() {
+  contactsError.value = ''
   try {
     const payload = await fetchApprovalContacts()
-    if (payload.data.users?.length) contacts.value = payload.data.users
-  } catch {
-    contacts.value = FALLBACK_APPROVAL_CONTACTS
+    contacts.value = payload.data.users ?? []
+  } catch (error) {
+    contacts.value = []
+    contactsError.value = readErrorMessage(error, '通讯录加载失败')
   }
 }
 
 async function loadDetail() {
-  if (!id.value) {
-    missing.value = true
-    detail.value = null
-    return
-  }
+  detailController?.abort()
+  const controller = new AbortController()
+  detailController = controller
+  detail.value = null
+  formModel.value = {}
+  commentOpen.value = false
+  commentDraft.value = ''
+  failedAction.value = null
+  actionError.value = ''
+  errorMessage.value = ''
+  missing.value = !id.value
+  if (!id.value) return
   loading.value = true
-  missing.value = false
   try {
-    const payload = await fetchApproval(id.value)
+    const payload = await fetchApproval(id.value, controller.signal)
+    if (controller.signal.aborted) return
     detail.value = payload.data
     formModel.value = approvalFormModel(payload.data)
   } catch (error: unknown) {
-    if (error instanceof ApiError && error.status === 404) {
-      missing.value = true
-      detail.value = null
-    } else {
-      Message.error({ content: readErrorMessage(error, '审批详情加载失败'), duration: 3000 })
-    }
+    if (controller.signal.aborted) return
+    if (error instanceof ApiError && error.status === 404) missing.value = true
+    else errorMessage.value = error instanceof ApiError && error.status === 403
+      ? '当前账号无权查看该审批' : readErrorMessage(error, '审批详情加载失败')
   } finally {
-    loading.value = false
+    if (!controller.signal.aborted) loading.value = false
   }
 }
 
@@ -158,6 +172,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  detailController?.abort()
   window.removeEventListener(APPROVAL_DEMO_ACTOR_EVENT, syncActor)
 })
 
@@ -169,29 +184,46 @@ function handleFormChange(values: FormValues) {
   formModel.value = values
 }
 
-async function runAction(action: ApprovalAction, payload?: WorkflowActionPayload) {
-  if (!detail.value) return
-  acting.value = true
+async function runAction(body: ApprovalActionPayload): Promise<boolean> {
+  if (!detail.value || actionLocked || loading.value || isApprovalTerminal(detail.value.status)) return false
+  if (!['comment', 'cancel', 'withdraw'].includes(body.action) && !canAct.value) return false
+  if (['cancel', 'withdraw'].includes(body.action) && !isStarter.value) return false
+  if ((body.comment?.length ?? 0) > 500) {
+    Message.warning({ content: '审批意见最多 500 字', duration: 2000 })
+    return false
+  }
+  actionLocked = true
+  const controller = detailController
   try {
-    const body = workflowActionToPayload(action, payload, formModel.value)
-    const result = await applyApprovalAction(detail.value.id, body)
+    if (!await detailFormRef.value?.validate()) return false
+    if (controller !== detailController || controller?.signal.aborted) return false
+    acting.value = true
+    actionError.value = ''
+    const result = await applyApprovalAction(detail.value.id, { ...body, formValues: formModel.value })
+    if (controller !== detailController || controller?.signal.aborted) return false
     detail.value = result.data
     formModel.value = approvalFormModel(result.data)
-    Message.success({ content: actionSuccessMessage(action), duration: 2200 })
+    failedAction.value = null
+    Message.success({ content: actionSuccessMessage(body.action), duration: 2200 })
+    return true
   } catch (error: unknown) {
-    Message.error({ content: readErrorMessage(error, '审批动作失败'), duration: 3000 })
+    if (controller !== detailController || controller?.signal.aborted) return false
+    failedAction.value = body
+    actionError.value = readErrorMessage(error, '审批动作失败')
+    return false
   } finally {
+    actionLocked = false
     acting.value = false
   }
 }
 
 function handleWorkflowAction(item: WorkflowActionBarItem, payload?: WorkflowActionPayload) {
+  if (acting.value) return
   if (item.action === 'comment' && !payload?.comment?.trim()) {
-    commentDraft.value = ''
     commentOpen.value = true
     return
   }
-  void runAction(item.action as ApprovalAction, payload)
+  void runAction(workflowActionToPayload(item.action as ApprovalAction, payload))
 }
 
 async function confirmComment() {
@@ -200,32 +232,24 @@ async function confirmComment() {
     Message.warning({ content: '评论内容不能为空', duration: 2000 })
     return
   }
-  await runAction('comment', { comment })
-  commentOpen.value = false
+  if (await runAction({ action: 'comment', comment })) {
+    commentOpen.value = false
+    commentDraft.value = ''
+  }
 }
 
 function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
-  const selected = ctx.value?.id ?? ctx.value?.name
   return h('div', { class: 'space-y-1' }, [
-    h(Text, { size: 'sm', weight: 'medium' }, () => (ctx.action === 'addsign' ? '加签给' : '转交给')),
-    h(
-      RadioGroup,
-      {
-        size: 'sm',
-        modelValue: selected,
-        'aria-label': ctx.action === 'addsign' ? '加签对象' : '转交对象',
-        'onUpdate:modelValue': (value: string | number) => {
-          const user = pickerContacts.value.find((item) => item.id === String(value) || item.username === String(value))
-          ctx.onChange(user ? contactActorOf(user) : undefined)
-        },
+    h(Text, { size: 'sm', weight: 'medium' }, () => ctx.action === 'addsign' ? '加签给（每次一人）' : '转交给'),
+    h(AssigneePicker, {
+      options: pickerContacts.value.map((user) => ({ id: user.id, name: `${user.name}（${user.username}）`, department: user.deptName })),
+      selectedIds: ctx.value?.id ? [String(ctx.value.id)] : [],
+      locale: 'zh-CN',
+      onChange: (ids: string[]) => {
+        const user = pickerContacts.value.find((item) => item.id === ids[ids.length - 1])
+        ctx.onChange(user ? contactActorOf(user) : undefined)
       },
-      {
-        default: () =>
-          pickerContacts.value.map((user) =>
-            h(Radio, { key: user.id, value: user.id }, { default: () => `${user.name}（${user.username}）` }),
-          ),
-      },
-    ),
+    }),
   ])
 }
 </script>
@@ -253,7 +277,10 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
       <ApprovalActorSwitcher />
     </div>
 
-    <Empty v-if="missing" description="没有找到该审批实例" />
+    <div v-if="contactsError" role="alert"><Alert type="error" :title="contactsError" /><Button variant="outline" @click="loadContacts">重试通讯录</Button></div>
+    <div v-if="actionError" role="alert"><Alert type="error" title="审批动作尚未保存" :description="actionError" /><Button v-if="failedAction" :disabled="acting" @click="runAction(failedAction)">重试审批动作</Button></div>
+    <div v-if="errorMessage" role="alert"><Alert type="error" :title="errorMessage" /><Button variant="outline" @click="loadDetail">重试</Button></div>
+    <Empty v-else-if="missing" description="没有找到该审批实例" />
     <Text v-else-if="loading && !detail" color="secondary">正在加载审批详情…</Text>
     <WorkflowDetailShell
       v-else-if="detail"
@@ -273,6 +300,8 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
       <template #form>
         <Text weight="bold" class="mb-3 block">申请表单</Text>
         <SchemaForm
+          ref="detailFormRef"
+          :disabled="acting"
           :schema="formSchema"
           :model-value="formModel"
           :show-actions="false"
@@ -313,16 +342,21 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
     </WorkflowDetailShell>
 
     <Modal
-      v-model:open="commentOpen"
+      :open="commentOpen"
+      :closable="!acting"
+      :mask-closable="!acting"
+      :keyboard="!acting"
+      @close="!acting && (commentOpen = false)"
       title="添加评论"
-      show-default-footer
-      :ok-text="acting ? '提交中…' : '提交评论'"
-      cancel-text="取消"
-      @ok="confirmComment"
     >
+      <template #footer>
+        <Button variant="outline" :disabled="acting" @click="commentOpen = false">取消</Button>
+        <Button :loading="acting" @click="confirmComment">提交评论</Button>
+      </template>
+      <div v-if="actionError && failedAction?.action === 'comment'" role="alert"><Alert type="error" title="评论尚未保存" :description="actionError" /></div>
       <Form :label-width="72">
         <FormItem label="意见" required>
-          <Textarea v-model="commentDraft" :rows="3" placeholder="请输入审批意见" />
+          <Textarea v-model="commentDraft" :disabled="acting" aria-label="评论意见" :rows="3" placeholder="请输入审批意见" />
         </FormItem>
       </Form>
     </Modal>

@@ -26,7 +26,7 @@ test.describe('登录流程增强（忘记密码 / 两步验证 / 注册成功�
 
     await page.getByPlaceholder('请输入用户名').fill('demo');
     await page.getByPlaceholder('请输入密码').fill('demo');
-    await page.getByRole('button', { name: '登录' }).click();
+    await page.getByPlaceholder('请输入密码').press('Enter');
 
     await expect(page.getByRole('heading', { name: '两步验证' })).toBeVisible();
     await expect(page.getByText('演示验证码：123456')).toBeVisible();
@@ -53,6 +53,8 @@ test.describe('登录流程增强（忘记密码 / 两步验证 / 注册成功�
 
     await page.getByRole('button', { name: '忘记密码？' }).click();
     await expect(page.getByPlaceholder('请输入邮箱或手机号')).toBeVisible();
+    await page.getByRole('button', { name: '下一步' }).click();
+    await expect(page.getByPlaceholder('请输入邮箱或手机号')).toBeFocused();
 
     await page.getByPlaceholder('请输入邮箱或手机号').fill('13800138000');
     await expect(page.getByTestId('forgot-phone-mask')).toBeVisible();
@@ -62,11 +64,13 @@ test.describe('登录流程增强（忘记密码 / 两步验证 / 注册成功�
     const sendCode = page.getByRole('button', { name: '获取验证码' });
     await sendCode.focus();
     await page.keyboard.press('Enter');
+    await expect(page.getByText('验证账号：demo@tigercat.local', { exact: true })).toBeVisible();
     await fillOtp(page, '123456');
     const nextStep = page.getByRole('button', { name: '下一步' });
     await nextStep.focus();
     await page.keyboard.press('Enter');
 
+    await expect(page.getByPlaceholder('请输入新密码')).toBeFocused();
     await page.getByPlaceholder('请输入新密码').fill('demo-new-123');
     await page.getByPlaceholder('请再次输入新密码').fill('demo-new-123');
     await page.getByRole('button', { name: '重置密码' }).click();
@@ -80,6 +84,9 @@ test.describe('登录流程增强（忘记密码 / 两步验证 / 注册成功�
     await suppressTour(page);
     await page.goto('/#/register');
 
+    await page.getByRole('button', { name: '注册', exact: true }).click();
+    await expect(page.getByPlaceholder('请输入用户名')).toBeFocused();
+
     await page.getByPlaceholder('请输入用户名').fill('demo-register');
     await page.getByPlaceholder('请输入密码').fill('demo-123456');
     await page.getByRole('button', { name: '注册', exact: true }).click();
@@ -87,5 +94,75 @@ test.describe('登录流程增强（忘记密码 / 两步验证 / 注册成功�
     await expect(page.getByText('注册成功')).toBeVisible();
     await page.getByRole('button', { name: '立即登录' }).click();
     await expect(page).toHaveURL(/#\/login$/);
+  });
+
+  test('个人中心两步验证支持取消、确认、刷新恢复与关闭', async ({ page }) => {
+    await suppressTour(page);
+    await page.goto('/#/login');
+    await page.getByPlaceholder('请输入用户名').fill('admin');
+    await page.getByPlaceholder('请输入密码').fill('admin123');
+    await page.getByRole('button', { name: '登录', exact: true }).click();
+    await expect(page).toHaveURL(/#\/dashboard$/);
+    await page.goto('/#/profile');
+    await page.getByRole('tab', { name: '安全设置' }).click();
+    const toggle = page.getByRole('switch', { name: '两步验证', exact: true });
+    await expect(toggle).toBeEnabled();
+    await toggle.press('Space');
+    await expect(page.getByText('待确认启用，尚未保存')).toBeVisible();
+    await page.getByRole('button', { name: '取消启用' }).press('Enter');
+    await expect(toggle).toBeFocused();
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await toggle.press('Space');
+    await fillOtp(page, '123456', 'profile-2fa-otp');
+    await page.getByRole('button', { name: '确认启用' }).click();
+    await expect(page.getByTestId('profile-2fa-otp')).toHaveCount(0);
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await page.reload();
+    await page.getByRole('tab', { name: '安全设置' }).click();
+    await expect(toggle).toBeEnabled();
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await toggle.press('Space');
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+  });
+
+  test('登录失败可重试，切页后迟到响应不会写入会话且保留原目标', async ({ page }) => {
+    await suppressTour(page);
+    await page.goto('/#/roles');
+    await expect(page.getByPlaceholder('请输入用户名')).toBeVisible();
+    // MockApi 在浏览器内接管 fetch；包装它以验证实际页面的失败与取消路径。
+    await page.evaluate(() => {
+      const originalFetch = window.fetch.bind(window);
+      let attempts = 0;
+      window.fetch = async (input, init) => {
+        if (String(input) === '/api/auth/login') {
+          attempts += 1;
+          if (attempts === 1) return new Response(JSON.stringify({ success: false, message: '登录暂不可用，请重试' }), { status: 503 });
+          if (attempts === 2) {
+            const response = await originalFetch(input, init);
+            await new Promise((resolve) => setTimeout(resolve, 600));
+            document.documentElement.dataset.up02LoginFinished = 'true';
+            return response;
+          }
+        }
+        return originalFetch(input, init);
+      };
+    });
+    await page.getByPlaceholder('请输入用户名').fill('admin');
+    await page.getByPlaceholder('请输入密码').fill('admin123');
+    await page.getByRole('button', { name: '登录', exact: true }).click();
+    await expect(page.getByText('登录暂不可用，请重试')).toBeVisible();
+    await page.getByRole('button', { name: '登录', exact: true }).click();
+    await expect(page.getByPlaceholder('请输入用户名')).toBeDisabled();
+    await page.getByRole('button', { name: '立即注册' }).click();
+    await expect(page).toHaveURL(/#\/register(?:\?.*)?$/);
+    await expect(page.locator('html')).toHaveAttribute('data-up02-login-finished', 'true');
+    expect(await page.evaluate(() => localStorage.getItem('tigercat.admin.session'))).toBeNull();
+    await page.getByRole('button', { name: '立即登录' }).click();
+    await expect(page).toHaveURL(/#\/login(?:\?.*)?$/);
+    await expect(page.getByRole('heading', { name: '欢迎回来' })).toBeVisible();
+    await page.getByPlaceholder('请输入用户名').fill('admin');
+    await page.getByPlaceholder('请输入密码').fill('admin123');
+    await page.getByRole('button', { name: '登录', exact: true }).click();
+    await expect(page).toHaveURL(/#\/roles$/);
   });
 });

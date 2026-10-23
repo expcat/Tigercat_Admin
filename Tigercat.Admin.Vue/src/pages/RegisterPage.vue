@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onBeforeUnmount, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Form } from '@expcat/tigercat-vue/Form'
 import { FormItem } from '@expcat/tigercat-vue/FormItem'
 import { Input } from '@expcat/tigercat-vue/Input'
 import { Message } from '@expcat/tigercat-vue/Message'
-import { debounce, useAuthForm, apiRequest } from '../utils'
+import { useAuthForm, apiRequest } from '../utils'
+import type { FormRules } from '@expcat/tigercat-core'
 import AppLogo from '../components/AppLogo.vue'
 
 interface RegisterResult {
@@ -15,38 +16,46 @@ interface RegisterResult {
 }
 
 const router = useRouter()
+const route = useRoute()
+let request: AbortController | null = null
+onBeforeUnmount(() => request?.abort())
+const authRules: FormRules = {
+  username: { required: true, transform: (value) => String(value ?? '').trim(), message: '请输入用户名' },
+  password: [
+    { required: true, message: '请输入密码' },
+    { min: 6, message: '密码长度不能少于 6 位' },
+  ],
+}
 
-const { form, errors, setField, validateForm } = useAuthForm({ username: '', password: '' })
+const { form, setField } = useAuthForm({ username: '', password: '' })
 const loading = ref(false)
 
-const doRegister = debounce(async () => {
+async function handleRegister() {
+  if (request) return
+  const controller = new AbortController()
+  request = controller
+  loading.value = true
   try {
     const payload = await apiRequest<RegisterResult>('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify(form.value),
+      body: JSON.stringify({ ...form.value, username: form.value.username?.trim() }),
+      signal: controller.signal,
     })
-    if (!payload?.data) {
-      throw new Error('API request failed')
-    }
-    router.push({ name: 'register-success' })
-  } catch (error: any) {
-    Message.error({
-      content: error.message,
-      duration: 3000
-    })
+    if (controller.signal.aborted) return
+    if (!payload?.data?.username) throw new Error('注册响应不完整，请重试')
+    router.replace({ name: 'register-success', query: route.query })
+  } catch (error: unknown) {
+    if (!controller.signal.aborted) Message.error({ content: error instanceof Error ? error.message : '注册失败，请重试', duration: 3000 })
   } finally {
-    loading.value = false
+    if (!controller.signal.aborted) {
+      request = null
+      loading.value = false
+    }
   }
-}, 300)
-
-const handleRegister = () => {
-  if (!validateForm()) return
-  loading.value = true
-  doRegister()
 }
 
 const goToLogin = () => {
-  router.push({ name: 'login' })
+  router.push({ name: 'login', query: route.query })
 }
 </script>
 
@@ -106,23 +115,23 @@ const goToLogin = () => {
       </div>
 
       <Card variant="transparent" class="p-0">
-        <Form :model-value="form" :label-width="88">
-          <FormItem prop="username" label="用户名">
+        <Form :model-value="form" :rules="authRules" :label-width="88" :loading="loading" @submit="({ valid }) => { if (valid) handleRegister() }">
+          <FormItem name="username" label="用户名">
             <Input
               :model-value="form.username"
               placeholder="请输入用户名"
-              :status="errors?.username ? 'error' : undefined"
-              :error-message="errors?.username"
+              auto-complete="username"
+              :disabled="loading"
               @update:model-value="(val) => setField('username', val)"
             />
           </FormItem>
-          <FormItem prop="password" label="密码">
+          <FormItem name="password" label="密码">
             <Input
               :model-value="form.password"
               type="password"
               placeholder="请输入密码"
-              :status="errors?.password ? 'error' : undefined"
-              :error-message="errors?.password"
+              auto-complete="new-password"
+              :disabled="loading"
               @update:model-value="(val) => setField('password', val)"
             />
           </FormItem>
@@ -131,8 +140,7 @@ const goToLogin = () => {
               variant="primary"
               block
               :loading="loading"
-              type="button"
-              @click="handleRegister"
+              type="submit"
             >
               注册
             </Button>

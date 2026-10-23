@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { Button } from '@expcat/tigercat-vue/Button'
+import { Alert } from '@expcat/tigercat-vue/Alert'
+import { Pagination } from '@expcat/tigercat-vue/Pagination'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Checkbox } from '@expcat/tigercat-vue/Checkbox'
 import { DropdownItem } from '@expcat/tigercat-vue/Dropdown'
@@ -12,14 +14,16 @@ import { Text } from '@expcat/tigercat-vue/Text'
 import { FileManager } from '@expcat/tigercat-vue/FileManager'
 import { ContextMenu, ContextMenuItem, ContextMenuMenu, ContextMenuSub } from '@expcat/tigercat-vue/ContextMenu'
 import { SplitButton } from '@expcat/tigercat-vue/SplitButton'
-import type { FileItem, UploadRequestOptions } from '@expcat/tigercat-core'
+import type { FileItem } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
 import { batchDeleteMedia, getMediaDetail, listMedia, uploadMediaFile } from '../utils/media'
 import { usePermission } from '../utils/permission'
 import { ApiError } from '../utils/request'
 import { clearWorkbenchSelection, loadWorkbenchState, saveWorkbenchState } from '../utils/workbench'
-import type { DuplicateMediaResult, MediaDetail, MediaItem, MediaReference } from '../utils/types'
+import type { DuplicateMediaResult, MediaItem, MediaReference } from '../utils/types'
+import { useRouter } from 'vue-router'
+const router = useRouter()
 const FILE_UPLOAD_ACCEPT = 'image/*,.pdf,.txt,.csv,.json,.xlsx,.xls'
 const FILE_UPLOAD_MAX_SIZE = 10 * 1024 * 1024
 
@@ -49,9 +53,19 @@ const deleteOpen = ref(false)
 const deleting = ref(false)
 const forceDelete = ref(false)
 const deleteReferences = ref<MediaReference[]>([])
-const detailOpen = ref(false)
-const detailLoading = ref(false)
-const detail = ref<MediaDetail | null>(null)
+const page = ref(1)
+const total = ref(0)
+const loadError = ref('')
+const deleteLoading = ref(false)
+const deleteError = ref('')
+const deleteIds = ref<number[]>([])
+const uploading = ref(false)
+const uploadError = ref('')
+const failedFile = ref<File | null>(null)
+const duplicate = ref<MediaItem | null>(null)
+let loadController: AbortController | null = null
+let deleteController: AbortController | null = null
+let uploadController: AbortController | null = null
 const contextFile = ref<MediaItem | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
@@ -73,14 +87,6 @@ const selectedIds = computed(() =>
   selectedKeys.value.map(Number).filter((id) => Number.isFinite(id))
 )
 
-const isDetailImage = computed(() => detail.value?.contentType.startsWith('image/') ?? false)
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-}
-
 function referenceLabel(reference: MediaReference) {
   return reference.displayName || `${reference.referenceType}:${reference.referenceKey}`
 }
@@ -97,63 +103,70 @@ function describeUploadError(error: unknown) {
 }
 
 async function loadMedia() {
+  loadController?.abort()
+  const controller = new AbortController()
+  loadController = controller
+  loading.value = true
+  loadError.value = ''
   try {
-    loading.value = true
-    const res = await listMedia({
-      page: 1,
-      pageSize: 100,
-      keyword: searchText.value,
-      contentType: contentType.value || undefined,
-      sortBy: 'createdAt',
-      sortOrder: 'desc',
-    })
-    items.value = res.data.items
-  } catch (e: any) {
-    Message.error({ content: e.message || '加载媒体资源失败', duration: 3000 })
-  } finally {
-    loading.value = false
-  }
+    const { data } = await listMedia({ page: page.value, pageSize: 20, keyword: searchText.value, contentType: contentType.value || undefined, sortBy: 'createdAt', sortOrder: 'desc' }, controller.signal)
+    if (controller.signal.aborted) return
+    items.value = data.items
+    total.value = data.total
+    selectedKeys.value = selectedKeys.value.filter((key) => data.items.some((item) => item.id === Number(key)))
+    const lastPage = Math.max(1, Math.ceil(data.total / 20))
+    if (page.value > lastPage) { page.value = lastPage; void loadMedia() }
+  } catch (error) {
+    if (!controller.signal.aborted) loadError.value = error instanceof Error ? error.message : '加载媒体资源失败'
+  } finally { if (!controller.signal.aborted) loading.value = false }
 }
 
-async function handleUpload(options: UploadRequestOptions) {
+async function handleUpload(file: File) {
+  if (!canUpload.value || uploading.value) return
+  const controller = new AbortController()
+  uploadController = controller
+  uploading.value = true
+  failedFile.value = null
+  duplicate.value = null
+  uploadError.value = ''
   try {
-    options.onProgress?.(20)
-    const media = await uploadMediaFile(options.file, 'file')
-    options.onProgress?.(100)
-    options.onSuccess?.(media)
-    Message.success({ content: '文件已上传', duration: 3000 })
+    await uploadMediaFile(file, 'file', controller.signal)
+    if (controller.signal.aborted) return
+    Message.success({ content: '文件已上传', duration: 2200 })
+    page.value = 1
     await loadMedia()
-  } catch (e: any) {
-    options.onError?.(e)
-    Message.error({ content: describeUploadError(e), duration: 3000 })
-  }
+  } catch (error) {
+    if (controller.signal.aborted) return
+    uploadError.value = describeUploadError(error)
+    const existing = error instanceof ApiError && error.status === 409 ? (error.data as DuplicateMediaResult)?.existing : undefined
+    duplicate.value = existing ?? null
+    if (!existing) failedFile.value = file
+  } finally { uploading.value = false }
 }
 
-async function openDetail(id: number) {
-  try {
-    detailOpen.value = true
-    detailLoading.value = true
-    const res = await getMediaDetail(id)
-    detail.value = res.data
-  } catch (e: any) {
-    Message.error({ content: e.message || '加载媒体详情失败', duration: 3000 })
-    detailOpen.value = false
-  } finally {
-    detailLoading.value = false
-  }
-}
-
-async function openDeleteModal() {
+function openDetail(id: number) { void router.push(`/files/${id}`) }
+async function openDeleteModal(ids = selectedIds.value) {
+  if (!canDelete.value || !ids.length || deleting.value) return
+  deleteController?.abort()
+  const controller = new AbortController()
+  deleteController = controller
+  deleteIds.value = ids
   forceDelete.value = false
   deleteReferences.value = []
+  deleteError.value = ''
+  deleteLoading.value = true
   deleteOpen.value = true
-
   try {
-    const details = await Promise.all(selectedIds.value.map((id) => getMediaDetail(id)))
-    deleteReferences.value = details.flatMap((res) => res.data.references)
-  } catch {
-    deleteReferences.value = []
-  }
+    const details = await Promise.all(ids.map((id) => getMediaDetail(id, controller.signal)))
+    if (!controller.signal.aborted) deleteReferences.value = details.flatMap((res) => res.data.references)
+  } catch (error) {
+    if (!controller.signal.aborted) deleteError.value = error instanceof Error ? error.message : '引用读取失败'
+  } finally { if (!controller.signal.aborted) deleteLoading.value = false }
+}
+function closeDelete() {
+  if (deleting.value) return
+  deleteController?.abort()
+  deleteOpen.value = false
 }
 
 async function copyUrl(url: string) {
@@ -175,12 +188,11 @@ function handleForceDeleteChange(value: boolean | Event) {
     : Boolean((value.target as HTMLInputElement | null)?.checked)
 }
 
-async function confirmDelete(forceOverride?: boolean | Event) {
-  if (selectedIds.value.length === 0) return
-  const shouldForce = typeof forceOverride === 'boolean' ? forceOverride : forceDelete.value
+async function confirmDelete() {
+  if (!canDelete.value || !deleteIds.value.length || deleting.value || deleteLoading.value || deleteError.value) return
   try {
     deleting.value = true
-    const res = await batchDeleteMedia(selectedIds.value, shouldForce)
+    const res = await batchDeleteMedia(deleteIds.value, forceDelete.value)
     Message.success({ content: res.data.message || '已删除选中文件', duration: 3000 })
     selectedKeys.value = []
     clearWorkbenchSelection('files')
@@ -197,6 +209,9 @@ async function confirmDelete(forceOverride?: boolean | Event) {
 }
 
 async function handleContentTypeChange(value: unknown) {
+  page.value = 1
+  selectedKeys.value = []
+  clearWorkbenchSelection('files')
   contentType.value = String(value ?? '')
   saveWorkbenchState('files', {
     queryState: { contentType: contentType.value, keyword: searchText.value },
@@ -205,6 +220,9 @@ async function handleContentTypeChange(value: unknown) {
 }
 
 async function handleSearchTextChange(value: string) {
+  page.value = 1
+  selectedKeys.value = []
+  clearWorkbenchSelection('files')
   searchText.value = value
   saveWorkbenchState('files', {
     queryState: { contentType: contentType.value, keyword: searchText.value },
@@ -289,15 +307,17 @@ async function handleFileInputChange(event: Event) {
     Message.error({ content: '文件超过 10 MB 上限', duration: 3000 })
     return
   }
-  await handleUpload({
-    file,
-    onProgress() {},
-    onSuccess() {},
-    onError() {},
-  })
+  await handleUpload(file)
 }
 
+function changePage(next: number) {
+  page.value = next
+  selectedKeys.value = []
+  clearWorkbenchSelection('files')
+  void loadMedia()
+}
 onMounted(loadMedia)
+onBeforeUnmount(() => { loadController?.abort(); deleteController?.abort(); uploadController?.abort() })
 </script>
 
 <template>
@@ -328,7 +348,7 @@ onMounted(loadMedia)
         <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <Button
             variant="outline"
-            :disabled="selectedIds.length !== 1"
+            :disabled="loading || !!loadError || selectedIds.length !== 1"
             @click="openDetail(selectedIds[0])"
           >
             查看详情
@@ -337,13 +357,14 @@ onMounted(loadMedia)
             v-if="canDelete"
             variant="outline"
             danger
-            :disabled="selectedIds.length === 0"
-            @click="openDeleteModal"
+            :disabled="loading || !!loadError || selectedIds.length === 0"
+            @click="openDeleteModal()"
           >
             删除选中
           </Button>
           <SplitButton
             v-if="canUpload"
+            :disabled="uploading"
             trigger-aria-label="更多操作"
             @click="triggerFilePick"
           >
@@ -366,8 +387,11 @@ onMounted(loadMedia)
         </div>
       </div>
 
+      <div v-if="uploading" class="mb-3 flex items-center gap-2"><Text>正在上传…</Text><Button size="sm" variant="outline" @click="uploadController?.abort()">取消上传</Button></div>
+      <Alert v-if="uploadError" type="error" :title="uploadError"><template #action><Button v-if="failedFile" :disabled="uploading" @click="handleUpload(failedFile)">重试上传</Button><Button v-else-if="duplicate" @click="openDetail(duplicate.id)">查看已有文件</Button></template></Alert>
+      <Alert v-if="loadError" type="error" title="媒体列表加载失败" :description="loadError"><template #action><Button @click="loadMedia">重试</Button></template></Alert>
       <ContextMenu>
-        <div @contextmenu.capture="onFilesContextMenu">
+        <div :inert="!!loadError" @contextmenu.capture="onFilesContextMenu">
           <FileManager
             :files="files"
             view-mode="list"
@@ -405,107 +429,23 @@ onMounted(loadMedia)
         </ContextMenuMenu>
       </ContextMenu>
 
+      <Pagination :current="page" :page-size="20" :total="total" @change="changePage" />
       <div class="p2-text-secondary mt-3 text-sm">
         <Text size="sm" color="secondary">
-          被 Logo 或头像引用的媒体会在删除时返回冲突提示。
+          Logo、头像或文章附件引用会阻止普通删除；强制删除会清理这些已知引用。
         </Text>
       </div>
     </Card>
 
-    <Modal
-      v-model:open="deleteOpen"
-      title="确认删除文件"
-      show-default-footer
-      :ok-text="deleting ? '删除中…' : '确认删除'"
-      cancel-text="取消"
-      @ok="confirmDelete"
-      @cancel="deleteOpen = false"
-    >
+    <Modal :open="deleteOpen" title="确认删除文件" :show-default-footer="false" :mask-closable="!deleting" :closable="!deleting" @cancel="closeDelete">
       <div class="space-y-3">
-        <Text>将删除 {{ selectedIds.length }} 个媒体资源。被引用的文件会被后端阻止删除。</Text>
-        <div
-          v-if="deleteReferences.length > 0"
-          class="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
-        >
-          <div class="mb-2 font-medium">引用来源</div>
-          <ul class="space-y-1">
-            <li v-for="reference in deleteReferences" :key="reference.id">
-              {{ referenceLabel(reference) }}
-            </li>
-          </ul>
-        </div>
-        <label v-if="deleteReferences.length > 0" class="p2-checkbox-row text-sm">
-          <Checkbox :model-value="forceDelete" @update:model-value="handleForceDeleteChange" />
-          <span class="p2-checkbox-label">强制删除并清理已知 Logo / 头像引用</span>
-        </label>
-        <Button
-          v-if="deleteReferences.length > 0"
-          variant="outline"
-          danger
-          :disabled="deleting"
-          @click="confirmDelete(true)"
-        >
-          强制删除
-        </Button>
+        <Text>将删除 {{ deleteIds.length }} 个媒体资源。被引用的文件会被后端阻止删除。</Text>
+        <Text v-if="deleteLoading">正在读取引用…</Text>
+        <Alert v-if="deleteError" type="error" :title="deleteError"><template #action><Button @click="openDeleteModal(deleteIds)">重试</Button></template></Alert>
+        <Alert v-if="deleteReferences.length > 0" type="warning" title="引用来源"><ul class="space-y-1"><li v-for="reference in deleteReferences" :key="reference.id">{{ referenceLabel(reference) }}</li></ul></Alert>
+        <Checkbox v-if="deleteReferences.length > 0" :model-value="forceDelete" :disabled="deleting" @update:model-value="handleForceDeleteChange">强制删除并清理已知 Logo / 头像 / 文章附件引用</Checkbox>
       </div>
-    </Modal>
-
-    <Modal
-      v-model:open="detailOpen"
-      title="媒体详情"
-      :show-default-footer="false"
-      @cancel="detailOpen = false"
-    >
-      <Text v-if="detailLoading || !detail">加载中…</Text>
-      <div v-else class="space-y-4">
-        <div v-if="isDetailImage" class="overflow-hidden rounded border border-slate-200 bg-slate-50">
-          <img
-            :src="detail.url"
-            :alt="detail.originalFileName"
-            class="max-h-64 w-full object-contain"
-          />
-        </div>
-        <div class="grid gap-3 text-sm sm:grid-cols-2">
-          <div><span class="text-slate-500">文件名：</span>{{ detail.originalFileName }}</div>
-          <div><span class="text-slate-500">大小：</span>{{ formatBytes(detail.sizeBytes) }}</div>
-          <div><span class="text-slate-500">类型：</span>{{ detail.contentType }}</div>
-          <div><span class="text-slate-500">Provider：</span>{{ detail.storageProvider }}</div>
-          <div>
-            <span class="text-slate-500">尺寸：</span>
-            {{ detail.width && detail.height ? `${detail.width} x ${detail.height}` : '未识别' }}
-          </div>
-          <div><span class="text-slate-500">上传人：</span>{{ detail.uploadedBy || '未知' }}</div>
-          <div class="break-all sm:col-span-2">
-            <span class="text-slate-500">SHA256：</span>{{ detail.sha256Hash || '未记录' }}
-          </div>
-          <div class="break-all sm:col-span-2">
-            <span class="text-slate-500">URL：</span>{{ detail.url }}
-          </div>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <Button variant="outline" @click="copyUrl(detail.url)">
-            <span class="flex items-center gap-1">
-              <Icon name="clipboard" :size="16" />
-              复制 URL
-            </span>
-          </Button>
-          <Button variant="outline" @click="openUrl(detail.url)">
-            <span class="flex items-center gap-1">
-              <Icon name="link" :size="16" />
-              打开资源
-            </span>
-          </Button>
-        </div>
-        <div>
-          <div class="mb-2 text-sm font-medium">引用来源</div>
-          <Text v-if="detail.references.length === 0" size="sm" color="secondary">暂无引用</Text>
-          <div v-else class="flex flex-wrap gap-2">
-            <Tag v-for="reference in detail.references" :key="reference.id" variant="primary" size="sm">
-              {{ referenceLabel(reference) }}
-            </Tag>
-          </div>
-        </div>
-      </div>
+      <template #footer><div class="flex justify-end gap-2"><Button variant="outline" :disabled="deleting" @click="closeDelete">取消</Button><Button danger :disabled="deleting || deleteLoading || !!deleteError" @click="confirmDelete">{{ deleting ? '删除中…' : forceDelete ? '强制删除' : '确认删除' }}</Button></div></template>
     </Modal>
   </div>
 </template>

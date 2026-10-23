@@ -5,7 +5,7 @@ export type ExportFormat = 'csv' | 'json' | 'xlsx';
 
 export const EXPORT_FORMATS: ExportFormat[] = ['csv', 'json', 'xlsx'];
 
-/** Official DataExport 2.1.1 only types `xlsx` / `markdown`; pages skip its client serializer. */
+/** One button per API format; customExport delegates downloads to the API. */
 export const DATA_EXPORT_TRIGGER_FORMATS: DataExportFormat[] = ['xlsx'];
 
 export const EXPORT_FORMAT_LABELS: Record<ExportFormat, string> = {
@@ -43,37 +43,12 @@ export const AUDIT_EXPORT_FIELDS: ExportFieldOption<AuditExportField>[] = [
   { key: 'description', label: '说明' },
 ];
 
-export const DATA_EXPORT_PLACEHOLDER_ROWS: Record<string, unknown>[] = [{ _skip: true }];
-
-const SKIP_CLIENT_DATA_EXPORT = 'TIGERCAT_ADMIN_USE_API_EXPORT';
-
-export function skipClientDataExport(): never {
-  throw new Error(SKIP_CLIENT_DATA_EXPORT);
-}
-
-export function isSkipClientDataExport(error: unknown): boolean {
-  return error instanceof Error && error.message === SKIP_CLIENT_DATA_EXPORT;
-}
-
 export function toExportColumns(fields: ExportFieldOption[]): TableColumn[] {
   return fields.map((field) => ({
     key: field.key,
     title: field.label,
     dataKey: field.key,
   }));
-}
-
-export function handleDataExportError(
-  error: unknown,
-  format: ExportFormat,
-  onExport: (format: ExportFormat) => void | Promise<void>,
-  onError?: (message: string) => void,
-): void {
-  if (isSkipClientDataExport(error)) {
-    void onExport(format);
-    return;
-  }
-  onError?.(error instanceof Error ? error.message : '导出失败');
 }
 
 export interface ExportOptions {
@@ -208,7 +183,7 @@ function getFilenameFromResponse(
 /**
  * 通过创建临时 <a> 标签触发浏览器下载。
  */
-function downloadBlob(blob: Blob, filename: string): void {
+export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

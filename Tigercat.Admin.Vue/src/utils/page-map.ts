@@ -1,10 +1,11 @@
 /**
  * Lazy pageMap for mixed schema routing.
  * Keyed by MenuSchemaNode.key (schemaToRouteRecords `name`).
- * Parametric extras (`/projects/:id`, `/approvals/:id`) stay static in the router.
+ * Parametric extras (`/projects/:id`, `/approvals/:id`, `/files/:id`, `/import/:id`) stay static in the router.
  */
 export const SHELL_PAGE_MAP = {
   home: () => import('../pages/HomePage.vue'),
+  workspace: () => import('../pages/WorkspacePage.vue'),
   analytics: () => import('../pages/AnalyticsPage.vue'),
   monitor: () => import('../pages/MonitorPage.vue'),
   projects: () => import('../pages/ProjectsPage.vue'),
@@ -35,3 +36,6 @@ export const SHELL_PAGE_MAP = {
 export type ShellPageMapKey = keyof typeof SHELL_PAGE_MAP;
 
 export const SHELL_IFRAME_PAGE = () => import('../pages/IframePage.vue');
+
+export const FILE_DETAIL_PAGE = () => import('../pages/FileDetailPage.vue');
+export const IMPORT_RESULT_PAGE = () => import('../pages/ImportResultPage.vue');

@@ -31,16 +31,32 @@ export function isPhoneIdentity(target: string): boolean {
   return value.length > 0 && !value.includes('@') && /^1\d*$/.test(value.replace(/\s/g, ''));
 }
 
-export function fetchTwoFactorStatus() {
+export function getSafeReturnTo(value: unknown): string {
+  if (typeof value !== 'string') return '/dashboard';
+  const path = value.startsWith('#/') ? value.slice(1) : value;
+  if (!path.startsWith('/') || path.startsWith('//') || /[\\\u0000-\u001f]/.test(path)) {
+    return '/dashboard';
+  }
+  const url = new URL(path, window.location.origin);
+  const pathname = url.pathname.replace(/\/+$/, '') || '/';
+  if (url.origin !== window.location.origin || [
+    '/', '/login', '/register', '/forgot-password', '/register-success', '/403', '/404', '/500',
+  ].includes(pathname)) return '/dashboard';
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+export function fetchTwoFactorStatus(signal?: AbortSignal) {
   return apiRequest<TwoFactorStatus>('/api/auth/two-factor', {
     headers: getAuthHeaders(),
+    signal,
   });
 }
 
-export function updateTwoFactorEnabled(enabled: boolean) {
+export function updateTwoFactorEnabled(enabled: boolean, signal?: AbortSignal) {
   return apiRequest<TwoFactorStatus>('/api/auth/two-factor', {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify({ enabled }),
+    signal,
   });
 }

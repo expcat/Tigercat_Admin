@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { nextTick, onBeforeUnmount, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Alert } from '@expcat/tigercat-vue/Alert'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
@@ -11,7 +11,6 @@ import { Message } from '@expcat/tigercat-vue/Message'
 import { InputOTP } from '@expcat/tigercat-vue/InputOTP'
 import { Countdown } from '@expcat/tigercat-vue/Countdown'
 import {
-  debounce,
   useAuthForm,
   apiRequest,
   DEMO_OTP_CODE,
@@ -20,15 +19,25 @@ import {
   type LoginData,
   type Session,
 } from '../utils'
+import type { FormRules } from '@expcat/tigercat-core'
 import AppLogo from '../components/AppLogo.vue'
 
 const router = useRouter()
+const route = useRoute()
+let request: AbortController | null = null
+const usernameRef = ref<{ focus: () => void } | null>(null)
+const otpRef = ref<{ focus: () => void } | null>(null)
+onBeforeUnmount(() => request?.abort())
+const authRules: FormRules = {
+  username: { required: true, transform: (value) => String(value ?? '').trim(), message: '请输入用户名' },
+  password: { required: true, message: '请输入密码' },
+}
 
 const emit = defineEmits<{
   (e: 'success', session: Session): void;
 }>()
 
-const { form, errors, setField, validateForm } = useAuthForm({ username: '', password: '' })
+const { form, setField } = useAuthForm({ username: '', password: '' })
 const loading = ref(false)
 const step = ref<'login' | 'otp'>('login')
 const otpUsername = ref('')
@@ -58,57 +67,49 @@ function applySession(data: { token: string; username: string; expiresAt: string
   })
 }
 
-const doLogin = debounce(async () => {
+async function handleLogin(resend = false) {
+  if (request && !request.signal.aborted) return
+  const controller = new AbortController()
+  request = controller
+  loading.value = true
+  otpError.value = ''
+  otpNotice.value = ''
   try {
     const payload = await apiRequest<LoginData>('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify(form.value),
+      body: JSON.stringify({ ...form.value, username: form.value.username?.trim() }),
+      signal: controller.signal,
     })
-
-    if (!payload?.data) {
-      throw new Error('API request failed');
+    if (controller.signal.aborted) return
+    const data = payload?.data
+    if (data?.requiresTwoFactor) {
+      startOtp(data.username || form.value.username?.trim() || '', data.challengeId)
+      if (resend) otpNotice.value = '验证码已重新获取，演示验证码：' + DEMO_OTP_CODE
+    } else {
+      if (!data?.token || !data.username || !data.expiresAt) throw new Error('登录响应不完整，请重试')
+      applySession({ token: data.token, username: data.username, expiresAt: data.expiresAt })
     }
-
-    if (payload.data.requiresTwoFactor) {
-      startOtp(payload.data.username || form.value.username || '', payload.data.challengeId)
-      return
-    }
-
-    if (!payload.data.token || !payload.data.username || !payload.data.expiresAt) {
-      throw new Error('API request failed')
-    }
-
-    applySession({
-      token: payload.data.token,
-      username: payload.data.username,
-      expiresAt: payload.data.expiresAt,
-    })
-  } catch (error: any) {
-    Message.error({
-      content: error.message,
-      duration: 3000
-    })
+  } catch (error: unknown) {
+    if (controller.signal.aborted) return
+    const content = error instanceof Error ? error.message : '登录失败，请重试'
+    if (resend) otpError.value = content
+    Message.error({ content, duration: 3000 })
   } finally {
-    loading.value = false
+    if (request === controller && !controller.signal.aborted) {
+      request = null
+      loading.value = false
+    }
   }
-}, 300)
-
-const handleLogin = () => {
-  if (!validateForm()) return
-  loading.value = true
-  doLogin()
 }
 
-const goToRegister = () => {
-  router.push({ name: 'register' })
-}
+const goToRegister = () => router.push({ name: 'register', query: route.query })
+const goToForgotPassword = () => router.push({ name: 'forgot-password', query: route.query })
 
-const goToForgotPassword = () => {
-  router.push({ name: 'forgot-password' })
-}
-
-const backToLogin = () => {
+function backToLogin() {
+  request?.abort()
+  request = null
   step.value = 'login'
+  void nextTick(() => usernameRef.value?.focus())
   otpCode.value = ''
   otpUsername.value = ''
   otpChallengeId.value = ''
@@ -119,61 +120,39 @@ const backToLogin = () => {
   loading.value = false
 }
 
-const handleResend = () => {
-  if (!otpCanResend.value) return
-  otpCode.value = ''
-  otpCanResend.value = false
-  otpDeadline.value = Date.now() + OTP_RESEND_MS
-  otpError.value = ''
-  otpNotice.value = '已重新发送，演示验证码：' + DEMO_OTP_CODE
-  Message.success({
-    content: otpNotice.value,
-    duration: 2000,
-  })
+function handleResend() {
+  if (otpCanResend.value && !loading.value) void handleLogin(true)
 }
 
-const handleVerify = debounce(async () => {
-  if (otpCode.value.length !== OTP_LENGTH) {
-    Message.warning({
-      content: '请输入 6 位验证码',
-      duration: 2000,
-    })
-    return
-  }
-
+async function handleVerify() {
+  if (request || otpCode.value.length !== OTP_LENGTH) return
+  const controller = new AbortController()
+  request = controller
   loading.value = true
+  otpError.value = ''
+  otpNotice.value = ''
   try {
     const payload = await apiRequest<Session>('/api/auth/two-factor/verify', {
       method: 'POST',
-      body: JSON.stringify({
-        username: otpUsername.value,
-        code: otpCode.value,
-        challengeId: otpChallengeId.value || undefined,
-      }),
+      body: JSON.stringify({ username: otpUsername.value, code: otpCode.value, challengeId: otpChallengeId.value || undefined }),
+      signal: controller.signal,
     })
-
-    if (!payload?.data?.token) {
-      throw new Error('API request failed')
-    }
-    if (!payload.data.username || !payload.data.expiresAt) {
-      throw new Error('API request failed')
-    }
-    applySession({
-      token: payload.data.token,
-      username: payload.data.username,
-      expiresAt: payload.data.expiresAt,
-    })
-  } catch (error: any) {
-    otpNotice.value = ''
-    otpError.value = error.message || '验证码错误'
-    Message.error({
-      content: otpError.value,
-      duration: 3000,
-    })
+    if (controller.signal.aborted) return
+    const data = payload?.data
+    if (!data?.token || !data.username || !data.expiresAt) throw new Error('登录响应不完整，请重试')
+    applySession(data)
+  } catch (error: unknown) {
+    if (controller.signal.aborted) return
+    otpError.value = error instanceof Error ? error.message : '验证码校验失败，请重试'
+    Message.error({ content: otpError.value, duration: 3000 })
+    void nextTick(() => otpRef.value?.focus())
   } finally {
-    loading.value = false
+    if (request === controller && !controller.signal.aborted) {
+      request = null
+      loading.value = false
+    }
   }
-}, 300)
+}
 </script>
 
 <template>
@@ -234,14 +213,15 @@ const handleVerify = debounce(async () => {
       </div>
 
       <Card variant="transparent" class="p-0">
-        <Form v-if="step === 'login'" :model-value="form" :label-width="88">
+        <Form v-if="step === 'login'" :model-value="form" :rules="authRules" :label-width="88" :loading="loading" @submit="({ valid }) => { if (valid) handleLogin() }">
           <FormItem name="username" label="用户名">
             <Input
+              ref="usernameRef"
               :model-value="form.username || ''"
               placeholder="请输入用户名"
               @update:model-value="(val: string) => setField('username', val)"
-              :status="errors?.username ? 'error' : undefined"
-              :error-message="errors?.username"
+              auto-complete="username"
+              :disabled="loading"
             />
           </FormItem>
           <FormItem name="password" label="密码">
@@ -250,8 +230,8 @@ const handleVerify = debounce(async () => {
               type="password"
               placeholder="请输入密码"
               @update:model-value="(val: string) => setField('password', val)"
-              :status="errors?.password ? 'error' : undefined"
-              :error-message="errors?.password"
+              auto-complete="current-password"
+              :disabled="loading"
             />
           </FormItem>
           <div class="mt-2 text-right text-sm">
@@ -268,8 +248,7 @@ const handleVerify = debounce(async () => {
               variant="primary"
               block
               :loading="loading"
-              type="button"
-              @click="handleLogin"
+              type="submit"
             >
               登录
             </Button>
@@ -291,7 +270,12 @@ const handleVerify = debounce(async () => {
           <Alert v-if="otpNotice" type="success" :title="otpNotice" />
           <div data-testid="auth-otp-input" class="flex justify-center">
             <InputOTP
-              v-model="otpCode"
+              ref="otpRef"
+              :model-value="otpCode"
+              :disabled="loading"
+              :status="otpError ? 'error' : undefined"
+              @update:model-value="(value: string) => { otpCode = value; otpError = '' }"
+              @keydown.enter.prevent="handleVerify"
               :length="OTP_LENGTH"
               type="numeric"
               auto-focus
@@ -303,17 +287,18 @@ const handleVerify = debounce(async () => {
               v-if="otpDeadline && !otpCanResend"
               :value="otpDeadline"
               format="s"
-              suffix="秒后可重发"
-              title="验证码已发送"
+              suffix="秒后可重新获取"
+              title="演示验证码"
               @finish="otpCanResend = true"
             />
             <button
               v-else
               type="button"
               class="text-sm font-medium text-[var(--tiger-primary,#3b82f6)] hover:underline"
+              :disabled="loading"
               @click="handleResend"
             >
-              重新发送验证码
+              重新获取验证码
             </button>
           </div>
           <Button

@@ -1,379 +1,120 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Alert } from '@expcat/tigercat-react/Alert';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
-import { Message } from '@expcat/tigercat-react/Message';
-import { Text } from '@expcat/tigercat-react/Text';
 import { FormWizard } from '@expcat/tigercat-react/FormWizard';
-import { Transfer } from '@expcat/tigercat-react/Transfer';
-import { Upload } from '@expcat/tigercat-react/Upload';
-import { Cascader } from '@expcat/tigercat-react/Cascader';
-import { Slider } from '@expcat/tigercat-react/Slider';
-import { RadioGroup } from '@expcat/tigercat-react/RadioGroup';
-import { Radio } from '@expcat/tigercat-react/Radio';
-import { Progress } from '@expcat/tigercat-react/Progress';
-import { Result } from '@expcat/tigercat-react/Result';
-import { Descriptions } from '@expcat/tigercat-react/Descriptions';
-import type {
-  WizardStep,
-  TransferItem,
-  CascaderOption,
-  CascaderModelValue,
-  DescriptionsItem,
-  UploadFile,
-} from '@expcat/tigercat-core';
+import { Select } from '@expcat/tigercat-react/Select';
+import { Table } from '@expcat/tigercat-react/Table';
+import { Text } from '@expcat/tigercat-react/Text';
 import { PageHeader } from '../components/PageHeader';
-import { MutedPanel } from '../components/PageFragments';
 import { UploadIcon } from '../components/Icons';
-import { ApiError } from '../utils/request';
-import {
-  clearLastImportJobId,
-  createImportJob,
-  fetchImportJob,
-  readLastImportJobId,
-  writeLastImportJobId,
-  type ImportConflict,
-  type ImportJob,
-  type ImportMode,
-} from '../utils/import-jobs';
+import { usePermission } from '../utils/permission';
+import { createImportJob, EMPTY_IMPORT_MAPPINGS, IMPORT_FIELDS, IMPORT_ROW_COLUMNS, IMPORT_STEPS, previewUserImport,
+  readImportFile, readLastImportJobId, writeLastImportJobId } from '../utils/import-jobs';
+import type { ImportFile, ImportMappings, ImportPreview } from '../utils/types';
 
-const STEPS: WizardStep[] = [
-  { title: '选择数据源', description: '上传文件与模式' },
-  { title: '字段映射', description: '源字段 → 目标字段' },
-  { title: '参数配置', description: '批量与冲突策略' },
-  { title: '确认并导入', description: '核对并执行' },
-];
-
-const SOURCE_FIELDS: TransferItem[] = [
-  { key: 'name', label: '姓名' },
-  { key: 'email', label: '邮箱' },
-  { key: 'phone', label: '手机号' },
-  { key: 'dept', label: '部门' },
-  { key: 'title', label: '职位' },
-  { key: 'joinedAt', label: '入职日期' },
-  { key: 'note', label: '备注' },
-];
-
-const TARGET_OPTIONS: CascaderOption[] = [
-  {
-    value: 'hr',
-    label: '人力资源',
-    children: [
-      { value: 'employees', label: '员工表' },
-      { value: 'departments', label: '部门表' },
-    ],
-  },
-  {
-    value: 'crm',
-    label: '客户管理',
-    children: [
-      { value: 'customers', label: '客户表' },
-      { value: 'contacts', label: '联系人表' },
-    ],
-  },
-];
-
-const MODE_LABELS: Record<string, string> = {
-  append: '追加',
-  overwrite: '覆盖',
-  upsert: '更新插入',
-};
-const CONFLICT_LABELS: Record<string, string> = {
-  skip: '跳过',
-  overwrite: '覆盖',
-  error: '报错中止',
-};
-
-function resolveTargetText(value: CascaderModelValue): string {
-  if (!value?.length) return '未选择';
-  const labels: string[] = [];
-  let level: CascaderOption[] | undefined = TARGET_OPTIONS;
-  for (const v of value) {
-    const found: CascaderOption | undefined = level?.find((o) => o.value === v);
-    if (!found) break;
-    labels.push(found.label);
-    level = found.children;
-  }
-  return labels.join(' / ');
-}
-
-const readErrorMessage = (error: unknown, fallback: string) =>
-  error instanceof Error && error.message ? error.message : fallback;
-
-function ImportPage() {
+export default function ImportPage() {
+  const navigate = useNavigate();
+  const { has } = usePermission();
+  const canCreate = has('user:create');
   const [current, setCurrent] = useState(0);
   const [narrowSteps, setNarrowSteps] = useState(false);
+  const [file, setFile] = useState<ImportFile | null>(null);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [mappings, setMappings] = useState<ImportMappings>({ ...EMPTY_IMPORT_MAPPINGS });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [lastId] = useState(readLastImportJobId);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const stepHeading = useRef<HTMLHeadingElement>(null);
+  const request = useRef<AbortController | null>(null);
+  const mapped = mappings.username !== null && mappings.password !== null;
   useEffect(() => {
     const query = window.matchMedia('(max-width: 639px)');
     const sync = () => setNarrowSteps(query.matches);
-    sync();
-    query.addEventListener('change', sync);
-    return () => query.removeEventListener('change', sync);
+    sync(); query.addEventListener('change', sync);
+    return () => { query.removeEventListener('change', sync); request.current?.abort(); };
   }, []);
-  const [files, setFiles] = useState<UploadFile[]>([]);
-  const [mode, setMode] = useState<ImportMode>('append');
-  const [mappedKeys, setMappedKeys] = useState<(string | number)[]>(['name', 'email', 'dept']);
-  const [target, setTarget] = useState<CascaderModelValue>(['hr', 'employees']);
-  const [batchSize, setBatchSize] = useState(1000);
-  const [conflict, setConflict] = useState<ImportConflict>('skip');
+  useEffect(() => { if (current) stepHeading.current?.focus(); }, [current]);
 
-  const [importing, setImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState(0);
-  const [done, setDone] = useState(false);
-  const [resultMessage, setResultMessage] = useState('');
-  const [restoring, setRestoring] = useState(false);
-  const cancelledRef = useRef(false);
-
-  const targetText = useMemo(() => resolveTargetText(target), [target]);
-
-  const summary: DescriptionsItem[] = [
-    { label: '数据源', content: files.length ? files.map((f) => f.name).join('、') : '示例数据（未选择文件）' },
-    { label: '导入模式', content: MODE_LABELS[mode] },
-    { label: '目标数据表', content: targetText },
-    { label: '映射字段', content: `${mappedKeys.length} 个` },
-    { label: '批量大小', content: `${batchSize} 条 / 批` },
-    { label: '冲突策略', content: CONFLICT_LABELS[conflict] },
-  ];
-
-  const applyCompleted = (job: ImportJob) => {
-    setImportProgress(job.progress);
-    setResultMessage(job.result?.message ?? '导入完成');
-    setImporting(false);
-    setRestoring(false);
-    setDone(true);
-  };
-
-  const pollImportJob = async (id: string) => {
-    while (!cancelledRef.current) {
-      const payload = await fetchImportJob(id);
-      const job = payload.data;
-      setImportProgress(job.progress);
-      if (job.status === 'completed') {
-        applyCompleted(job);
-        return;
-      }
-      if (job.status === 'failed') {
-        setImporting(false);
-        setRestoring(false);
-        Message.error({ content: job.result?.message || '导入失败', duration: 3000 });
-        return;
-      }
-      await new Promise((resolve) => window.setTimeout(resolve, 250));
-    }
-  };
-
-  useEffect(() => {
-    cancelledRef.current = false;
-    const restoreLastImportJob = async () => {
-      const lastId = readLastImportJobId();
-      if (!lastId) return;
-      setRestoring(true);
-      setImporting(true);
-      setImportProgress(0);
-      try {
-        const payload = await fetchImportJob(lastId);
-        const job = payload.data;
-        if (job.status === 'completed') {
-          applyCompleted(job);
-          return;
-        }
-        await pollImportJob(lastId);
-      } catch (error: unknown) {
-        setImporting(false);
-        setRestoring(false);
-        if (error instanceof ApiError && error.status === 404) {
-          clearLastImportJobId();
-          return;
-        }
-        Message.error({ content: readErrorMessage(error, '导入任务恢复失败'), duration: 3000 });
-      }
-    };
-    void restoreLastImportJob();
-    return () => {
-      cancelledRef.current = true;
-    };
-  }, []);
-
-  const handleFinish = async () => {
-    if (!mappedKeys.length) {
-      Message.warning({ content: '请至少映射一个字段', duration: 2200 });
-      setCurrent(1);
-      return;
-    }
-    if (!target?.length) {
-      Message.warning({ content: '请选择目标数据表', duration: 2200 });
-      setCurrent(0);
-      return;
-    }
-    setImporting(true);
-    setImportProgress(0);
-    setDone(false);
-    setResultMessage('');
+  async function selectFile(selected?: File) {
+    if (!selected) return;
+    request.current?.abort(); const controller = new AbortController(); request.current = controller;
+    setBusy(true); setError(''); setFile(null); setPreview(null);
     try {
-      const created = await createImportJob({
-        source: files.length ? files.map((f) => f.name).join('、') : '示例数据（未选择文件）',
-        target: target.map((item) => String(item)),
-        mappings: mappedKeys.map((item) => String(item)),
-        mode,
-        conflict,
-        batchSize,
-      });
-      writeLastImportJobId(created.data.id);
-      setImportProgress(created.data.progress);
-      await pollImportJob(created.data.id);
-    } catch (error: unknown) {
-      setImporting(false);
-      Message.error({ content: readErrorMessage(error, '创建导入任务失败'), duration: 3000 });
-    }
-  };
-
-  const restart = () => {
-    setDone(false);
-    setImporting(false);
-    setRestoring(false);
-    setImportProgress(0);
-    setResultMessage('');
-    setCurrent(0);
-    clearLastImportJobId();
-  };
-
-  const renderStep = (_step: WizardStep, index: number) => {
-    if (index === 0) {
-      return (
-        <div className="space-y-4 pt-4">
-          <div>
-            <Text weight="medium" className="mb-1 block">
-              上传文件（CSV / Excel）
-            </Text>
-            <Upload autoUpload={false} accept=".csv,.xlsx,.xls" drag onChange={(_file, list) => setFiles(list)}>
-              <div className="p-4 text-center text-sm text-(--tiger-text-secondary,#64748b)">
-                点击或拖拽文件到此处（演示，不会真正上传）
-              </div>
-            </Upload>
-          </div>
-          <div>
-            <Text weight="medium" className="mb-1 block">
-              导入模式
-            </Text>
-            <RadioGroup value={mode} onChange={(value) => setMode(String(value) as ImportMode)}>
-              <Radio value="append">追加</Radio>
-              <Radio value="overwrite">覆盖</Radio>
-              <Radio value="upsert">更新插入</Radio>
-            </RadioGroup>
-          </div>
-          <div>
-            <Text weight="medium" className="mb-1 block">
-              目标数据表
-            </Text>
-            <Cascader value={target} onChange={setTarget} options={TARGET_OPTIONS} placeholder="选择目标数据表" />
-          </div>
+      const content = await readImportFile(selected);
+      if (controller.signal.aborted) return;
+      setFile(content);
+      const { data } = await previewUserImport(content, undefined, controller.signal);
+      if (!controller.signal.aborted) { setPreview(data); setMappings(data.mappings); }
+    } catch (failure) { if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : 'CSV 读取失败'); }
+    finally { if (!controller.signal.aborted) setBusy(false); }
+  }
+  async function handleNext() {
+    if (busy || !file || !preview) return;
+    if (current === 0) { setCurrent(1); return; }
+    if (!mapped) { setError('请映射用户名和密码必填列'); return; }
+    const controller = new AbortController(); request.current = controller; setBusy(true); setError('');
+    try {
+      const { data } = await previewUserImport(file, mappings, controller.signal);
+      if (!controller.signal.aborted) { setPreview(data); setCurrent(2); }
+    } catch (failure) { if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : '预览校验失败'); }
+    finally { if (!controller.signal.aborted) setBusy(false); }
+  }
+  async function handleFinish() {
+    if (busy || !file || !mapped) return;
+    const controller = new AbortController(); request.current = controller; setBusy(true); setError('');
+    try {
+      const { data } = await createImportJob(file, mappings, controller.signal);
+      if (controller.signal.aborted) return;
+      writeLastImportJobId(data.id); setFile(null); navigate(`/import/${encodeURIComponent(data.id)}`);
+    } catch (failure) { if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : '创建导入任务失败'); }
+    finally { if (!controller.signal.aborted) setBusy(false); }
+  }
+  function cancelImport() {
+    request.current?.abort(); setBusy(false); setFile(null); setPreview(null); setMappings({ ...EMPTY_IMPORT_MAPPINGS }); setCurrent(0); setError('');
+    if (fileInput.current) fileInput.current.value = '';
+    window.requestAnimationFrame(() => fileInput.current?.focus());
+  }
+  const renderStep = () => <div className="space-y-4 pt-4">
+    <h2 ref={stepHeading} tabIndex={-1} className="text-base font-medium">{IMPORT_STEPS[current].title}</h2>
+    {current === 0 ? <>
+      <label className="block space-y-2"><span>选择 UTF-8 CSV 文件</span><input ref={fileInput} type="file" accept=".csv,text/csv" className="block max-w-full text-sm" disabled={busy}
+        onChange={event => { const selected = event.currentTarget.files?.[0]; event.currentTarget.value = ''; void selectFile(selected); }} /></label>
+      <Text className="block" color="secondary">最多 1 MiB / 1000 行。首行为列名；支持 BOM、引号、逗号和字段内换行。</Text>
+      <Text className="block">目标：用户。追加创建，重复用户名跳过；新用户默认启用。</Text>
+      <Text className="block" color="secondary">支持 username、password、displayName、roleIds（多个角色 ID 用分号分隔）。状态与头像不参与导入。</Text>
+      {file && <Text className="block break-all">已读取：{file.source}{preview ? `，${preview.total} 行` : ''}</Text>}
+    </> : current === 1 ? <>
+      <Text className="block" color="secondary">选择每个用户字段对应的 CSV 列。未映射列会忽略，密码仅用于校验和创建。</Text>
+      <div className="grid gap-4 sm:grid-cols-2">{IMPORT_FIELDS.map(field => <label key={field.key} className="block min-w-0 space-y-1"><span>{field.label}</span>
+        <Select value={mappings[field.key] ?? ''} aria-label={field.label} options={[{ value: '', label: '不映射' }, ...(preview?.headers.map((header, index) => ({ value: index, label: `${index + 1}. ${header}` })) ?? [])]}
+          onChange={value => { setMappings(old => ({ ...old, [field.key]: value === '' || value === null ? null : Number(value) })); setError(''); }} />
+      </label>)}</div>
+    </> : preview && <>
+      <Text className="block break-all">{file?.source} · 共 {preview.total} 行</Text>
+      <Alert type={preview.failed ? 'warning' : 'info'} title={`校验通过 ${preview.valid}，跳过 ${preview.skipped}，失败 ${preview.failed}`} description={`${preview.passwordHint}。合法行会创建用户；错误行不会阻止其他行处理，提交时重新校验。`} />
+      <Table columns={IMPORT_ROW_COLUMNS} dataSource={preview.rows} rowKey="rowNumber" responsiveMode="card" cardBreakpoint="md" pagination={{ pageSize: 10 }} />
+      <Text className="block" color="secondary">预览和结果均不显示密码。导入后可下载失败行，密码列会清空，需要重新填写。</Text>
+    </>}
+  </div>;
+  return <div className="space-y-6">
+    <PageHeader icon={<UploadIcon size={24} />} title="数据导入" subtitle="读取用户 CSV、映射字段、校验并实际创建用户" tags={[{ label: '用户 CSV', variant: 'primary' }]} />
+    {!canCreate ? <Alert type="warning" title="无权导入用户" description="需要 user:create 权限。" /> : <>
+      {lastId && <Button variant="outline" onClick={() => navigate(`/import/${encodeURIComponent(lastId)}`)}>查看最近导入结果</Button>}
+      <Card>
+        {error && <Alert type="error" title="导入未提交" description={error} />}
+        <fieldset disabled={busy} className="min-w-0">
+          <FormWizard steps={IMPORT_STEPS} current={current} orientation={narrowSteps ? 'vertical' : 'horizontal'} showActions={false} renderStep={renderStep} />
+        </fieldset>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button variant="outline" onClick={cancelImport} disabled={busy}>取消导入</Button>
+          {current > 0 && <Button variant="outline" disabled={busy} onClick={() => { setError(''); setCurrent(current - 1); }}>上一步</Button>}
+          {current < 2 ? <Button disabled={busy || !preview || current === 1 && !mapped} onClick={() => void handleNext()}>{busy ? '正在读取…' : current === 1 ? '校验并预览' : '下一步'}</Button>
+            : <Button loading={busy} disabled={busy || !preview?.total} onClick={() => void handleFinish()}>开始导入</Button>}
         </div>
-      );
-    }
-    if (index === 1) {
-      return (
-        <div className="space-y-3 pt-4">
-          <Text weight="medium" className="block">
-            选择需要导入的源字段（右侧为目标字段）
-          </Text>
-          <Transfer
-            value={mappedKeys}
-            onChange={(keys) => setMappedKeys(keys)}
-            dataSource={SOURCE_FIELDS}
-            sourceTitle="源字段"
-            targetTitle="目标字段"
-            searchable
-          />
-          <MutedPanel compact description="将左侧源字段移动到右侧即建立映射；未映射字段将被忽略。" />
-        </div>
-      );
-    }
-    if (index === 2) {
-      return (
-        <div className="space-y-5 pt-4">
-          <div>
-            <Text weight="medium" className="mb-2 block">
-              批量大小：{batchSize} 条 / 批
-            </Text>
-            <Slider value={batchSize} onChange={(v) => setBatchSize(typeof v === 'number' ? v : v[0])} min={100} max={5000} step={100} />
-          </div>
-          <div>
-            <Text weight="medium" className="mb-1 block">
-              冲突策略
-            </Text>
-            <RadioGroup value={conflict} onChange={(value) => setConflict(String(value) as ImportConflict)}>
-              <Radio value="skip">跳过</Radio>
-              <Radio value="overwrite">覆盖</Radio>
-              <Radio value="error">报错中止</Radio>
-            </RadioGroup>
-          </div>
-        </div>
-      );
-    }
-    return (
-      <div className="space-y-3 pt-4">
-        <Text weight="medium" className="block">
-          请核对导入配置
-        </Text>
-        <Descriptions items={summary} column={1} bordered colon />
-        <MutedPanel compact description="点击「开始导入」会创建导入任务并轮询状态，完成后展示结果页。" />
-      </div>
-    );
-  };
-
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        icon={<UploadIcon size={24} />}
-        title="数据导入"
-        subtitle="分步导入向导：选择数据源、映射字段、配置参数并执行导入"
-        tags={[
-          { label: '运维', variant: 'primary' },
-          { label: '演示数据', variant: 'info' },
-        ]}
-      />
-
-      {done ? (
-        <Card>
-          <Result status="success" title="导入完成" subTitle={resultMessage}>
-            <div className="flex justify-center gap-2">
-              <Button variant="outline" onClick={restart}>
-                再次导入
-              </Button>
-              <Button onClick={restart}>返回列表</Button>
-            </div>
-          </Result>
-        </Card>
-      ) : importing ? (
-        <Card>
-          <div className="space-y-4 py-6">
-            <div className="flex items-center gap-2">
-              <UploadIcon size={18} />
-              <Text weight="bold">正在导入…</Text>
-            </div>
-            <Progress percentage={importProgress} status="normal" />
-            <MutedPanel
-              compact
-              description={restoring ? '正在从上次导入任务恢复进度…' : '导入任务已提交，正在轮询进度直到完成。'}
-            />
-          </div>
-        </Card>
-      ) : (
-        <Card>
-          <FormWizard
-            steps={STEPS}
-            orientation={narrowSteps ? 'vertical' : 'horizontal'}
-            current={current}
-            onStepChange={(next) => setCurrent(next)}
-            nextText="下一步"
-            prevText="上一步"
-            finishText="开始导入"
-            onFinish={() => void handleFinish()}
-            renderStep={renderStep}
-          />
-        </Card>
-      )}
-    </div>
-  );
+      </Card>
+    </>}
+  </div>;
 }
-
-export default ImportPage;

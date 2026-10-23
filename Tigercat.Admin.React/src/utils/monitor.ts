@@ -39,9 +39,10 @@ export interface MonitorSnapshot {
   lastTickAt?: string;
 }
 
-export function fetchMonitorSnapshot() {
+export function fetchMonitorSnapshot(signal?: AbortSignal) {
   return apiRequest<MonitorSnapshot>('/api/monitor/snapshot', {
     headers: getAuthHeaders(),
+    signal,
   });
 }
 
@@ -86,7 +87,9 @@ async function tryMonitorHub(
       return false;
     }
 
-    connection.on(MONITOR_SNAPSHOT_EVENT, onSnapshot);
+    connection.on(MONITOR_SNAPSHOT_EVENT, (data: MonitorSnapshot) => {
+      if (!signal.aborted) onSnapshot(data);
+    });
     const onAbort = () => {
       void connection?.invoke('Stop').catch(() => undefined);
       void stopRealtimeConnection(connection);
@@ -100,7 +103,7 @@ async function tryMonitorHub(
 
     await connection.invoke('Start', intervalSec);
     connection.onreconnected(() => {
-      void connection?.invoke('Start', intervalSec).catch(() => undefined);
+      if (!signal.aborted) void connection?.invoke('Start', intervalSec).catch(() => undefined);
     });
     connection.onclose(() => {
       if (signal.aborted) {
@@ -121,12 +124,14 @@ async function pollMonitorSnapshot(
   onError: (error: unknown) => void,
   signal: AbortSignal,
 ): Promise<void> {
+  let timer: number | undefined;
+  signal.addEventListener('abort', () => window.clearTimeout(timer), { once: true });
   const tick = async () => {
     if (signal.aborted) {
       return;
     }
     try {
-      const payload = await fetchMonitorSnapshot();
+      const payload = await fetchMonitorSnapshot(signal);
       if (!signal.aborted) {
         onSnapshot(payload.data);
       }
@@ -135,15 +140,7 @@ async function pollMonitorSnapshot(
         onError(error);
       }
     }
+    if (!signal.aborted) timer = window.setTimeout(() => void tick(), intervalSec * 1000);
   };
-
   await tick();
-  if (signal.aborted) {
-    return;
-  }
-
-  const timer = window.setInterval(() => {
-    void tick();
-  }, intervalSec * 1000);
-  signal.addEventListener('abort', () => window.clearInterval(timer), { once: true });
 }

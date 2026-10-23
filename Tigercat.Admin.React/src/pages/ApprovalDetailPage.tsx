@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { applyWorkflowFieldPermissions } from '@expcat/tigercat-core';
 import { Button } from '@expcat/tigercat-react/Button';
@@ -7,8 +7,8 @@ import { Form } from '@expcat/tigercat-react/Form';
 import { FormItem } from '@expcat/tigercat-react/FormItem';
 import { Message } from '@expcat/tigercat-react/Message';
 import { Modal } from '@expcat/tigercat-react/Modal';
-import { Radio } from '@expcat/tigercat-react/Radio';
-import { RadioGroup } from '@expcat/tigercat-react/RadioGroup';
+import { AssigneePicker } from '@expcat/tigercat-react/AssigneePicker';
+import { Alert } from '@expcat/tigercat-react/Alert';
 import { SchemaForm } from '@expcat/tigercat-react/SchemaForm';
 import { TabPane } from '@expcat/tigercat-react/TabPane';
 import { Tabs } from '@expcat/tigercat-react/Tabs';
@@ -16,10 +16,11 @@ import { Tag } from '@expcat/tigercat-react/Tag';
 import { Text } from '@expcat/tigercat-react/Text';
 import { Textarea } from '@expcat/tigercat-react/Textarea';
 import { WorkflowDetailShell } from '@expcat/tigercat-react/WorkflowDetailShell';
-import { WorkflowViewer } from '@expcat/tigercat-react/WorkflowViewer';
+import { WorkflowViewer } from '../utils/lazyTigercat';
 import { WorkflowActionBar, WorkflowTimeline } from '@expcat/tigercat-react/WorkflowTimeline';
 import type {
   FieldPermission,
+  FormHandle,
   FormValues,
   WorkflowActionBarItem,
   WorkflowActionPayload,
@@ -46,7 +47,6 @@ import {
   approvalViewerRole,
   contactActorOf,
   currentApprovalStep,
-  FALLBACK_APPROVAL_CONTACTS,
   fetchApproval,
   fetchApprovalContacts,
   getApprovalDemoActor,
@@ -54,7 +54,7 @@ import {
   toWorkflowSteps,
   workflowActionToPayload,
 } from '../utils/approvals';
-import type { ApprovalAction, ApprovalContactUser, ApprovalDetail, ApprovalStatus } from '../utils/types';
+import type { ApprovalAction, ApprovalActionPayload, ApprovalContactUser, ApprovalDetail, ApprovalStatus } from '../utils/types';
 
 function readErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
@@ -64,53 +64,68 @@ function ApprovalDetailPage() {
   const navigate = useNavigate();
   const params = useParams();
   const id = params.id ? decodeURIComponent(params.id) : '';
+  const detailController = useRef<AbortController | null>(null);
+  const actingRef = useRef(false);
+  const detailFormRef = useRef<FormHandle>(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [failedAction, setFailedAction] = useState<ApprovalActionPayload | null>(null);
+  const [contactsError, setContactsError] = useState('');
   const [loading, setLoading] = useState(false);
   const [missing, setMissing] = useState(false);
   const [detail, setDetail] = useState<ApprovalDetail | null>(null);
   const [acting, setActing] = useState(false);
   const [activeTab, setActiveTab] = useState('progress');
   const [actorId, setActorId] = useState(getApprovalDemoActor);
-  const [contacts, setContacts] = useState<ApprovalContactUser[]>(FALLBACK_APPROVAL_CONTACTS);
+  const [contacts, setContacts] = useState<ApprovalContactUser[]>([]);
   const [formModel, setFormModel] = useState<FormValues>({});
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentDraft, setCommentDraft] = useState('');
 
   const loadContacts = useCallback(async () => {
+    setContactsError('');
     try {
       const payload = await fetchApprovalContacts();
-      if (payload.data.users?.length) setContacts(payload.data.users);
-    } catch {
-      setContacts(FALLBACK_APPROVAL_CONTACTS);
+      setContacts(payload.data.users ?? []);
+    } catch (error) {
+      setContacts([]);
+      setContactsError(readErrorMessage(error, '通讯录加载失败'));
     }
   }, []);
 
   const loadDetail = useCallback(async () => {
-    if (!id) {
-      setMissing(true);
-      setDetail(null);
-      return;
-    }
+    detailController.current?.abort();
+    const controller = new AbortController();
+    detailController.current = controller;
+    setDetail(null);
+    setFormModel({});
+    setCommentOpen(false);
+    setCommentDraft('');
+    setFailedAction(null);
+    setActionError('');
+    setErrorMessage('');
+    setMissing(!id);
+    if (!id) return;
     setLoading(true);
-    setMissing(false);
     try {
-      const payload = await fetchApproval(id);
+      const payload = await fetchApproval(id, controller.signal);
+      if (controller.signal.aborted) return;
       setDetail(payload.data);
       setFormModel(approvalFormModel(payload.data));
     } catch (error: unknown) {
-      if (error instanceof ApiError && error.status === 404) {
-        setMissing(true);
-        setDetail(null);
-      } else {
-        Message.error({ content: readErrorMessage(error, '审批详情加载失败'), duration: 3000 });
-      }
+      if (controller.signal.aborted) return;
+      if (error instanceof ApiError && error.status === 404) setMissing(true);
+      else setErrorMessage(error instanceof ApiError && error.status === 403
+        ? '当前账号无权查看该审批' : readErrorMessage(error, '审批详情加载失败'));
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
     setActiveTab('progress');
     void loadDetail();
+    return () => detailController.current?.abort();
   }, [loadDetail]);
 
   useEffect(() => {
@@ -150,28 +165,46 @@ function ApprovalDetailPage() {
   const pickerContacts = contacts.filter((user) => user.id !== actorId && user.username !== actorId);
   const canAct = actorHasOpenTask(detail, actorId) || (currentStep?.kind === 'start' && isStarter);
 
-  const runAction = async (action: ApprovalAction, payload?: WorkflowActionPayload) => {
-    if (!detail) return;
-    setActing(true);
+  const runAction = async (body: ApprovalActionPayload): Promise<boolean> => {
+    if (!detail || actingRef.current || loading || isApprovalTerminal(detail.status)) return false;
+    if (body.action !== 'comment' && body.action !== 'cancel' && body.action !== 'withdraw' && !canAct) return false;
+    if ((body.action === 'cancel' || body.action === 'withdraw') && !isStarter) return false;
+    if ((body.comment?.length ?? 0) > 500) {
+      Message.warning({ content: '审批意见最多 500 字', duration: 2000 });
+      return false;
+    }
+    actingRef.current = true;
+    const controller = detailController.current;
     try {
-      const result = await applyApprovalAction(detail.id, workflowActionToPayload(action, payload, formModel));
+      if (!await detailFormRef.current?.validate()) return false;
+      if (controller !== detailController.current || controller?.signal.aborted) return false;
+      setActing(true);
+      setActionError('');
+      const result = await applyApprovalAction(detail.id, { ...body, formValues: formModel });
+      if (controller !== detailController.current || controller?.signal.aborted) return false;
       setDetail(result.data);
       setFormModel(approvalFormModel(result.data));
-      Message.success({ content: actionSuccessMessage(action), duration: 2200 });
+      setFailedAction(null);
+      Message.success({ content: actionSuccessMessage(body.action), duration: 2200 });
+      return true;
     } catch (error: unknown) {
-      Message.error({ content: readErrorMessage(error, '审批动作失败'), duration: 3000 });
+      if (controller !== detailController.current || controller?.signal.aborted) return false;
+      setFailedAction(body);
+      setActionError(readErrorMessage(error, '审批动作失败'));
+      return false;
     } finally {
+      actingRef.current = false;
       setActing(false);
     }
   };
 
   const handleWorkflowAction = (item: WorkflowActionBarItem, payload?: WorkflowActionPayload) => {
+    if (actingRef.current) return;
     if (item.action === 'comment' && !payload?.comment?.trim()) {
-      setCommentDraft('');
       setCommentOpen(true);
       return;
     }
-    void runAction(item.action as ApprovalAction, payload);
+    void runAction(workflowActionToPayload(item.action as ApprovalAction, payload));
   };
 
   const confirmComment = async () => {
@@ -180,34 +213,26 @@ function ApprovalDetailPage() {
       Message.warning({ content: '评论内容不能为空', duration: 2000 });
       return;
     }
-    await runAction('comment', { comment });
-    setCommentOpen(false);
+    if (await runAction({ action: 'comment', comment })) {
+      setCommentOpen(false);
+      setCommentDraft('');
+    }
   };
 
-  const renderAssigneePicker = (ctx: WorkflowAssigneePickerContext) => {
-    const selected = ctx.value?.id ?? ctx.value?.name;
-    return (
-      <div className="space-y-1">
-        <Text size="sm" weight="medium">
-          {ctx.action === 'addsign' ? '加签给' : '转交给'}
-        </Text>
-        <RadioGroup
-          size="sm"
-          value={selected}
-          aria-label={ctx.action === 'addsign' ? '加签对象' : '转交对象'}
-          onChange={(value) => {
-            const user = pickerContacts.find((item) => item.id === String(value) || item.username === String(value));
-            ctx.onChange(user ? contactActorOf(user) : undefined);
-          }}>
-          {pickerContacts.map((user) => (
-            <Radio key={user.id} value={user.id}>
-              {user.name}（{user.username}）
-            </Radio>
-          ))}
-        </RadioGroup>
-      </div>
-    );
-  };
+  const renderAssigneePicker = (ctx: WorkflowAssigneePickerContext) => (
+    <div className="space-y-1">
+      <Text size="sm" weight="medium">{ctx.action === 'addsign' ? '加签给（每次一人）' : '转交给'}</Text>
+      <AssigneePicker
+        options={pickerContacts.map((user) => ({ id: user.id, name: `${user.name}（${user.username}）`, department: user.deptName }))}
+        selectedIds={ctx.value?.id ? [String(ctx.value.id)] : []}
+        locale="zh-CN"
+        onChange={(ids) => {
+          const user = pickerContacts.find((item) => item.id === ids[ids.length - 1]);
+          ctx.onChange(user ? contactActorOf(user) : undefined);
+        }}
+      />
+    </div>
+  );
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col gap-4">
@@ -236,7 +261,9 @@ function ApprovalDetailPage() {
         <ApprovalActorSwitcher />
       </div>
 
-      {missing ? (
+      {contactsError ? <div role="alert"><Alert type="error" title={contactsError} /><Button variant="outline" onClick={() => void loadContacts()}>重试通讯录</Button></div> : null}
+      {actionError ? <div role="alert"><Alert type="error" title="审批动作尚未保存" description={actionError} />{failedAction && <Button disabled={acting} onClick={() => void runAction(failedAction)}>重试审批动作</Button>}</div> : null}
+      {errorMessage ? <div role="alert"><Alert type="error" title={errorMessage} /><Button variant="outline" onClick={() => void loadDetail()}>重试</Button></div> : missing ? (
         <Empty description="没有找到该审批实例" />
       ) : loading && !detail ? (
         <Text color="secondary">正在加载审批详情…</Text>
@@ -270,6 +297,8 @@ function ApprovalDetailPage() {
                 申请表单
               </Text>
               <SchemaForm
+                ref={detailFormRef}
+                disabled={acting}
                 schema={formSchema}
                 value={formModel}
                 showActions={false}
@@ -316,10 +345,13 @@ function ApprovalDetailPage() {
       <Modal
         open={commentOpen}
         title="添加评论"
-        onClose={() => setCommentOpen(false)}
+        closable={!acting}
+        maskClosable={!acting}
+        keyboard={!acting}
+        onClose={() => { if (!acting) setCommentOpen(false); }}
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setCommentOpen(false)}>
+            <Button variant="outline" disabled={acting} onClick={() => setCommentOpen(false)}>
               取消
             </Button>
             <Button loading={acting} onClick={() => void confirmComment()}>
@@ -327,11 +359,14 @@ function ApprovalDetailPage() {
             </Button>
           </div>
         }>
+        {actionError && failedAction?.action === 'comment' ? <div role="alert"><Alert type="error" title="评论尚未保存" description={actionError} /></div> : null}
         <Form labelWidth={72}>
           <FormItem label="意见" required>
             <Textarea
               value={commentDraft}
               rows={3}
+              disabled={acting}
+              aria-label="评论意见"
               placeholder="请输入审批意见"
               onChange={(value) => setCommentDraft(normalizeInput(value))}
             />

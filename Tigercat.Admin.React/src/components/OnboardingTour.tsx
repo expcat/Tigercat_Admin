@@ -35,7 +35,7 @@ const steps: TourStep[] = [
   {
     target: '[data-tour="chat-dock"]',
     title: '在线客服',
-    description: '有问题可在右下角随时联系客服，对话在侧边抽屉中进行。',
+    description: '通过顶部的客服按钮联系客服，对话在侧边抽屉中进行。',
     placement: 'left',
   },
   {

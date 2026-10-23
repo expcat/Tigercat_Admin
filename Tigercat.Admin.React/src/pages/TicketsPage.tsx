@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@expcat/tigercat-react/Button';
+import { Alert } from '@expcat/tigercat-react/Alert';
+import { Pagination } from '@expcat/tigercat-react/Pagination';
 import { Empty } from '@expcat/tigercat-react/Empty';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Input } from '@expcat/tigercat-react/Input';
@@ -16,7 +18,6 @@ import { Mentions } from '@expcat/tigercat-react/Mentions';
 import { Descriptions } from '@expcat/tigercat-react/Descriptions';
 import { Rate } from '@expcat/tigercat-react/Rate';
 import { Drawer } from '@expcat/tigercat-react/Drawer';
-import { Upload } from '@expcat/tigercat-react/Upload';
 import { Popover } from '@expcat/tigercat-react/Popover';
 import { Textarea } from '@expcat/tigercat-react/Textarea';
 import { RadioGroup } from '@expcat/tigercat-react/RadioGroup';
@@ -27,7 +28,6 @@ import type {
   ChatMessage,
   CommentNode,
   MentionOption,
-  UploadFile,
   DescriptionsItem,
   TagVariant,
   BadgeVariant,
@@ -46,6 +46,7 @@ import {
   TICKET_WORKFLOW_ACTIONS,
   updateTicket,
 } from '../utils/tickets';
+import { ApiError } from '../utils/request';
 import { createComment, fetchComments } from '../utils/comments';
 import { fetchRelatedApproval } from '../utils/approvals';
 import type { CommentItem, Ticket, TicketPriority, TicketStatus } from '../utils/types';
@@ -96,6 +97,7 @@ const assignees: MentionOption[] = [
 const statusFilters: { value: 'all' | TicketStatus; label: string }[] = [
   { value: 'all', label: '全部' },
   { value: 'open', label: '待受理' },
+  { value: 'accepted', label: '已受理' },
   { value: 'progress', label: '处理中' },
   { value: 'resolved', label: '已解决' },
   { value: 'closed', label: '已关闭' },
@@ -105,6 +107,19 @@ const statusFilters: { value: 'all' | TicketStatus; label: string }[] = [
 const TICKET_CHAT_WINDOW_CLASS = 'h-full min-h-0 [&_textarea]:resize-none';
 
 function TicketsPage() {
+  const listController = useRef<AbortController | null>(null);
+  const detailController = useRef<AbortController | null>(null);
+  const actingRef = useRef(false);
+  const creatingRef = useRef(false);
+  const [selected, setSelected] = useState<TicketView | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [detailError, setDetailError] = useState('');
+  const [notesError, setNotesError] = useState('');
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [acting, setActing] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [tickets, setTickets] = useState<TicketView[]>([]);
   const [loading, setLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -125,7 +140,6 @@ function TicketsPage() {
     priority: 'medium' as TicketPriority,
     description: '',
   });
-  const [, setFormFiles] = useState<UploadFile[]>([]);
 
   // 响应式：宽屏左右分栏，窄屏上下分栏
   const [isWide, setIsWide] = useState(true);
@@ -137,72 +151,87 @@ function TicketsPage() {
     return () => mql.removeEventListener('change', sync);
   }, []);
 
-  const selected = useMemo(
-    () => tickets.find((t) => t.id === selectedId) ?? null,
-    [tickets, selectedId],
-  );
-
   const filteredTickets = tickets;
+  const openCount = tickets.filter((t) => t.status !== 'closed' && t.status !== 'resolved').length;
 
-  const openCount = useMemo(
-    () => tickets.filter((t) => t.status !== 'closed' && t.status !== 'resolved').length,
-    [tickets],
-  );
+  const updateTicketView = (ticket: Ticket) => {
+    setTickets((prev) => prev.map((item) => item.id === ticket.id ? toTicketView(ticket, item.notes) : item));
+    setSelected((prev) => prev?.id === ticket.id ? toTicketView(ticket, prev.notes) : prev);
+  };
 
-  const loadTicketDetail = useCallback(async (id: string) => {
-    setDetailLoading(true);
+  const loadNotes = useCallback(async (id: string, signal?: AbortSignal) => {
+    setNotesError('');
+    setNotesLoading(true);
     try {
-      const [ticketPayload, commentsPayload] = await Promise.all([
-        fetchTicket(id),
-        fetchComments('ticket', id),
-      ]);
-      const notes = toCommentNodes(commentsPayload.data ?? []);
-      setTickets((prev) =>
-        prev.map((item) => (item.id === id ? toTicketView(ticketPayload.data, notes) : item)),
-      );
-    } catch (error: unknown) {
-      Message.error({ content: readErrorMessage(error, '工单详情加载失败'), duration: 3000 });
+      const payload = await fetchComments('ticket', id, signal);
+      if (signal?.aborted) return;
+      setSelected((prev) => prev?.id === id ? { ...prev, notes: toCommentNodes(payload.data ?? []) } : prev);
+    } catch (error) {
+      if (!signal?.aborted) setNotesError(readErrorMessage(error, '内部备注加载失败'));
     } finally {
-      setDetailLoading(false);
+      if (!signal?.aborted) setNotesLoading(false);
     }
   }, []);
 
-  const loadTickets = useCallback(async (selectId?: string | null) => {
-    setLoading(true);
+  const loadTicketDetail = useCallback(async (id: string) => {
+    detailController.current?.abort();
+    const controller = new AbortController();
+    detailController.current = controller;
+    setSelectedId(id);
+    setSelected(null);
+    setDraft('');
+    setNoteDraft('');
+    setDetailError('');
+    setNotesError('');
+    setDetailLoading(true);
     try {
-      const payload = await fetchTickets({
-        page: 1,
-        pageSize: 50,
-        status: statusFilter,
-        keyword,
-      });
-      const items = payload.data.items ?? [];
-      setTickets((prev) => {
-        const prevNotes = new Map(prev.map((item) => [item.id, item.notes]));
-        return items.map((item) => toTicketView(item, prevNotes.get(item.id) ?? []));
-      });
-      const nextSelected =
-        (selectId && items.some((item) => item.id === selectId) && selectId) ||
-        (requestedTicketId && items.some((item) => item.id === requestedTicketId)
-          ? requestedTicketId
-          : null) ||
-        (selectedId && items.some((item) => item.id === selectedId) ? selectedId : items[0]?.id ?? null);
-      setSelectedId(nextSelected);
-      if (nextSelected) {
-        await loadTicketDetail(nextSelected);
-      }
-    } catch (error: unknown) {
-      Message.error({ content: readErrorMessage(error, '工单列表加载失败'), duration: 3000 });
+      const payload = await fetchTicket(id, controller.signal);
+      if (controller.signal.aborted) return;
+      setSelected(toTicketView(payload.data));
+      void loadNotes(id, controller.signal);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setDetailError(error instanceof ApiError && error.status === 404 ? `没有找到工单 ${id}`
+        : error instanceof ApiError && error.status === 403 ? '当前账号无权查看该工单'
+        : readErrorMessage(error, '工单详情加载失败'));
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setDetailLoading(false);
     }
-  }, [keyword, loadTicketDetail, requestedTicketId, selectedId, statusFilter]);
+  }, [loadNotes]);
+
+  const loadTickets = useCallback(async () => {
+    listController.current?.abort();
+    const controller = new AbortController();
+    listController.current = controller;
+    setLoading(true);
+    setErrorMessage('');
+    setTickets([]);
+    setTotal(0);
+    try {
+      const payload = await fetchTickets({ page, pageSize: 50, status: statusFilter, keyword }, controller.signal);
+      if (controller.signal.aborted) return;
+      const items = payload.data.items ?? [];
+      const lastPage = Math.max(1, Math.ceil(payload.data.total / 50));
+      if (page > lastPage) { setPage(lastPage); return; }
+      setTickets(items.map((item) => toTicketView(item)));
+      setTotal(payload.data.total);
+      if (!requestedTicketId && items[0]) navigate(`/tickets?ticket=${encodeURIComponent(items[0].id)}`, { replace: true });
+    } catch (error) {
+      if (!controller.signal.aborted) setErrorMessage(readErrorMessage(error, '工单列表加载失败'));
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [keyword, page, statusFilter, requestedTicketId, navigate]);
 
   useEffect(() => {
     void loadTickets();
-    // Intentionally reload when filters change; loadTickets already closes over them.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keyword, statusFilter]);
+    return () => listController.current?.abort();
+  }, [loadTickets]);
+  useEffect(() => {
+    if (requestedTicketId) void loadTicketDetail(requestedTicketId);
+    else { setSelected(null); setSelectedId(null); }
+    return () => detailController.current?.abort();
+  }, [requestedTicketId, loadTicketDetail]);
 
   useEffect(() => {
     let cancelled = false;
@@ -220,11 +249,12 @@ function TicketsPage() {
   const clearTicketFilters = () => {
     setKeyword('');
     setStatusFilter('all');
+    setPage(1);
   };
 
   const selectTicket = (id: string) => {
-    setSelectedId(id);
-    void loadTicketDetail(id);
+    if (actingRef.current) return;
+    navigate(`/tickets?ticket=${encodeURIComponent(id)}`);
   };
 
   const drawerTriggerRef = useRef<HTMLElement | null>(null);
@@ -264,20 +294,20 @@ function TicketsPage() {
     [selected],
   );
   const workflowActionsDisabled =
-    selected?.status === 'resolved' || selected?.status === 'closed';
+    acting || detailLoading || selected?.status === 'resolved' || selected?.status === 'closed';
 
   const handleWorkflowAction = async (item: WorkflowActionBarItem) => {
-    if (!selected) return;
+    if (!selected || workflowActionsDisabled || actingRef.current) return;
     const id = selected.id;
+    actingRef.current = true;
+    setActing(true);
     try {
       if (item.action === 'transfer' || item.action === 'comment') {
         const text = item.action === 'transfer'
           ? '已转交（演示写回）。完整实例状态机见审批中心。'
           : '已添加评论（演示写回）。';
         const payload = await sendTicketMessage(id, text);
-        setTickets((prev) =>
-          prev.map((ticket) => (ticket.id === id ? toTicketView(payload.data, ticket.notes) : ticket)),
-        );
+        updateTicketView(payload.data);
         Message.success({
           content: item.action === 'transfer' ? '已写回工单对话（转交演示）' : '已写回工单对话（评论）',
           duration: 2200,
@@ -290,79 +320,97 @@ function TicketsPage() {
         return;
       }
       const payload = await updateTicket(id, { status: nextStatus });
-      setTickets((prev) =>
-        prev.map((ticket) => (ticket.id === id ? toTicketView(payload.data, ticket.notes) : ticket)),
-      );
+      updateTicketView(payload.data);
+      void loadTickets();
       Message.success({ content: `已写回工单状态：${nextStatus}`, duration: 2200 });
     } catch (error: unknown) {
       Message.error({ content: readErrorMessage(error, '审批动作写回失败'), duration: 3000 });
+    } finally {
+      actingRef.current = false;
+      setActing(false);
     }
   };
 
   const handleSend = async (value: string) => {
     const text = value.trim();
-    if (!selected || !text) return;
+    if (!selected || !text || actingRef.current) return;
     const id = selected.id;
+    const controller = detailController.current;
+    actingRef.current = true;
+    setActing(true);
     try {
       const payload = await sendTicketMessage(id, text);
+      if (controller !== detailController.current || controller?.signal.aborted) return;
       setDraft('');
-      setTickets((prev) =>
-        prev.map((item) => (item.id === id ? toTicketView(payload.data, item.notes) : item)),
-      );
+      updateTicketView(payload.data);
     } catch (error: unknown) {
       Message.error({ content: readErrorMessage(error, '发送工单消息失败'), duration: 3000 });
+    } finally {
+      actingRef.current = false;
+      setActing(false);
     }
   };
 
   const handleAddNote = async () => {
     const text = noteDraft.trim();
-    if (!selected || !text) return;
+    if (!selected || !text || notesLoading || notesError || actingRef.current) return;
     const id = selected.id;
+    const controller = detailController.current;
+    actingRef.current = true;
+    setActing(true);
     try {
       const payload = await createComment({ targetType: 'ticket', targetId: id, body: text });
-      setTickets((prev) =>
-        prev.map((item) =>
-          item.id === id ? { ...item, notes: [...item.notes, payload.data as CommentNode] } : item,
-        ),
-      );
+      if (controller !== detailController.current || controller?.signal.aborted) return;
+      setSelected((prev) => prev?.id === id ? { ...prev, notes: [...prev.notes, payload.data as CommentNode] } : prev);
       setNoteDraft('');
       Message.success({ content: '已添加内部备注', duration: 2000 });
     } catch (error: unknown) {
       Message.error({ content: readErrorMessage(error, '添加内部备注失败'), duration: 3000 });
+    } finally {
+      actingRef.current = false;
+      setActing(false);
     }
   };
 
   const confirmClose = async () => {
+    if (actingRef.current) return;
     if (!selected) {
       setConfirmingClose(false);
       return;
     }
     const id = selected.id;
+    actingRef.current = true;
+    setActing(true);
     try {
       const payload = await updateTicket(id, { status: 'closed' });
-      setTickets((prev) =>
-        prev.map((item) => (item.id === id ? toTicketView(payload.data, item.notes) : item)),
-      );
+      updateTicketView(payload.data);
       setConfirmingClose(false);
+      void loadTickets();
       Message.success({ content: '工单已关闭', duration: 2000 });
     } catch (error: unknown) {
       Message.error({ content: readErrorMessage(error, '关闭工单失败'), duration: 3000 });
+    } finally {
+      actingRef.current = false;
+      setActing(false);
     }
   };
 
   const openDrawer = () => {
     captureDrawerTrigger();
     setForm({ title: '', category: '缺陷', priority: 'medium', description: '' });
-    setFormFiles([]);
     setDrawerOpen(true);
   };
 
   const submitTicket = async () => {
+    if (creatingRef.current) return;
     const title = form.title.trim();
-    if (!title) {
-      Message.warning({ content: '请填写工单标题', duration: 2000 });
+    if (!title || title.length > 120 || form.description.length > 2000) {
+      document.getElementById('ticket-title')?.focus();
+      Message.warning({ content: '请填写 1–120 字标题，描述不超过 2000 字', duration: 2000 });
       return;
     }
+    creatingRef.current = true;
+    setCreating(true);
     try {
       const payload = await createTicket({
         title,
@@ -374,10 +422,14 @@ function TicketsPage() {
       setKeyword('');
       setDrawerOpen(false);
       setSelectedId(payload.data.id);
-      await loadTickets(payload.data.id);
+      setPage(1);
+      navigate(`/tickets?ticket=${encodeURIComponent(payload.data.id)}`);
       Message.success({ content: `工单 ${payload.data.id} 已创建`, duration: 2400 });
     } catch (error: unknown) {
       Message.error({ content: readErrorMessage(error, '创建工单失败'), duration: 3000 });
+    } finally {
+      creatingRef.current = false;
+      setCreating(false);
     }
   };
 
@@ -396,6 +448,7 @@ function TicketsPage() {
       showAvatar={false}
       showName={false}
       onChange={setDraft}
+      disabled={acting}
       onSend={handleSend}
     />
   ) : null;
@@ -419,7 +472,7 @@ function TicketsPage() {
             {openCount}
           </Text>
           <Text size="sm" color="secondary">
-            个待跟进
+            个本页待跟进 / 共 {total} 条
           </Text>
         </div>
         <Button onClick={openDrawer}>
@@ -436,7 +489,7 @@ function TicketsPage() {
           : { className: 'space-y-6' })}>
           {/* 左：列表 */}
           <div className="flex min-w-0 flex-col gap-3 lg:h-full lg:overflow-hidden lg:pr-1">
-            <Input value={keyword} onChange={(v) => setKeyword(String(v))} placeholder="搜索标题 / 提交人 / 工单号" clearable />
+            <Input disabled={acting} aria-label="搜索工单" value={keyword} onChange={(v) => { setKeyword(String(v)); setPage(1); }} placeholder="搜索标题 / 提交人 / 工单号" clearable />
             <div className="flex flex-wrap gap-2">
               {statusFilters.map((f) => (
                 <button
@@ -447,7 +500,9 @@ function TicketsPage() {
                       ? 'bg-(--tiger-primary,#3b82f6) text-white'
                       : 'bg-(--tiger-bg-hover,#f1f5f9) text-(--tiger-text-secondary,#64748b)'
                   }`}
-                  onClick={() => setStatusFilter(f.value)}>
+                  disabled={acting}
+                  aria-pressed={statusFilter === f.value}
+                  onClick={() => { setStatusFilter(f.value); setPage(1); }}>
                   {f.label}
                 </button>
               ))}
@@ -463,6 +518,8 @@ function TicketsPage() {
                       ? 'border-(--tiger-primary,#3b82f6) bg-(--tiger-primary,#3b82f6)/5'
                       : 'border-(--tiger-border,#e5e7eb) hover:bg-(--tiger-bg-hover,#f1f5f9)'
                   }`}
+                  disabled={acting}
+                  aria-pressed={t.id === selectedId}
                   onClick={() => selectTicket(t.id)}>
                   <div className="flex items-center justify-between gap-2">
                     <Text weight="medium" className="min-w-0 truncate">
@@ -483,7 +540,7 @@ function TicketsPage() {
                 </button>
               ))}
 
-              {loading && filteredTickets.length === 0 ? (
+              {errorMessage ? <div role="alert"><Alert type="error" title={errorMessage} /><Button onClick={() => void loadTickets()}>重试列表</Button></div> : loading && filteredTickets.length === 0 ? (
                 <MutedPanel compact description="正在加载工单…" />
               ) : (
                 filteredTickets.length === 0 && (
@@ -501,6 +558,7 @@ function TicketsPage() {
                 )
               )}
             </div>
+            <Pagination current={page} pageSize={50} total={total} disabled={acting} onChange={(current) => setPage(current)} />
           </div>
 
           {/* 桌面详情内滚；窄屏随主区滚动，操作条保持在可视区底部。 */}
@@ -509,6 +567,7 @@ function TicketsPage() {
             data-ticket-detail-pane="">
             {selected ? (
               <>
+                {!loading && !tickets.some((item) => item.id === selected.id) ? <MutedPanel compact description="当前工单不在本页筛选结果中，详情按工单号独立加载。" /> : null}
                 <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-2">
                   <div className="flex min-w-0 flex-1 basis-full items-start gap-2 lg:basis-0">
                     <Text size="lg" weight="bold" className="min-w-0 break-words">
@@ -532,7 +591,7 @@ function TicketsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={selected.status === 'closed'}
+                      disabled={acting || selected.status === 'closed'}
                       onClick={requestClose}>
                       关闭工单
                     </Button>
@@ -603,21 +662,23 @@ function TicketsPage() {
                 </Card>
 
                 <Card header={<Text weight="bold">内部备注</Text>} className="mt-4">
-                  {selected.notes.length ? (
+                  {notesError ? <div role="alert"><Alert type="error" title={notesError} /><Button disabled={acting || notesLoading} onClick={() => void loadNotes(selected.id, detailController.current?.signal)}>重试备注</Button></div> : selected.notes.length ? (
                     <CommentThread nodes={selected.notes} showReply={false} showLike={false} showMore={false} emptyText="暂无内部备注" />
                   ) : (
                     <MutedPanel compact description="还没有内部备注，可在下方 @ 同事记录处理进展。" />
                   )}
                   <Divider spacing="sm" />
+                  {notesLoading && <Text size="sm" color="secondary">正在加载内部备注…</Text>}
                   <Mentions
+                    disabled={acting || notesLoading || Boolean(notesError)}
                     value={noteDraft}
                     onChange={setNoteDraft}
                     options={assignees}
                     rows={2}
-                    placeholder="输入内部备注，使用 @ 指派同事"
+                    placeholder="输入内部备注，使用 @ 提及同事"
                   />
                   <div className="mt-2 flex justify-end">
-                    <Button size="sm" disabled={!noteDraft.trim()} onClick={handleAddNote}>
+                    <Button size="sm" disabled={acting || notesLoading || Boolean(notesError) || !noteDraft.trim()} onClick={handleAddNote}>
                       添加备注
                     </Button>
                   </div>
@@ -638,7 +699,7 @@ function TicketsPage() {
               </>
             ) : (
               <div className="flex h-full items-center justify-center">
-                {loading ? (
+                {detailError ? <div role="alert"><Alert type="error" title={detailError} /><Button onClick={() => void loadTicketDetail(requestedTicketId)}>重试详情</Button></div> : detailLoading || loading ? (
                   <MutedPanel description="正在加载工单…" />
                 ) : (
                   <Empty preset="no-data" description="请选择左侧工单查看详情、对话与内部协作。" />
@@ -656,21 +717,23 @@ function TicketsPage() {
         title="新建工单"
         width="420px"
         mask
-        maskClosable
-        onClose={() => setDrawerOpen(false)}
+        maskClosable={!creating}
+        closable={!creating}
+        keyboard={!creating}
+        onClose={() => { if (!creating) setDrawerOpen(false); }}
         onAfterClose={() => drawerTriggerRef.current?.focus()}>
         <div className="space-y-4">
           <div>
             <Text weight="medium" className="mb-1 block">
               标题
             </Text>
-            <Input value={form.title} onChange={(v) => setForm((s) => ({ ...s, title: String(v) }))} placeholder="简要描述问题或需求" />
+            <Input id="ticket-title" aria-label="工单标题" disabled={creating} value={form.title} onChange={(v) => setForm((s) => ({ ...s, title: String(v) }))} placeholder="简要描述问题或需求" />
           </div>
           <div>
             <Text weight="medium" className="mb-1 block">
               分类
             </Text>
-            <RadioGroup value={form.category} onChange={(value) => setForm((s) => ({ ...s, category: String(value) }))}>
+            <RadioGroup aria-label="工单分类" disabled={creating} value={form.category} onChange={(value) => setForm((s) => ({ ...s, category: String(value) }))}>
               <Radio value="缺陷">缺陷</Radio>
               <Radio value="需求">需求</Radio>
               <Radio value="咨询">咨询</Radio>
@@ -681,6 +744,8 @@ function TicketsPage() {
               优先级
             </Text>
             <RadioGroup
+              aria-label="工单优先级"
+              disabled={creating}
               value={form.priority}
               onChange={(value) => setForm((s) => ({ ...s, priority: value as TicketPriority }))}>
               <Radio value="high">高</Radio>
@@ -693,6 +758,7 @@ function TicketsPage() {
               描述
             </Text>
             <Textarea
+              disabled={creating}
               value={form.description}
               onChange={(v) => setForm((s) => ({ ...s, description: String(v) }))}
               rows={4}
@@ -703,17 +769,13 @@ function TicketsPage() {
             <Text weight="medium" className="mb-1 block">
               附件
             </Text>
-            <Upload autoUpload={false} multiple drag onChange={(_file, list) => setFormFiles(list)}>
-              <div className="p-4 text-center text-sm text-(--tiger-text-secondary,#64748b)">
-                点击或拖拽文件到此处（演示，不会真正上传）
-              </div>
-            </Upload>
+            <Text size="sm" color="secondary">附件尚未接入上传；当前仅保存标题、分类、优先级和描述。</Text>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDrawerOpen(false)}>
+            <Button variant="outline" disabled={creating} onClick={() => setDrawerOpen(false)}>
               取消
             </Button>
-            <Button onClick={submitTicket}>创建工单</Button>
+            <Button loading={creating} onClick={submitTicket}>创建工单</Button>
           </div>
         </div>
       </Drawer>
@@ -725,16 +787,18 @@ function TicketsPage() {
         title="确认关闭工单"
         width="360px"
         mask
-        maskClosable
-        onClose={() => setConfirmingClose(false)}
+        maskClosable={!acting}
+        closable={!acting}
+        keyboard={!acting}
+        onClose={() => { if (!acting) setConfirmingClose(false); }}
         onAfterClose={() => drawerTriggerRef.current?.focus()}>
         <div className="space-y-4">
           <MutedPanel description="关闭后工单将标记为“已关闭”，演示环境下可重新创建。" />
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setConfirmingClose(false)}>
+            <Button variant="outline" disabled={acting} onClick={() => setConfirmingClose(false)}>
               取消
             </Button>
-            <Button danger onClick={confirmClose}>
+            <Button danger loading={acting} onClick={confirmClose}>
               确认关闭
             </Button>
           </div>

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Form } from '@expcat/tigercat-vue/Form'
 import { FormItem } from '@expcat/tigercat-vue/FormItem'
 import { Input } from '@expcat/tigercat-vue/Input'
+import { Alert } from '@expcat/tigercat-vue/Alert'
 import { Message } from '@expcat/tigercat-vue/Message'
 import { Steps, StepsItem } from '@expcat/tigercat-vue/Steps'
 import { Result } from '@expcat/tigercat-vue/Result'
@@ -14,6 +15,8 @@ import { InputOTP } from '@expcat/tigercat-vue/InputOTP'
 import { MaskInput } from '@expcat/tigercat-vue/MaskInput'
 import {
   apiRequest,
+  ApiError,
+  DEMO_OTP_CODE,
   detectForgotChannel,
   isPhoneIdentity,
   OTP_LENGTH,
@@ -23,6 +26,10 @@ import {
 import AppLogo from '../components/AppLogo.vue'
 
 const router = useRouter()
+const route = useRoute()
+const pageRef = ref<HTMLElement | null>(null)
+let request: AbortController | null = null
+onBeforeUnmount(() => request?.abort())
 const current = ref(0)
 const loading = ref(false)
 const codeLoading = ref(false)
@@ -31,6 +38,8 @@ const code = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const sentTo = ref('')
+const sentTarget = ref('')
+const submitError = ref('')
 const targetError = ref('')
 const codeError = ref('')
 const passwordError = ref('')
@@ -39,120 +48,142 @@ const canResend = ref(true)
 const codeDeadline = ref<number | null>(null)
 
 const usePhoneMask = computed(() => isPhoneIdentity(target.value))
-const channel = computed(() => detectForgotChannel(target.value.trim()))
+const focusField = (name: string) => void nextTick(() => {
+  pageRef.value?.querySelector<HTMLInputElement>(name === 'code'
+    ? '[data-testid="auth-otp-input"] input:not([type="hidden"])'
+    : name === 'target' ? 'input[autocomplete="username"]'
+    : `input[name="${name}"]`)?.focus()
+})
+const normalizeTarget = (value: string) => value.includes('@') ? value.trim() : value.replace(/\s/g, '')
+const goToLogin = () => router.push({ name: 'login', query: route.query })
 
-function startResendCountdown() {
-  canResend.value = false
-  codeDeadline.value = Date.now() + OTP_RESEND_MS
-}
-
-function validateIdentity(): boolean {
+function handleTargetChange(value: string) {
+  if (normalizeTarget(value) !== normalizeTarget(target.value)) {
+    request?.abort()
+    request = null
+    codeLoading.value = false
+    sentTarget.value = ''
+    sentTo.value = ''
+    code.value = ''
+    codeError.value = ''
+    canResend.value = true
+    codeDeadline.value = null
+    submitError.value = ''
+  }
+  if (isPhoneIdentity(value) !== usePhoneMask.value) focusField('target')
+  target.value = value
   targetError.value = ''
-  const value = target.value.trim()
-  if (!value) {
-    targetError.value = '请输入邮箱或手机号'
-    return false
-  }
-  return true
 }
 
-function validateCodeInput(): boolean {
-  codeError.value = ''
-  if (!code.value.trim()) {
-    codeError.value = '请输入验证码'
-    return false
-  }
-  return true
-}
-
-function validatePasswords(): boolean {
-  passwordError.value = ''
-  confirmError.value = ''
-  if (!password.value) {
-    passwordError.value = '请输入新密码'
-    return false
-  }
-  if (password.value.length < 6) {
-    passwordError.value = '密码长度不能少于 6 位'
-    return false
-  }
-  if (password.value !== confirmPassword.value) {
-    confirmError.value = '两次输入的密码不一致'
-    return false
-  }
-  return true
+function validateIdentity() {
+  const value = normalizeTarget(target.value)
+  const valid = value.includes('@') ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) : /^1\d{10}$/.test(value)
+  targetError.value = valid ? '' : '请输入有效的邮箱或 11 位手机号'
+  if (!valid) focusField('target')
+  return valid
 }
 
 async function sendCode() {
-  if (!validateIdentity()) return
+  if (request || !canResend.value || !validateIdentity()) return
+  const nextTarget = normalizeTarget(target.value)
+  const controller = new AbortController()
+  request = controller
+  submitError.value = ''
   codeLoading.value = true
   try {
     const payload = await apiRequest<{ sentTo: string }>('/api/auth/forgot-password/code', {
       method: 'POST',
-      body: JSON.stringify({
-        channel: channel.value,
-        target: target.value.trim(),
-      }),
+      body: JSON.stringify({ channel: detectForgotChannel(nextTarget), target: nextTarget }),
+      signal: controller.signal,
     })
-    sentTo.value = payload.data?.sentTo || target.value.trim()
-    startResendCountdown()
-    Message.success({
-      content: '验证码已发送至 ' + sentTo.value,
-      duration: 2500,
-    })
-  } catch (error: any) {
-    Message.error({
-      content: error.message,
-      duration: 3000,
-    })
+    if (controller.signal.aborted) return
+    sentTo.value = payload?.data?.sentTo || nextTarget
+    sentTarget.value = nextTarget
+    code.value = ''
+    codeError.value = ''
+    canResend.value = false
+    codeDeadline.value = Date.now() + OTP_RESEND_MS
+    Message.success({ content: '已获取验证信息：' + sentTo.value, duration: 2500 })
+    focusField('code')
+  } catch (error: unknown) {
+    if (!controller.signal.aborted) submitError.value = error instanceof Error ? error.message : '获取验证码失败，请重试'
   } finally {
-    codeLoading.value = false
+    if (request === controller && !controller.signal.aborted) {
+      request = null
+      codeLoading.value = false
+    }
   }
 }
 
 function submitIdentity() {
-  if (!validateIdentity() || !validateCodeInput()) return
-  if (!sentTo.value) {
-    Message.warning({
-      content: '请先获取验证码',
-      duration: 2000,
-    })
+  if (codeLoading.value || !validateIdentity()) return
+  if (!sentTarget.value || sentTarget.value !== normalizeTarget(target.value)) {
+    targetError.value = '请先为当前账号获取验证码'
+    focusField('target')
     return
   }
+  if (!/^\d{6}$/.test(code.value)) {
+    codeError.value = '请输入 6 位验证码'
+    focusField('code')
+    return
+  }
+  codeError.value = ''
+  submitError.value = ''
   current.value = 1
+  focusField('password')
+}
+
+function backToIdentity() {
+  request?.abort()
+  request = null
+  loading.value = false
+  submitError.value = ''
+  current.value = 0
+  focusField('code')
 }
 
 async function submitPassword() {
-  if (!validatePasswords()) return
+  if (request) return
+  passwordError.value = password.value.length < 6 ? '密码长度不能少于 6 位' : ''
+  confirmError.value = confirmPassword.value !== password.value ? '两次输入的密码不一致' : ''
+  if (passwordError.value || confirmError.value) {
+    focusField(passwordError.value ? 'password' : 'confirmPassword')
+    return
+  }
+  const controller = new AbortController()
+  request = controller
+  submitError.value = ''
   loading.value = true
   try {
     await apiRequest('/api/auth/forgot-password', {
       method: 'POST',
-      body: JSON.stringify({
-        channel: channel.value,
-        target: target.value.trim(),
-        code: code.value.trim(),
-        password: password.value,
-      }),
+      body: JSON.stringify({ channel: detectForgotChannel(sentTarget.value), target: sentTarget.value, code: code.value, password: password.value }),
+      signal: controller.signal,
     })
-    current.value = 2
-  } catch (error: any) {
-    Message.error({
-      content: error.message,
-      duration: 3000,
-    })
+    if (!controller.signal.aborted) current.value = 2
+  } catch (error: unknown) {
+    if (controller.signal.aborted) return
+    const content = error instanceof Error ? error.message : '重置失败，请重试'
+    if (error instanceof ApiError && error.status === 400 && content.includes('验证码')) {
+      current.value = 0
+      codeError.value = content
+      focusField('code')
+    } else if (error instanceof ApiError && error.status === 400 && content.includes('密码')) {
+      passwordError.value = content
+      focusField('password')
+    } else submitError.value = content
   } finally {
-    loading.value = false
+    if (request === controller && !controller.signal.aborted) {
+      request = null
+      loading.value = false
+    }
   }
-}
-
-function goToLogin() {
-  router.push({ name: 'login' })
 }
 </script>
 
 <template>
   <div
+    ref="pageRef"
     class="flex flex-col md:flex-row w-full min-h-[500px] rounded-2xl overflow-x-clip overflow-y-visible shadow-lg border border-(--tiger-border,#e2e8f0)/30 bg-(--tiger-surface) animate-fade-in-up motion-reduce:animate-none"
     style="--tiger-primary: #4f46e5; --tiger-primary-hover: #4338ca; --tiger-primary-disabled: #c7d2fe; --tiger-focus-ring: #4f46e5;"
   >
@@ -203,31 +234,36 @@ function goToLogin() {
       <Card variant="transparent" class="p-0">
         <div class="mb-6 overflow-x-auto">
           <Steps :current="current" size="sm">
-            <StepsItem title="验证身份" description="邮箱 / 手机号" />
+            <StepsItem title="填写验证信息" description="邮箱 / 手机号" />
             <StepsItem title="设置新密码" description="不少于 6 位" />
             <StepsItem title="完成" description="返回登录" />
           </Steps>
         </div>
 
-        <Form v-if="current === 0" class="min-w-0" :label-width="72">
+        <Alert v-if="submitError" type="error" :title="submitError" class="mb-4" show-icon />
+        <Form v-if="current === 0" class="min-w-0" :label-width="72" @submit="submitIdentity">
           <FormItem label="账号">
             <div v-if="usePhoneMask" data-testid="forgot-phone-mask">
               <MaskInput
+                name="target"
+                auto-complete="username"
                 :model-value="target"
                 :mask="PHONE_MASK"
                 placeholder="请输入邮箱或手机号"
                 :status="targetError ? 'error' : undefined"
                 :error-message="targetError"
-                @update:model-value="(val: string) => { target = val; targetError = '' }"
+                @update:model-value="handleTargetChange"
               />
             </div>
             <Input
               v-else
+              name="target"
+              auto-complete="username"
               :model-value="target"
               placeholder="请输入邮箱或手机号"
               :status="targetError ? 'error' : undefined"
               :error-message="targetError"
-              @update:model-value="(val: string) => { target = val; targetError = '' }"
+              @update:model-value="handleTargetChange"
             />
           </FormItem>
           <div class="mb-4 min-w-0 space-y-2">
@@ -267,15 +303,20 @@ function goToLogin() {
               </div>
             </div>
           </div>
+          <p v-if="sentTo" class="p2-text-secondary mb-3 text-xs">验证账号：{{ sentTo }}</p>
+          <p class="p2-text-secondary text-xs">演示验证码：{{ DEMO_OTP_CODE }}，随重置请求一起校验。</p>
           <div class="mt-8 flex flex-col gap-3">
-            <Button variant="primary" block type="button" @click="submitIdentity">下一步</Button>
+            <Button variant="primary" block type="submit" :disabled="codeLoading">下一步</Button>
             <button type="button" class="text-center text-sm font-medium text-[var(--tiger-primary,#3b82f6)] hover:underline" @click="goToLogin">返回登录</button>
           </div>
         </Form>
 
-        <Form v-else-if="current === 1" :label-width="88">
+        <Form v-else-if="current === 1" :label-width="88" :loading="loading" @submit="submitPassword">
           <FormItem label="新密码">
             <Input
+              name="password"
+              auto-complete="new-password"
+              :disabled="loading"
               :model-value="password"
               type="password"
               placeholder="请输入新密码"
@@ -286,6 +327,9 @@ function goToLogin() {
           </FormItem>
           <FormItem label="确认密码">
             <Input
+              name="confirmPassword"
+              auto-complete="new-password"
+              :disabled="loading"
               :model-value="confirmPassword"
               type="password"
               placeholder="请再次输入新密码"
@@ -295,8 +339,8 @@ function goToLogin() {
             />
           </FormItem>
           <div class="mt-8 flex flex-col gap-3">
-            <Button variant="primary" block :loading="loading" type="button" @click="submitPassword">重置密码</Button>
-            <Button variant="outline" block type="button" @click="current = 0">上一步</Button>
+            <Button variant="primary" block :loading="loading" type="submit">重置密码</Button>
+            <Button variant="outline" block type="button" @click="backToIdentity">上一步</Button>
           </div>
         </Form>
 

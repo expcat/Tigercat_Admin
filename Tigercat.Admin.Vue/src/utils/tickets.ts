@@ -92,7 +92,7 @@ export function fetchTickets(query: {
   pageSize?: number;
   status?: TicketStatus | 'all';
   keyword?: string;
-}) {
+}, signal?: AbortSignal) {
   const params = new URLSearchParams({
     page: String(query.page ?? 1),
     pageSize: String(query.pageSize ?? 50),
@@ -100,12 +100,14 @@ export function fetchTickets(query: {
   if (query.status && query.status !== 'all') params.set('status', query.status);
   if (query.keyword?.trim()) params.set('keyword', query.keyword.trim());
   return apiRequest<PagedResult<Ticket>>(`/api/tickets?${params}`, {
+    signal,
     headers: getAuthHeaders(),
   });
 }
 
-export function fetchTicket(id: string) {
+export function fetchTicket(id: string, signal?: AbortSignal) {
   return apiRequest<Ticket>(`/api/tickets/${encodeURIComponent(id)}`, {
+    signal,
     headers: getAuthHeaders(),
   });
 }

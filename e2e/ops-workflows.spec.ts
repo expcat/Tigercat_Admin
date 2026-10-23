@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { expect, SESSION_KEY, test, uniqueSuffix } from './fixtures/auth';
 import type { Page } from '@playwright/test';
 
@@ -148,12 +149,140 @@ test.describe('运维工作流后端化页面', () => {
     await loginAsAdmin();
   });
 
+  test('Jobs 配置新建、编辑和启停可刷新恢复', async ({ page }) => {
+    const name = `UP09-${uniqueSuffix()}`;
+    await page.goto('/jobs');
+    await expect(page.getByText('任务配置展示', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '新建任务', exact: true }).click();
+    const drawer = page.getByRole('dialog', { name: '新建任务' });
+    await drawer.getByRole('textbox', { name: '任务名称', exact: true }).fill(name);
+    // 语法合法但没有下次时间，仍可作为展示配置保存。
+    await drawer.getByRole('textbox', { name: 'Cron 表达式', exact: true }).fill('0 0 31 2 *');
+    await drawer.getByRole('button', { name: '创建任务', exact: true }).click();
+    await expect(drawer).toBeHidden();
+    const row = page.getByRole('row').filter({ has: page.getByRole('button', { name: `查看任务：${name}`, exact: true }) });
+    await expect(row.getByText('0 0 31 2 *', { exact: true })).toBeVisible();
+    await row.getByRole('button', { name: '编辑', exact: true }).click();
+    const edit = page.getByRole('dialog', { name: '编辑任务' });
+    await edit.getByRole('textbox', { name: '超时时间', exact: true }).fill('展示值');
+    await edit.getByRole('button', { name: '保存修改', exact: true }).click();
+    await expect(edit).toBeHidden();
+    const toggle = row.getByRole('switch');
+    await expect(toggle).toBeEnabled();
+    await toggle.press('Space');
+    await expect(toggle).not.toBeChecked();
+    await expect(toggle).toBeEnabled();
+    await page.reload();
+    await expect(toggle).not.toBeChecked();
+    await row.getByRole('button', { name: '编辑', exact: true }).click();
+    await expect(edit.getByRole('textbox', { name: '超时时间', exact: true })).toHaveValue('展示值');
+    await edit.getByRole('button', { name: '取消', exact: true }).click();
+    await toggle.press('Space');
+    await expect(toggle).toBeChecked();
+  });
+
+  test('Jobs 校验和读写失败可恢复且不丢失配置', async ({ page }) => {
+    let failGet = true;
+    let failPost = true;
+    let failPut = true;
+    let posts = 0;
+    await page.route(/\/api\/jobs(?:\/[^/?]+)?(?:\?.*)?$/, async route => {
+      const method = route.request().method();
+      if (method === 'POST') posts += 1;
+      const fail = method === 'GET' ? failGet : method === 'POST' ? failPost : method === 'PUT' && failPut;
+      if (fail) await route.fulfill({ status: 503, json: { success: false, message: 'UP09 请求失败' } });
+      else await route.continue();
+    });
+    await page.goto('/jobs');
+    await expect(page.getByText('UP09 请求失败', { exact: true })).toBeVisible();
+    failGet = false;
+    await page.getByRole('button', { name: '重试任务列表', exact: true }).click();
+    await page.getByRole('button', { name: '新建任务', exact: true }).click();
+    const drawer = page.getByRole('dialog', { name: '新建任务' });
+    const create = drawer.getByRole('button', { name: '创建任务', exact: true });
+    await create.click();
+    await expect(drawer.getByRole('textbox', { name: '任务名称', exact: true })).toBeFocused();
+    const name = `UP09-failure-${uniqueSuffix()}`;
+    await drawer.getByRole('textbox', { name: '任务名称', exact: true }).fill(name);
+    await drawer.getByRole('textbox', { name: 'Cron 表达式', exact: true }).fill('invalid cron');
+    await create.click();
+    await expect(drawer.getByText('请填写有效的 5 段 Cron 表达式，且不能超过 64 字', { exact: true })).toBeVisible();
+    expect(posts).toBe(0);
+    await drawer.getByRole('textbox', { name: 'Cron 表达式', exact: true }).fill('0 2 * * *');
+    const minute = drawer.getByRole('textbox', { name: '分钟值', exact: true });
+    await minute.fill('bad');
+    await create.click();
+    await expect(minute).toBeFocused();
+    expect(posts).toBe(0);
+    await drawer.getByRole('button', { name: '取消', exact: true }).click();
+    await page.getByRole('button', { name: '新建任务', exact: true }).click();
+    await expect(minute).toHaveValue('0');
+    await expect(drawer.getByRole('textbox', { name: 'Cron 表达式', exact: true })).toHaveValue('0 2 * * *');
+    await drawer.getByRole('textbox', { name: '任务名称', exact: true }).fill(name);
+    await create.click();
+    await expect(drawer.getByText('UP09 请求失败', { exact: true })).toBeVisible();
+    await expect(drawer.getByRole('textbox', { name: '任务名称', exact: true })).toHaveValue(name);
+    failPost = false;
+    await create.click();
+    await expect(drawer).toBeHidden();
+    const row = page.getByRole('row').filter({ has: page.getByRole('button', { name: `查看任务：${name}`, exact: true }) });
+    await expect(row.getByRole('switch')).toBeEnabled();
+    await row.getByRole('switch').press('Space');
+    await expect(page.getByText('UP09 请求失败', { exact: true })).toBeVisible();
+    await expect(row.getByRole('switch')).toBeChecked();
+    await row.getByRole('button', { name: '编辑', exact: true }).click();
+    const edit = page.getByRole('dialog', { name: '编辑任务' });
+    await edit.getByRole('textbox', { name: '超时时间', exact: true }).fill('120');
+    await edit.getByRole('button', { name: '保存修改', exact: true }).click();
+    await expect(edit.getByText('UP09 请求失败', { exact: true })).toBeVisible();
+    await expect(edit.getByRole('textbox', { name: '超时时间', exact: true })).toHaveValue('120');
+    failPut = false;
+    await edit.getByRole('button', { name: '保存修改', exact: true }).click();
+    await expect(edit).toBeHidden();
+  });
+
+  test('用户 CSV 实际导入、结果刷新与失败行下载', async ({ page }) => {
+    const username = `csv_${uniqueSuffix()}`;
+    const password = 'ImportSecret42!';
+    const pageErrors: string[] = [];
+    page.on('pageerror', error => pageErrors.push(error.message));
+    await page.goto('/import');
+    await page.getByLabel('选择 UTF-8 CSV 文件').setInputFiles({ name: 'users.csv', mimeType: 'text/csv', buffer: Buffer.from(
+      `\uFEFFusername,password,displayName,roleIds\r\n${username},${password},"Alice, ""A""\r\nTeam",1\r\nadmin,${password},Existing,\r\nbad_${username},x,Invalid,`) });
+    await page.getByRole('button', { name: '下一步', exact: true }).click();
+    await page.getByRole('button', { name: '校验并预览', exact: true }).click();
+    await expect(page.getByText('校验通过 1，跳过 1，失败 1', { exact: true })).toBeVisible();
+    await expect(page.getByText(password, { exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: '开始导入', exact: true }).click();
+    await expect(page).toHaveURL(/\/import\/IMP-/);
+    await page.reload();
+    await expect(page.getByText('导入完成 · 已处理 3/3 行', { exact: true })).toBeVisible();
+    await expect(page.getByText('成功', { exact: true }).first()).toBeVisible();
+    const [download] = await Promise.all([
+      page.waitForEvent('download'), page.getByRole('button', { name: '下载失败行', exact: true }).click(),
+    ]);
+    const csv = await readFile((await download.path())!, 'utf8');
+    expect(csv).toContain(`"bad_${username}","","Invalid"`);
+    expect(csv).not.toContain(password);
+    expect(csv).toContain('密码长度不能少于');
+    const user = await page.evaluate(async ({ username, key }) => {
+      const session = JSON.parse(localStorage.getItem(key)!);
+      const response = await fetch(`/api/users?keyword=${encodeURIComponent(username)}`, { headers: { Authorization: `Bearer ${session.token}` } });
+      const payload = await response.json();
+      return payload.data.items.find((item: { username: string }) => item.username === username);
+    }, { username, key: SESSION_KEY });
+    expect(user.status).toBe(0);
+    expect(user.displayName).toBe('Alice, "A"\r\nTeam');
+    expect(user.roles.map((role: { id: number }) => role.id)).toContain(1);
+    expect(pageErrors).toEqual([]);
+  });
+
   test('通知中心加载后端通知并展示分组统计', async ({ page }) => {
     await page.goto('/notifications');
 
-    await expect(page.getByText('通知来自后端数据源')).toBeVisible();
+    await expect(page.getByText(/条共享通知，当前加载前/)).toBeVisible();
     await expect(page.getByText('发布窗口确认').first()).toBeVisible();
-    await expect(page.getByText('未读总数')).toBeVisible();
+    await expect(page.getByText('当前加载未读')).toBeVisible();
   });
 
   test('通知点击可跳转到关联运维页面', async ({ page }) => {
@@ -173,9 +302,18 @@ test.describe('运维工作流后端化页面', () => {
   });
 
   test('任务详情支持完成确认', async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
     const task = await createTestTask(page, uniqueSuffix());
 
-    await page.goto(`/tasks?taskId=${encodeURIComponent(task.id)}`);
+    await page.goto('/tasks');
+    await page.getByPlaceholder('负责人（包含匹配）').fill(`missing-${task.id}`);
+    await expect(page.getByText('没有符合条件的任务。')).toBeVisible();
+    // 同页改变目标，详情应独立于当前筛选列表读取。
+    await page.evaluate((id) => {
+      window.history.pushState({}, '', `/tasks?taskId=${encodeURIComponent(id)}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }, task.id);
     const dialog = page.getByRole('dialog', { name: '任务详情' });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText(task.title)).toBeVisible();
@@ -183,6 +321,35 @@ test.describe('运维工作流后端化页面', () => {
     await dialog.getByRole('button', { name: '确认完成' }).click();
     await expect(dialog.getByText('done')).toBeVisible();
     await expect(dialog.getByText('E2E 验收完成')).toBeVisible();
+    await page.reload();
+    await expect(dialog.getByText('done')).toBeVisible();
+    await expect(dialog.getByText('E2E 验收完成')).toBeVisible();
+    await dialog.getByText('关闭', { exact: true }).click();
+    await expect(dialog).toBeHidden();
+    expect(pageErrors).toEqual([]);
+  });
+
+  test('任务详情错误可重试且不显示上一个目标', async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    const task = await createTestTask(page, uniqueSuffix());
+    await page.goto(`/tasks?taskId=${encodeURIComponent(task.id)}`);
+    const dialog = page.getByRole('dialog', { name: '任务详情' });
+    await expect(dialog.getByText(task.title)).toBeVisible();
+    await page.evaluate(() => {
+      window.history.pushState({}, '', '/tasks?taskId=up05-missing');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await expect(dialog.getByText(/任务不存在或已被移除/)).toBeVisible();
+    await expect(dialog.getByText(task.title)).toHaveCount(0);
+    await page.route('**/api/tasks/up05-missing', (route) => route.fulfill({
+      status: 500, contentType: 'application/json', body: JSON.stringify({ success: false, code: 500, message: 'UP05 临时故障' }),
+    }));
+    await dialog.getByRole('button', { name: '重试任务详情' }).click();
+    await expect(dialog.getByText(/UP05 临时故障/)).toBeVisible();
+    await dialog.getByText('关闭', { exact: true }).click();
+    await expect(dialog).toBeHidden();
+    expect(pageErrors).toEqual([]);
   });
 
   test('审计页提供筛选导出和保留策略入口', async ({ page }) => {
@@ -212,12 +379,11 @@ test.describe('运维工作流后端化页面', () => {
       const firstOption = page.getByRole('option', { name: new RegExp(first.fileName) });
       await firstOption.click();
       await page.getByRole('button', { name: '查看详情' }).click();
-      const detailDialog = page.getByRole('dialog', { name: '媒体详情' });
-      await expect(detailDialog).toBeVisible();
-      await expect(detailDialog.getByText('SHA256')).toBeVisible();
-      await detailDialog.getByRole('button', { name: '复制 URL' }).click();
-      await page.keyboard.press('Escape');
-      await expect(detailDialog).toBeHidden();
+      await expect(page).toHaveURL(new RegExp(`/files/${first.id}$`));
+      await expect(page.getByText('SHA256', { exact: true })).toBeVisible();
+      await page.getByRole('button', { name: '复制 URL', exact: true }).click();
+      await page.getByRole('button', { name: '返回文件管理' }).click();
+      await expect(firstOption).toBeVisible();
 
       await page.getByRole('option', { name: new RegExp(second.fileName) }).click();
 
@@ -248,7 +414,11 @@ test.describe('运维工作流后端化页面', () => {
     const dialog = page.getByRole('dialog', { name: '确认删除文件' });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText('站点 Logo')).toBeVisible();
-    await expect(dialog.getByText('强制删除并清理已知 Logo / 头像引用')).toBeVisible();
+    await expect(dialog.getByText('强制删除并清理已知 Logo / 头像 / 文章附件引用')).toBeVisible();
+    const forceCheckbox = dialog.getByRole('checkbox', { name: '强制删除并清理已知 Logo / 头像 / 文章附件引用' });
+    await forceCheckbox.focus();
+    await forceCheckbox.press('Space');
+    await expect(forceCheckbox).toBeChecked();
     await dialog.getByRole('button', { name: '强制删除' }).click();
     await expect(dialog).toBeHidden();
     await expect(page.getByRole('option', { name: new RegExp(logo.fileName) })).toHaveCount(0);

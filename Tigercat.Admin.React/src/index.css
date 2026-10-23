@@ -42,7 +42,12 @@
     --tiger-surface: #ffffff;
     --tiger-surface-muted: #f8fafc;
     color: var(--tiger-text);
-    color-scheme: light;
+    color-scheme: light !important;
+  }
+
+  /* PrintLayout uses a table; the print iframe may apply the browser table color. */
+  .p2-print-paper table {
+    color: var(--tiger-text);
   }
 
   .p2-text-primary {
@@ -253,3 +258,17 @@ html.compact .p2-main-header {
   display: none !important;
 }
 
+
+/* Only the report clone is a direct body child; the application theme stays intact. */
+@media print {
+  html:has(> body > .p2-print-paper),
+  body:has(> .p2-print-paper) {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    color-scheme: light !important;
+  }
+
+  .p2-report-table tr {
+    break-inside: avoid;
+  }
+}

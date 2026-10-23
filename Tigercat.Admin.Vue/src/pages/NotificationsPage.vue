@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import type { NotificationItem } from '@expcat/tigercat-core'
-import { notification } from '@expcat/tigercat-vue'
+import { notification } from '@expcat/tigercat-vue/notification'
 
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Form } from '@expcat/tigercat-vue/Form'
 import { FormItem } from '@expcat/tigercat-vue/FormItem'
 import { Input } from '@expcat/tigercat-vue/Input'
-import { Message } from '@expcat/tigercat-vue/Message'
+import { Alert } from '@expcat/tigercat-vue/Alert'
 import { Modal } from '@expcat/tigercat-vue/Modal'
 import { Select } from '@expcat/tigercat-vue/Select'
 import { Text } from '@expcat/tigercat-vue/Text'
 import { NotificationCenter } from '@expcat/tigercat-vue/NotificationCenter'
 import { Textarea } from '@expcat/tigercat-vue/Textarea'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import Icon from '../components/Icon.vue'
@@ -22,6 +22,8 @@ import MetricGrid from '../components/MetricGrid.vue'
 import MutedPanel from '../components/MutedPanel.vue'
 import PageActionPanel from '../components/PageActionPanel.vue'
 import {
+  getRequiredPermissionForLink,
+  isSafeInternalLink,
   buildNotificationGroups,
   countUnreadNotifications,
   createNotification,
@@ -36,18 +38,11 @@ import { usePermission } from '../utils/permission'
 import type {
   AdminNotificationGroupKey,
   AdminNotificationItem,
-  AdminNotificationToastType
+  AdminNotificationToastType,
+  NotificationCreateForm
 } from '../utils/types'
 
-type CreateFormState = {
-  title: string
-  description: string
-  groupKey: AdminNotificationGroupKey
-  toastType: AdminNotificationToastType
-  linkUrl: string
-}
-
-const EMPTY_CREATE_FORM: CreateFormState = {
+const EMPTY_CREATE_FORM: NotificationCreateForm = {
   title: '',
   description: '',
   groupKey: 'ops',
@@ -73,25 +68,17 @@ const loading = ref(true)
 const errorMessage = ref('')
 const createOpen = ref(false)
 const submitting = ref(false)
-const createForm = ref<CreateFormState>({ ...EMPTY_CREATE_FORM })
+const createForm = ref<NotificationCreateForm>({ ...EMPTY_CREATE_FORM })
 const router = useRouter()
 const permission = usePermission()
 const canCreate = computed(() => permission.has('notification:create'))
+const canEdit = computed(() => permission.has('notification:edit'))
+let loadController: AbortController | null = null
+let createTrigger: HTMLElement | null = null
+const savingRead = ref(false)
+const total = ref(0)
+const createError = ref('')
 
-const LINK_PERMISSION_MAP: Array<[RegExp, string]> = [
-  [/^\/users(?:[/?#]|$)/, 'user:view'],
-  [/^\/roles(?:[/?#]|$)/, 'role:view'],
-  [/^\/files(?:[/?#]|$)/, 'media:view'],
-  [/^\/tasks(?:[/?#]|$)/, 'task:view'],
-  [/^\/audit-logs(?:[/?#]|$)/, 'audit:view'],
-  [/^\/settings(?:[/?#]|$)/, 'setting:view']
-]
-
-const getRequiredPermissionForLink = (linkUrl: string) =>
-  LINK_PERMISSION_MAP.find(([pattern]) => pattern.test(linkUrl))?.[1] ?? null
-
-const isSafeInternalLink = (linkUrl: string) =>
-  linkUrl.startsWith('/') && !linkUrl.startsWith('//')
 
 const notificationGroups = computed(() => buildNotificationGroups(notifications.value))
 const unreadCount = computed(() => countUnreadNotifications(notifications.value))
@@ -130,20 +117,27 @@ function showNotification(
 }
 
 const loadNotifications = async () => {
+  loadController?.abort()
+  const controller = new AbortController()
+  loadController = controller
   loading.value = true
   errorMessage.value = ''
+  notifications.value = []
+  total.value = 0
 
   try {
-    const payload = await fetchNotifications()
+    const payload = await fetchNotifications(controller.signal)
+    if (controller.signal.aborted) return
     notifications.value = payload.data.items
+    total.value = payload.data.total
   } catch (error: unknown) {
+    if (controller.signal.aborted) return
     const message = error instanceof Error && error.message
       ? error.message
       : '通知加载失败，请稍后重试。'
     errorMessage.value = message
-    showNotification('error', '通知加载失败', message)
   } finally {
-    loading.value = false
+    if (!controller.signal.aborted) loading.value = false
   }
 }
 
@@ -155,115 +149,93 @@ const persistReadState = async (id: string, read: boolean) => {
   })
 }
 
-const handleItemClick = async (item: NotificationItem) => {
-  const currentItem = findNotificationById(notifications.value, item.id)
-  if (!currentItem) {
-    return
+const handleItemReadChange = async (item: NotificationItem, read: boolean): Promise<boolean> => {
+  if (!canEdit.value) {
+    showNotification('warning', '权限不足', '当前账号没有修改通知已读状态的权限。')
+    return false
   }
+  const currentItem = findNotificationById(notifications.value, item.id)
+  if (!currentItem || loading.value || submitting.value || savingRead.value) return false
+  savingRead.value = true
+  try {
+    await persistReadState(String(item.id), read)
+    notifications.value = setNotificationReadState(notifications.value, item.id, read)
+    notifyNotificationsChanged()
+    return true
+  } catch (error) {
+    showNotification('error', '通知状态保存失败', error instanceof Error ? error.message : '请重试。')
+    return false
+  } finally {
+    savingRead.value = false
+  }
+}
 
+const handleItemClick = async (item: NotificationItem) => {
+  if (loading.value || submitting.value || savingRead.value) return
+  const currentItem = findNotificationById(notifications.value, item.id)
+  if (!currentItem) return
   if (currentItem.linkUrl) {
     if (!isSafeInternalLink(currentItem.linkUrl)) {
       showNotification('error', '无法打开通知链接', '通知链接不是安全的站内路径。')
       return
     }
-
     const requiredPermission = getRequiredPermissionForLink(currentItem.linkUrl)
     if (requiredPermission && !permission.has(requiredPermission)) {
       showNotification('warning', '权限不足', '当前账号无权访问这条通知指向的页面。')
       return
     }
-
-    if (!currentItem.read) {
-      notifications.value = setNotificationReadState(notifications.value, item.id, true)
-      try {
-        await persistReadState(String(item.id), true)
-        notifyNotificationsChanged()
-      } catch {
-        notifications.value = setNotificationReadState(notifications.value, item.id, false)
-      }
-    }
-
+    if (!currentItem.read && canEdit.value && !await handleItemReadChange(item, true)) return
     await router.push(currentItem.linkUrl)
     return
   }
-
-  showNotification(
-    currentItem.toastType,
-    currentItem.title,
-    currentItem.description
-  )
+  showNotification(currentItem.toastType, currentItem.title, currentItem.description)
 }
 
-const handleItemReadChange = async (item: NotificationItem, read: boolean) => {
-  const currentItem = findNotificationById(notifications.value, item.id)
-  notifications.value = setNotificationReadState(notifications.value, item.id, read)
-
-  try {
-    await persistReadState(String(item.id), read)
-    notifyNotificationsChanged()
-  } catch (error: unknown) {
-    notifications.value = setNotificationReadState(notifications.value, item.id, !read)
-    showNotification(
-      'error',
-      '通知状态保存失败',
-      error instanceof Error ? error.message : '请稍后重试。'
-    )
+const handleMarkAllRead = async (groupKey: string | number | undefined) => {
+  if (!canEdit.value) {
+    showNotification('warning', '权限不足', '当前账号没有修改通知已读状态的权限。')
     return
   }
-
-  if (currentItem) {
-    showNotification(
-      'info',
-      read ? '通知已标记为已读' : '通知已恢复为未读',
-      currentItem.title
-    )
-  }
-}
-
-const handleMarkAllRead = async (groupKey: string | number | undefined, items: NotificationItem[]) => {
+  if (loading.value || submitting.value || savingRead.value) return
+  savingRead.value = true
   try {
     await apiRequest('/api/notifications/mark-read', {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({
-        groupKey: groupKey ? String(groupKey) : null
-      })
+      body: JSON.stringify({ groupKey: groupKey ? String(groupKey) : null })
     })
     notifyNotificationsChanged()
     await loadNotifications()
-  } catch (error: unknown) {
-    showNotification(
-      'error',
-      '批量已读失败',
-      error instanceof Error ? error.message : '请稍后重试。'
-    )
-    return
+    const groupTitle = groupKey ? getNotificationGroupLabel(groupKey as AdminNotificationGroupKey) : '全部通知'
+    showNotification('success', `${groupTitle}已全部标记为已读`, '已保存共享通知的已读状态。')
+  } catch (error) {
+    showNotification('error', '批量已读失败', error instanceof Error ? error.message : '请重试。')
+  } finally {
+    savingRead.value = false
   }
-
-  const groupTitle = groupKey
-    ? getNotificationGroupLabel(groupKey as AdminNotificationGroupKey)
-    : '全部通知'
-  showNotification(
-    'success',
-    `${groupTitle}已全部标记为已读`,
-    `本次共处理 ${items.length} 条通知。`
-  )
 }
 
 function openCreateModal() {
+  if (!canCreate.value) return
+  createTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  createError.value = ''
   createForm.value = { ...EMPTY_CREATE_FORM }
   createOpen.value = true
 }
 
 async function submitCreate() {
+  if (!canCreate.value || submitting.value) return
+  createError.value = ''
   const title = createForm.value.title.trim()
   if (!title) {
-    Message.warning({ content: '请填写通知标题', duration: 2000 })
+    createError.value = '请填写通知标题'
+    document.getElementById('notification-title')?.focus()
     return
   }
   const linkUrl = createForm.value.linkUrl?.trim() ?? ''
   if (linkUrl && !isSafeInternalLink(linkUrl)) {
-    Message.error({ content: '通知链接必须是站内路径', duration: 3000 })
+    createError.value = '通知链接必须是安全站内路径'
+    document.getElementById('notification-link')?.focus()
     return
   }
   submitting.value = true
@@ -280,23 +252,21 @@ async function submitCreate() {
     showNotification('success', '通知已创建', title)
     await loadNotifications()
   } catch (error: unknown) {
-    Message.error({
-      content: error instanceof Error ? error.message : '创建通知失败',
-      duration: 3000
-    })
+    createError.value = error instanceof Error ? error.message : '创建通知失败'
   } finally {
     submitting.value = false
   }
 }
 
 onMounted(loadNotifications)
+onBeforeUnmount(() => loadController?.abort())
 </script>
 
 <template>
   <div class="space-y-6">
     <PageHeader
       title="通知中心"
-      subtitle="集中查看系统运维、安全提醒与版本动态，并在同一页验证 Badge 与 Notification 交互。"
+      subtitle="查看系统运维、安全提醒与版本动态。通知及已读状态由所有账号共享。"
       icon="bell"
       :tags="[
         { label: 'NotificationCenter', variant: 'primary' },
@@ -307,17 +277,18 @@ onMounted(loadNotifications)
 
     <PageActionPanel
       title="通知收件箱"
-      description="通知来自后端数据源，未读状态、分组和批量已读会持久化保存。"
+      :description="`共 ${total} 条共享通知，当前加载前 ${notifications.length} 条；下方未读统计仅覆盖这些记录。${canEdit ? '' : '当前账号仅可查看。'}`"
     >
       <template #actions>
         <Button
           v-if="canCreate"
+          :disabled="savingRead || submitting"
           v-permission="'notification:create'"
           @click="openCreateModal"
         >
           创建通知
         </Button>
-        <Button variant="outline" @click="loadNotifications">
+        <Button variant="outline" :disabled="loading || savingRead || submitting" @click="loadNotifications">
           刷新通知
         </Button>
       </template>
@@ -325,8 +296,8 @@ onMounted(loadNotifications)
 
     <Card v-if="errorMessage">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Text color="secondary">{{ errorMessage }}</Text>
-        <Button variant="outline" @click="loadNotifications">
+        <Text color="danger">{{ errorMessage }}</Text>
+        <Button variant="outline" :disabled="loading || savingRead || submitting" @click="loadNotifications">
           重试
         </Button>
       </div>
@@ -334,8 +305,8 @@ onMounted(loadNotifications)
 
     <MetricGrid :columns="4">
       <MetricCard
-        title="未读总数"
-        :description="`全部分组合计 ${unreadCount} 条未读通知。`"
+        title="当前加载未读"
+        :description="`已加载记录中 ${unreadCount} 条未读通知。`"
         :badge="unreadCount"
       >
         <template #icon><Icon name="bell" :size="20" /></template>
@@ -354,6 +325,8 @@ onMounted(loadNotifications)
     <Card title="通知中心组件验证">
       <NotificationCenter
         title="后台通知"
+        :loading="loading || savingRead || submitting"
+        :manage-read-state="false"
         :groups="notificationGroups"
         :empty-text="loading ? '正在加载通知...' : '暂无通知'"
         mark-all-read-text="全部标记为已读"
@@ -382,16 +355,23 @@ onMounted(loadNotifications)
     <Modal
       v-model:open="createOpen"
       title="创建通知"
-      show-default-footer
-      :ok-text="submitting ? '创建中...' : '创建'"
-      cancel-text="取消"
-      @ok="submitCreate"
-      @cancel="createOpen = false"
+      :closable="!submitting"
+      :mask-closable="!submitting"
+      :keyboard="!submitting"
+      @cancel="!submitting && (createOpen = false)"
+      @after-close="createTrigger?.focus()"
     >
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <Button variant="outline" :disabled="submitting" @click="createOpen = false">取消</Button>
+          <Button :loading="submitting" @click="submitCreate">创建</Button>
+        </div>
+      </template>
       <div class="p2-modal-scroll">
-        <Form :model-value="createForm" :label-width="88">
+        <Alert v-if="createError" type="error" title="通知尚未创建" :description="createError" />
+        <Form :model-value="createForm" label-position="top" :disabled="submitting">
           <FormItem label="标题" name="title">
-            <Input v-model="createForm.title" placeholder="请输入通知标题" />
+            <Input id="notification-title" v-model="createForm.title" placeholder="请输入通知标题" />
           </FormItem>
           <FormItem label="描述" name="description">
             <Textarea v-model="createForm.description" :rows="4" placeholder="请输入通知描述（选填）" />
@@ -403,7 +383,7 @@ onMounted(loadNotifications)
             <Select v-model="createForm.toastType" :options="TOAST_OPTIONS" placeholder="请选择类型" />
           </FormItem>
           <FormItem label="链接" name="linkUrl">
-            <Input v-model="createForm.linkUrl" placeholder="站内路径，例如 /monitor（选填）" />
+            <Input id="notification-link" v-model="createForm.linkUrl" placeholder="站内路径，例如 /monitor（选填）" />
           </FormItem>
         </Form>
       </div>

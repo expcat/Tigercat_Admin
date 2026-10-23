@@ -1,355 +1,132 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { Alert } from '@expcat/tigercat-vue/Alert'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
-import { Message } from '@expcat/tigercat-vue/Message'
-import { Text } from '@expcat/tigercat-vue/Text'
 import { FormWizard } from '@expcat/tigercat-vue/FormWizard'
-import { Transfer } from '@expcat/tigercat-vue/Transfer'
-import { Upload } from '@expcat/tigercat-vue/Upload'
-import { Cascader } from '@expcat/tigercat-vue/Cascader'
-import { Slider } from '@expcat/tigercat-vue/Slider'
-import { RadioGroup } from '@expcat/tigercat-vue/RadioGroup'
-import { Radio } from '@expcat/tigercat-vue/Radio'
-import { Progress } from '@expcat/tigercat-vue/Progress'
-import { Result } from '@expcat/tigercat-vue/Result'
-import { Descriptions } from '@expcat/tigercat-vue/Descriptions'
-import type {
-  WizardStep,
-  TransferItem,
-  CascaderOption,
-  CascaderModelValue,
-  DescriptionsItem,
-  UploadFile,
-} from '@expcat/tigercat-core'
+import { Select } from '@expcat/tigercat-vue/Select'
+import { Table } from '@expcat/tigercat-vue/Table'
+import { Text } from '@expcat/tigercat-vue/Text'
 import PageHeader from '../components/PageHeader.vue'
-import MutedPanel from '../components/MutedPanel.vue'
-import Icon from '../components/Icon.vue'
-import { ApiError } from '../utils/request'
-import {
-  clearLastImportJobId,
-  createImportJob,
-  fetchImportJob,
-  readLastImportJobId,
-  writeLastImportJobId,
-  type ImportConflict,
-  type ImportJob,
-  type ImportMode,
-} from '../utils/import-jobs'
+import { usePermission } from '../utils/permission'
+import { createImportJob, EMPTY_IMPORT_MAPPINGS, IMPORT_FIELDS, IMPORT_ROW_COLUMNS, IMPORT_STEPS, previewUserImport,
+  readImportFile, readLastImportJobId, writeLastImportJobId } from '../utils/import-jobs'
+import type { ImportFile, ImportMappings, ImportPreview } from '../utils/types'
 
-const STEPS: WizardStep[] = [
-  { title: '选择数据源', description: '上传文件与模式' },
-  { title: '字段映射', description: '源字段 → 目标字段' },
-  { title: '参数配置', description: '批量与冲突策略' },
-  { title: '确认并导入', description: '核对并执行' },
-]
-
-const SOURCE_FIELDS: TransferItem[] = [
-  { key: 'name', label: '姓名' },
-  { key: 'email', label: '邮箱' },
-  { key: 'phone', label: '手机号' },
-  { key: 'dept', label: '部门' },
-  { key: 'title', label: '职位' },
-  { key: 'joinedAt', label: '入职日期' },
-  { key: 'note', label: '备注' },
-]
-
-const TARGET_OPTIONS: CascaderOption[] = [
-  {
-    value: 'hr',
-    label: '人力资源',
-    children: [
-      { value: 'employees', label: '员工表' },
-      { value: 'departments', label: '部门表' },
-    ],
-  },
-  {
-    value: 'crm',
-    label: '客户管理',
-    children: [
-      { value: 'customers', label: '客户表' },
-      { value: 'contacts', label: '联系人表' },
-    ],
-  },
-]
-
-const MODE_LABELS: Record<string, string> = {
-  append: '追加',
-  overwrite: '覆盖',
-  upsert: '更新插入',
-}
-const CONFLICT_LABELS: Record<string, string> = {
-  skip: '跳过',
-  overwrite: '覆盖',
-  error: '报错中止',
-}
-
+const router = useRouter()
+const { has } = usePermission()
+const canCreate = computed(() => has('user:create'))
 const current = ref(0)
 const narrowSteps = ref(false)
+const file = ref<ImportFile | null>(null)
+const preview = ref<ImportPreview | null>(null)
+const mappings = ref<ImportMappings>({ ...EMPTY_IMPORT_MAPPINGS })
+const busy = ref(false)
+const error = ref('')
+const lastId = readLastImportJobId()
+const fileInput = ref<HTMLInputElement | null>(null)
+const stepHeading = ref<HTMLHeadingElement | null>(null)
+const mapped = computed(() => mappings.value.username !== null && mappings.value.password !== null)
+const columnOptions = computed(() => [{ value: '', label: '不映射' }, ...(preview.value?.headers.map((header, index) => ({ value: index, label: `${index + 1}. ${header}` })) ?? [])])
+let request: AbortController | null = null
 let stepsQuery: MediaQueryList | null = null
 const syncSteps = () => { narrowSteps.value = stepsQuery?.matches ?? false }
-const files = ref<UploadFile[]>([])
-const mode = ref<ImportMode>('append')
-const mappedKeys = ref<(string | number)[]>(['name', 'email', 'dept'])
-const target = ref<CascaderModelValue>(['hr', 'employees'])
-const batchSize = ref(1000)
-const conflict = ref<ImportConflict>('skip')
-
-const importing = ref(false)
-const importProgress = ref(0)
-const done = ref(false)
-const resultMessage = ref('')
-const restoring = ref(false)
-let pollCancelled = false
-
-const readErrorMessage = (error: unknown, fallback: string) =>
-  error instanceof Error && error.message ? error.message : fallback
-
-const targetText = computed(() => {
-  if (!target.value?.length) return '未选择'
-  const labels: string[] = []
-  let level = TARGET_OPTIONS
-  for (const v of target.value) {
-    const found = level.find((o) => o.value === v)
-    if (!found) break
-    labels.push(found.label)
-    level = found.children ?? []
-  }
-  return labels.join(' / ')
-})
-
-const summary = computed<DescriptionsItem[]>(() => [
-  { label: '数据源', content: files.value.length ? files.value.map((f) => f.name).join('、') : '示例数据（未选择文件）' },
-  { label: '导入模式', content: MODE_LABELS[mode.value] },
-  { label: '目标数据表', content: targetText.value },
-  { label: '映射字段', content: `${mappedKeys.value.length} 个` },
-  { label: '批量大小', content: `${batchSize.value} 条 / 批` },
-  { label: '冲突策略', content: CONFLICT_LABELS[conflict.value] },
-])
-
-function applyCompleted(job: ImportJob) {
-  importProgress.value = job.progress
-  resultMessage.value = job.result?.message ?? '导入完成'
-  importing.value = false
-  restoring.value = false
-  done.value = true
-}
-
-async function pollImportJob(id: string) {
-  while (!pollCancelled) {
-    const payload = await fetchImportJob(id)
-    const job = payload.data
-    importProgress.value = job.progress
-    if (job.status === 'completed') {
-      applyCompleted(job)
-      return
-    }
-    if (job.status === 'failed') {
-      importing.value = false
-      restoring.value = false
-      Message.error({ content: job.result?.message || '导入失败', duration: 3000 })
-      return
-    }
-    await new Promise((resolve) => window.setTimeout(resolve, 250))
-  }
-}
-
-async function restoreLastImportJob() {
-  const lastId = readLastImportJobId()
-  if (!lastId) return
-  restoring.value = true
-  importing.value = true
-  importProgress.value = 0
+onMounted(() => { stepsQuery = window.matchMedia('(max-width: 639px)'); syncSteps(); stepsQuery.addEventListener('change', syncSteps) })
+onBeforeUnmount(() => { stepsQuery?.removeEventListener('change', syncSteps); request?.abort() })
+async function changeStep(value: number) { current.value = value; await nextTick(); stepHeading.value?.focus() }
+async function selectFile(selected?: File) {
+  if (!selected) return
+  request?.abort(); const controller = new AbortController(); request = controller
+  busy.value = true; error.value = ''; file.value = null; preview.value = null
   try {
-    const payload = await fetchImportJob(lastId)
-    const job = payload.data
-    if (job.status === 'completed') {
-      applyCompleted(job)
-      return
-    }
-    await pollImportJob(lastId)
-  } catch (error: unknown) {
-    importing.value = false
-    restoring.value = false
-    if (error instanceof ApiError && error.status === 404) {
-      clearLastImportJobId()
-      return
-    }
-    Message.error({ content: readErrorMessage(error, '导入任务恢复失败'), duration: 3000 })
-  }
+    const content = await readImportFile(selected)
+    if (controller.signal.aborted) return
+    file.value = content
+    const { data } = await previewUserImport(content, undefined, controller.signal)
+    if (!controller.signal.aborted) { preview.value = data; mappings.value = data.mappings }
+  } catch (failure) { if (!controller.signal.aborted) error.value = failure instanceof Error ? failure.message : 'CSV 读取失败' }
+  finally { if (!controller.signal.aborted) busy.value = false }
 }
-
+function onFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const selected = input.files?.[0]; input.value = ''; void selectFile(selected)
+}
+function updateMapping(key: keyof ImportMappings, value: unknown) {
+  mappings.value = { ...mappings.value, [key]: value === '' || value === null ? null : Number(value) }; error.value = ''
+}
+async function handleNext() {
+  if (busy.value || !file.value || !preview.value) return
+  if (current.value === 0) { void changeStep(1); return }
+  if (!mapped.value) { error.value = '请映射用户名和密码必填列'; return }
+  const controller = new AbortController(); request = controller; busy.value = true; error.value = ''
+  try {
+    const { data } = await previewUserImport(file.value, mappings.value, controller.signal)
+    if (!controller.signal.aborted) { preview.value = data; await changeStep(2) }
+  } catch (failure) { if (!controller.signal.aborted) error.value = failure instanceof Error ? failure.message : '预览校验失败' }
+  finally { if (!controller.signal.aborted) busy.value = false }
+}
 async function handleFinish() {
-  if (!mappedKeys.value.length) {
-    Message.warning({ content: '请至少映射一个字段', duration: 2200 })
-    current.value = 1
-    return
-  }
-  if (!target.value?.length) {
-    Message.warning({ content: '请选择目标数据表', duration: 2200 })
-    current.value = 0
-    return
-  }
-  importing.value = true
-  importProgress.value = 0
-  done.value = false
-  resultMessage.value = ''
+  if (busy.value || !file.value || !mapped.value) return
+  const controller = new AbortController(); request = controller; busy.value = true; error.value = ''
   try {
-    const created = await createImportJob({
-      source: files.value.length ? files.value.map((f) => f.name).join('、') : '示例数据（未选择文件）',
-      target: target.value.map((item) => String(item)),
-      mappings: mappedKeys.value.map((item) => String(item)),
-      mode: mode.value,
-      conflict: conflict.value,
-      batchSize: batchSize.value,
-    })
-    writeLastImportJobId(created.data.id)
-    importProgress.value = created.data.progress
-    await pollImportJob(created.data.id)
-  } catch (error: unknown) {
-    importing.value = false
-    Message.error({ content: readErrorMessage(error, '创建导入任务失败'), duration: 3000 })
-  }
+    const { data } = await createImportJob(file.value, mappings.value, controller.signal)
+    if (controller.signal.aborted) return
+    writeLastImportJobId(data.id); file.value = null; await router.push(`/import/${encodeURIComponent(data.id)}`)
+  } catch (failure) { if (!controller.signal.aborted) error.value = failure instanceof Error ? failure.message : '创建导入任务失败' }
+  finally { if (!controller.signal.aborted) busy.value = false }
 }
-
-function restart() {
-  done.value = false
-  importing.value = false
-  restoring.value = false
-  importProgress.value = 0
-  resultMessage.value = ''
-  current.value = 0
-  clearLastImportJobId()
+async function cancelImport() {
+  request?.abort(); busy.value = false; file.value = null; preview.value = null; mappings.value = { ...EMPTY_IMPORT_MAPPINGS }; current.value = 0; error.value = ''
+  await nextTick(); if (fileInput.value) { fileInput.value.value = ''; fileInput.value.focus() }
 }
-
-onMounted(() => {
-  stepsQuery = window.matchMedia('(max-width: 639px)')
-  syncSteps()
-  stepsQuery.addEventListener('change', syncSteps)
-  pollCancelled = false
-  void restoreLastImportJob()
-})
-
-onBeforeUnmount(() => {
-  stepsQuery?.removeEventListener('change', syncSteps)
-  pollCancelled = true
-})
 </script>
 
 <template>
   <div class="space-y-6">
-    <PageHeader
-      icon="upload"
-      title="数据导入"
-      subtitle="分步导入向导：选择数据源、映射字段、配置参数并执行导入"
-      :tags="[
-        { label: '运维', variant: 'primary' },
-        { label: '演示数据', variant: 'info' },
-      ]"
-    />
-
-    <Card v-if="done">
-      <Result
-        status="success"
-        title="导入完成"
-        :sub-title="resultMessage"
-      >
-        <div class="flex justify-center gap-2">
-          <Button variant="outline" @click="restart">再次导入</Button>
-          <Button @click="restart">返回列表</Button>
-        </div>
-      </Result>
-    </Card>
-
-    <Card v-else-if="importing">
-      <div class="space-y-4 py-6">
-        <div class="flex items-center gap-2">
-          <Icon name="upload" :size="18" />
-          <Text weight="bold">正在导入…</Text>
-        </div>
-        <Progress :percentage="importProgress" status="normal" />
-        <MutedPanel
-          compact
-          :description="restoring ? '正在从上次导入任务恢复进度…' : '导入任务已提交，正在轮询进度直到完成。'"
-        />
-      </div>
-    </Card>
-
-    <Card v-else>
-      <FormWizard
-        :steps="STEPS"
-        :orientation="narrowSteps ? 'vertical' : 'horizontal'"
-        v-model:current="current"
-        next-text="下一步"
-        prev-text="上一步"
-        finish-text="开始导入"
-        @finish="handleFinish"
-      >
-        <template #default="{ index }">
-          <div class="pt-4">
-            <div v-if="index === 0" class="space-y-4">
-              <div>
-                <Text weight="medium" class="mb-1 block">上传文件（CSV / Excel）</Text>
-                <Upload
-                  v-model:file-list="files"
-                  :auto-upload="false"
-                  accept=".csv,.xlsx,.xls"
-                  drag
-                >
-                  <div class="p-4 text-center text-sm text-(--tiger-text-secondary,#64748b)">
-                    点击或拖拽文件到此处（演示，不会真正上传）
+    <PageHeader icon="upload" title="数据导入" subtitle="读取用户 CSV、映射字段、校验并实际创建用户" :tags="[{ label: '用户 CSV', variant: 'primary' }]" />
+    <Alert v-if="!canCreate" type="warning" title="无权导入用户" description="需要 user:create 权限。" />
+    <template v-else>
+      <Button v-if="lastId" variant="outline" @click="router.push(`/import/${encodeURIComponent(lastId)}`)">查看最近导入结果</Button>
+      <Card>
+        <Alert v-if="error" type="error" title="导入未提交" :description="error" />
+        <fieldset :disabled="busy" class="min-w-0">
+          <FormWizard :steps="IMPORT_STEPS" :current="current" :orientation="narrowSteps ? 'vertical' : 'horizontal'" :show-actions="false">
+            <template #default>
+              <div class="space-y-4 pt-4">
+                <h2 ref="stepHeading" tabindex="-1" class="text-base font-medium">{{ IMPORT_STEPS[current].title }}</h2>
+                <template v-if="current === 0">
+                  <label class="block space-y-2"><span>选择 UTF-8 CSV 文件</span><input ref="fileInput" type="file" accept=".csv,text/csv" class="block max-w-full text-sm" :disabled="busy" @change="onFileChange" /></label>
+                  <Text class="block" color="secondary">最多 1 MiB / 1000 行。首行为列名；支持 BOM、引号、逗号和字段内换行。</Text>
+                  <Text class="block">目标：用户。追加创建，重复用户名跳过；新用户默认启用。</Text>
+                  <Text class="block" color="secondary">支持 username、password、displayName、roleIds（多个角色 ID 用分号分隔）。状态与头像不参与导入。</Text>
+                  <Text v-if="file" class="block break-all">已读取：{{ file.source }}{{ preview ? `，${preview.total} 行` : '' }}</Text>
+                </template>
+                <template v-else-if="current === 1">
+                  <Text class="block" color="secondary">选择每个用户字段对应的 CSV 列。未映射列会忽略，密码仅用于校验和创建。</Text>
+                  <div class="grid gap-4 sm:grid-cols-2">
+                    <label v-for="field in IMPORT_FIELDS" :key="field.key" class="block min-w-0 space-y-1"><span>{{ field.label }}</span>
+                      <Select :model-value="mappings[field.key] ?? ''" :aria-label="field.label" :options="columnOptions" @update:model-value="updateMapping(field.key, $event)" />
+                    </label>
                   </div>
-                </Upload>
+                </template>
+                <template v-else-if="preview">
+                  <Text class="block break-all">{{ file?.source }} · 共 {{ preview.total }} 行</Text>
+                  <Alert :type="preview.failed ? 'warning' : 'info'" :title="`校验通过 ${preview.valid}，跳过 ${preview.skipped}，失败 ${preview.failed}`" :description="`${preview.passwordHint}。合法行会创建用户；错误行不会阻止其他行处理，提交时重新校验。`" />
+                  <Table :columns="IMPORT_ROW_COLUMNS" :data-source="preview.rows" row-key="rowNumber" responsive-mode="card" card-breakpoint="md" :pagination="{ pageSize: 10 }" />
+                  <Text class="block" color="secondary">预览和结果均不显示密码。导入后可下载失败行，密码列会清空，需要重新填写。</Text>
+                </template>
               </div>
-              <div>
-                <Text weight="medium" class="mb-1 block">导入模式</Text>
-                <RadioGroup v-model="mode">
-                  <Radio value="append">追加</Radio>
-                  <Radio value="overwrite">覆盖</Radio>
-                  <Radio value="upsert">更新插入</Radio>
-                </RadioGroup>
-              </div>
-              <div>
-                <Text weight="medium" class="mb-1 block">目标数据表</Text>
-                <Cascader v-model="target" :options="TARGET_OPTIONS" placeholder="选择目标数据表" />
-              </div>
-            </div>
-
-            <div v-else-if="index === 1" class="space-y-3">
-              <Text weight="medium" class="block">选择需要导入的源字段（右侧为目标字段）</Text>
-              <Transfer
-                v-model="mappedKeys"
-                :data-source="SOURCE_FIELDS"
-                source-title="源字段"
-                target-title="目标字段"
-                searchable
-              />
-              <MutedPanel compact description="将左侧源字段移动到右侧即建立映射；未映射字段将被忽略。" />
-            </div>
-
-            <div v-else-if="index === 2" class="space-y-5">
-              <div>
-                <Text weight="medium" class="mb-2 block">批量大小：{{ batchSize }} 条 / 批</Text>
-                <Slider v-model="batchSize" :min="100" :max="5000" :step="100" />
-              </div>
-              <div>
-                <Text weight="medium" class="mb-1 block">冲突策略</Text>
-                <RadioGroup v-model="conflict">
-                  <Radio value="skip">跳过</Radio>
-                  <Radio value="overwrite">覆盖</Radio>
-                  <Radio value="error">报错中止</Radio>
-                </RadioGroup>
-              </div>
-            </div>
-
-            <div v-else class="space-y-3">
-              <Text weight="medium" class="block">请核对导入配置</Text>
-              <Descriptions :items="summary" :column="1" bordered colon />
-              <MutedPanel compact description="点击「开始导入」会创建导入任务并轮询状态，完成后展示结果页。" />
-            </div>
-          </div>
-        </template>
-      </FormWizard>
-    </Card>
+            </template>
+          </FormWizard>
+        </fieldset>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <Button variant="outline" :disabled="busy" @click="cancelImport">取消导入</Button>
+          <Button v-if="current > 0" variant="outline" :disabled="busy" @click="error = ''; changeStep(current - 1)">上一步</Button>
+          <Button v-if="current < 2" :disabled="busy || !preview || current === 1 && !mapped" @click="handleNext">{{ busy ? '正在读取…' : current === 1 ? '校验并预览' : '下一步' }}</Button>
+          <Button v-else :loading="busy" :disabled="busy || !preview?.total" @click="handleFinish">开始导入</Button>
+        </div>
+      </Card>
+    </template>
   </div>
 </template>

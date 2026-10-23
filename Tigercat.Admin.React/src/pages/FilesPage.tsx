@@ -8,6 +8,8 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { Button } from '@expcat/tigercat-react/Button';
+import { Alert } from '@expcat/tigercat-react/Alert';
+import { Pagination } from '@expcat/tigercat-react/Pagination';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Checkbox } from '@expcat/tigercat-react/Checkbox';
 import {
@@ -27,14 +29,15 @@ import {
   ContextMenuSub,
 } from '@expcat/tigercat-react/ContextMenu';
 import { SplitButton } from '@expcat/tigercat-react/SplitButton';
-import type { FileItem, UploadRequestOptions } from '@expcat/tigercat-core';
+import type { FileItem } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
-import { ClipboardIcon, FileTextIcon, LinkIcon, UploadIcon } from '../components/Icons';
+import { FileTextIcon, UploadIcon } from '../components/Icons';
 import { batchDeleteMedia, getMediaDetail, listMedia, uploadMediaFile } from '../utils/media';
 import { usePermission } from '../utils/permission';
 import { ApiError } from '../utils/request';
 import { clearWorkbenchSelection, loadWorkbenchState, saveWorkbenchState } from '../utils/workbench';
-import type { DuplicateMediaResult, MediaDetail, MediaItem, MediaReference } from '../utils/types';
+import type { DuplicateMediaResult, MediaItem, MediaReference } from '../utils/types';
+import { useNavigate } from 'react-router-dom';
 const FILE_UPLOAD_ACCEPT = 'image/*,.pdf,.txt,.csv,.json,.xlsx,.xls';
 const FILE_UPLOAD_MAX_SIZE = 10 * 1024 * 1024;
 
@@ -60,16 +63,6 @@ function toFileItem(item: MediaItem): FileItem {
   };
 }
 
-function isImage(item: MediaItem | MediaDetail | null) {
-  return Boolean(item?.contentType.startsWith('image/'));
-}
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
 function referenceLabel(reference: MediaReference) {
   return reference.displayName || `${reference.referenceType}:${reference.referenceKey}`;
 }
@@ -86,6 +79,7 @@ function describeUploadError(error: unknown) {
 }
 
 function FilesPage() {
+  const navigate = useNavigate();
   const { has: hasPerm } = usePermission();
   const canUpload = hasPerm('media:upload');
   const canDelete = hasPerm('media:delete');
@@ -110,78 +104,93 @@ function FilesPage() {
   const [deleting, setDeleting] = useState(false);
   const [forceDelete, setForceDelete] = useState(false);
   const [deleteReferences, setDeleteReferences] = useState<MediaReference[]>([]);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detail, setDetail] = useState<MediaDetail | null>(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [loadError, setLoadError] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteIds, setDeleteIds] = useState<number[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [failedFile, setFailedFile] = useState<File | null>(null);
+  const [duplicate, setDuplicate] = useState<MediaItem | null>(null);
+  const loadController = useRef<AbortController | null>(null);
+  const deleteController = useRef<AbortController | null>(null);
+  const uploadController = useRef<AbortController | null>(null);
   const [contextFile, setContextFile] = useState<MediaItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const load = useCallback(async () => {
+    loadController.current?.abort();
+    const controller = new AbortController();
+    loadController.current = controller;
+    setLoading(true);
+    setLoadError('');
     try {
-      setLoading(true);
-      const res = await listMedia({
-        page: 1,
-        pageSize: 100,
-        keyword: searchText,
-        contentType: contentType || undefined,
-        sortBy: 'createdAt',
-        sortOrder: 'desc',
-      });
-      setItems(res.data.items);
-    } catch (e: any) {
-      Message.error({ content: e.message || '加载媒体资源失败', duration: 3000 });
-    } finally {
-      setLoading(false);
-    }
-  }, [contentType, searchText]);
+      const { data } = await listMedia({ page, pageSize: 20, keyword: searchText, contentType: contentType || undefined, sortBy: 'createdAt', sortOrder: 'desc' }, controller.signal);
+      if (controller.signal.aborted) return;
+      setItems(data.items);
+      setTotal(data.total);
+      setSelectedKeys((keys) => keys.filter((key) => data.items.some((item) => item.id === Number(key))));
+      if (page > Math.max(1, Math.ceil(data.total / 20))) setPage(Math.max(1, Math.ceil(data.total / 20)));
+    } catch (error) {
+      if (!controller.signal.aborted) setLoadError(error instanceof Error ? error.message : '加载媒体资源失败');
+    } finally { if (!controller.signal.aborted) setLoading(false); }
+  }, [contentType, searchText, page]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { void load(); return () => loadController.current?.abort(); }, [load]);
+  useEffect(() => () => { deleteController.current?.abort(); uploadController.current?.abort(); }, []);
 
   const files = useMemo(() => items.map(toFileItem), [items]);
   const selectedIds = selectedKeys.map(Number).filter((id) => Number.isFinite(id));
 
-  const handleUpload = async ({ file, onProgress, onSuccess, onError }: UploadRequestOptions) => {
+  const handleUpload = async (file: File) => {
+    if (!canUpload || uploading) return;
+    const controller = new AbortController();
+    uploadController.current = controller;
+    setUploading(true);
+    setFailedFile(null);
+    setDuplicate(null);
+    setUploadError('');
     try {
-      onProgress?.(20);
-      const media = await uploadMediaFile(file, 'file');
-      onProgress?.(100);
-      onSuccess?.(media);
-      Message.success({ content: '文件已上传', duration: 3000 });
-      await load();
-    } catch (e: any) {
-      onError?.(e);
-      Message.error({ content: describeUploadError(e), duration: 3000 });
-    }
+      await uploadMediaFile(file, 'file', controller.signal);
+      if (controller.signal.aborted) return;
+      Message.success({ content: '文件已上传', duration: 2200 });
+      setPage(1);
+      if (page === 1) await load();
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setUploadError(describeUploadError(error));
+      const existing = error instanceof ApiError && error.status === 409 ? (error.data as DuplicateMediaResult)?.existing : undefined;
+      setDuplicate(existing ?? null);
+      if (!existing) setFailedFile(file);
+    } finally { setUploading(false); }
   };
 
-  const openDetail = async (id: number) => {
-    try {
-      setDetailOpen(true);
-      setDetailLoading(true);
-      const res = await getMediaDetail(id);
-      setDetail(res.data);
-    } catch (e: any) {
-      Message.error({ content: e.message || '加载媒体详情失败', duration: 3000 });
-      setDetailOpen(false);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
+  const openDetail = (id: number) => navigate(`/files/${id}`);
   const openDeleteModal = async (ids?: number[]) => {
-    const targetIds = ids && ids.length > 0 ? ids : selectedIds;
+    const targetIds = ids?.length ? ids : selectedIds;
+    if (!canDelete || !targetIds.length || deleting) return;
+    deleteController.current?.abort();
+    const controller = new AbortController();
+    deleteController.current = controller;
+    setDeleteIds(targetIds);
     setForceDelete(false);
     setDeleteReferences([]);
+    setDeleteError('');
+    setDeleteLoading(true);
     setDeleteOpen(true);
-
     try {
-      const details = await Promise.all(targetIds.map((id) => getMediaDetail(id)));
-      setDeleteReferences(details.flatMap((res) => res.data.references));
-    } catch {
-      setDeleteReferences([]);
-    }
+      const details = await Promise.all(targetIds.map((id) => getMediaDetail(id, controller.signal)));
+      if (!controller.signal.aborted) setDeleteReferences(details.flatMap((res) => res.data.references));
+    } catch (error) {
+      if (!controller.signal.aborted) setDeleteError(error instanceof Error ? error.message : '引用读取失败');
+    } finally { if (!controller.signal.aborted) setDeleteLoading(false); }
+  };
+  const closeDelete = () => {
+    if (deleting) return;
+    deleteController.current?.abort();
+    setDeleteOpen(false);
   };
 
   const openUrl = (url: string) => {
@@ -197,12 +206,11 @@ function FilesPage() {
     }
   };
 
-  const confirmDelete = async (forceOverride?: boolean) => {
-    if (selectedIds.length === 0) return;
-    const shouldForce = typeof forceOverride === 'boolean' ? forceOverride : forceDelete;
+  const confirmDelete = async () => {
+    if (!canDelete || !deleteIds.length || deleting || deleteLoading || deleteError) return;
     try {
       setDeleting(true);
-      const res = await batchDeleteMedia(selectedIds, shouldForce);
+      const res = await batchDeleteMedia(deleteIds, forceDelete);
       Message.success({
         content: res.data.message || '已删除选中文件',
         duration: 3000,
@@ -223,6 +231,9 @@ function FilesPage() {
 
   const handleContentTypeChange = (value: unknown) => {
     const next = String(value ?? '');
+    setPage(1);
+    setSelectedKeys([]);
+    clearWorkbenchSelection('files');
     setContentType(next);
     saveWorkbenchState('files', {
       queryState: { contentType: next, keyword: searchText },
@@ -230,6 +241,9 @@ function FilesPage() {
   };
 
   const handleSearchTextChange = (value: string) => {
+    setPage(1);
+    setSelectedKeys([]);
+    clearWorkbenchSelection('files');
     setSearchText(value);
     saveWorkbenchState('files', {
       queryState: { contentType, keyword: value },
@@ -302,12 +316,7 @@ function FilesPage() {
       Message.error({ content: '文件超过 10 MB 上限', duration: 3000 });
       return;
     }
-    await handleUpload({
-      file,
-      onProgress() {},
-      onSuccess() {},
-      onError() {},
-    });
+    await handleUpload(file);
   };
 
   return (
@@ -340,7 +349,7 @@ function FilesPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <Button
               variant="outline"
-              disabled={selectedIds.length !== 1}
+              disabled={loading || !!loadError || selectedIds.length !== 1}
               onClick={() => openDetail(selectedIds[0])}>
               查看详情
             </Button>
@@ -348,7 +357,7 @@ function FilesPage() {
               <Button
                 variant="outline"
                 danger
-                disabled={selectedIds.length === 0}
+                disabled={loading || !!loadError || selectedIds.length === 0}
                 onClick={() => {
                   void openDeleteModal();
                 }}>
@@ -358,6 +367,7 @@ function FilesPage() {
             {canUpload && (
               <>
                 <SplitButton
+                  disabled={uploading}
                   triggerAriaLabel="更多操作"
                   onClick={triggerFilePick}>
                   <span className="flex items-center gap-1">
@@ -380,8 +390,11 @@ function FilesPage() {
           </div>
         </div>
 
+        {uploading && <div className="mb-3 flex items-center gap-2"><Text>正在上传…</Text><Button size="sm" variant="outline" onClick={() => uploadController.current?.abort()}>取消上传</Button></div>}
+        {uploadError && <Alert type="error" title={uploadError} action={failedFile ? <Button disabled={uploading} onClick={() => void handleUpload(failedFile)}>重试上传</Button> : duplicate ? <Button onClick={() => openDetail(duplicate.id)}>查看已有文件</Button> : undefined} />}
+        {loadError && <Alert type="error" title="媒体列表加载失败" description={loadError} action={<Button onClick={() => void load()}>重试</Button>} />}
         <ContextMenu>
-          <div onContextMenuCapture={onFilesContextMenu}>
+          <div inert={!!loadError} onContextMenuCapture={onFilesContextMenu}>
             <FileManager
               files={files}
               viewMode="list"
@@ -426,105 +439,23 @@ function FilesPage() {
           </ContextMenuMenu>
         </ContextMenu>
 
+        <Pagination current={page} pageSize={20} total={total} onChange={(next) => { setPage(next); setSelectedKeys([]); clearWorkbenchSelection('files'); }} />
         <div className="p2-text-secondary mt-3 text-sm">
           <Text size="sm" color="secondary">
-            被 Logo 或头像引用的媒体会在删除时返回冲突提示。
+            Logo、头像或文章附件引用会阻止普通删除；强制删除会清理这些已知引用。
           </Text>
         </div>
       </Card>
 
-      <Modal
-        open={deleteOpen}
-        title="确认删除文件"
-        showDefaultFooter
-        okText={deleting ? '删除中…' : '确认删除'}
-        cancelText="取消"
-        onOk={() => {
-          void confirmDelete();
-        }}
-        onCancel={() => setDeleteOpen(false)}>
+      <Modal open={deleteOpen} title="确认删除文件" showDefaultFooter={false} maskClosable={!deleting} closable={!deleting} onCancel={closeDelete}
+        footer={<div className="flex justify-end gap-2"><Button variant="outline" disabled={deleting} onClick={closeDelete}>取消</Button><Button danger disabled={deleting || deleteLoading || !!deleteError} onClick={() => void confirmDelete()}>{deleting ? '删除中…' : forceDelete ? '强制删除' : '确认删除'}</Button></div>}>
         <div className="space-y-3">
-          <Text>将删除 {selectedIds.length} 个媒体资源。被引用的文件会被后端阻止删除。</Text>
-          {deleteReferences.length > 0 && (
-            <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-              <div className="mb-2 font-medium">引用来源</div>
-              <ul className="space-y-1">
-                {deleteReferences.map((reference) => (
-                  <li key={reference.id}>{referenceLabel(reference)}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {deleteReferences.length > 0 && (
-            <label className="p2-checkbox-row text-sm">
-              <Checkbox checked={forceDelete} onChange={() => setForceDelete((value) => !value)} />
-              <span className="p2-checkbox-label">强制删除并清理已知 Logo / 头像引用</span>
-            </label>
-          )}
-          {deleteReferences.length > 0 && (
-            <Button
-              variant="outline"
-              danger
-              disabled={deleting}
-              onClick={() => confirmDelete(true)}>
-              强制删除
-            </Button>
-          )}
+          <Text>将删除 {deleteIds.length} 个媒体资源。被引用的文件会被后端阻止删除。</Text>
+          {deleteLoading && <Text>正在读取引用…</Text>}
+          {deleteError && <Alert type="error" title={deleteError} action={<Button onClick={() => void openDeleteModal(deleteIds)}>重试</Button>} />}
+          {deleteReferences.length > 0 && <Alert type="warning" title="引用来源"><ul className="space-y-1">{deleteReferences.map((reference) => <li key={reference.id}>{referenceLabel(reference)}</li>)}</ul></Alert>}
+          {deleteReferences.length > 0 && <Checkbox checked={forceDelete} disabled={deleting} onChange={setForceDelete}>强制删除并清理已知 Logo / 头像 / 文章附件引用</Checkbox>}
         </div>
-      </Modal>
-
-      <Modal
-        open={detailOpen}
-        title="媒体详情"
-        showDefaultFooter={false}
-        onCancel={() => setDetailOpen(false)}>
-        {detailLoading || !detail ? (
-          <Text>加载中…</Text>
-        ) : (
-          <div className="space-y-4">
-            {isImage(detail) && (
-              <div className="overflow-hidden rounded border border-slate-200 bg-slate-50">
-                <img
-                  src={detail.url}
-                  alt={detail.originalFileName}
-                  className="max-h-64 w-full object-contain"
-                />
-              </div>
-            )}
-            <div className="grid gap-3 text-sm sm:grid-cols-2">
-              <div><span className="text-slate-500">文件名：</span>{detail.originalFileName}</div>
-              <div><span className="text-slate-500">大小：</span>{formatBytes(detail.sizeBytes)}</div>
-              <div><span className="text-slate-500">类型：</span>{detail.contentType}</div>
-              <div><span className="text-slate-500">Provider：</span>{detail.storageProvider}</div>
-              <div><span className="text-slate-500">尺寸：</span>{detail.width && detail.height ? `${detail.width} x ${detail.height}` : '未识别'}</div>
-              <div><span className="text-slate-500">上传人：</span>{detail.uploadedBy || '未知'}</div>
-              <div className="sm:col-span-2 break-all"><span className="text-slate-500">SHA256：</span>{detail.sha256Hash || '未记录'}</div>
-              <div className="sm:col-span-2 break-all"><span className="text-slate-500">URL：</span>{detail.url}</div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => copyUrl(detail.url)}>
-                <span className="flex items-center gap-1"><ClipboardIcon size={16} />复制 URL</span>
-              </Button>
-              <Button variant="outline" onClick={() => openUrl(detail.url)}>
-                <span className="flex items-center gap-1"><LinkIcon size={16} />打开资源</span>
-              </Button>
-            </div>
-            <div>
-              <div className="mb-2 text-sm font-medium">引用来源</div>
-              {detail.references.length === 0 ? (
-                <Text size="sm" color="secondary">暂无引用</Text>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {detail.references.map((reference) => (
-                    <Tag key={reference.id} variant="primary" size="sm">
-                      {referenceLabel(reference)}
-                    </Tag>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </Modal>
     </div>
   );

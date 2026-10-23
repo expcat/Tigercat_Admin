@@ -38,10 +38,13 @@ test.describe('多标签页导航（tags-view）', () => {
 
     await page.getByTestId('shell-tag-settings').click();
     await expect(page).toHaveURL(/#\/settings$/);
-    await page.getByRole('button', { name: '关闭系统设置' }).click();
+    const closeSettings = page.getByRole('button', { name: '关闭系统设置' });
+    await closeSettings.focus();
+    await closeSettings.press('Enter');
     await expect(page).toHaveURL(/#\/dashboard$/);
     await expect(page.getByTestId('shell-tag-settings')).toHaveCount(0);
     await expect(page.getByTestId('shell-tag-home')).toHaveAttribute('data-active', 'true');
+    await expect(page.getByTestId('shell-tag-home')).toBeFocused();
   });
 
   test('关闭其他 / 关闭全部保留固定仪表盘，刷新后恢复标签', async ({ page }) => {
@@ -89,6 +92,13 @@ test.describe('多标签页导航（tags-view）', () => {
     await expect(page.getByText('关闭其他', { exact: true })).toBeVisible();
     await expect(page.getByText('关闭全部', { exact: true })).toBeVisible();
     await page.keyboard.press('Escape');
+
+    const closeSettings = page.getByRole('button', { name: '关闭系统设置' });
+    await closeSettings.focus();
+    await closeSettings.press('Space');
+    await expect(page.getByTestId('shell-tag-settings')).toHaveCount(0);
+    await expect(page).toHaveURL(/#\/dashboard$/);
+    await expect(homeTag).toBeFocused();
   });
 
   test('游客页与异常页不显示标签条', async ({ page }) => {

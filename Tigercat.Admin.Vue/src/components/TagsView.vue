@@ -28,9 +28,14 @@ const emit = defineEmits<{
 }>()
 
 const tabList = ref<HTMLDivElement | null>(null)
+let restoreTabFocus = false
 function revealActiveTab() {
-  tabList.value?.querySelector<HTMLElement>('[data-active="true"]')
-    ?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  const activeTab = tabList.value?.querySelector<HTMLElement>('[data-active="true"]')
+  activeTab?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  if (activeTab && restoreTabFocus) {
+    activeTab.focus()
+    restoreTabFocus = false
+  }
 }
 watch([() => props.activeKey, () => props.keys, tabList], revealActiveTab, { flush: 'post' })
 let resizeObserver: ResizeObserver | null = null
@@ -54,6 +59,7 @@ function tabTitle(key: ShellPageKey): string {
 }
 
 function handleClose(event: Event | undefined, key: ShellPageKey) {
+  restoreTabFocus = event?.currentTarget === document.activeElement
   event?.preventDefault?.()
   event?.stopPropagation?.()
   emit('close', key)
@@ -64,6 +70,14 @@ function handleSelect(event: MouseEvent, key: ShellPageKey) {
     return
   }
   emit('select', key)
+}
+
+function handleTabKeydown(event: KeyboardEvent, key: ShellPageKey) {
+  if (event.target !== event.currentTarget) return
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    emit('select', key)
+  }
 }
 </script>
 
@@ -89,8 +103,7 @@ function handleSelect(event: MouseEvent, key: ShellPageKey) {
         :title="tabTitle(key)"
         class="shrink-0 cursor-pointer"
         @click="handleSelect($event, key)"
-        @keydown.enter.prevent="emit('select', key)"
-        @keydown.space.prevent="emit('select', key)"
+        @keydown="handleTabKeydown($event, key)"
       >
         <Tag
           :variant="key === props.activeKey ? 'primary' : 'default'"

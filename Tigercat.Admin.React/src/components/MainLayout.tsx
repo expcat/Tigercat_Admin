@@ -149,8 +149,9 @@ export function MainLayout({
     setSidebarOpen(false);
   };
 
-  const pageTitle = getShellPageTitle(currentActiveMenu, schemaNodes);
-  const breadcrumbItems = getShellBreadcrumbItems(currentActiveMenu, schemaNodes);
+  const detailTitle = /^\/files\/.+/.test(location.pathname) ? '媒体详情' : /^\/import\/.+/.test(location.pathname) ? '导入结果' : '';
+  const pageTitle = detailTitle || getShellPageTitle(currentActiveMenu, schemaNodes);
+  const breadcrumbItems = [...getShellBreadcrumbItems(currentActiveMenu, schemaNodes), ...(detailTitle ? [detailTitle] : [])];
 
   return (
     <div className="relative h-screen w-full">

@@ -1,51 +1,60 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Form } from '@expcat/tigercat-react/Form';
 import { FormItem } from '@expcat/tigercat-react/FormItem';
 import { Input } from '@expcat/tigercat-react/Input';
 import { Message } from '@expcat/tigercat-react/Message';
-import { debounce, useAuthForm, apiRequest } from '../utils';
+import { useAuthForm, apiRequest } from '../utils';
+import type { FormRules } from '@expcat/tigercat-core';
 import { LogoIcon } from '../components/Icons';
+
+const authRules: FormRules = {
+  username: { required: true, transform: (value) => String(value ?? '').trim(), message: '请输入用户名' },
+  password: [
+    { required: true, message: '请输入密码' },
+    { min: 6, message: '密码长度不能少于 6 位' },
+  ],
+};
 
 function RegisterPage() {
   const navigate = useNavigate();
-  const { form, errors, setField, validateForm } = useAuthForm({
+  const location = useLocation();
+  const requestRef = useRef<AbortController | null>(null);
+  useEffect(() => () => requestRef.current?.abort(), []);
+  const { form, setField } = useAuthForm({
     username: '',
     password: '',
   });
   const [loading, setLoading] = useState(false);
 
-  const doRegister = useMemo(
-    () =>
-      debounce(async () => {
-        try {
-          await apiRequest('/api/auth/register', {
-            method: 'POST',
-            body: JSON.stringify(form),
-          });
-          navigate('/register-success');
-        } catch (error: any) {
-          Message.error({
-            content: error.message,
-            duration: 3000,
-          });
-        } finally {
-          setLoading(false);
-        }
-      }, 300),
-    [form, navigate],
-  );
-
-  const handleRegister = () => {
-    if (!validateForm()) return;
+  const handleRegister = async () => {
+    if (requestRef.current) return;
+    const request = new AbortController();
+    requestRef.current = request;
     setLoading(true);
-    doRegister();
+    try {
+      const payload = await apiRequest<{ username: string }>('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ ...form, username: form.username?.trim() }),
+        signal: request.signal,
+      });
+      if (request.signal.aborted) return;
+      if (!payload?.data?.username) throw new Error('注册响应不完整，请重试');
+      navigate('/register-success', { replace: true, state: location.state });
+    } catch (error: unknown) {
+      if (!request.signal.aborted) Message.error({ content: error instanceof Error ? error.message : '注册失败，请重试', duration: 3000 });
+    } finally {
+      if (!request.signal.aborted) {
+        requestRef.current = null;
+        setLoading(false);
+      }
+    }
   };
 
   const goToLogin = () => {
-    navigate('/login');
+    navigate('/login', { state: location.state });
   };
 
   return (
@@ -109,14 +118,14 @@ function RegisterPage() {
         </div>
 
         <Card variant="transparent" className="p-0">
-          <Form value={form as unknown as Record<string, unknown>} labelWidth={88}>
+          <Form value={form as unknown as Record<string, unknown>} rules={authRules} labelWidth={88} loading={loading} onSubmit={({ valid }) => { if (valid) void handleRegister(); }}>
             <FormItem name="username" label="用户名">
               <Input
                 value={form.username || ''}
                 placeholder="请输入用户名"
                 onChange={(value) => setField('username', value)}
-                status={errors?.username ? 'error' : undefined}
-                errorMessage={errors?.username}
+                autoComplete="username"
+                disabled={loading}
               />
             </FormItem>
             <FormItem name="password" label="密码">
@@ -125,8 +134,8 @@ function RegisterPage() {
                 type="password"
                 placeholder="请输入密码"
                 onChange={(value) => setField('password', value)}
-                status={errors?.password ? 'error' : undefined}
-                errorMessage={errors?.password}
+                autoComplete="new-password"
+                disabled={loading}
               />
             </FormItem>
             <div className="mt-8 flex flex-col gap-3">
@@ -134,8 +143,7 @@ function RegisterPage() {
                 variant="primary"
                 block
                 loading={loading}
-                type="button"
-                onClick={handleRegister}
+                type="submit"
               >
                 注册
               </Button>

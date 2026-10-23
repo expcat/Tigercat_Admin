@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
-import { Message } from '@expcat/tigercat-vue/Message'
+import { useRouter } from 'vue-router'
 import { Text } from '@expcat/tigercat-vue/Text'
 import { Statistic } from '@expcat/tigercat-vue/Statistic'
 import { Progress } from '@expcat/tigercat-vue/Progress'
@@ -50,6 +50,8 @@ import type {
 import PageHeader from '../components/PageHeader.vue'
 
 // ── 时间范围与加载 ──────────────────────────────
+const router = useRouter()
+let loadingTimer: number | undefined
 const range = ref<string | number>('30')
 const rangeOptions: SegmentedOption[] = [
   { value: '7', label: '近 7 天' },
@@ -60,37 +62,42 @@ const dateRange = ref<[DatePickerInputDate | null, DatePickerInputDate | null] |
 const loading = ref(true)
 
 const factor = computed(() => {
-  const v = String(range.value)
-  return v === '7' ? 0.4 : v === '90' ? 2.2 : 1
+  if (dateRange.value?.[0] && dateRange.value[1]) {
+    const [start, end] = dateRange.value.map((value) => new Date(value!))
+    const days = Math.round((Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) - Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) / 86400000) + 1
+    if (days > 0) return days / 30
+  }
+  return Number(range.value) / 30
 })
 
 function triggerLoading() {
   loading.value = true
-  window.setTimeout(() => {
+  window.clearTimeout(loadingTimer)
+  loadingTimer = window.setTimeout(() => {
     loading.value = false
   }, 420)
 }
 function handleRangeChange(value: string | number) {
   range.value = value
+  dateRange.value = null
   page.value = 1
   triggerLoading()
 }
 function handleDateRangeChange(value: unknown) {
   dateRange.value = value as [DatePickerInputDate | null, DatePickerInputDate | null] | null
+  page.value = 1
+  triggerLoading()
 }
 function handleRefresh() {
   page.value = 1
   triggerLoading()
 }
-function handleExport() {
-  Message.success({ content: '报表已导出（演示）', duration: 2400 })
-}
-
 onMounted(() => {
-  window.setTimeout(() => {
+  loadingTimer = window.setTimeout(() => {
     loading.value = false
   }, 500)
 })
+onBeforeUnmount(() => window.clearTimeout(loadingTimer))
 
 // ── KPI ────────────────────────────────────────
 const kpis = computed(() => [
@@ -241,7 +248,7 @@ const baseChannels = [
   { name: '线下活动', visits: 4200, orders: 130, conversion: 2.7, trend: '下降' },
 ]
 const tableColumns: TableColumn[] = [
-  { key: 'channel', title: '渠道' },
+  { key: 'channel', title: '渠道', cardTitle: true },
   { key: 'visits', title: '访问量', align: 'right' },
   { key: 'orders', title: '订单数', align: 'right' },
   { key: 'conversion', title: '转化率', align: 'right' },
@@ -272,9 +279,9 @@ function handlePageChange(value: number) {
     <PageHeader
       icon="trendingUp"
       title="数据分析"
-      subtitle="一站式 BI 看板，聚合趋势、构成、转化与渠道明细"
+      subtitle="图表与渠道明细使用示例数据，可调整区间查看不同规模"
       :tags="[
-        { label: '实时演示', variant: 'success' },
+        { label: '示例数据', variant: 'success' },
         { label: 'BI', variant: 'primary' },
       ]"
     />
@@ -283,7 +290,7 @@ function handlePageChange(value: number) {
     <Card>
       <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <Segmented
-          :model-value="range"
+          :model-value="dateRange?.[0] && dateRange[1] ? '' : range"
           @update:model-value="handleRangeChange"
           :options="rangeOptions"
         />
@@ -298,11 +305,13 @@ function handlePageChange(value: number) {
           />
           <ButtonGroup>
             <Button variant="outline" @click="handleRefresh">刷新</Button>
-            <Button variant="outline" @click="handleExport">导出</Button>
+            <Button variant="outline" @click="router.push('/reports')">系统统计报表</Button>
           </ButtonGroup>
         </div>
       </div>
     </Card>
+
+    <p class="text-sm text-(--tiger-text-secondary)">区间控制示例规模；能力、散点与组织图为固定示例。真实系统统计请前往「系统统计报表」。</p>
 
     <!-- KPI -->
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -433,7 +442,7 @@ function handlePageChange(value: number) {
         <template #header><Text weight="bold">渠道明细</Text></template>
       <Skeleton v-if="loading" :rows="6" />
       <template v-else>
-        <Table :columns="tableColumns" :data-source="pagedRows" :pagination="false" striped />
+        <Table :columns="tableColumns" :data-source="pagedRows" :pagination="false" responsive-mode="card" card-breakpoint="md" striped />
         <div class="mt-4 flex justify-end">
           <Pagination
             :current="page"

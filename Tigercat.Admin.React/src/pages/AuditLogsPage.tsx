@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Alert } from '@expcat/tigercat-react/Alert';
 import { Button } from '@expcat/tigercat-react/Button';
@@ -6,6 +6,8 @@ import { Card } from '@expcat/tigercat-react/Card';
 import { Empty } from '@expcat/tigercat-react/Empty';
 import { Input } from '@expcat/tigercat-react/Input';
 import { Loading } from '@expcat/tigercat-react/Loading';
+import { Pagination } from '@expcat/tigercat-react/Pagination';
+import { Message } from '@expcat/tigercat-react/Message';
 import { Modal } from '@expcat/tigercat-react/Modal';
 import { Select } from '@expcat/tigercat-react/Select';
 import { Tag } from '@expcat/tigercat-react/Tag';
@@ -40,12 +42,9 @@ import {
 } from '../utils';
 import {
   AUDIT_EXPORT_FIELDS,
-  DATA_EXPORT_PLACEHOLDER_ROWS,
   DATA_EXPORT_TRIGGER_FORMATS,
   EXPORT_FORMAT_LABELS,
   EXPORT_FORMATS,
-  handleDataExportError,
-  skipClientDataExport,
   toExportColumns,
   type ExportFormat,
 } from '../utils/export';
@@ -108,7 +107,7 @@ const getTimelineColor = (category: AuditLogItem['category']) => {
 
 function AuditLogsPage() {
   const location = useLocation();
-  const { has: hasPerm } = usePermission();
+  const { has: hasPerm, loaded: permissionsLoaded } = usePermission();
   const savedWorkbench = useMemo(
     () =>
       loadWorkbenchState('audit-logs', {
@@ -117,6 +116,18 @@ function AuditLogsPage() {
     [],
   );
   const savedQuery = savedWorkbench.queryState;
+  const canView = hasPerm('audit:view');
+  const eventId = new URLSearchParams(location.search).get('eventId') || '';
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [detailError, setDetailError] = useState('');
+  const [detailReload, setDetailReload] = useState(0);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [policyError, setPolicyError] = useState('');
+  const [policyLoaded, setPolicyLoaded] = useState(false);
+  const [savingRetention, setSavingRetention] = useState(false);
+  const listRequest = useRef<AbortController | null>(null);
+  const cleanupTrigger = useRef<HTMLButtonElement>(null);
   const canExport = hasPerm('audit:export');
   const canSaveRetention = hasPerm('setting:edit');
 
@@ -124,7 +135,7 @@ function AuditLogsPage() {
   const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
   const [keyword, setKeyword] = useState(savedQuery.keyword ?? '');
   const [category, setCategory] = useState(savedQuery.category ?? '');
-  const [retentionDays, setRetentionDays] = useState('90');
+  const [retentionDays, setRetentionDays] = useState('');
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [exportFields, setExportFields] = useState<string[]>(
@@ -137,68 +148,71 @@ function AuditLogsPage() {
   const [cleaningRetention, setCleaningRetention] = useState(false);
 
   const loadAuditLogs = useCallback(async () => {
+    listRequest.current?.abort();
+    if (!canView) { setLogs([]); setSelectedLog(null); setLoading(false); return; }
+    const controller = new AbortController();
+    listRequest.current = controller;
     setLoading(true);
     setErrorMessage('');
-
+    setLogs([]);
+    if (!eventId) setSelectedLog(null);
     try {
-      const params = new URLSearchParams({
-        page: '1',
-        pageSize: '60',
+      const params = new URLSearchParams({ page: String(page), pageSize: '30' });
+      if (keyword.trim()) params.set('keyword', keyword.trim());
+      if (category) params.set('category', category);
+      const payload = await apiRequest<PagedResult<AuditLogItem>>(`/api/audit-logs?${params}`, {
+        headers: getAuthHeaders(), signal: controller.signal,
       });
-      if (keyword.trim()) {
-        params.set('keyword', keyword.trim());
-      }
-      if (category) {
-        params.set('category', category);
-      }
-
-      const payload = await apiRequest<PagedResult<AuditLogItem>>(
-        `/api/audit-logs?${params}`,
-        {
-          headers: getAuthHeaders(),
-        },
-      );
+      if (controller.signal.aborted) return;
+      const lastPage = Math.max(1, Math.ceil(payload.data.total / 30));
+      if (page > lastPage) { setPage(lastPage); return; }
       setLogs(payload.data.items);
-      setSelectedLog((current) => {
-        const eventId = new URLSearchParams(location.search).get('eventId');
-        if (eventId) {
-          const target = payload.data.items.find((log) => log.id === eventId);
-          if (target) {
-            return target;
-          }
-        }
-
-        if (current && payload.data.items.some((log) => log.id === current.id)) {
-          return current;
-        }
-
-        return payload.data.items[0] ?? null;
-      });
-    } catch (error: unknown) {
-      setErrorMessage(getFriendlyErrorMessage(error));
+      setTotal(payload.data.total);
+      if (!eventId) setSelectedLog(payload.data.items[0] ?? null);
+    } catch (error) {
+      if (!controller.signal.aborted) { setErrorMessage(getFriendlyErrorMessage(error)); setTotal(0); }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
-  }, [category, keyword, location.search]);
+  }, [canView, category, keyword, page, eventId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setSelectedLog(null);
+    setDetailError('');
+    if (!canView || !eventId) { setDetailLoading(false); return; }
+    setDetailLoading(true);
+    void apiRequest<AuditLogItem>(`/api/audit-logs/${encodeURIComponent(eventId)}`, { headers: getAuthHeaders(), signal: controller.signal })
+      .then((payload) => { if (!controller.signal.aborted) setSelectedLog(payload.data); })
+      .catch((error) => { if (!controller.signal.aborted) setDetailError(error instanceof Error ? error.message : '目标审计事件加载失败'); })
+      .finally(() => { if (!controller.signal.aborted) setDetailLoading(false); });
+    return () => controller.abort();
+  }, [canView, eventId, detailReload]);
 
   const loadRetentionPolicy = useCallback(async () => {
+    if (!canView) return;
+    setPolicyError('');
+    setPolicyLoaded(false);
     try {
       const payload = await apiRequest<AuditRetentionPolicy>(
         '/api/audit-logs/retention-policy',
         { headers: getAuthHeaders() },
       );
       setRetentionDays(String(payload.data.retentionDays));
-    } catch {
-      setRetentionDays('90');
+      setPolicyLoaded(true);
+    } catch (error) {
+      setPolicyError(error instanceof Error ? error.message : '保留策略加载失败');
     }
-  }, []);
+  }, [canView]);
 
   useEffect(() => {
-    loadAuditLogs();
-    loadRetentionPolicy();
-  }, [loadAuditLogs, loadRetentionPolicy]);
+    void loadAuditLogs();
+    return () => listRequest.current?.abort();
+  }, [loadAuditLogs]);
+  useEffect(() => { void loadRetentionPolicy(); }, [loadRetentionPolicy]);
 
   const onExport = useCallback(async (format: ExportFormat) => {
+    if (!canExport || loading || exporting) return;
     if (logs.length === 0) {
       setErrorMessage('当前筛选没有可导出的结果');
       return;
@@ -213,7 +227,7 @@ function AuditLogsPage() {
         format,
         fields: exportFields,
         query: {
-          keyword,
+          keyword: keyword.trim(),
           category,
         },
         headers: getAuthHeaders(),
@@ -223,10 +237,16 @@ function AuditLogsPage() {
     } finally {
       setExporting(false);
     }
-  }, [category, exportFields, keyword, logs.length]);
+  }, [canExport, loading, exporting, category, exportFields, keyword, logs.length]);
 
   const handleSaveRetention = useCallback(async () => {
+    if (!canSaveRetention || !policyLoaded || savingRetention) return;
     const nextRetentionDays = Number(retentionDays);
+    if (!Number.isInteger(nextRetentionDays) || nextRetentionDays < 1 || nextRetentionDays > 3650) {
+      setPolicyError('保留天数必须是 1–3650 的整数'); return;
+    }
+    setSavingRetention(true);
+    setPolicyError('');
     try {
       await apiRequest<AuditRetentionPolicy>('/api/audit-logs/retention-policy', {
         method: 'PUT',
@@ -234,12 +254,15 @@ function AuditLogsPage() {
         body: JSON.stringify({ retentionDays: nextRetentionDays }),
       });
       await loadRetentionPolicy();
+      Message.success({ content: '保留策略已保存', duration: 2400 });
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : '保留策略保存失败');
-    }
-  }, [loadRetentionPolicy, retentionDays]);
+      setPolicyError(error instanceof Error ? error.message : '保留策略保存失败');
+    } finally { setSavingRetention(false); }
+  }, [canSaveRetention, policyLoaded, savingRetention, loadRetentionPolicy, retentionDays]);
 
   const runRetentionCleanup = useCallback(async (dryRun: boolean) => {
+    if (!canSaveRetention || !policyLoaded || cleaningRetention) return;
+    setPolicyError('');
     setCleaningRetention(true);
     try {
       const payload = await apiRequest<AuditRetentionCleanupResult>(
@@ -256,15 +279,16 @@ function AuditLogsPage() {
         await loadAuditLogs();
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : '审计清理失败');
+      setPolicyError(error instanceof Error ? error.message : '审计清理失败');
     } finally {
       setCleaningRetention(false);
     }
-  }, [loadAuditLogs]);
+  }, [canSaveRetention, policyLoaded, cleaningRetention, loadAuditLogs]);
 
   const handleKeywordChange = (value: string | number) => {
     const next = normalizeInput(value);
     setKeyword(next);
+    setPage(1);
     saveWorkbenchState('audit-logs', {
       queryState: { keyword: next, category },
     });
@@ -273,6 +297,7 @@ function AuditLogsPage() {
   const handleCategoryChange = (value: unknown) => {
     const next = String(value ?? '');
     setCategory(next);
+    setPage(1);
     saveWorkbenchState('audit-logs', {
       queryState: { keyword, category: next },
     });
@@ -323,13 +348,14 @@ function AuditLogsPage() {
       {errorMessage && (
         <Alert
           type="error"
-          title="日志加载失败"
+          title="审计操作失败"
           description={errorMessage}
           closable
           onClose={() => setErrorMessage('')}
         />
       )}
 
+      {!canView ? <Alert type="warning" title={permissionsLoaded ? '无权查看审计日志' : '审计权限尚未就绪'} description="需要 audit:view 权限；权限变化后刷新页面重试。" /> : <>
       <PageActionPanel
         title="审计事件查询"
         description="页面通过 API 查询 Redis Streams 聚合结果，支持分页、筛选、详情和导出。"
@@ -354,7 +380,7 @@ function AuditLogsPage() {
               用户事件 {userCount}
             </Tag>
             <Tag variant="info" size="sm">
-              总计 {logs.length}
+              当前页 {logs.length} · 匹配 {total}
             </Tag>
             <Button variant="outline" onClick={loadAuditLogs}>
               刷新日志
@@ -365,7 +391,7 @@ function AuditLogsPage() {
                   <DataExport
                     key={format}
                     columns={exportColumns}
-                    dataSource={DATA_EXPORT_PLACEHOLDER_ROWS}
+                    dataSource={[]}
                     formats={DATA_EXPORT_TRIGGER_FORMATS}
                     fileName="audit-logs"
                     labels={{
@@ -373,11 +399,8 @@ function AuditLogsPage() {
                       exportingText: '导出中...',
                       triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
                     }}
-                    disabled={exporting}
-                    cellFormatter={skipClientDataExport}
-                    onError={(error) =>
-                      handleDataExportError(error, format, onExport, setErrorMessage)
-                    }
+                    disabled={exporting || loading}
+                    customExport={() => onExport(format)}
                   />
                 ))}
                 <CheckboxGroup
@@ -420,22 +443,30 @@ function AuditLogsPage() {
         </Card>
       </div>
 
+      <Pagination current={page} pageSize={30} total={total} onChange={(value) => setPage(value)} />
+      <Text size="sm" color="secondary">筛选与导出均作用于最近 1000 条可检索事件；导出包含全部匹配结果。</Text>
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.8fr_1.2fr]">
         <Card title="保留策略">
+          {policyError && <div className="space-y-2"><Alert type="error" title="保留策略操作失败" description={policyError} />
+            {!policyLoaded && <Button variant="outline" onClick={loadRetentionPolicy}>重试策略</Button>}</div>}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <Input
               value={retentionDays}
               placeholder="保留天数"
+              aria-label="保留天数"
+              disabled={!canSaveRetention || !policyLoaded || savingRetention || cleaningRetention}
               onChange={(event) => setRetentionDays(normalizeInput(event))}
             />
             {canSaveRetention && (
-              <Button variant="outline" onClick={handleSaveRetention}>
+              <Button variant="outline" disabled={!policyLoaded || savingRetention || cleaningRetention} onClick={handleSaveRetention}>
                 保存策略
               </Button>
             )}
             {canSaveRetention && (
               <Button
                 variant="outline"
+                ref={cleanupTrigger}
+                disabled={!policyLoaded || savingRetention || cleaningRetention}
                 onClick={() => runRetentionCleanup(true)}>
                 预览清理
               </Button>
@@ -444,18 +475,13 @@ function AuditLogsPage() {
         </Card>
 
         <Card title="事件详情">
-          {selectedLog ? (
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-2">
-                {logs.slice(0, 5).map((log) => (
-                  <Button
-                    key={log.id}
-                    variant="outline"
-                    onClick={() => setSelectedLog(log)}>
-                    {selectedLog.id === log.id ? `当前：${log.title}` : log.title}
-                  </Button>
-                ))}
-              </div>
+          {detailError && <div className="space-y-2"><Alert type="error" title="目标事件无法定位" description={detailError} />
+            <Button variant="outline" onClick={() => setDetailReload((value) => value + 1)}>重试详情</Button></div>}
+          {logs.length > 0 && <Select aria-label="选择审计事件" value={selectedLog?.id} clearable={false}
+            options={logs.map((log) => ({ value: log.id, label: `${log.title} · ${log.id}` }))}
+            onChange={(id) => { setSelectedLog(logs.find((log) => log.id === id) ?? null); setDetailError(''); }} />}
+          {detailLoading ? <Loading /> : selectedLog ? (
+            <div className="space-y-3 break-words">
               <Text weight="bold">{selectedLog.title}</Text>
               <Text size="sm" color="secondary">
                 {selectedLog.description}
@@ -500,12 +526,14 @@ function AuditLogsPage() {
       <Modal
         open={cleanupConfirmOpen}
         title="确认清理审计日志"
-        showDefaultFooter
-        okText={cleaningRetention ? '清理中...' : '执行清理'}
-        cancelText="关闭"
-        onOk={() => runRetentionCleanup(false)}
-        onCancel={() => setCleanupConfirmOpen(false)}>
+        footer={<>
+          <Button variant="outline" disabled={cleaningRetention} onClick={() => setCleanupConfirmOpen(false)}>关闭</Button>
+          {cleanupResult?.dryRun && <Button danger disabled={cleaningRetention || !canSaveRetention} loading={cleaningRetention} onClick={() => runRetentionCleanup(false)}>执行清理</Button>}
+        </>}
+        onAfterClose={() => cleanupTrigger.current?.focus()}
+        onCancel={() => { if (!cleaningRetention) setCleanupConfirmOpen(false); }}>
         <div className="space-y-3">
+          {policyError && <Alert type="error" title="清理失败" description={policyError} />}
           <Text color="secondary">
             当前保留 {cleanupResult?.retentionDays ?? retentionDays} 天，
             截止时间 {cleanupResult ? formatDateTime(cleanupResult.cutoffUtc) : '--'}。
@@ -516,6 +544,7 @@ function AuditLogsPage() {
           </Text>
         </div>
       </Modal>
+      </>}
     </div>
   );
 }

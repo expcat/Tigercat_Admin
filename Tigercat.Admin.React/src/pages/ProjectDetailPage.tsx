@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Avatar } from '@expcat/tigercat-react/Avatar';
 import { AvatarGroup } from '@expcat/tigercat-react/AvatarGroup';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
-import { Message } from '@expcat/tigercat-react/Message';
 import { Tag } from '@expcat/tigercat-react/Tag';
 import { Text } from '@expcat/tigercat-react/Text';
 import { Descriptions } from '@expcat/tigercat-react/Descriptions';
@@ -34,12 +33,10 @@ import {
   PROJECT_MILESTONES,
   PROJECT_STATUS_META,
   readProjectId,
-  type ProjectDetailTab,
-  type ProjectRecord,
 } from '../utils/projects';
 import { fetchComments } from '../utils/comments';
 import { ApiError } from '../utils/request';
-import type { CommentItem } from '../utils/types';
+import type { CommentItem, ProjectDetailTab, ProjectRecord } from '../utils/types';
 
 const getScrollContainer = (): HTMLElement | Window =>
   document.getElementById('main-content-scroll') ?? window;
@@ -62,9 +59,15 @@ function tabFromHref(href: string): ProjectDetailTab {
 function ProjectDetailPage() {
   const navigate = useNavigate();
   const params = useParams();
+  const location = useLocation();
   const id = readProjectId(params.id);
   const [activeTab, setActiveTab] = useState<ProjectDetailTab>('overview');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [detailError, setDetailError] = useState('');
+  const [retryVersion, setRetryVersion] = useState(0);
+  const [commentsError, setCommentsError] = useState('');
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const commentsRequest = useRef<AbortController | null>(null);
   const [project, setProject] = useState<ProjectRecord | null>(null);
   const [comments, setComments] = useState<CommentNode[]>([]);
 
@@ -72,45 +75,48 @@ function ProjectDetailPage() {
     setActiveTab('overview');
   }, [id]);
 
+  const loadComments = useCallback(async () => {
+    commentsRequest.current?.abort();
+    const controller = new AbortController();
+    commentsRequest.current = controller;
+    setCommentsLoading(true);
+    setCommentsError('');
+    try {
+      const payload = await fetchComments('project', id, controller.signal);
+      if (!controller.signal.aborted) setComments(toCommentNodes(payload.data ?? []));
+    } catch (error) {
+      if (!controller.signal.aborted) setCommentsError(readErrorMessage(error, '项目讨论加载失败'));
+    } finally {
+      if (!controller.signal.aborted) setCommentsLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
+    commentsRequest.current?.abort();
+    setProject(null);
+    setComments([]);
+    setCommentsError('');
+    setDetailError('');
+    setLoading(true);
     const loadDetail = async () => {
-      setLoading(true);
-      setProject(null);
-      setComments([]);
-      if (!id) {
-        setLoading(false);
-        return;
-      }
       try {
-        const [projectPayload, commentsPayload] = await Promise.all([
-          fetchProject(id),
-          fetchComments('project', id),
-        ]);
-        if (cancelled) {
-          return;
-        }
-        setProject(projectPayload.data);
-        setComments(toCommentNodes(commentsPayload.data ?? []));
-      } catch (error: unknown) {
-        if (!cancelled) {
-          if (!(error instanceof ApiError && error.status === 404)) {
-            Message.error({ content: readErrorMessage(error, '项目详情加载失败'), duration: 3000 });
-          }
-          setProject(null);
-          setComments([]);
+        if (!id) return;
+        const payload = await fetchProject(id, controller.signal);
+        if (controller.signal.aborted) return;
+        setProject(payload.data);
+        void loadComments();
+      } catch (error) {
+        if (!controller.signal.aborted && !(error instanceof ApiError && error.status === 404)) {
+          setDetailError(error instanceof ApiError && error.status === 403 ? '无权查看该项目' : readErrorMessage(error, '项目详情加载失败'));
         }
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
     void loadDetail();
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+    return () => { controller.abort(); commentsRequest.current?.abort(); };
+  }, [id, retryVersion, loadComments]);
 
   const overviewItems = useMemo<DescriptionsItem[]>(() => {
     if (!project) {
@@ -130,7 +136,7 @@ function ProjectDetailPage() {
   }, [project]);
 
   const goBackToList = () => {
-    navigate('/projects');
+    navigate(`/projects${location.search}`);
   };
 
   const handleTabChange = (key: string | number) => {
@@ -172,11 +178,11 @@ function ProjectDetailPage() {
       <div className="space-y-6">
         <PageHeader
           icon={<PackageIcon size={24} />}
-          title="未找到项目"
-          subtitle={id ? `没有编号为 ${id} 的项目` : '缺少项目编号'}
+          title={detailError ? '项目详情加载失败' : '未找到项目'}
+          subtitle={detailError || (id ? `没有编号为 ${id} 的项目` : '缺少项目编号')}
           tags={[
             { label: '项目', variant: 'primary' },
-            { label: '未找到', variant: 'warning' },
+            { label: detailError ? '加载失败' : '未找到', variant: 'warning' },
           ]}
         />
         <PageActionPanel
@@ -189,7 +195,10 @@ function ProjectDetailPage() {
           }
         />
         <Card>
-          <Empty description="该项目不存在或已被移除，请从项目列表重新进入。" />
+          <div className="space-y-3" role={detailError ? 'alert' : undefined}>
+            <Empty description={detailError || '该项目不存在或已被移除，请从项目列表重新进入。'} />
+            {detailError && <Button variant="outline" onClick={() => setRetryVersion(value => value + 1)}>重试项目详情</Button>}
+          </div>
         </Card>
       </div>
     );
@@ -199,6 +208,9 @@ function ProjectDetailPage() {
     <ProjectDetailContent
       project={project}
       comments={comments}
+      commentsError={commentsError}
+      commentsLoading={commentsLoading}
+      onRetryComments={() => void loadComments()}
       overviewItems={overviewItems}
       activeTab={activeTab}
       onTabChange={handleTabChange}
@@ -212,6 +224,9 @@ function ProjectDetailPage() {
 function ProjectDetailContent({
   project,
   comments,
+  commentsError,
+  commentsLoading,
+  onRetryComments,
   overviewItems,
   activeTab,
   onTabChange,
@@ -221,6 +236,9 @@ function ProjectDetailContent({
 }: {
   project: ProjectRecord;
   comments: CommentNode[];
+  commentsError: string;
+  commentsLoading: boolean;
+  onRetryComments: () => void;
   overviewItems: DescriptionsItem[];
   activeTab: ProjectDetailTab;
   onTabChange: (key: string | number) => void;
@@ -364,7 +382,7 @@ function ProjectDetailContent({
                   )}
                 </Card>
                 <Card header={<Text weight="bold">讨论</Text>}>
-                  {comments.length ? (
+                  {commentsLoading ? <MutedPanel compact description="正在加载讨论…" /> : commentsError ? <div role="alert" className="space-y-3"><Text color="danger">{commentsError}</Text><Button variant="outline" onClick={onRetryComments}>重试项目讨论</Button></div> : comments.length ? (
                     <CommentThread
                       nodes={comments}
                       showReply={false}

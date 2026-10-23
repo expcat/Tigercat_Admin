@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Button } from '@expcat/tigercat-react/Button';
+import { usePermission } from '../utils/permission';
 import { Alert } from '@expcat/tigercat-react/Alert';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Loading } from '@expcat/tigercat-react/Loading';
@@ -33,14 +35,11 @@ import {
 import type { StatsOverview, StatsTrend } from '../utils';
 import { apiRequest, getAuthHeaders } from '../utils';
 import {
-  DATA_EXPORT_PLACEHOLDER_ROWS,
   DATA_EXPORT_TRIGGER_FORMATS,
   EXPORT_FORMAT_LABELS,
   EXPORT_FORMATS,
   OVERVIEW_EXPORT_FIELDS,
   exportOverview,
-  handleDataExportError,
-  skipClientDataExport,
   toExportColumns,
   type ExportFormat,
 } from '../utils/export';
@@ -129,20 +128,22 @@ const quickActions = [
 
 function HomePage() {
   const navigate = useNavigate();
+  const { has: hasPerm } = usePermission();
   const { notice, homeMessage, homeError, username } =
     useOutletContext<HomePageContext>();
 
   // --- 统计数据状态 ---
   const [overview, setOverview] = useState<StatsOverview | null>(null);
   const [trend, setTrend] = useState<StatsTrend | null>(null);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [trendLoading, setTrendLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [trendLoading, setTrendLoading] = useState(true);
+  const [trendError, setTrendError] = useState('');
+  const [reload, setReload] = useState(0);
   const [statsError, setStatsError] = useState('');
   const [trendDays, setTrendDays] = useState<number>(7);
   const [isNarrowTrend, setIsNarrowTrend] = useState(false);
   const [exporting, setExporting] = useState(false);
   const exportColumns = useMemo(() => toExportColumns(OVERVIEW_EXPORT_FIELDS), []);
-  const trendRequestId = useRef(0);
 
   useEffect(() => {
     const query = window.matchMedia('(max-width: 639px)');
@@ -176,7 +177,7 @@ function HomePage() {
   }, [trend]);
 
   const distributionChartData = useMemo(() => {
-    if (!overview) return [];
+    if (!overview || overview.totalUsers === 0) return [];
     return [
       { value: overview.activeUsers, label: '启用' },
       { value: overview.disabledUsers, label: '停用' },
@@ -201,63 +202,34 @@ function HomePage() {
     ];
   }, [overview, chartPrimary, chartError, chartSuccess, chartWarning, chartInfo]);
 
-  // --- API 请求 ---
-  const fetchOverview = useCallback(async () => {
-    const res = await apiRequest<StatsOverview>('/api/stats/overview', {
-      headers: getAuthHeaders(),
-    });
-    setOverview(res.data);
-  }, []);
-
-  const fetchTrend = useCallback(async (days: number) => {
-    const id = ++trendRequestId.current;
-    const res = await apiRequest<StatsTrend>(`/api/stats/trend?days=${days}`, {
-      headers: getAuthHeaders(),
-    });
-    // 仅当此请求仍是最新请求时才更新数据，避免竞态
-    if (id === trendRequestId.current) {
-      setTrend(res.data);
-    }
-  }, []);
-
-  // 初始加载
   useEffect(() => {
-    let cancelled = false;
-    const loadStats = async () => {
-      setStatsLoading(true);
-      setStatsError('');
-      try {
-        await Promise.all([fetchOverview(), fetchTrend(trendDays)]);
-      } catch (e: any) {
-        if (!cancelled) setStatsError(e.message || '加载统计数据失败');
-      } finally {
-        if (!cancelled) setStatsLoading(false);
-      }
-    };
-    loadStats();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const controller = new AbortController();
+    setStatsLoading(true);
+    setStatsError('');
+    setOverview(null);
+    void apiRequest<StatsOverview>('/api/stats/overview', { headers: getAuthHeaders(), signal: controller.signal })
+      .then((res) => { if (!controller.signal.aborted) setOverview(res.data); })
+      .catch((error) => { if (!controller.signal.aborted) setStatsError(error instanceof Error ? error.message : '加载统计数据失败'); })
+      .finally(() => { if (!controller.signal.aborted) setStatsLoading(false); });
+    return () => controller.abort();
+  }, [reload]);
 
-  // 切换时间范围时重新加载趋势
-  const handleTrendDaysChange = useCallback(
-    async (value: number | string | undefined) => {
-      const days = Number(value);
-      if (!days) return;
-      setTrendDays(days);
-      setTrendLoading(true);
-      try {
-        await fetchTrend(days);
-      } catch (e: any) {
-        setStatsError(e.message || '加载趋势数据失败');
-      } finally {
-        setTrendLoading(false);
-      }
-    },
-    [fetchTrend],
-  );
+  useEffect(() => {
+    const controller = new AbortController();
+    setTrendLoading(true);
+    setTrendError('');
+    setTrend(null);
+    void apiRequest<StatsTrend>(`/api/stats/trend?days=${trendDays}`, { headers: getAuthHeaders(), signal: controller.signal })
+      .then((res) => { if (!controller.signal.aborted) setTrend(res.data); })
+      .catch((error) => { if (!controller.signal.aborted) setTrendError(error instanceof Error ? error.message : '加载趋势数据失败'); })
+      .finally(() => { if (!controller.signal.aborted) setTrendLoading(false); });
+    return () => controller.abort();
+  }, [trendDays, reload]);
+
+  const handleTrendDaysChange = (value: number | string | undefined) => {
+    const days = Number(value);
+    if (trendDaysOptions.some((option) => option.value === days)) setTrendDays(days);
+  };
 
   const onExport = useCallback(async (format: ExportFormat) => {
     setExporting(true);
@@ -275,7 +247,7 @@ function HomePage() {
     }
   }, [trendDays]);
 
-  const errorMessage = homeError || statsError;
+  const errorMessage = homeError || statsError || trendError;
 
   return (
     <div className="space-y-6">
@@ -294,7 +266,7 @@ function HomePage() {
         title={`欢迎回来，${username || 'Admin'}！`}
         subtitle={homeMessage || '今天是个好日子，让我们开始工作吧！'}
         tags={[
-          { label: '管理员', variant: 'primary' },
+          { label: '当前账号', variant: 'primary' },
           { label: '已认证', variant: 'success' },
         ]}
       />
@@ -309,20 +281,22 @@ function HomePage() {
         />
       )}
 
+      {(statsError || trendError) && <Button variant="outline" onClick={() => setReload((value) => value + 1)}>重试统计</Button>}
+
       <Marquee
         direction="start"
         duration={28000}
         pauseOnHover
         gap={24}
         repeat={2}
-        aria-label="运维公告"
+        aria-label="运维公告示例"
         className="rounded-lg border border-(--tiger-border,#e5e7eb)/30 bg-(--tiger-bg-card,#ffffff) px-3 py-2">
         {ANNOUNCEMENTS.map((item) => (
           <span
             key={item}
             className="inline-flex items-center gap-2 whitespace-nowrap text-sm text-(--tiger-text,#0f172a)">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-(--tiger-primary,#3b82f6)" />
-            <span className="text-(--tiger-text-secondary,#64748b)">{item}</span>
+            <span className="text-(--tiger-text-secondary,#64748b)">示例：{item}</span>
           </span>
         ))}
       </Marquee>
@@ -332,7 +306,7 @@ function HomePage() {
           <DataExport
             key={format}
             columns={exportColumns}
-            dataSource={DATA_EXPORT_PLACEHOLDER_ROWS}
+            dataSource={[]}
             formats={DATA_EXPORT_TRIGGER_FORMATS}
             fileName="overview"
             labels={{
@@ -340,13 +314,8 @@ function HomePage() {
               exportingText: '导出中...',
               triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
             }}
-            disabled={exporting}
-            cellFormatter={skipClientDataExport}
-            onError={(error) =>
-              handleDataExportError(error, format, onExport, (message) =>
-                Message.error({ content: message, duration: 3000 }),
-              )
-            }
+            disabled={exporting || statsLoading || trendLoading || !!statsError || !!trendError}
+            customExport={() => onExport(format)}
           />
         ))}
       </div>
@@ -441,7 +410,7 @@ function HomePage() {
         {/* 快捷操作 */}
         <Card header={<Text size="base" weight="bold">快捷操作</Text>} className="lg:col-span-1">
           <div className="grid grid-cols-2 gap-3">
-            {quickActions.map((action) => {
+            {quickActions.filter((action) => action.key === 'users' ? hasPerm('user:view') : action.key === 'roles' ? hasPerm('role:view') : action.key === 'logs' ? hasPerm('audit:view') : true).map((action) => {
               const IconComponent = action.icon;
               return (
                 <button
@@ -514,7 +483,7 @@ function HomePage() {
             <MetricCard
               framed={false}
               title="API 状态"
-              value="在线"
+              value={statsLoading || trendLoading ? '检查中' : statsError || trendError ? '请求失败' : '在线'}
               icon={<GlobeIcon size={20} />}
             />
           </Col>

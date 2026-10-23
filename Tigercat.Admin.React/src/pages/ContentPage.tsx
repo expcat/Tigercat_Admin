@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { Button } from '@expcat/tigercat-react/Button';
+import { Alert } from '@expcat/tigercat-react/Alert';
+import { Pagination } from '@expcat/tigercat-react/Pagination';
 import { Card } from '@expcat/tigercat-react/Card';
 import { AutoComplete } from '@expcat/tigercat-react/AutoComplete';
 import { Message } from '@expcat/tigercat-react/Message';
@@ -17,7 +19,6 @@ import { TreeSelect } from '@expcat/tigercat-react/TreeSelect';
 import { Cascader } from '@expcat/tigercat-react/Cascader';
 import { TagsInput } from '@expcat/tigercat-react/TagsInput';
 import { Mentions } from '@expcat/tigercat-react/Mentions';
-import { Upload } from '@expcat/tigercat-react/Upload';
 import { Watermark } from '@expcat/tigercat-react/Watermark';
 import { Result } from '@expcat/tigercat-react/Result';
 import type {
@@ -26,19 +27,21 @@ import type {
   CascaderOption,
   CascaderModelValue,
   MentionOption,
+  UploadFile,
 } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { MutedPanel } from '../components/PageFragments';
 import { EditIcon, UploadIcon, DownloadIcon } from '../components/Icons';
-import { ApiError } from '../utils/request';
+import { useNavigate } from 'react-router-dom';
+import { usePermission } from '../utils/permission';
+import { listMedia, uploadOrReuseMedia } from '../utils/media';
+import type { MediaItem } from '../utils/types';
 import {
   asCategoryKey,
   asColumnPath,
   currentEditorBody,
   fetchArticle,
-  fetchArticles,
   saveArticle,
-  unwrapArticles,
   type Article,
   type ArticleEditorType,
 } from '../utils/content';
@@ -127,6 +130,24 @@ const readErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
 
 function ContentPage() {
+  const navigate = useNavigate();
+  const { has } = usePermission();
+  const canUpload = has('media:upload');
+  const canView = has('media:view');
+  const loadController = useRef<AbortController | null>(null);
+  const uploadControllers = useRef(new Map<string, AbortController>());
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loadError, setLoadError] = useState('');
+  const [attachments, setAttachments] = useState<MediaItem[]>([]);
+  const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([]);
+  const uploading = uploadFiles.filter((file) => file.status === 'uploading').length;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [mediaPage, setMediaPage] = useState(1);
+  const [mediaTotal, setMediaTotal] = useState(0);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaError, setMediaError] = useState('');
+  const [mediaRetry, setMediaRetry] = useState(0);
   const [articleId, setArticleId] = useState('a1');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -146,6 +167,8 @@ function ContentPage() {
   const currentColumnText = useMemo(() => columnText(column), [column]);
 
   const applyArticle = (article: Article) => {
+    setAttachments(article.attachments);
+    setUploadFiles([]);
     setArticleId(article.id);
     setTitle(article.title);
     setEditorType(article.editorType);
@@ -170,38 +193,93 @@ function ContentPage() {
     category: asCategoryKey(category),
     column: asColumnPath(column),
     published: nextPublished,
+    attachmentIds: attachments.map((item) => item.id),
   });
 
+  const loadArticle = async () => {
+    loadController.current?.abort();
+    uploadControllers.current.forEach((controller) => controller.abort());
+    setUploadFiles([]);
+    const controller = new AbortController();
+    loadController.current = controller;
+    setLoading(true);
+    setLoadError('');
+    try {
+      const payload = await fetchArticle('a1', controller.signal);
+      if (!controller.signal.aborted) applyArticle(payload.data);
+    } catch (error) {
+      if (!controller.signal.aborted) setLoadError(readErrorMessage(error, '文章加载失败'));
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let cancelled = false;
-    const loadArticle = async () => {
-      setLoading(true);
-      try {
-        let article: Article | undefined;
-        try {
-          const payload = await fetchArticle('a1');
-          article = payload.data;
-        } catch (error: unknown) {
-          if (!(error instanceof ApiError) || error.status !== 404) throw error;
-          const list = await fetchArticles();
-          article = unwrapArticles(list.data)[0];
-        }
-        if (!cancelled && article) applyArticle(article);
-      } catch (error: unknown) {
-        if (!cancelled) {
-          Message.error({ content: readErrorMessage(error, '文章加载失败'), duration: 3000 });
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
     void loadArticle();
     return () => {
-      cancelled = true;
+      loadController.current?.abort();
+      uploadControllers.current.forEach((controller) => controller.abort());
     };
   }, []);
 
+  useEffect(() => {
+    if (!pickerOpen || !canView) return;
+    const controller = new AbortController();
+    setMediaLoading(true);
+    setMediaError('');
+    void listMedia({ page: mediaPage, pageSize: 6, sortOrder: 'desc' }, controller.signal)
+      .then(({ data }) => { if (!controller.signal.aborted) { setMediaItems(data.items); setMediaTotal(data.total); } })
+      .catch((error) => { if (!controller.signal.aborted) setMediaError(readErrorMessage(error, '媒体加载失败')); })
+      .finally(() => { if (!controller.signal.aborted) setMediaLoading(false); });
+    return () => controller.abort();
+  }, [pickerOpen, canView, mediaPage, mediaRetry]);
+
+  const addAttachment = (item: MediaItem) => {
+    setAttachments((current) => current.some((entry) => entry.id === item.id) ? current : [...current, item]);
+  };
+
+  const handleUpload = async (upload: UploadFile) => {
+    if (!upload.file || uploadControllers.current.has(upload.uid)) return;
+    const controller = new AbortController();
+    uploadControllers.current.set(upload.uid, controller);
+    setUploadFiles((current) => current.map((item) => item.uid === upload.uid ? { ...item, status: 'uploading', error: undefined } : item));
+    try {
+      const item = await uploadOrReuseMedia(upload.file, controller.signal);
+      if (controller.signal.aborted) return;
+      addAttachment(item);
+      setUploadFiles((current) => current.filter((entry) => entry.uid !== upload.uid));
+    } catch (error) {
+      if (!controller.signal.aborted) setUploadFiles((current) => current.map((item) => item.uid === upload.uid
+        ? { ...item, status: 'error', error: readErrorMessage(error, '附件上传失败') } : item));
+    } finally {
+      uploadControllers.current.delete(upload.uid);
+    }
+  };
+
+  const handleFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = '';
+    const remaining = 12 - attachments.length - uploadFiles.length;
+    if (files.length > remaining) {
+      Message.warning({ content: `最多 12 个附件，当前还可添加 ${remaining} 个；本次未上传`, duration: 3000 });
+      return;
+    }
+    if (files.some((file) => file.size > 10 * 1024 * 1024)) {
+      Message.warning({ content: '文件超过 10 MB 上限，本次未上传', duration: 3000 });
+      return;
+    }
+    const added: UploadFile[] = files.map((file) => ({ uid: crypto.randomUUID(), name: file.name, file, status: 'uploading' }));
+    setUploadFiles((current) => [...current, ...added]);
+    added.forEach((file) => void handleUpload(file));
+  };
+
+  const removeUpload = (uid: string) => {
+    uploadControllers.current.get(uid)?.abort();
+    setUploadFiles((current) => current.filter((item) => item.uid !== uid));
+  };
+
   const saveDraft = async () => {
+    if (loading || saving || loadError || uploadFiles.length) return;
     setSaving(true);
     try {
       const payload = await saveArticle(articleId, buildPayload(false));
@@ -215,10 +293,12 @@ function ContentPage() {
   };
 
   const publish = async () => {
+    if (!publishNow) { await saveDraft(); return; }
     if (!title.trim()) {
       Message.warning({ content: '请先填写内容标题', duration: 2000 });
       return;
     }
+    if (loading || saving || loadError || uploadFiles.length) return;
     setSaving(true);
     try {
       const payload = await saveArticle(articleId, buildPayload(true));
@@ -246,6 +326,7 @@ function ContentPage() {
       <Card>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Segmented
+            disabled={saving || loading || !!loadError}
             value={editorType}
             options={EDITOR_OPTIONS}
             onChange={(v) => setEditorType(v as EditorType)}
@@ -255,25 +336,28 @@ function ContentPage() {
               <Text size="sm" color="secondary">
                 立即发布
               </Text>
-              <Switch aria-label="立即发布" checked={publishNow} onChange={setPublishNow} />
+              <Switch disabled={saving || loading || !!loadError} aria-label="立即发布" checked={publishNow} onChange={setPublishNow} />
             </div>
-            <Button variant="outline" disabled={loading || saving} onClick={() => void saveDraft()}>
+            <Button variant="outline" disabled={loading || saving || !!loadError || uploadFiles.length > 0} onClick={() => void saveDraft()}>
               <span className="mr-1 inline-flex align-middle">
                 <DownloadIcon size={16} />
               </span>
               保存草稿
             </Button>
-            <Button disabled={loading || saving} onClick={() => void publish()}>
+            <Button disabled={loading || saving || !!loadError || uploadFiles.length > 0} onClick={() => void publish()}>
               <span className="mr-1 inline-flex align-middle">
                 <UploadIcon size={16} />
               </span>
-              发布
+              {publishNow ? '发布' : '保存'}
             </Button>
+            <Button variant="ghost" disabled={saving || loading} onClick={() => void loadArticle()}>重新加载</Button>
           </Space>
         </div>
       </Card>
 
-      {loading && !published ? (
+      {loadError ? (
+        <Alert type="error" title="文章加载失败" description={loadError} action={<Button onClick={() => void loadArticle()}>重试</Button>} />
+      ) : loading ? (
         <Card>
           <MutedPanel description="正在加载文章…" />
         </Card>
@@ -282,21 +366,18 @@ function ContentPage() {
           <Result
             status="success"
             title="发布成功"
-            subTitle={`《${title}》已${publishNow ? '立即发布' : '加入发布队列'}，栏目：${currentColumnText}`}
+            subTitle={`《${title}》已发布，栏目：${currentColumnText}`}
             extra={
               <div className="flex justify-center gap-2">
                 <Button variant="outline" onClick={() => setPublished(false)}>
                   继续编辑
-                </Button>
-                <Button disabled={saving} onClick={() => void saveDraft()}>
-                  查看发布记录
                 </Button>
               </div>
             }
           />
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div inert={saving} className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <Card
             className="lg:col-span-2"
             header={
@@ -335,7 +416,7 @@ function ContentPage() {
               </Watermark>
               <MutedPanel
                 compact
-                description="水印用于标识草稿状态；发布后正文水印移除（演示）。标题、正文与分类栏目标签会保存到服务端，刷新后从接口恢复。协作者与附件仍仅本页有效。"
+                description="标题、正文、分类、栏目、标签与附件随文章保存，刷新后恢复。附件上传后请保存草稿或发布；协作者备注仅供本页编辑参考。"
               />
             </div>
           </Card>
@@ -390,14 +471,42 @@ function ContentPage() {
                   <Text weight="medium" className="mb-1 block">
                     封面 / 附件
                   </Text>
-                  <Upload autoUpload={false} accept="image/*" multiple>
-                    <span className="inline-flex items-center">
-                      <span className="mr-1 inline-flex align-middle">
-                        <UploadIcon size={14} />
-                      </span>
-                      选择文件
-                    </span>
-                  </Upload>
+                  <div className="space-y-3">
+                    {canUpload && <>
+                      <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileInputChange} disabled={saving || attachments.length + uploadFiles.length >= 12} />
+                      <Button disabled={saving || attachments.length + uploadFiles.length >= 12} onClick={() => fileInputRef.current?.click()}><span className="inline-flex items-center gap-1"><UploadIcon size={14} />上传附件</span></Button>
+                    </>}
+                    <ul className="space-y-2" aria-label="附件上传">
+                      {uploadFiles.map((file) => <li key={file.uid} className="space-y-1 rounded border border-(--tiger-border) p-2 text-sm">
+                        <span className="block break-all">{file.name}</span>
+                        {file.status === 'error' ? <span role="alert" className="block break-all text-(--tiger-error)">{file.error}</span> : <span role="status">正在上传…</span>}
+                        <div className="flex gap-2">
+                          {file.status === 'error' && <Button size="sm" variant="outline" aria-label={`重试上传 ${file.name}`} onClick={() => void handleUpload(file)}>重试</Button>}
+                          <Button size="sm" variant="ghost" aria-label={`取消上传 ${file.name}`} onClick={() => removeUpload(file.uid)}>{file.status === 'error' ? '移除' : '取消'}</Button>
+                        </div>
+                      </li>)}
+                    </ul>
+                    {uploadFiles.length > 0 && <Text size="sm" color="secondary">请等待上传完成，或重试 / 移除失败项后保存文章。</Text>}
+                    {canView && <Button variant="outline" size="sm" onClick={() => setPickerOpen(!pickerOpen)}>{pickerOpen ? '收起媒体选择' : '选择已有媒体'}</Button>}
+                    {pickerOpen && canView && <div className="space-y-2 rounded border border-(--tiger-border) p-2">
+                      {mediaError ? <Alert type="error" title={mediaError} action={<Button size="sm" onClick={() => setMediaRetry((value) => value + 1)}>重试</Button>} /> : mediaLoading ? <Text>正在加载媒体…</Text> : <>
+                        {!mediaItems.length && <Text color="secondary">暂无媒体，请先上传附件</Text>}
+                        {mediaItems.map((item) => <div key={item.id} className="flex min-w-0 items-center justify-between gap-2">
+                          <span className="min-w-0 truncate">{item.originalFileName}</span>
+                          <Button size="sm" variant="ghost" disabled={uploading > 0 || attachments.length + uploadFiles.length >= 12 || attachments.some((entry) => entry.id === item.id)} onClick={() => addAttachment(item)}>添加</Button>
+                        </div>)}
+                      </>}
+                      <Pagination current={mediaPage} pageSize={6} total={mediaTotal} size="sm" onChange={setMediaPage} />
+                    </div>}
+                    <ul className="space-y-2" aria-label="文章附件">
+                      {attachments.map((item) => <li key={item.id} className="flex min-w-0 items-center justify-between gap-2">
+                        {canView ? <Button variant="ghost" size="sm" className="min-w-0 truncate" onClick={() => navigate(`/files/${item.id}`)}>{item.originalFileName}</Button> : <span className="min-w-0 truncate">{item.originalFileName}</span>}
+                        <Button variant="ghost" size="sm" aria-label={`移除附件 ${item.originalFileName}`} onClick={() => setAttachments((current) => current.filter((entry) => entry.id !== item.id))}>移除</Button>
+                      </li>)}
+                    </ul>
+                    {!attachments.length && <Text size="sm" color="secondary">暂无附件</Text>}
+                    {!canUpload && <Text size="sm" color="secondary">当前账号无上传权限</Text>}
+                  </div>
                 </div>
               </div>
             </Card>
