@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Tigercat.Admin.Api.Endpoints;
 
 public record MediaItemResponse(
@@ -30,7 +32,10 @@ public record MediaDetailResponse(
     string Url,
     string? UploadedBy,
     DateTime CreatedAt,
-    MediaReferenceResponse[] References);
+    MediaReferenceResponse[] References,
+    JsonElement[] Annotations);
+
+public record UpdateMediaAnnotationsRequest(JsonElement[] Annotations);
 
 public record MediaReferenceResponse(
     int Id,

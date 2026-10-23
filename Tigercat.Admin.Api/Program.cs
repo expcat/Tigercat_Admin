@@ -97,31 +97,10 @@ builder.Services.AddDbContext<AdminDbContext>((sp, options) =>
     }
 });
 
-// When a relational provider is configured, use the EF-backed stores so that auth
-// operations share the same database as the rest of the application. For the
-// InMemory provider (CI / isolated tests) the lightweight in-memory stores are used.
-builder.Services.AddSingleton<InMemoryUserStore>();
-builder.Services.AddSingleton<InMemorySessionStore>();
-builder.Services.AddScoped<EfUserStore>();
-builder.Services.AddScoped<EfSessionStore>();
-
-builder.Services.AddScoped<IUserStore>(sp =>
-{
-    var config = sp.GetRequiredService<IConfiguration>();
-    var databaseOptions = DatabaseProviderResolver.Resolve(config);
-    return databaseOptions.UsesRelationalStores
-        ? sp.GetRequiredService<EfUserStore>()
-        : sp.GetRequiredService<InMemoryUserStore>();
-});
-
-builder.Services.AddScoped<ISessionStore>(sp =>
-{
-    var config = sp.GetRequiredService<IConfiguration>();
-    var databaseOptions = DatabaseProviderResolver.Resolve(config);
-    return databaseOptions.UsesRelationalStores
-        ? sp.GetRequiredService<EfSessionStore>()
-        : sp.GetRequiredService<InMemorySessionStore>();
-});
+// Authentication and administration share Users/Sessions for every EF provider,
+// including InMemory. A separate dictionary would hide managed/imported users.
+builder.Services.AddScoped<IUserStore, EfUserStore>();
+builder.Services.AddScoped<ISessionStore, EfSessionStore>();
 
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.Configure<MediaOptions>(builder.Configuration.GetSection("Media"));

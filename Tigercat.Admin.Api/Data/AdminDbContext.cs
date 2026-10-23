@@ -132,6 +132,7 @@ public class AdminDbContext : DbContext
             entity.Property(e => e.Sha256Hash).HasMaxLength(64);
             entity.HasIndex(e => new { e.Sha256Hash, e.SizeBytes });
             entity.Property(e => e.UploadedBy).HasMaxLength(50);
+            entity.Property(e => e.AnnotationsJson).IsRequired().HasMaxLength(64000).HasDefaultValue("[]");
         });
 
         // MediaReference
@@ -343,6 +344,8 @@ public class AdminDbContext : DbContext
             entity.Property(e => e.Conflict).IsRequired().HasMaxLength(20);
             entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
             entity.Property(e => e.ResultMessage).HasMaxLength(500);
+            entity.Property(e => e.RowsJson).IsRequired().HasDefaultValue("[]");
+            entity.Property(e => e.Operator).IsRequired().HasMaxLength(50).HasDefaultValue("");
         });
     }
 }

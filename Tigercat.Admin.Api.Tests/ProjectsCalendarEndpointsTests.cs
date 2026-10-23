@@ -101,6 +101,55 @@ public abstract class ProjectsCalendarEndpointsTests<TFixture> : IClassFixture<T
         Assert.Equal("R6 日历创建验收", body.Data.Title);
         Assert.Equal("meeting", body.Data.Type);
         Assert.Equal("会议室 C", body.Data.Location);
+
+        var invalidRequest = AuthRequest(HttpMethod.Post, "/api/calendar/events", token);
+        invalidRequest.Content = JsonContent.Create(new
+        {
+            date = "2026-08-27", start = "10:00", end = "10:00",
+            title = "无效时间范围", type = "meeting", location = "会议室 C"
+        });
+        var invalidResponse = await _client.SendAsync(invalidRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, invalidResponse.StatusCode);
+        var invalidBody = await invalidResponse.ReadApiResponseAsync<CalendarEventResponse>();
+        Assert.Equal("结束时间必须晚于开始时间（同一天）", invalidBody?.Message);
+    }
+
+    [Fact]
+    public async Task ListTasks_ExactUnfinishedFilterCountsBeforePagingAndPreservesContains()
+    {
+        var token = await LoginAsAdminAsync();
+        var assignee = $"workspace-{Guid.NewGuid():N}";
+        for (var i = 0; i < 9; i++)
+        {
+            var request = AuthRequest(HttpMethod.Post, "/api/tasks", token);
+            request.Content = JsonContent.Create(new
+            {
+                title = $"Workspace task {i}",
+                assignee = i == 8 ? $"{assignee}-other" : i % 2 == 0 ? assignee.ToUpperInvariant() : assignee,
+                status = i == 7 ? "done" : "todo"
+            });
+            (await _client.SendAsync(request)).EnsureSuccessStatusCode();
+        }
+
+        var response = await _client.SendAsync(AuthRequest(HttpMethod.Get,
+            $"/api/tasks?assigneeExact={assignee}&unfinished=true&page=1&pageSize=5", token));
+        response.EnsureSuccessStatusCode();
+        var body = await response.ReadApiResponseAsync<PagedResponse<AdminTaskResponse>>();
+        Assert.NotNull(body?.Data);
+        Assert.Equal(7, body.Data.Total);
+        Assert.Equal(5, body.Data.Items.Length);
+        Assert.All(body.Data.Items, item =>
+        {
+            Assert.Equal(assignee, item.Assignee.ToLowerInvariant());
+            Assert.NotEqual("done", item.Status);
+        });
+
+        var containsResponse = await _client.SendAsync(AuthRequest(HttpMethod.Get,
+            $"/api/tasks?assignee={assignee}", token));
+        containsResponse.EnsureSuccessStatusCode();
+        var contains = await containsResponse.ReadApiResponseAsync<PagedResponse<AdminTaskResponse>>();
+        Assert.Equal(9, contains?.Data?.Total);
+        Assert.Equal(100, contains?.Data?.PageSize);
     }
 
     private async Task<string> LoginAsAdminAsync()

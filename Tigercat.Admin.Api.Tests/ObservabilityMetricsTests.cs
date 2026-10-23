@@ -79,12 +79,8 @@ public class ObservabilityMetricsTests : IClassFixture<InMemoryApiFactory>
         request.Headers.Add("X-Token", token);
         request.Content = JsonContent.Create(new
         {
-            source = "metrics-import",
-            target = new[] { "hr", "employees" },
-            mappings = new[] { "name", "email" },
-            mode = "append",
-            conflict = "skip",
-            batchSize = 1000
+            source = "metrics-import.csv",
+            csv = $"username,password\nmetrics_{Guid.NewGuid():N},metrics123"
         });
 
         var response = await _client.SendAsync(request);

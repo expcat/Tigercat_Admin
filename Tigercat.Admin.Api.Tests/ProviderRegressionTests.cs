@@ -325,6 +325,90 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
     }
 
     [Fact]
+    public async Task ManagedAndRegisteredUsers_ShareAuthenticationAndCurrentGrants()
+    {
+        var admin = await LoginAsAdminAsync();
+        var username = $"managed-{Guid.NewGuid():N}"[..24];
+        var user = await CreateUserAsync(admin, username, "managed-pass-123");
+        var login = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest(username, "managed-pass-123"));
+        login.EnsureSuccessStatusCode();
+        var session = (await login.ReadApiResponseAsync<LoginResponse>())!.Data!;
+        var token = session.Token!;
+        Assert.Equal(HttpStatusCode.Forbidden, (await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/users", token))).StatusCode);
+
+        int permissionId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
+            permissionId = await db.Permissions.Where(p => p.Code == "user:view").Select(p => p.Id).SingleAsync();
+        }
+        var createRole = AuthRequest(HttpMethod.Post, "/api/roles", admin);
+        createRole.Content = JsonContent.Create(new { name = $"Grant-{Guid.NewGuid():N}"[..24], permissionIds = new[] { permissionId } });
+        var roleResponse = await _client.SendAsync(createRole);
+        roleResponse.EnsureSuccessStatusCode();
+        var role = (await roleResponse.ReadApiResponseAsync<RoleDetailResponse>())!.Data!;
+
+        var setUsers = AuthRequest(HttpMethod.Put, $"/api/roles/{role.Id}/users", admin);
+        setUsers.Content = JsonContent.Create(new { userIds = new[] { user.Id } });
+        (await _client.SendAsync(setUsers)).EnsureSuccessStatusCode();
+        (await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/users", token))).EnsureSuccessStatusCode();
+
+        var revoke = AuthRequest(HttpMethod.Put, $"/api/roles/{role.Id}/permissions", admin);
+        revoke.Content = JsonContent.Create(new { permissionIds = Array.Empty<int>() });
+        (await _client.SendAsync(revoke)).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.Forbidden, (await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/users", token))).StatusCode);
+
+        var restore = AuthRequest(HttpMethod.Put, $"/api/roles/{role.Id}", admin);
+        restore.Content = JsonContent.Create(new { permissionIds = new[] { permissionId } });
+        (await _client.SendAsync(restore)).EnsureSuccessStatusCode();
+        (await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/users", token))).EnsureSuccessStatusCode();
+
+        (await _client.SendAsync(AuthRequest(HttpMethod.Delete, $"/api/roles/{role.Id}", admin))).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.Forbidden, (await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/users", token))).StatusCode);
+
+        var registered = $"register-{Guid.NewGuid():N}"[..24];
+        await RegisterAndLoginAsync(registered, "registered-pass-123");
+        var listed = await _client.SendAsync(AuthRequest(HttpMethod.Get, $"/api/users?keyword={registered}", admin));
+        Assert.Contains((await listed.ReadApiResponseAsync<PagedResponse<UserItemResponse>>())!.Data!.Items, item => item.Username == registered);
+    }
+
+    [Fact]
+    public async Task DisabledOrDeletedUser_CannotLoginVerifyChallengeOrReuseHttpAndHubSessions()
+    {
+        var admin = await LoginAsAdminAsync();
+        var username = $"blocked-{Guid.NewGuid():N}"[..24];
+        var user = await CreateUserAsync(admin, username, "blocked-pass-123");
+        var login = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest(username, "blocked-pass-123"));
+        var token = (await login.ReadApiResponseAsync<LoginResponse>())!.Data!.Token!;
+        var enableOtp = AuthRequest(HttpMethod.Put, "/api/auth/two-factor", token);
+        enableOtp.Content = JsonContent.Create(new UpdateTwoFactorRequest(true));
+        (await _client.SendAsync(enableOtp)).EnsureSuccessStatusCode();
+        var challenged = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest(username, "blocked-pass-123"));
+        var challengeId = (await challenged.ReadApiResponseAsync<LoginResponse>())!.Data!.ChallengeId;
+
+        var disable = AuthRequest(HttpMethod.Put, $"/api/users/{user.Id}", admin);
+        disable.Content = JsonContent.Create(new { status = 1 });
+        (await _client.SendAsync(disable)).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest(username, "blocked-pass-123"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _client.PostAsJsonAsync("/api/auth/two-factor/verify", new TwoFactorVerifyRequest(username, AuthDemoCodes.OtpCode, challengeId))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/home", token))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _client.SendAsync(AuthRequest(HttpMethod.Post, "/hubs/monitor/negotiate?negotiateVersion=1", token))).StatusCode);
+
+        var enable = AuthRequest(HttpMethod.Put, $"/api/users/{user.Id}", admin);
+        enable.Content = JsonContent.Create(new { status = 0 });
+        (await _client.SendAsync(enable)).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/home", token))).StatusCode);
+        challenged = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest(username, "blocked-pass-123"));
+        challengeId = (await challenged.ReadApiResponseAsync<LoginResponse>())!.Data!.ChallengeId;
+        var verified = await _client.PostAsJsonAsync("/api/auth/two-factor/verify", new TwoFactorVerifyRequest(username, AuthDemoCodes.OtpCode, challengeId));
+        token = (await verified.ReadApiResponseAsync<LoginResponse>())!.Data!.Token!;
+        (await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/home", token))).EnsureSuccessStatusCode();
+        (await _client.SendAsync(AuthRequest(HttpMethod.Delete, $"/api/users/{user.Id}", admin))).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/home", token))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _client.SendAsync(AuthRequest(HttpMethod.Post, "/hubs/chat/negotiate?negotiateVersion=1", token))).StatusCode);
+    }
+
+    [Fact]
     public async Task ChangePassword_UsesConfiguredPasswordPolicy()
     {
         var token = await LoginAsAdminAsync();

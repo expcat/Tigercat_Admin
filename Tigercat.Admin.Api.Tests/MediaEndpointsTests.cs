@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Endpoints;
@@ -50,6 +51,32 @@ public class MediaEndpointsTests : IClassFixture<InMemoryApiFactory>
 
         var missingContent = await _client.GetAsync(media.Url);
         Assert.Equal(HttpStatusCode.NotFound, missingContent.StatusCode);
+    }
+
+    [Fact]
+    public async Task InvalidAnnotationsAndAttachment_RejectWithoutChangingSavedData()
+    {
+        var token = await LoginAsAdminAsync();
+        var media = await UploadAsync(token, "annotation-validation.png", "image/png", FakePngBytes("annotation-validation"));
+        foreach (var json in new[]
+        {
+            """[{"id":"p","type":"polygon"}]""",
+            """[{"id":"r","type":"rectangle","x":0,"y":0,"width":"bad","height":1}]"""
+        })
+        {
+            var request = AuthRequest(HttpMethod.Put, $"/api/media/{media.Id}/annotations", token);
+            request.Content = JsonContent.Create(new UpdateMediaAnnotationsRequest(JsonSerializer.Deserialize<JsonElement[]>(json)!));
+            Assert.Equal(HttpStatusCode.BadRequest, (await _client.SendAsync(request)).StatusCode);
+        }
+        var detail = await _client.SendAsync(AuthRequest(HttpMethod.Get, $"/api/media/{media.Id}", token));
+        Assert.Empty((await detail.ReadApiResponseAsync<MediaDetailResponse>())!.Data!.Annotations);
+        var before = await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/content/articles/a1", token));
+        var title = (await before.ReadApiResponseAsync<ArticleResponse>())!.Data!.Title;
+        var invalid = AuthRequest(HttpMethod.Put, "/api/content/articles/a1", token);
+        invalid.Content = JsonContent.Create(new { title = "must-not-save", attachmentIds = new[] { int.MaxValue } });
+        Assert.Equal(HttpStatusCode.BadRequest, (await _client.SendAsync(invalid)).StatusCode);
+        var after = await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/content/articles/a1", token));
+        Assert.Equal(title, (await after.ReadApiResponseAsync<ArticleResponse>())!.Data!.Title);
     }
 
     [Fact]

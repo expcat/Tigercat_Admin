@@ -488,13 +488,13 @@ public class AuthEndpoints : IEndpointDefinition
                 statusCode: 401);
         }
 
-        var cachedCodes = await permissionService.GetUserPermissionCodesAsync(username, ct);
+        var permissionCodes = await permissionService.GetUserPermissionCodesAsync(username, ct);
 
         // Load full permission details by the resolved codes
-        var permissions = cachedCodes is { Length: > 0 }
+        var permissions = permissionCodes is { Length: > 0 }
             ? await db.Permissions
                 .AsNoTracking()
-                .Where(p => cachedCodes.Contains(p.Code))
+                .Where(p => permissionCodes.Contains(p.Code))
                 .OrderBy(p => p.Id)
                 .Select(p => new PermissionInfoResponse(p.Id, p.Code, p.Description))
                 .ToArrayAsync(ct)

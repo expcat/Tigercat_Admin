@@ -1,5 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Tigercat.Admin.Api.Media;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Data;
@@ -36,7 +38,7 @@ public class ContentEndpoints : IEndpointDefinition
             .WithName("UpdateContentArticle");
     }
 
-    private static async Task<IResult> GetArticles(AdminDbContext db, CancellationToken ct)
+    private static async Task<IResult> GetArticles(AdminDbContext db, IOptions<MediaOptions> mediaOptions, CancellationToken ct)
     {
         var items = await db.ContentArticles
             .AsNoTracking()
@@ -44,12 +46,17 @@ public class ContentEndpoints : IEndpointDefinition
             .ThenBy(item => item.Id)
             .ToArrayAsync(ct);
 
+        var responses = new List<ArticleResponse>();
+        foreach (var article in items)
+        {
+            responses.Add(ToResponse(article, await LoadAttachmentsAsync(db, article.PublicId, mediaOptions.Value, ct)));
+        }
         return Results.Json(
-            ApiResult.Ok(items.Select(ToResponse).ToArray()),
+            ApiResult.Ok(responses.ToArray()),
             AppJsonContext.Default.ApiResponseArticleResponseArray);
     }
 
-    private static async Task<IResult> GetArticle(string id, AdminDbContext db, CancellationToken ct)
+    private static async Task<IResult> GetArticle(string id, AdminDbContext db, IOptions<MediaOptions> mediaOptions, CancellationToken ct)
     {
         var article = await FindArticleAsync(db, id, ct, track: false);
         if (article is null)
@@ -58,7 +65,7 @@ public class ContentEndpoints : IEndpointDefinition
         }
 
         return Results.Json(
-            ApiResult.Ok(ToResponse(article)),
+            ApiResult.Ok(ToResponse(article, await LoadAttachmentsAsync(db, article.PublicId, mediaOptions.Value, ct))),
             AppJsonContext.Default.ApiResponseArticleResponse);
     }
 
@@ -66,6 +73,7 @@ public class ContentEndpoints : IEndpointDefinition
         string id,
         UpdateArticleRequest request,
         AdminDbContext db,
+        IOptions<MediaOptions> mediaOptions,
         CancellationToken ct)
     {
         var article = await FindArticleAsync(db, id, ct, track: true);
@@ -124,6 +132,29 @@ public class ContentEndpoints : IEndpointDefinition
             return ArticleError("栏目路径无效");
         }
 
+        if (request.AttachmentIds is not null)
+        {
+            var ids = request.AttachmentIds.Distinct().ToArray();
+            if (ids.Length > 12 || ids.Any(id => id <= 0))
+                return ArticleError("附件最多 12 个，且 ID 必须为正整数");
+            var found = await db.MediaResources.CountAsync(media => ids.Contains(media.Id) && media.DeletedAt == null, ct);
+            if (found != ids.Length) return ArticleError("附件不存在或已删除，请重新选择");
+            var prefix = article.PublicId + ":";
+            var existing = await db.MediaReferences.Where(reference =>
+                reference.ReferenceType == MediaReferences.ContentAttachmentType && reference.ReferenceKey.StartsWith(prefix)).ToArrayAsync(ct);
+            db.MediaReferences.RemoveRange(existing.Where(reference => !ids.Contains(reference.MediaResourceId)));
+            foreach (var mediaId in ids.Except(existing.Select(reference => reference.MediaResourceId)))
+            {
+                db.MediaReferences.Add(new MediaReferenceEntity
+                {
+                    MediaResourceId = mediaId,
+                    ReferenceType = MediaReferences.ContentAttachmentType,
+                    ReferenceKey = prefix + mediaId,
+                    DisplayName = "文章附件：" + article.PublicId
+                });
+            }
+        }
+
         article.Title = title;
         article.EditorType = editorType;
         article.Body = body;
@@ -134,7 +165,7 @@ public class ContentEndpoints : IEndpointDefinition
         await db.SaveChangesAsync(ct);
 
         return Results.Json(
-            ApiResult.Ok(ToResponse(article)),
+            ApiResult.Ok(ToResponse(article, await LoadAttachmentsAsync(db, article.PublicId, mediaOptions.Value, ct))),
             AppJsonContext.Default.ApiResponseArticleResponse);
     }
 
@@ -199,7 +230,20 @@ public class ContentEndpoints : IEndpointDefinition
         return items;
     }
 
-    private static ArticleResponse ToResponse(ContentArticleEntity article) =>
+    private static async Task<MediaItemResponse[]> LoadAttachmentsAsync(
+        AdminDbContext db, string articleId, MediaOptions options, CancellationToken ct)
+    {
+        var prefix = articleId + ":";
+        var media = await db.MediaReferences.AsNoTracking()
+            .Where(reference => reference.ReferenceType == MediaReferences.ContentAttachmentType &&
+                reference.ReferenceKey.StartsWith(prefix) && reference.MediaResource.DeletedAt == null)
+            .OrderBy(reference => reference.MediaResourceId)
+            .Select(reference => new { Media = reference.MediaResource, ReferenceCount = reference.MediaResource.References.Count })
+            .ToArrayAsync(ct);
+        return media.Select(item => MediaEndpoints.ToItem(item.Media, item.ReferenceCount, options)).ToArray();
+    }
+
+    private static ArticleResponse ToResponse(ContentArticleEntity article, MediaItemResponse[] attachments) =>
         new(
             article.PublicId,
             article.Title,
@@ -208,5 +252,6 @@ public class ContentEndpoints : IEndpointDefinition
             DecodeStringArray(article.TagsJson),
             article.Category,
             DecodeStringArray(article.ColumnJson),
-            article.Published);
+            article.Published,
+            attachments);
 }

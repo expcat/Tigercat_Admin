@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
@@ -30,6 +31,10 @@ public class MediaEndpoints : IEndpointDefinition
         group.MapGet("/{id:int}", GetMediaById)
             .RequirePermission("media:view")
             .WithName("GetMediaById");
+
+        group.MapPut("/{id:int}/annotations", UpdateAnnotations)
+            .RequirePermission("media:upload")
+            .WithName("UpdateMediaAnnotations");
 
         group.MapDelete("/{id:int}", DeleteMedia)
             .RequirePermission("media:delete")
@@ -148,7 +153,7 @@ public class MediaEndpoints : IEndpointDefinition
                     .OrderBy(r => r.ReferenceType)
                     .ThenBy(r => r.ReferenceKey)
                     .Select(r => new MediaReferenceResponse(r.Id, r.ReferenceType, r.ReferenceKey, r.DisplayName))
-                    .ToArray()))
+                    .ToArray(), DecodeAnnotations(m.AnnotationsJson)))
             .FirstOrDefaultAsync(ct);
 
         if (media is null)
@@ -163,6 +168,55 @@ public class MediaEndpoints : IEndpointDefinition
             ApiResult.Ok(media),
             AppJsonContext.Default.ApiResponseMediaDetailResponse);
     }
+
+    internal static JsonElement[] DecodeAnnotations(string json) =>
+        JsonSerializer.Deserialize<JsonElement[]>(json) ?? [];
+
+    private static async Task<IResult> UpdateAnnotations(
+        int id, UpdateMediaAnnotationsRequest request, AdminDbContext db,
+        IOptions<MediaOptions> mediaOptions, CancellationToken ct)
+    {
+        var media = await db.MediaResources.FirstOrDefaultAsync(item => item.Id == id && item.DeletedAt == null, ct);
+        if (media is null) return await GetMediaById(id, db, mediaOptions, ct);
+        var shapes = request.Annotations;
+        if (!media.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) || shapes is null ||
+            shapes.Length > 100 || shapes.Any(shape => !IsValidAnnotation(shape)))
+        {
+            return Results.Json(ApiResult.Fail<MediaDetailResponse>("图片标注无效，最多 100 个区域", 400),
+                AppJsonContext.Default.ApiResponseMediaDetailResponse, statusCode: 400);
+        }
+        var json = JsonSerializer.Serialize(shapes);
+        if (json.Length > 64000)
+            return Results.Json(ApiResult.Fail<MediaDetailResponse>("标注数据不能超过 64000 字符", 400),
+                AppJsonContext.Default.ApiResponseMediaDetailResponse, statusCode: 400);
+        media.AnnotationsJson = json;
+        await db.SaveChangesAsync(ct);
+        return await GetMediaById(id, db, mediaOptions, ct);
+    }
+
+    private static bool IsValidAnnotation(JsonElement shape)
+    {
+        if (shape.ValueKind != JsonValueKind.Object ||
+            !shape.TryGetProperty("id", out var id) || id.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(id.GetString()) ||
+            !shape.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String)
+            return false;
+        foreach (var field in new[] { "label", "color" })
+            if (shape.TryGetProperty(field, out var value) && value.ValueKind != JsonValueKind.String) return false;
+        if (shape.TryGetProperty("data", out var data) && data.ValueKind != JsonValueKind.Object) return false;
+        if (type.GetString() is "rectangle" or "ellipse")
+            return HasFiniteNumber(shape, "x") && HasFiniteNumber(shape, "y") &&
+                HasFiniteNumber(shape, "width") && shape.GetProperty("width").GetDouble() >= 0 &&
+                HasFiniteNumber(shape, "height") && shape.GetProperty("height").GetDouble() >= 0;
+        if (type.GetString() is not ("polygon" or "freehand") ||
+            !shape.TryGetProperty("points", out var points) || points.ValueKind != JsonValueKind.Array ||
+            points.GetArrayLength() < (type.GetString() == "polygon" ? 3 : 2)) return false;
+        return points.EnumerateArray().All(point => point.ValueKind == JsonValueKind.Object &&
+            HasFiniteNumber(point, "x") && HasFiniteNumber(point, "y"));
+    }
+
+    private static bool HasFiniteNumber(JsonElement item, string field) =>
+        item.TryGetProperty(field, out var value) && value.ValueKind == JsonValueKind.Number &&
+        value.TryGetDouble(out var number) && double.IsFinite(number);
 
     private static async Task<IResult> UploadMedia(
         HttpRequest request,
@@ -259,6 +313,7 @@ public class MediaEndpoints : IEndpointDefinition
         var sha256Hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
 
         var duplicate = await db.MediaResources
+            .Include(m => m.References)
             .Where(m => m.DeletedAt == null && m.Sha256Hash == sha256Hash && m.SizeBytes == file.Length)
             .FirstOrDefaultAsync(ct);
 
@@ -566,7 +621,7 @@ public class MediaEndpoints : IEndpointDefinition
             AppJsonContext.Default.ApiResponseMediaOrphanCleanupResponse);
     }
 
-    private static MediaItemResponse ToItem(MediaResourceEntity media, int referenceCount, MediaOptions options)
+    internal static MediaItemResponse ToItem(MediaResourceEntity media, int referenceCount, MediaOptions options)
     {
         return new MediaItemResponse(
             media.Id,
@@ -588,7 +643,8 @@ public class MediaEndpoints : IEndpointDefinition
     private static bool IsKnownForceDeleteReference(MediaReferenceEntity reference)
     {
         return string.Equals(reference.ReferenceType, MediaReferences.SiteLogoType, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(reference.ReferenceType, MediaReferences.UserAvatarType, StringComparison.OrdinalIgnoreCase);
+            string.Equals(reference.ReferenceType, MediaReferences.UserAvatarType, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(reference.ReferenceType, MediaReferences.ContentAttachmentType, StringComparison.Ordinal);
     }
 
     private static async Task ClearKnownReferencesAsync(

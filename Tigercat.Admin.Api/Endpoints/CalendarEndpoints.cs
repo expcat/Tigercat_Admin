@@ -112,6 +112,11 @@ public class CalendarEndpoints : IEndpointDefinition
             return CreateError("结束时间格式无效，需为 HH:mm");
         }
 
+        if (string.CompareOrdinal(end, start) <= 0)
+        {
+            return CreateError("结束时间必须晚于开始时间（同一天）");
+        }
+
         var type = TicketsEndpoints.NormalizeOptional(request.Type)?.ToLowerInvariant();
         if (type is null || !AllowedTypes.Contains(type))
         {

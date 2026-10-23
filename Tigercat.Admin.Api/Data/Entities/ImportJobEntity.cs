@@ -12,6 +12,11 @@ public class ImportJobEntity
     public int BatchSize { get; set; } = 1000;
     public string Status { get; set; } = "pending";
     public int Progress { get; set; }
+    public int Total { get; set; }
+    public int Processed { get; set; }
+    public int Failed { get; set; }
+    public string RowsJson { get; set; } = "[]";
+    public string Operator { get; set; } = string.Empty;
     public int? Imported { get; set; }
     public int? Skipped { get; set; }
     public string? ResultMessage { get; set; }

@@ -157,51 +157,14 @@ public class UsersEndpoints : IEndpointDefinition
         HttpContext httpContext,
         CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
-        {
-            return Results.Json(
-                ApiResult.Fail<UserItemResponse>("用户名或密码不能为空", 400),
-                AppJsonContext.Default.ApiResponseUserItemResponse,
-                statusCode: 400);
-        }
-
-        var username = request.Username.Trim().ToLowerInvariant();
-
-        // Validate username format & length
-        if (username.Length < UsernameMinLength || username.Length > UsernameMaxLength)
-        {
-            return Results.Json(
-                ApiResult.Fail<UserItemResponse>($"用户名长度需在 {UsernameMinLength}-{UsernameMaxLength} 之间", 400),
-                AppJsonContext.Default.ApiResponseUserItemResponse,
-                statusCode: 400);
-        }
-
-        if (!username.All(c => char.IsLetterOrDigit(c) || c is '_' or '-' or '.'))
-        {
-            return Results.Json(
-                ApiResult.Fail<UserItemResponse>("用户名只能包含字母、数字、下划线、短横线和点", 400),
-                AppJsonContext.Default.ApiResponseUserItemResponse,
-                statusCode: 400);
-        }
-
         var policy = await AuthPolicySettings.LoadAsync(db, ct);
-        var passwordError = policy.ValidatePassword(request.Password);
-        if (passwordError is not null)
+        var validationError = ValidateNewUser(request, policy);
+        if (validationError is not null)
         {
-            return Results.Json(
-                ApiResult.Fail<UserItemResponse>(passwordError, 400),
-                AppJsonContext.Default.ApiResponseUserItemResponse,
-                statusCode: 400);
+            return Results.Json(ApiResult.Fail<UserItemResponse>(validationError, 400),
+                AppJsonContext.Default.ApiResponseUserItemResponse, statusCode: 400);
         }
-
-        // Validate displayName length
-        if (request.DisplayName is { Length: > DisplayNameMaxLength })
-        {
-            return Results.Json(
-                ApiResult.Fail<UserItemResponse>($"显示名称长度不能超过 {DisplayNameMaxLength}", 400),
-                AppJsonContext.Default.ApiResponseUserItemResponse,
-                statusCode: 400);
-        }
+        var username = request.Username!.Trim().ToLowerInvariant();
 
         var user = new UserEntity
         {
@@ -271,6 +234,41 @@ public class UsersEndpoints : IEndpointDefinition
             statusCode: 201);
     }
 
+    internal static string? ValidateNewUser(CreateUserRequest request, AuthPolicySettings policy)
+    {
+        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+        {
+            return "用户名或密码不能为空";
+        }
+
+        var username = request.Username!.Trim().ToLowerInvariant();
+
+        // Validate username format & length
+        if (username.Length < UsernameMinLength || username.Length > UsernameMaxLength)
+        {
+            return $"用户名长度需在 {UsernameMinLength}-{UsernameMaxLength} 之间";
+        }
+
+        if (!username.All(c => char.IsLetterOrDigit(c) || c is '_' or '-' or '.'))
+        {
+            return "用户名只能包含字母、数字、下划线、短横线和点";
+        }
+
+        var passwordError = policy.ValidatePassword(request.Password);
+        if (passwordError is not null)
+        {
+            return passwordError;
+        }
+
+        // Validate displayName length
+        if (request.DisplayName is { Length: > DisplayNameMaxLength })
+        {
+            return $"显示名称长度不能超过 {DisplayNameMaxLength}";
+        }
+
+        return null;
+    }
+
     // PUT /api/users/{id}
     private static async Task<IResult> UpdateUser(
         int id,
@@ -316,6 +314,23 @@ public class UsersEndpoints : IEndpointDefinition
                     ApiResult.Fail<UserItemResponse>("无效的用户状态", 400),
                     AppJsonContext.Default.ApiResponseUserItemResponse,
                     statusCode: 400);
+            }
+
+            if ((UserStatus)request.Status.Value == UserStatus.Disabled)
+            {
+                if (string.Equals(user.Username, GetOperatorUsername(httpContext), StringComparison.OrdinalIgnoreCase))
+                {
+                    return Results.Json(ApiResult.Fail<UserItemResponse>("不能禁用当前登录用户", 400),
+                        AppJsonContext.Default.ApiResponseUserItemResponse, statusCode: 400);
+                }
+
+                var isAdmin = await db.UserRoles.AnyAsync(ur => ur.UserId == id && ur.Role.Name == AdminRoleName, ct);
+                if (isAdmin && !await db.Users.AnyAsync(u => u.Id != id && u.Status == UserStatus.Active &&
+                    u.UserRoles.Any(ur => ur.Role.Name == AdminRoleName), ct))
+                {
+                    return Results.Json(ApiResult.Fail<UserItemResponse>("不能禁用最后一个可用管理员用户", 400),
+                        AppJsonContext.Default.ApiResponseUserItemResponse, statusCode: 400);
+                }
             }
 
             user.Status = (UserStatus)request.Status.Value;
@@ -409,6 +424,10 @@ public class UsersEndpoints : IEndpointDefinition
             }
         }
 
+        if (user.Status == UserStatus.Disabled)
+        {
+            db.Sessions.RemoveRange(await db.Sessions.Where(s => s.Username == user.Username).ToListAsync(ct));
+        }
         await db.SaveChangesAsync(ct);
 
         if (request.AvatarMediaId.HasValue)
@@ -500,6 +519,7 @@ public class UsersEndpoints : IEndpointDefinition
 
         await mediaReferenceService.SyncUserAvatarReferenceAsync(user.Id, user.Username, null, ct);
         db.UserRoles.RemoveRange(user.UserRoles);
+        db.Sessions.RemoveRange(await db.Sessions.Where(s => s.Username == user.Username).ToListAsync(ct));
         db.Users.Remove(user);
         await db.SaveChangesAsync(ct);
 
@@ -585,6 +605,7 @@ public class UsersEndpoints : IEndpointDefinition
 
         var deletedIds = users.Select(static user => user.Id).ToArray();
         var deletedUsernames = users.Select(static user => user.Username).ToArray();
+        db.Sessions.RemoveRange(await db.Sessions.Where(s => deletedUsernames.Contains(s.Username)).ToListAsync(ct));
         var deletedAvatarKeys = deletedIds.Select(MediaReferences.UserAvatarKey).ToArray();
         var avatarReferences = await db.MediaReferences
             .Where(r => r.ReferenceType == MediaReferences.UserAvatarType && deletedAvatarKeys.Contains(r.ReferenceKey))
@@ -691,6 +712,11 @@ public class UsersEndpoints : IEndpointDefinition
             user.UpdatedAt = DateTime.UtcNow;
         }
 
+        if (nextStatus == UserStatus.Disabled)
+        {
+            var usernames = users.Select(user => user.Username).ToArray();
+            db.Sessions.RemoveRange(await db.Sessions.Where(s => usernames.Contains(s.Username)).ToListAsync(ct));
+        }
         await db.SaveChangesAsync(ct);
 
         await eventPublisher.PublishAsync(

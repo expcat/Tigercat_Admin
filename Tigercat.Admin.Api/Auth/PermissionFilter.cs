@@ -7,7 +7,7 @@ namespace Tigercat.Admin.Api.Auth;
 /// Endpoint filter that requires the current user to have a specific permission code.
 /// Must be applied AFTER <see cref="LoginFilter"/> so that the username is available.
 /// Delegates permission resolution to <see cref="IPermissionService"/> for consistent
-/// query logic and caching.
+/// current grant queries.
 /// </summary>
 public class PermissionFilter(string requiredPermission) : IEndpointFilter
 {

@@ -349,6 +349,9 @@ namespace Tigercat.Admin.Api.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("Failed")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("Imported")
                         .HasColumnType("INTEGER");
 
@@ -362,6 +365,16 @@ namespace Tigercat.Admin.Api.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Operator")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("");
+
+                    b.Property<int>("Processed")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Progress")
                         .HasColumnType("INTEGER");
 
@@ -373,6 +386,12 @@ namespace Tigercat.Admin.Api.Data.Migrations
                     b.Property<string>("ResultMessage")
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("RowsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("[]");
 
                     b.Property<int?>("Skipped")
                         .HasColumnType("INTEGER");
@@ -391,6 +410,9 @@ namespace Tigercat.Admin.Api.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("Total")
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -529,6 +551,13 @@ namespace Tigercat.Admin.Api.Data.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("AnnotationsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(64000)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("[]");
 
                     b.Property<string>("ContentType")
                         .IsRequired()

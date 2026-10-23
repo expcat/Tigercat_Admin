@@ -51,7 +51,7 @@ public class EfUserStore : IUserStore
     public async Task<string?> GetPasswordHashAsync(string username, CancellationToken ct = default)
     {
         return await _context.Users
-            .Where(u => u.Username == username)
+            .Where(u => u.Username == username && u.Status == UserStatus.Active)
             .Select(u => u.PasswordHash)
             .FirstOrDefaultAsync(ct);
     }
@@ -77,7 +77,7 @@ public class EfUserStore : IUserStore
     public async Task<bool> GetTwoFactorEnabledAsync(string username, CancellationToken ct = default)
     {
         return await _context.Users
-            .Where(u => u.Username == username)
+            .Where(u => u.Username == username && u.Status == UserStatus.Active)
             .Select(u => u.TwoFactorEnabled)
             .FirstOrDefaultAsync(ct);
     }

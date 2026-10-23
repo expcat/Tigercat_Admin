@@ -13,17 +13,6 @@ public static class CacheKeys
         return $"cache:user:profile:{safeUserId}";
     }
 
-    public static string UserPermissions(string username)
-    {
-        if (string.IsNullOrWhiteSpace(username))
-        {
-            throw new ArgumentException("Username is required.", nameof(username));
-        }
-
-        var safeUsername = Uri.EscapeDataString(username);
-        return $"cache:user:permissions:{safeUsername}";
-    }
-
     public static string TwoFactorChallenge(string challengeId)
     {
         if (string.IsNullOrWhiteSpace(challengeId))

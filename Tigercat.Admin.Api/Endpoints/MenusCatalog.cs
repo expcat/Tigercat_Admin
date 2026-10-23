@@ -22,6 +22,7 @@ internal static class MenusCatalog
     private static MenuSchemaResponse Create()
     {
         var home = Page("home", "仪表盘", "dashboard", "/dashboard", "dashboard:view");
+        var workspace = Page("workspace", "我的工作台", "clipboard", "/workspace");
         var analytics = Page("analytics", "数据分析看板", "trendingUp", "/analytics");
         var monitor = Page("monitor", "实时监控", "monitor", "/monitor");
         var projects = Page("projects", "项目列表", "package", "/projects");
@@ -32,7 +33,7 @@ internal static class MenusCatalog
         var content = Page("content", "内容编辑", "edit", "/content");
         var gallery = Page("gallery", "媒体图库", "image", "/gallery");
         var jobs = Page("jobs", "定时任务", "clock", "/jobs");
-        var import = Page("import", "数据导入", "upload", "/import");
+        var import = Page("import", "数据导入", "upload", "/import", "user:create");
         var performance = Page("performance", "大数据演示", "zap", "/performance");
         var help = Page("help", "帮助中心", "help", "/help");
         var reports = Page("reports", "报表打印", "fileText", "/reports");
@@ -52,6 +53,7 @@ internal static class MenusCatalog
             Items =
             [
                 home,
+                workspace,
                 new()
                 {
                     Key = "analyticsGroup",

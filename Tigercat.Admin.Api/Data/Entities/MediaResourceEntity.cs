@@ -17,6 +17,7 @@ public class MediaResourceEntity
     public string? UploadedBy { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? DeletedAt { get; set; }
+    public string AnnotationsJson { get; set; } = "[]";
 
     public ICollection<MediaReferenceEntity> References { get; set; } = [];
 }

@@ -1,39 +1,24 @@
 using Microsoft.EntityFrameworkCore;
-using Tigercat.Admin.Api.Cache;
 using Tigercat.Admin.Api.Data;
+using Tigercat.Admin.Api.Data.Entities;
 
 namespace Tigercat.Admin.Api.Auth;
 
 /// <summary>
-/// Default implementation that loads permission codes via EF Core
-/// and caches them in the distributed cache.
+/// Resolve current grants from the same user/role records as administration.
+/// Authorization reads stay uncached so revocation takes effect on the next request.
 /// </summary>
-public class PermissionService(AdminDbContext db, ICacheService cacheService) : IPermissionService
+public class PermissionService(AdminDbContext db) : IPermissionService
 {
-    /// <summary>
-    /// Shared TTL for the user-permissions cache entry.
-    /// Referenced by both the permission filter and the permissions endpoint.
-    /// </summary>
-    public static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
-
     public async Task<string[]?> GetUserPermissionCodesAsync(string username, CancellationToken ct = default)
     {
-        var cacheKey = CacheKeys.UserPermissions(username);
-
-        return await cacheService.GetOrSetAsync(
-            cacheKey,
-            async token =>
-            {
-                return await db.Users
-                    .AsNoTracking()
-                    .Where(u => u.Username == username)
-                    .SelectMany(u => u.UserRoles)
-                    .SelectMany(ur => ur.Role.RolePermissions)
-                    .Select(rp => rp.Permission.Code)
-                    .Distinct()
-                    .ToArrayAsync(token);
-            },
-            CacheTtl,
-            ct);
+        return await db.Users
+            .AsNoTracking()
+            .Where(u => u.Username == username && u.Status == UserStatus.Active)
+            .SelectMany(u => u.UserRoles)
+            .SelectMany(ur => ur.Role.RolePermissions)
+            .Select(rp => rp.Permission.Code)
+            .Distinct()
+            .ToArrayAsync(ct);
     }
 }

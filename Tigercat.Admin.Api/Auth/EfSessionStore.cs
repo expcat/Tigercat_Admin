@@ -66,7 +66,9 @@ public class EfSessionStore : ISessionStore
             return null;
         }
 
-        if (session.ExpiresAt <= DateTime.UtcNow)
+        // Both HTTP filters and Hub negotiation use this same validation path.
+        if (session.ExpiresAt <= DateTime.UtcNow ||
+            !await _context.Users.AnyAsync(u => u.Username == session.Username && u.Status == UserStatus.Active, ct))
         {
             _context.Sessions.Remove(session);
             await _context.SaveChangesAsync(ct);

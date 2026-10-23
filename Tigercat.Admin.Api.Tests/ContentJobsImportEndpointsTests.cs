@@ -1,5 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Tigercat.Admin.Api.Data;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Endpoints;
@@ -12,9 +17,11 @@ public abstract class ContentJobsImportEndpointsTests<TFixture> : IClassFixture<
     where TFixture : AdminApiFactory
 {
     private readonly HttpClient _client;
+    private readonly TFixture _factory;
 
     protected ContentJobsImportEndpointsTests(TFixture factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
@@ -22,6 +29,25 @@ public abstract class ContentJobsImportEndpointsTests<TFixture> : IClassFixture<
     public async Task SaveArticle_PutThenGet_PersistsDraft()
     {
         var token = await LoginAsAdminAsync();
+        var bytes = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aO1sAAAAASUVORK5CYII=");
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(bytes);
+        file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        form.Add(file, "file", "article-attachment.png");
+        var upload = AuthRequest(HttpMethod.Post, "/api/media", token);
+        upload.Content = form;
+        var uploaded = await _client.SendAsync(upload);
+        uploaded.EnsureSuccessStatusCode();
+        var media = (await uploaded.ReadApiResponseAsync<MediaItemResponse>())!.Data!;
+        Assert.Equal(bytes, await _client.GetByteArrayAsync(media.Url));
+        var shapes = JsonSerializer.Deserialize<JsonElement[]>("""[{"id":"box-1","type":"rectangle","x":0,"y":0,"width":1,"height":1}]""")!;
+        var annotate = AuthRequest(HttpMethod.Put, $"/api/media/{media.Id}/annotations", token);
+        annotate.Content = JsonContent.Create(new UpdateMediaAnnotationsRequest(shapes));
+        (await _client.SendAsync(annotate)).EnsureSuccessStatusCode();
+        var detailResponse = await _client.SendAsync(AuthRequest(HttpMethod.Get, $"/api/media/{media.Id}", token));
+        var detail = (await detailResponse.ReadApiResponseAsync<MediaDetailResponse>())!.Data!;
+        Assert.Equal("box-1", Assert.Single(detail.Annotations).GetProperty("id").GetString());
+        Assert.Equal(1, detail.Width);
         var put = AuthRequest(HttpMethod.Put, "/api/content/articles/a1", token);
         put.Content = JsonContent.Create(new
         {
@@ -31,7 +57,8 @@ public abstract class ContentJobsImportEndpointsTests<TFixture> : IClassFixture<
             tags = new[] { "发布", "草稿" },
             category = "backend",
             column = new[] { "docs", "api" },
-            published = false
+            published = false,
+            attachmentIds = new[] { media.Id }
         });
 
         var putResponse = await _client.SendAsync(put);
@@ -55,6 +82,18 @@ public abstract class ContentJobsImportEndpointsTests<TFixture> : IClassFixture<
         Assert.Equal("markdown", getBody.Data.EditorType);
         Assert.Equal("# 已保存草稿", getBody.Data.Body);
         Assert.False(getBody.Data.Published);
+        var attachment = Assert.Single(getBody.Data.Attachments);
+        Assert.Equal(media.Id, attachment.Id);
+        Assert.Equal(1, attachment.ReferenceCount);
+        var blocked = await _client.SendAsync(AuthRequest(HttpMethod.Delete, $"/api/media/{media.Id}", token));
+        Assert.Equal(HttpStatusCode.Conflict, blocked.StatusCode);
+        var references = (await blocked.ReadApiResponseAsync<MediaReferenceResponse[]>())!.Data!;
+        Assert.Contains(references, reference => reference.ReferenceType == "content.attachment");
+        var deleted = await _client.SendAsync(AuthRequest(HttpMethod.Delete, $"/api/media/{media.Id}?force=true", token));
+        deleted.EnsureSuccessStatusCode();
+        var refreshed = await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/content/articles/a1", token));
+        Assert.Empty((await refreshed.ReadApiResponseAsync<ArticleResponse>())!.Data!.Attachments);
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.SendAsync(AuthRequest(HttpMethod.Get, $"/api/media/{media.Id}", token))).StatusCode);
     }
 
     [Fact]
@@ -93,94 +132,100 @@ public abstract class ContentJobsImportEndpointsTests<TFixture> : IClassFixture<
     }
 
     [Fact]
-    public async Task CreateImportJob_ThenGet_AdvancesToCompleted()
+    public async Task CreateImportJob_ThenGet_CreatesUsersAndReportsActualRows()
     {
         var token = await LoginAsAdminAsync();
-        var create = AuthRequest(HttpMethod.Post, "/api/import-jobs", token);
-        create.Content = JsonContent.Create(new
+        var suffix = Guid.NewGuid().ToString("N")[..12];
+        var username = $"csv.é猫_{suffix}";
+        const string password = "ImportSecret42!";
+        var csv = $"\uFEFFusername,password,displayName,roleIds\r\n" +
+            $"  {username.ToUpperInvariant()}  ,{password},\"Alice, \"\"A\"\"\r\nTeam\",1\r\n" +
+            $"{username},{password},Duplicate,\r\nadmin,{password},Existing,\r\n" +
+            $"short_{suffix},x,Invalid,\r\nrole_{suffix},{password},Invalid,999999\r\n" +
+            $"columns_{suffix},{password}\r\nsecond_{suffix},{password},Second,\r\n";
+        var input = new { source = "users.csv", csv };
+        var previewRequest = AuthRequest(HttpMethod.Post, "/api/import-jobs/preview", token);
+        previewRequest.Content = JsonContent.Create(input);
+        var previewResponse = await _client.SendAsync(previewRequest);
+        previewResponse.EnsureSuccessStatusCode();
+        var preview = (await previewResponse.ReadApiResponseAsync<ImportPreviewResponse>())!.Data!;
+        Assert.Equal(7, preview.Total);
+        Assert.Equal(2, preview.Valid);
+        Assert.Equal(2, preview.Skipped);
+        Assert.Equal(3, preview.Failed);
+        Assert.Equal(new[] { 2, 4, 5, 6, 7, 8, 9 }, preview.Rows.Select(row => row.RowNumber));
+        Assert.Equal("Alice, \"A\"\r\nTeam", preview.Rows[0].DisplayName);
+        Assert.DoesNotContain(password, await previewResponse.Content.ReadAsStringAsync());
+        using (var scope = _factory.Services.CreateScope())
         {
-            source = "employees.csv",
-            target = new[] { "hr", "employees" },
-            mappings = new[] { "name", "email", "dept" },
-            mode = "append",
-            conflict = "skip",
-            batchSize = 1000
-        });
-
+            var db = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
+            Assert.False(await db.Users.AnyAsync(user => user.Username == username));
+        }
+        var create = AuthRequest(HttpMethod.Post, "/api/import-jobs", token);
+        create.Content = JsonContent.Create(input);
         var createResponse = await _client.SendAsync(create);
         createResponse.EnsureSuccessStatusCode();
-        var created = await createResponse.ReadApiResponseAsync<ImportJobResponse>();
-        Assert.NotNull(created?.Data);
-        Assert.StartsWith("IMP-", created.Data.Id);
-        Assert.Equal("employees.csv", created.Data.Source);
-        Assert.Equal("append", created.Data.Mode);
-        Assert.Equal("skip", created.Data.Conflict);
-        Assert.True(created.Data.Progress < 100);
-
-        ImportJobResponse? latest = created.Data;
-        var lastProgress = -1;
-        for (var i = 0; i < 40; i++)
+        var latest = (await createResponse.ReadApiResponseAsync<ImportJobResponse>())!.Data!;
+        var id = latest.Id;
+        Assert.StartsWith("IMP-", id);
+        for (var i = 0; i < 100 && latest.Status != "completed"; i++)
         {
-            var getResponse = await _client.SendAsync(
-                AuthRequest(HttpMethod.Get, $"/api/import-jobs/{created.Data.Id}", token));
-            getResponse.EnsureSuccessStatusCode();
-            var body = await getResponse.ReadApiResponseAsync<ImportJobResponse>();
-            Assert.NotNull(body?.Data);
-            latest = body.Data;
-            Assert.True(latest.Progress >= lastProgress);
-            lastProgress = latest.Progress;
-            if (latest.Status == "completed" && latest.Progress == 100)
-            {
-                break;
-            }
-
             await Task.Delay(50);
+            var get = await _client.SendAsync(AuthRequest(HttpMethod.Get, $"/api/import-jobs/{id}", token));
+            get.EnsureSuccessStatusCode();
+            var text = await get.Content.ReadAsStringAsync();
+            Assert.DoesNotContain(password, text);
+            Assert.DoesNotContain("passwordHash", text, StringComparison.OrdinalIgnoreCase);
+            var next = (await get.ReadApiResponseAsync<ImportJobResponse>())!.Data!;
+            Assert.True(next.Processed >= latest.Processed);
+            Assert.Equal(next.Processed * 100 / next.Total, next.Progress);
+            Assert.Equal(next.Processed, next.Rows.Count(row => row.Status != "pending"));
+            latest = next;
         }
-
-        Assert.NotNull(latest);
-        Assert.Equal(100, latest.Progress);
         Assert.Equal("completed", latest.Status);
-        Assert.NotNull(latest.Result);
-        Assert.Equal(3, latest.Result.Imported);
-        Assert.Equal(1, latest.Result.Skipped);
-        Assert.Contains("追加", latest.Result.Message);
-        Assert.Contains("3 个字段", latest.Result.Message);
+        Assert.Equal(7, latest.Processed);
+        Assert.Equal(100, latest.Progress);
+        Assert.Equal(2, latest.Result!.Imported);
+        Assert.Equal(2, latest.Result.Skipped);
+        Assert.Equal(3, latest.Result.Failed);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
+            var user = await db.Users.Include(user => user.UserRoles).SingleAsync(user => user.Username == username);
+            Assert.Equal(0, (int)user.Status);
+            Assert.Equal("Alice, \"A\"\r\nTeam", user.DisplayName);
+            Assert.Equal(1, Assert.Single(user.UserRoles).RoleId);
+            Assert.True(PasswordHasher.Matches(user.PasswordHash, password));
+            Assert.False(PasswordHasher.Matches(user.PasswordHash, user.PasswordHash));
+            var job = await db.ImportJobs.SingleAsync(job => job.PublicId == id);
+            Assert.DoesNotContain(password, job.RowsJson);
+            Assert.DoesNotContain(user.PasswordHash, job.RowsJson);
+        }
+        // Completed GETs do not create another user or change row results.
+        var gets = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ =>
+            _client.SendAsync(AuthRequest(HttpMethod.Get, $"/api/import-jobs/{id}", token))));
+        foreach (var get in gets)
+        {
+            var result = (await get.ReadApiResponseAsync<ImportJobResponse>())!.Data!;
+            Assert.Equal(latest.Rows, result.Rows);
+            Assert.Equal(7, result.Processed);
+        }
     }
 
     [Fact]
-    public async Task GetImportJob_ConcurrentGets_DoNotDoubleStep()
+    public async Task CreateImportJob_RejectsMalformedCsvAndMissingPermission()
     {
         var token = await LoginAsAdminAsync();
-        var create = AuthRequest(HttpMethod.Post, "/api/import-jobs", token);
-        create.Content = JsonContent.Create(new
+        foreach (var csv in new[] { "", "username,password", "username,password\n\"unclosed,secret", "username,username\na,b" })
         {
-            source = "concurrent.csv",
-            target = new[] { "hr", "employees" },
-            mappings = new[] { "name" },
-            mode = "append",
-            conflict = "skip"
-        });
-
-        var createResponse = await _client.SendAsync(create);
-        createResponse.EnsureSuccessStatusCode();
-        var created = await createResponse.ReadApiResponseAsync<ImportJobResponse>();
-        Assert.NotNull(created?.Data);
-
-        var gets = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ =>
-            _client.SendAsync(AuthRequest(HttpMethod.Get, $"/api/import-jobs/{created.Data.Id}", token))));
-
-        var progresses = new List<int>();
-        foreach (var getResponse in gets)
-        {
-            getResponse.EnsureSuccessStatusCode();
-            var body = await getResponse.ReadApiResponseAsync<ImportJobResponse>();
-            Assert.NotNull(body?.Data);
-            progresses.Add(body.Data.Progress);
+            var request = AuthRequest(HttpMethod.Post, "/api/import-jobs", token);
+            request.Content = JsonContent.Create(new { source = "invalid.csv", csv });
+            Assert.Equal(HttpStatusCode.BadRequest, (await _client.SendAsync(request)).StatusCode);
         }
-
-        Assert.True(progresses.Max() - progresses.Min() <= 25,
-            $"Concurrent GET must not double-step progress: [{string.Join(", ", progresses)}]");
-        Assert.DoesNotContain(progresses, value => value > 100);
+        var missing = await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/import-jobs/IMP-missing", token));
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        var unauthenticated = await _client.PostAsJsonAsync("/api/import-jobs/preview", new { source = "users.csv", csv = "username,password\nunauthorized,secret42" });
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthenticated.StatusCode);
     }
 
     private async Task<string> LoginAsAdminAsync()

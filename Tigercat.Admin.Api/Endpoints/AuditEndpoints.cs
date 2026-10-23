@@ -66,9 +66,7 @@ public class AuditEndpoints : IEndpointDefinition
     {
         var p = Math.Max(page ?? 1, 1);
         var ps = Math.Clamp(pageSize ?? DefaultPageSize, 1, MaxPageSize);
-        var searchWindow = Math.Clamp(p * ps + ps, ps, MaxSearchWindow);
-
-        var result = TryLoadAuditLogs(services, searchWindow, ct);
+        var result = TryLoadAuditLogs(services, MaxSearchWindow, ct);
         if (result.Error is not null)
         {
             return Task.FromResult(result.Error);

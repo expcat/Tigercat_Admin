@@ -8,7 +8,8 @@ public record ArticleResponse(
     string[] Tags,
     string Category,
     string[] Column,
-    bool Published);
+    bool Published,
+    MediaItemResponse[] Attachments);
 
 public record UpdateArticleRequest(
     string? Title,
@@ -17,4 +18,5 @@ public record UpdateArticleRequest(
     string[]? Tags,
     string? Category,
     string[]? Column,
-    bool? Published);
+    bool? Published,
+    int[]? AttachmentIds = null);

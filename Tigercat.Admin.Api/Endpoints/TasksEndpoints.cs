@@ -56,6 +56,8 @@ public class TasksEndpoints : IEndpointDefinition
         string? status,
         string? keyword,
         string? assignee,
+        string? assigneeExact,
+        bool? unfinished,
         DateTime? dueFrom,
         DateTime? dueTo,
         bool? blocked,
@@ -94,6 +96,17 @@ public class TasksEndpoints : IEndpointDefinition
         {
             var assigneeKeyword = assignee.Trim().ToLowerInvariant();
             query = query.Where(t => t.Assignee.ToLower().Contains(assigneeKeyword));
+        }
+
+        if (!string.IsNullOrWhiteSpace(assigneeExact))
+        {
+            var exact = assigneeExact.Trim().ToLowerInvariant();
+            query = query.Where(t => t.Assignee.ToLower() == exact);
+        }
+
+        if (unfinished == true)
+        {
+            query = query.Where(t => t.Status != "done");
         }
 
         if (dueFrom.HasValue)
