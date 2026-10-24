@@ -1,6 +1,6 @@
 # rc.3 接入与验收
 
-更新：2026-10-25。ADMIN-02 的本地实现、自动门禁和已授权的模型视觉 / 交互验收完成，17 个确认缺陷全部闭合。当前已切换正式 npm `3.0.0-rc.3`；registry 复测与历史候选证据分别记录，提交和部署结果见本页的正式接入记录。
+更新：2026-10-25。ADMIN-02 的实现、自动门禁和已授权的模型视觉 / 交互验收完成，17 个确认缺陷全部闭合。正式 npm `3.0.0-rc.3` 已提交、推送并部署到 Pages，20 个唯一线上关键场景已接受，本次交付已归档；registry 复测与历史候选证据分别记录。
 
 ## 正式 registry 接入
 
@@ -19,6 +19,24 @@ React、Vue、MockApi 的依赖清单均固定正式 npm `3.0.0-rc.3`，已移�
 正式包的现有静态 E2E 已完整重跑，158/158 通过，见 [运行记录](../artifacts/admin-02/registry-rc3/e2e.json)。本地 Pages 产物另完成双端 1440 浅色 / 375 暗色的登录与 Tour、用户批量状态、通知同步、FileManager、审批确认，以及双端 320 暗色登录与 Tour，共 22 个不同场景。首次 21/22 通过，Vue 320 登录按钮等待超时；调整验收脚本的 expect 等待时间后仅重跑该条件，1/1 通过，无页面异常、无产品源码改动。原始超时与定向通过分别保留，见 [专项验收汇总](../artifacts/admin-02/registry-rc3/local-critical-acceptance.json)。
 
 正式包上的最终实测、提交 / Pages 状态见 [registry 交付记录](../artifacts/admin-02/registry-rc3/report.md)。以下 296 条默认矩阵与专项验收保留原来的来源、截图和判断，不改称 registry 全量重拍；真实 API 28/28 与后端 271/271 仍标为此前的独立验证。
+
+## 发布与实际线上验收
+
+产品提交 [`be8a2a6b7218a78fca9294649fa45e872a89cea1`](https://github.com/expcat/Tigercat_Admin/commit/be8a2a6b7218a78fca9294649fa45e872a89cea1) 已普通推送 main。[Pages run 40110051841](https://github.com/expcat/Tigercat_Admin/actions/runs/40110051841) 的构建与部署均成功；实际 `github-pages` deployment `7301056234` / status `20494404909` 为 `success`，部署 SHA 与产品提交一致。入口为 [Tigercat Admin](https://expcat.github.io/Tigercat_Admin/)，见 [部署核验](../artifacts/admin-02/registry-rc3/deployment-verification.json)。
+
+实际根 URL 正文、双端 HTML 及各自主 JS / CSS 共 7 份与本地验收 Pages 产物逐字节匹配，见 [线上资源验收](../artifacts/admin-02/registry-rc3/online-resource-acceptance.json)。真实 HTTPS 页面完成 React / Vue × 1440 浅色 / 375 暗色 × 下列 5 类交互，共 20 个唯一条件；20 张最终原图均实际查看并核对 SHA256，无 pageerror。
+
+| 线上交互 | 双端桌面 / 移动实际结果 |
+| --- | --- |
+| 登录主色与原生 Tour | 登录颜色、完整步骤、目标 / 面板几何和完成状态通过，最终图背景已稳定 |
+| 用户批量状态 | 取消、禁用、刷新后保留、重新启用通过；自禁用失败保留确认框与选择 |
+| 通知同步 | Bell 与页面未读一致，全部已读后未读筛选为空 |
+| FileManager | 真实筛选数量 3→1→0→3 |
+| 审批确认 | 受理人选择、确认框位置、Esc 关闭和焦点恢复通过 |
+
+线上结果由多次定向运行汇总，来源分别为本对话的 15 项和协调端的 Vue 375 暗色 5 项，没有宣称单次 20/20 全绿。原始连接 / 加载超时、同文档导航与触摸配置的验收脚本错误、共享浏览器存储导致的登录准备失败均保留；普通刷新或修正脚本后按真实页面复验，没有修改产品代码或替换响应。逐项来源、原图 / SHA256、实际图审及失败记录见 [20 项验收汇总](../artifacts/admin-02/registry-rc3/online-acceptance.json)、[图审索引](../artifacts/admin-02/registry-rc3/online-visual-review.json) 和 [交付报告](../artifacts/admin-02/registry-rc3/report.md)。
+
+正式接入、自动门禁、模型视觉 / 交互验收、发布与归档均完成。后续验收文档提交独立于上述已部署的产品 SHA；工作流继续仅 `workflow_dispatch`。
 
 ## ADMIN-02 本地候选验收（历史）
 
