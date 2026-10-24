@@ -49,7 +49,18 @@ cd Tigercat.Admin.Vue && pnpm dev
 
 ### Tigercat 本地构建联调
 
-当前使用 npm 发布包，根目录 `pnpm-workspace.yaml` 没有本地 `overrides`。需要联调同级 `../Tigercat` 源码时，临时将以下配置加入该文件；应用的 `package.json` 保留发布版本，实际安装来源由 `file:` 覆盖和根 lockfile 决定。pnpm 为本地包接入 Admin 的 React / Vue peer 依赖，避免直接链接上游目录时加载另一份框架运行时。
+当前 React、Vue、MockApi 的依赖清单及根 lockfile 均使用 npm `3.0.0-rc.3`，`pnpm-workspace.yaml` 已移除本地覆盖，并同步该版本的 minimumReleaseAge 例外。正式包来源、SHA256 / SHA512 与历史候选的区别见 [rc.3 接入与验收](frontend-rc3-validation.md)。pnpm 为框架包接入 Admin 的 React / Vue peer 依赖，三个消费者共用同一 Core。
+
+以下仅用于联调未发布候选：上游已有验收过的 tarball 时直接消费该产物，不重建；上游修复后重新生成候选，更新三个覆盖路径并执行 `pnpm install --no-frozen-lockfile`，再重建 Admin。历史三包覆盖示例（ADMIN-02 round-06，已从当前配置移除）：
+
+```yaml
+overrides:
+  '@expcat/tigercat-core': file:../Tigercat/test-results/visual-rc.3/admin-integration/round-06/tarballs/expcat-tigercat-core-3.0.0-rc.3.tgz
+  '@expcat/tigercat-react': file:../Tigercat/test-results/visual-rc.3/admin-integration/round-06/tarballs/expcat-tigercat-react-3.0.0-rc.3.tgz
+  '@expcat/tigercat-vue': file:../Tigercat/test-results/visual-rc.3/admin-integration/round-06/tarballs/expcat-tigercat-vue-3.0.0-rc.3.tgz
+```
+
+没有候选 tarball、仅需联调源码时，可以临时改为目录覆盖：
 
 ```yaml
 overrides:
@@ -67,7 +78,7 @@ pnpm install --force
 pnpm dev:demo:all --force
 ```
 
-`file:` 包通过硬链接安装；上游重建 `dist` 后需重新安装并重启 Vite，以刷新包文件和预构建缓存。双端构建验证仍用 `pnpm build:frontend`。恢复 npm 包时，删除上述三个 `overrides`，再在 Admin 根目录执行 `pnpm install` 更新 lockfile。
+目录 `file:` 包通过硬链接安装；上游重建 `dist` 或替换 tarball 后需重新安装并重启 Vite，以刷新包文件和预构建缓存。双端构建验证仍用 `pnpm build:frontend`。恢复 npm 包时，删除三个 `overrides`，同步 React、Vue、MockApi 的依赖版本和 minimumReleaseAge 例外，再在 Admin 根目录执行 `pnpm install` 更新 lockfile，并验证 `pnpm install --frozen-lockfile`。不能发布带本地覆盖的 lockfile。
 
 ## 常用命令
 

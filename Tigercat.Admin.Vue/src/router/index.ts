@@ -139,7 +139,10 @@ const router = createRouter({
     },
     {
       path: '/:pathMatch(.*)*',
-      redirect: '/404',
+      name: 'schema-not-found',
+      component: ExceptionPage,
+      props: { status: 404 },
+      meta: { requiresAuth: true },
     },
   ],
 });
@@ -180,7 +183,18 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   if (requiresAuth && !isAuthed) {
-    next({ name: 'login', query: { redirect: to.fullPath } });
+    next({ name: 'login', query: { redirect: to.fullPath }, replace: router.options.history.location === to.fullPath });
+    return;
+  }
+
+  if (to.name === 'schema-not-found') {
+    syncSchemaRoutes(await loadShellMenuSchema());
+    // Re-match the original URL after live menu routes have been registered.
+    // A browser hash change is already in history; router.push is not yet committed.
+    const replace = router.options.history.location === to.fullPath;
+    next(router.resolve(to.fullPath).name !== to.name
+      ? { path: to.path, query: to.query, hash: to.hash, replace }
+      : { path: '/404', replace });
     return;
   }
 

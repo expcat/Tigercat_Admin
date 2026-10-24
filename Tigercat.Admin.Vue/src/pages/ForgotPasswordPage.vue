@@ -57,6 +57,14 @@ const focusField = (name: string) => void nextTick(() => {
 const normalizeTarget = (value: string) => value.includes('@') ? value.trim() : value.replace(/\s/g, '')
 const goToLogin = () => router.push({ name: 'login', query: route.query })
 
+function placeIdentityCaret() {
+  const input = pageRef.value?.querySelector<HTMLInputElement>('input[autocomplete="username"]')
+  if (!input) return
+  input.focus()
+  const pos = input.value.length
+  input.setSelectionRange(pos, pos)
+}
+
 function handleTargetChange(value: string) {
   if (normalizeTarget(value) !== normalizeTarget(target.value)) {
     request?.abort()
@@ -70,9 +78,10 @@ function handleTargetChange(value: string) {
     codeDeadline.value = null
     submitError.value = ''
   }
-  if (isPhoneIdentity(value) !== usePhoneMask.value) focusField('target')
+  const modeChanged = isPhoneIdentity(value) !== usePhoneMask.value
   target.value = value
   targetError.value = ''
+  if (modeChanged) void nextTick(placeIdentityCaret)
 }
 
 function validateIdentity() {
@@ -185,7 +194,7 @@ async function submitPassword() {
   <div
     ref="pageRef"
     class="flex flex-col md:flex-row w-full min-h-[500px] rounded-2xl overflow-x-clip overflow-y-visible shadow-lg border border-(--tiger-border,#e2e8f0)/30 bg-(--tiger-surface) animate-fade-in-up motion-reduce:animate-none"
-    style="--tiger-primary: #4f46e5; --tiger-primary-hover: #4338ca; --tiger-primary-disabled: #c7d2fe; --tiger-focus-ring: #4f46e5;"
+    style="--tiger-primary: light-dark(#4f46e5, #a5b4fc); --tiger-primary-foreground: light-dark(#ffffff, #0f172a); --tiger-primary-hover: light-dark(#4338ca, #c7d2fe); --tiger-primary-disabled: light-dark(#c7d2fe, #3730a3); --tiger-focus-ring: light-dark(#4f46e5, #a5b4fc);"
   >
     <div class="hidden md:flex md:w-[42%] bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 p-8 flex-col justify-between text-white relative overflow-hidden">
       <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-2xl -mr-20 -mt-20 pointer-events-none" />

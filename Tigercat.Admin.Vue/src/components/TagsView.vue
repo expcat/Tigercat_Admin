@@ -7,21 +7,18 @@ import {
 } from '@expcat/tigercat-vue/Dropdown'
 import { Tag } from '@expcat/tigercat-vue/Tag'
 import Icon from './Icon.vue'
-import {
-  getShellPageTitle,
-  type ShellPageKey,
-} from '../utils/shell-navigation'
 import { TAGS_VIEW_HOME_KEY } from '../utils/tags-view'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps<{
-  keys: ShellPageKey[]
-  activeKey: ShellPageKey
+  getTitle: (key: string) => string
+  keys: string[]
+  activeKey: string
 }>()
 
 const emit = defineEmits<{
-  (e: 'select', key: ShellPageKey): void
-  (e: 'close', key: ShellPageKey): void
+  (e: 'select', key: string): void
+  (e: 'close', key: string): void
   (e: 'close-current'): void
   (e: 'close-others'): void
   (e: 'close-all'): void
@@ -54,25 +51,25 @@ const canCloseAll = computed(() =>
   props.keys.some((key) => key !== TAGS_VIEW_HOME_KEY),
 )
 
-function tabTitle(key: ShellPageKey): string {
-  return getShellPageTitle(key)
+function tabTitle(key: string): string {
+  return props.getTitle(key)
 }
 
-function handleClose(event: Event | undefined, key: ShellPageKey) {
+function handleClose(event: Event | undefined, key: string) {
   restoreTabFocus = event?.currentTarget === document.activeElement
   event?.preventDefault?.()
   event?.stopPropagation?.()
   emit('close', key)
 }
 
-function handleSelect(event: MouseEvent, key: ShellPageKey) {
+function handleSelect(event: MouseEvent, key: string) {
   if ((event.target as HTMLElement).closest('button')) {
     return
   }
   emit('select', key)
 }
 
-function handleTabKeydown(event: KeyboardEvent, key: ShellPageKey) {
+function handleTabKeydown(event: KeyboardEvent, key: string) {
   if (event.target !== event.currentTarget) return
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault()

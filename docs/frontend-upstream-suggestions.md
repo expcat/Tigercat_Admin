@@ -6,13 +6,12 @@
 
 ## 当前状态
 
-当前仓库包版本 `@expcat/tigercat-core` / `@expcat/tigercat-react` / `@expcat/tigercat-vue` `3.0.0-rc.2`。
+发布依赖清单与真实安装均为正式 npm `3.0.0-rc.3`，临时覆盖已移除，来源及完整静态 E2E 158/158 结果见 [rc.3 接入与验收](frontend-rc3-validation.md)。ADMIN-02 的 Upload、Funnel、FileManager、WorkflowActionBar 和 Tour 根因修复均已通过安装包消费与图审闭合，Tour 手机几何 UP07 已在 round-06 及正式包专项复验通过。下表仅保留现有业务组合之外的能力指针。
 
 ## 待上游改进
 
 | 增强 | 状态 | 需求指针 |
 | ---- | ---- | -------- |
-| React Upload StrictMode 生命周期 | rc.2 开发模式复用已销毁控制器，内容附件、Logo 与 CSV 导入沿用原生文件输入和现有 API | [需求 2.5](tigercat-upstream-requirements.md#upload-strict-mode) |
 | 通知铃铛组合扩展 | 官方组件暂不能承接单项 toast、批量已读和查看全部，保留本地薄组合 | [需求 2.3](tigercat-upstream-requirements.md#notification-bell-actions) |
 | 通知 toast 整条点击 | rc.2 顶层 `onClick` 只生成兼容按钮，Admin 保留单个 `actions` 查看动作 | [需求 2.4](tigercat-upstream-requirements.md#notification-toast-click) |
 | Cron 中文、范围摘要与草稿校验 | rc.2 摘要仍为英文且展开范围；非法数字草稿未进入组件校验，Admin 提交前已防护 | [需求 2.2](tigercat-upstream-requirements.md#cron-summary) |

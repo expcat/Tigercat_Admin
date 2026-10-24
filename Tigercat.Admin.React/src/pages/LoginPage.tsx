@@ -159,10 +159,11 @@ function LoginPage({ onSuccess }: LoginPageProps) {
     <div
       className="flex flex-col md:flex-row w-full min-h-[500px] rounded-2xl overflow-hidden shadow-lg border border-(--tiger-border,#e2e8f0)/30 bg-(--tiger-surface) animate-fade-in-up motion-reduce:animate-none"
       style={{
-        '--tiger-primary': '#4f46e5', // indigo-600
-        '--tiger-primary-hover': '#4338ca', // indigo-700
-        '--tiger-primary-disabled': '#c7d2fe', // indigo-200
-        '--tiger-focus-ring': '#4f46e5',
+        '--tiger-primary': 'light-dark(#4f46e5, #a5b4fc)', // indigo-600
+        '--tiger-primary-foreground': 'light-dark(#ffffff, #0f172a)',
+        '--tiger-primary-hover': 'light-dark(#4338ca, #c7d2fe)', // indigo-700
+        '--tiger-primary-disabled': 'light-dark(#c7d2fe, #3730a3)', // indigo-200
+        '--tiger-focus-ring': 'light-dark(#4f46e5, #a5b4fc)',
       } as React.CSSProperties}
     >
       {/* Left side: branding/decoration */}

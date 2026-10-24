@@ -10,6 +10,7 @@ import { apiRequest, getAuthHeaders } from '../utils';
 import {
   countUnreadNotifications,
   fetchNotifications,
+  notifyNotificationsChanged,
   NOTIFICATIONS_CHANGED_EVENT,
 } from '../utils/notifications';
 import type { AdminNotificationItem } from '../utils/types';
@@ -106,7 +107,7 @@ export function NotificationBell() {
         headers: getAuthHeaders(),
         body: JSON.stringify({ groupKey: null }),
       });
-      await loadNotifications();
+      notifyNotificationsChanged();
       notification.success({
         title: '通知已全部标记为已读',
         description: '所有分组的未读通知已清空。',
@@ -194,6 +195,7 @@ export function NotificationBell() {
       onOpenChange={handleOpenChange}
       trigger="click"
       placement="bottom-end"
+      ariaLabel="通知"
       width={360}
       content={panel}
     >

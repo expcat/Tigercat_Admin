@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
@@ -50,6 +51,14 @@ function ForgotPasswordPage() {
   const [submitError, setSubmitError] = useState('');
   const usePhoneMask = isPhoneIdentity(target);
 
+  const placeIdentityCaret = () => {
+    const input = pageRef.current?.querySelector<HTMLInputElement>('input[autocomplete="username"]');
+    if (!input) return;
+    input.focus();
+    const pos = input.value.length;
+    input.setSelectionRange(pos, pos);
+  };
+
   const focusField = (name: string) => requestAnimationFrame(() => {
     pageRef.current?.querySelector<HTMLInputElement>(name === 'code'
       ? '[data-testid="auth-otp-input"] input:not([type="hidden"])'
@@ -72,9 +81,11 @@ function ForgotPasswordPage() {
       setCodeDeadline(null);
       setSubmitError('');
     }
-    if (isPhoneIdentity(value) !== usePhoneMask) focusField('target');
-    setTarget(value);
+    const modeChanged = isPhoneIdentity(value) !== usePhoneMask;
+    if (modeChanged) flushSync(() => setTarget(value));
+    else setTarget(value);
     setTargetError('');
+    if (modeChanged) placeIdentityCaret();
   };
 
   const validateIdentity = () => {
@@ -189,10 +200,11 @@ function ForgotPasswordPage() {
       ref={pageRef}
       className="flex flex-col md:flex-row w-full min-h-[500px] rounded-2xl overflow-x-clip overflow-y-visible shadow-lg border border-(--tiger-border,#e2e8f0)/30 bg-(--tiger-surface) animate-fade-in-up motion-reduce:animate-none"
       style={{
-        '--tiger-primary': '#4f46e5',
-        '--tiger-primary-hover': '#4338ca',
-        '--tiger-primary-disabled': '#c7d2fe',
-        '--tiger-focus-ring': '#4f46e5',
+        '--tiger-primary': 'light-dark(#4f46e5, #a5b4fc)',
+        '--tiger-primary-foreground': 'light-dark(#ffffff, #0f172a)',
+        '--tiger-primary-hover': 'light-dark(#4338ca, #c7d2fe)',
+        '--tiger-primary-disabled': 'light-dark(#c7d2fe, #3730a3)',
+        '--tiger-focus-ring': 'light-dark(#4f46e5, #a5b4fc)',
       } as React.CSSProperties}
     >
       <div className="hidden md:flex md:w-[42%] bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 p-8 flex-col justify-between text-white relative overflow-hidden">

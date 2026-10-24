@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  readonly VITE_TIGERCAT_UI_VERSION: string;
   readonly VITE_TIGERCAT_DEMO?: string;
   readonly VITE_TIGERCAT_ROUTER_MODE?: 'hash' | 'history';
   readonly VITE_TIGERCAT_BASE_PATH?: string;

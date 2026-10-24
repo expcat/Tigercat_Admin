@@ -34,6 +34,7 @@ Tigercat Admin 是基于 .NET Aspire、.NET 10 Minimal API、React 19、Vue 3 �
 | [docs/llm.md](docs/llm.md) | LLM 按需读取入口、任务到文档的路由、Skill 使用提示 |
 | [AGENT.md](AGENT.md) | 代码代理工作规则、Skill 指引、同步文档和验证要求 |
 | [docs/frontend.md](docs/frontend.md) | React / Vue 前端蓝图、Tigercat UI 使用规范 |
+| [docs/frontend-rc3-validation.md](docs/frontend-rc3-validation.md) | rc.3 本地候选来源、迁移对照、全功能验收入口与状态 |
 | [Roadmap.md](Roadmap.md) | 全页面与组件升级计划、逐批执行队列、新功能和验收 |
 | [docs/roadmap-followups.md](docs/roadmap-followups.md) | 尚待验证的分支与演示实现边界 |
 | [docs/tigercat-upstream-requirements.md](docs/tigercat-upstream-requirements.md) | 面向 Tigercat 开发的上游组件需求（场景映射 / 优先级 / 建议 API） |

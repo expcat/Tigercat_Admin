@@ -10,11 +10,18 @@ import type { Session, ThemePreferences } from '../utils'
 const session = inject<import('vue').Ref<Session | null>>('session')!
 const changeForm = inject<import('vue').Ref<{ oldPassword: string; newPassword: string }>>('changeForm')!
 const changeOpen = inject<import('vue').Ref<boolean>>('changeOpen')!
+const changeSaving = inject<import('vue').Ref<boolean>>('changeSaving')!
 const handleLogout = inject<() => void>('handleLogout')!
-const handleChangePassword = inject<() => void>('handleChangePassword')!
+const handleChangePassword = inject<() => Promise<false | void>>('handleChangePassword')!
 const themePrefs = inject<import('vue').Ref<ThemePreferences>>('themePrefs')!
 const toggleThemeMode = inject<() => void>('toggleThemeMode')!
 const updateTheme = inject<(prefs: ThemePreferences) => void>('updateTheme')!
+
+function closeChangeModal() {
+  if (changeSaving.value) return
+  changeOpen.value = false
+  changeForm.value = { oldPassword: '', newPassword: '' }
+}
 </script>
 
 <template>
@@ -42,21 +49,28 @@ const updateTheme = inject<(prefs: ThemePreferences) => void>('updateTheme')!
     <Modal
       v-model:open="changeOpen"
       title="修改密码"
+      :closable="!changeSaving"
+      :keyboard="!changeSaving"
+      :mask-closable="!changeSaving"
       show-default-footer
       ok-text="确认修改"
       cancel-text="取消"
       @ok="handleChangePassword"
-      @cancel="changeOpen = false"
+      @cancel="closeChangeModal"
     >
       <Form :model-value="changeForm" :label-width="88">
         <FormItem name="oldPassword" label="旧密码">
           <Input
+            type="password"
+            auto-complete="current-password"
             v-model="changeForm.oldPassword"
             placeholder="请输入旧密码"
           />
         </FormItem>
         <FormItem name="newPassword" label="新密码">
           <Input
+            type="password"
+            auto-complete="new-password"
             v-model="changeForm.newPassword"
             placeholder="请输入新密码"
           />

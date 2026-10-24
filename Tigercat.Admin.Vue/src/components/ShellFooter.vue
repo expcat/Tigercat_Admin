@@ -4,6 +4,8 @@ import { Icon } from '@expcat/tigercat-vue/Icon'
 import { Space } from '@expcat/tigercat-vue/Space'
 import { Tag } from '@expcat/tigercat-vue/Tag'
 import { Text } from '@expcat/tigercat-vue/Text'
+
+const tigercatVersion = import.meta.env.VITE_TIGERCAT_UI_VERSION
 </script>
 
 <template>
@@ -15,7 +17,7 @@ import { Text } from '@expcat/tigercat-vue/Text'
       <Space size="sm" align="center" wrap>
         <Icon name="dashboard" size="sm" />
         <Text size="sm" color="secondary">Tigercat Admin</Text>
-        <Tag size="sm" variant="default">UI 3.0.0-rc.2</Tag>
+        <Tag size="sm" variant="default">UI {{ tigercatVersion }}</Tag>
       </Space>
       <Text size="sm" color="secondary">演示蓝本 · 非生产数据</Text>
     </div>

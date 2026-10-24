@@ -176,7 +176,7 @@ function AboutPage() {
     },
     {
       label: 'UI 组件',
-      value: 'Tigercat UI 3.0.0-rc.2',
+      value: `Tigercat UI ${import.meta.env.VITE_TIGERCAT_UI_VERSION}`,
       icon: <PaletteIcon size={20} />,
       iconClassName: 'bg-(--tiger-primary)/10 text-(--tiger-primary)',
     },
@@ -245,7 +245,7 @@ function AboutPage() {
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <Tag variant={connectionStatus.variant}>{connectionStatus.label}</Tag>
           <Button variant="outline" size="sm" loading={loading} disabled={loading} onClick={loadInfo}>重新连接服务</Button>
-          {info && <CopyButton text={`服务：${info.name}\nAPI 服务版本：${info.version}\n描述：${info.description}\nTigercat UI：3.0.0-rc.2`} label="复制服务信息" />}
+          {info && <CopyButton text={`服务：${info.name}\nAPI 服务版本：${info.version}\n描述：${info.description}\nTigercat UI：${import.meta.env.VITE_TIGERCAT_UI_VERSION}`} label="复制服务信息" />}
         </div>
         {loading ? (
           <div className="flex items-center justify-center py-10">

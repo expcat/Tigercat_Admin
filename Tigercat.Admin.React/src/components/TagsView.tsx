@@ -7,23 +7,21 @@ import {
 } from '@expcat/tigercat-react/Dropdown';
 import { Tag } from '@expcat/tigercat-react/Tag';
 import { MoreHorizontalIcon } from './Icons';
-import {
-  getShellPageTitle,
-  type ShellPageKey,
-} from '../utils/shell-navigation';
 import { TAGS_VIEW_HOME_KEY } from '../utils/tags-view';
 
 interface TagsViewProps {
-  keys: ShellPageKey[];
-  activeKey: ShellPageKey;
-  onSelect: (key: ShellPageKey) => void;
-  onClose: (key: ShellPageKey) => void;
+  getTitle: (key: string) => string;
+  keys: string[];
+  activeKey: string;
+  onSelect: (key: string) => void;
+  onClose: (key: string) => void;
   onCloseCurrent: () => void;
   onCloseOthers: () => void;
   onCloseAll: () => void;
 }
 
 export function TagsView({
+  getTitle,
   keys,
   activeKey,
   onSelect,
@@ -67,7 +65,7 @@ export function TagsView({
         aria-label="已打开的页面"
         className="p2-tags-view-list flex h-full min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:thin]">
         {keys.map((key) => {
-          const title = getShellPageTitle(key);
+          const title = getTitle(key);
           const isActive = key === activeKey;
           const pinned = key === TAGS_VIEW_HOME_KEY;
 

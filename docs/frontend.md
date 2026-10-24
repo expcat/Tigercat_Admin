@@ -49,9 +49,11 @@ export default createTigercatPlugin({ preset: modernTheme })
 
 Vue 端将 `@expcat/tigercat-react` 替换为 `@expcat/tigercat-vue`。根 `ConfigProvider` 传 `theme="modern"`，`colorScheme` 用 `utils/theme.ts` 解析出的 `light` / `dark`（跟随系统时先算出有效方案，再交给 ConfigProvider）。`applyTheme` 仍负责 `.compact`、用户主色，以及盖回 `.dark` 块里的文本/边框/阴影（ConfigProvider 会把预设 token 写成行内样式）。暗色主色取 `deriveDarkVariant(prefs.primaryColor).light`，保存的偏好仍是原主色；默认蓝在暗色下为 `#75b3ff`。Vue 在根 `onMounted` 中再次 `applyTheme`，确保刷新后用户主色不会被子级 ConfigProvider 的 mounted 写回覆盖。
 
+登录、找回密码页局部使用靛色，注册及注册成功页使用紫色。四类页面的既有祖先节点用 `light-dark()` 成对设置 `--tiger-primary` / `--tiger-primary-foreground`，并配对 hover、disabled 与 focus-ring：浅色为深主色配白字，暗色为浅主色配深字。函数使用根主题继承的 `color-scheme`，同时覆盖填充按钮、主色文字入口和描边按钮；只改白字无法修复暗色文字 / 描边的对比度。系统主题切换与各类主色消费者一起验证，不另加逐控件配色补丁。
+
 ## App Shell 蓝图
 
-`AppShell` 在 rc.2 中组合 Sidebar / Header / Breadcrumb / Tabs，但未提供标签关闭、持久化、移动 Drawer 和锁屏接口。当前 Shell 已承担动态菜单与权限，继续使用现有组合，避免增加一层适配。
+`AppShell` 当前组合 Sidebar / Header / Breadcrumb / Tabs，但未提供标签关闭、持久化、移动 Drawer 和锁屏接口。当前 Shell 已承担动态菜单与权限，继续使用现有组合，避免增加一层适配。侧栏收缩交给 `Menu collapsed`，不再用 `.menu-collapsed` 覆盖组件内的宽度、内边距、图标和标签隐藏；`!min-w-0` 仅约束应用 flex 容器。
 
 受保护页面统一使用后台 shell：
 
@@ -171,7 +173,7 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 | 异常页 | `Result`、`Countdown`、`Button`、`Empty` | 403/404/500 独立居中布局、返回首页/上一页、404 倒计时自动回首页；路由复用时重置倒计时并重新判断历史；无权限路由重定向 `/403` |
 | 嵌入页 | `Alert`、`Button`、`Empty`、原生 `iframe` | 安全地址检查、加载提示、15s 等待提示、重载 / 新窗口恢复、空地址提示；保留 sandbox 与 no-referrer |
 | 登录流程增强 | `Steps`、`Input`、`MaskInput`、`InputOTP`、`Countdown`、`Alert`、`Result`、`Button` | 忘记密码填写验证信息 → 新密码 → 完成，验证码随最终请求校验；账号两步验证通过才写会话，60s 后重新请求登录获取 challenge；注册结果页手动 / 倒计时回登录并保留原目标 |
-| 关于 | `Alert`、`Card`、`Text`、`Tag`、`Button`、`CopyButton`、`NavigationMenu`/`NavigationMenuList`/`NavigationMenuItem`/`NavigationMenuLink` | API 服务版本原样取 `/api/info`，UI 包版本独立显示 `3.0.0-rc.2`；关闭错误提示保留连接失败状态，重新连接期间禁重复操作、离页取消请求。CopyButton 复制当前服务信息并保留成功 / 失败反馈。分区菜单命名为「关于分区」，三个链接直接定位服务信息 / 特性 / 技术栈；ArrowLeft / ArrowRight / Home / End 切换焦点，Enter 定位后保留链接焦点与 hash 路由。 |
+| 关于 | `Alert`、`Card`、`Text`、`Tag`、`Button`、`CopyButton`、`NavigationMenu`/`NavigationMenuList`/`NavigationMenuItem`/`NavigationMenuLink` | API 服务版本原样取 `/api/info`，UI 包版本由 Vite 读取实际安装的框架包 `package.json`，注入 `VITE_TIGERCAT_UI_VERSION`，关于页、复制文本、页脚和流程设计徽标共用该值；关闭错误提示保留连接失败状态，重新连接期间禁重复操作、离页取消请求。CopyButton 复制当前服务信息并保留成功 / 失败反馈。分区菜单命名为「关于分区」，三个链接直接定位服务信息 / 特性 / 技术栈；ArrowLeft / ArrowRight / Home / End 切换焦点，Enter 定位后保留链接焦点与 hash 路由。 |
 
 项目、任务与日历的业务类型集中在双端 `src/utils/types.ts`。项目筛选与分页保存在 URL，详情返回保留 query；详情与讨论独立加载，区分 404、权限和临时故障。项目状态 `Segmented` 使用 `size="sm"`，在 375px 下完整显示五个标签，并以「项目状态」命名。项目总数取服务端 `total`，状态数量与进度均值标明前 200 条样本范围，剩余天数按本机当天的日历日计算。
 
@@ -318,6 +320,7 @@ AuditLogs 的列表 effect / watch 只依赖权限、查询、页码与目标事
 - .NET 权限从当前 EF 授权读取；角色变更后刷新页面可重新加载菜单和路由权限。禁用 / 删除使原 token 失效；新 Hub 连接和既有长连接的区别见 [认证专题](api/auth.md#用户状态会话与权限变化)。
 - 用户、角色、文件、审计等数据工作台复用 `utils/workbench.ts`，以 sessionStorage 保留查询、排序、选中行、隐藏列和导出状态。用户页临时状态以当前会话 `username` 隔离，不读取旧的公共 users 键。
 - 用户页命名筛选视图另存 localStorage，键为 `tigercat.admin.workbench.users.<encodeURIComponent(username)>.views`，只在当前浏览器当前账号内生效。保存关键字、状态、排序、每页条数、隐藏列；不保存页码、选择或导出。输入同名保存会替换原快照，另起名称保存为新视图，删除视图保留当前筛选。修改后显示「已修改」，需再次保存；切换 / 重新载入活动视图时恢复已保存快照、回到第 1 页并清空选择。没有活动视图时仍沿用临时工作台返回恢复行为。
+- 用户批量启用 / 禁用共用 `POST /api/users/batch-status`；静态 Mock 已补齐该端点和整批校验，取消不请求，失败保留选择与确认框。成功后列表与状态筛选读取更新后的值；Mock 会话及事件边界见 [用户 API](api/users.md)。
 - 系统设置初次 GET 失败时仅显示错误与重试，不展示可编辑空表单。保存只 PUT 有变化的项，成功使用响应更新已保存值；失败保留草稿和确认框，取消不发送 PUT。Logo 上传只改表单引用，预览 / 当前表单值与当前持久化值分别显示；恢复默认值也需确认保存。服务端 `theme.mode` / `theme.primaryColor` / `theme.compactMode` 与 Shell 本机外观偏好分别保存，水印开关为本机立即生效。
 - Logo 选择沿用原生文件输入与 `uploadMediaFile`，保持 React 开发 StrictMode 可用；校验图片 MIME 和 2 MB 上限，上传失败 / 取消保留旧草稿与持久化值。上传期间禁保存 / 恢复，取消中止请求、忽略迟到响应并将焦点恢复到选择按钮；离页中止上传。工单没有附件接口，新建表单只说明该边界，不提供无效文件选择。
 - Vue `Modal` 的 `@ok` 校验失败或请求失败必须 `return false`，否则组件会关闭 `v-model:open`。双端直接返回提交 Promise，让组件在处理中阻止重复确认；取消路径只关闭弹层。
@@ -332,6 +335,7 @@ AuditLogs 的列表 effect / watch 只依赖权限、查询、页码与目标事
 - 个人中心只有用户名来自当前会话，2FA 开关读写当前账号 API。读取失败时状态未知、开关禁用并可重试；启用前需输入演示码确认，取消不写回并恢复开关焦点，保存失败保留待确认状态。当前 API 未提供 TOTP 配置，不展示虚构绑定二维码。
 - 个人资料、统计、设备 / 历史明确数据来源。手机号、签名、登录提醒、异地保护和偏好仅为页面演示，不声称已持久化或已启用通知 / 防护；全站主题仍使用 Shell 配置。
 - 403 / 404 / 500 复用页面时更新状态、历史判断和倒计时；手动返回取消自动跳转，回首页使用 replace。`/500` 仍是独立演示入口。
+- 异常页优先读取路由历史的 `idx` / `back`；无这些标记的原生 hash 跳转仅在历史长度超过初始空白页与当前页时允许后退，直接新开页面回首页 / 登录。Vue 未匹配路径先同步菜单，再以原 query / hash 重新匹配；内部 `router.push` 保留上一页，已经写入浏览器历史的 hash 跳转才替换当前项。访客重定向同样避免把未知 hash 留成返回登录的循环。
 - Iframe 通过 load / error 事件及 15s 计时提供恢复提示；load 仅表示 frame 响应，不能证明跨域内容可读。浏览器无法可靠区分跨域 CSP / X-Frame-Options 拦截，重载与新窗口入口始终可用。
 
 ## 页面生成验收
@@ -349,9 +353,9 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 ## 已对齐的上游能力
 
-本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `3.0.0-rc.2`，React、Vue 与 MockApi 的 Core 依赖保持同版本（3.0 不向前兼容：modern 预设走 `createTigercatPlugin` / `ConfigProvider theme`，`Stepper` / `Kanban` / `DonutChart` / `ImageViewer` 已从调用面移除）。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 Captcha 仍跳过（登录无明示需求）。
+本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `3.0.0-rc.3`，React、Vue 与 MockApi 的 Core 依赖保持同版本（3.0 不向前兼容：modern 预设走 `createTigercatPlugin` / `ConfigProvider theme`，`Stepper` / `Kanban` / `DonutChart` / `ImageViewer` 已从调用面移除）。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 Captcha 仍跳过（登录无明示需求）。
 
-`3.0.0-rc.2` 直接使用 npm 发布包，包含前序浮层焦点、结构分隔线、菜单选中背景与工作流连线修复，并补齐表单校验、异步事件、拖拽、文件管理和图表交互修复；不保留本地补丁或 `patchedDependencies`。如需联调本地组件构建，构建、刷新与恢复 npm 包的步骤见 [Tigercat 本地构建联调](operations.md#tigercat-本地构建联调)。浮层与焦点回归见 [e2e/overlay-focus.spec.ts](../e2e/overlay-focus.spec.ts)，审批确认与提交路径见 [e2e/approvals.spec.ts](../e2e/approvals.spec.ts)。
+React、Vue 与 MockApi 的发布依赖清单均固定 npm `3.0.0-rc.3`，workspace 本地覆盖已移除，lockfile 使用 registry integrity。三者及框架库共用同一 Core，React / React DOM / Vue 使用各应用的同一份框架 peer。正式包逐文件来源核验、能力对照和历史候选验收分别记录于 [rc.3 接入与验收](frontend-rc3-validation.md)，不把历史截图改称 registry 复测。本轮不保留 node_modules 补丁或 `patchedDependencies`。本地联调的临时用法见 [Tigercat 本地构建联调](operations.md#tigercat-本地构建联调)。浮层与焦点回归见 [e2e/overlay-focus.spec.ts](../e2e/overlay-focus.spec.ts)，审批确认与提交路径见 [e2e/approvals.spec.ts](../e2e/approvals.spec.ts)。
 
 升级时对照 [rc.2 迁移指南](https://github.com/expcat/Tigercat/blob/v3.0.0-rc.2/docs/MIGRATION.md)：`Slider` 不再接受 `vertical` / `showInput`，`LoadingBar` 不再接受 `renderBar`，`VirtualList` 仅使用纵向列表契约，不再传 `columns` / `orientation` / `stickyIndexes`。上传文案读取 `getUploadLabels(locale, overrides)`，不要导入已删除的英文常量；自定义拖拽项完整展开 `getDragItemProps` / `getDragItemAttrs` 的返回值，保留数字 key 所需的 `data-drag-id-type`。
 
@@ -428,7 +432,7 @@ rc.2 的 `WorkflowActionBar.onAction(item, payload)` 返回 `void`，确认层�
 
 `/content` 读取文章 `a1`；加载失败时提供重试，避免将默认正文误保存。编辑内容与附件一起保存，上传和选择按剩余 12 个附件名额计算，保存时禁编辑；取消上传会中止请求，重新加载恢复服务端文章。媒体读取 / 上传沿用 `media:view` / `media:upload`，内容保存仍只需登录。协作者为明确提示的本页备注。
 
-`/gallery` 的示例相册和轮播保留，已保存图片从媒体 API 分页读取。标注首次保存示例时转 PNG 上传，随后写入标注；写入失败保留已上传 ID 与形状，重试不重复上传。裁剪等待 `ready`，从 `getCropResult().blob` 上传输出图；`cropRect` 是显示坐标，不用它冒充输出像素。提交时禁关闭和重复提交，失败保留抽屉、成功刷新“已保存”。图库卡片的多动作、瀑布流与轮播需要现有组合，rc.2 `Gallery` 仅提供图片集与当前索引，本批保持现有组合。
+`/gallery` 的示例相册和轮播保留，已保存图片从媒体 API 分页读取。卡片封面显式使用 `AspectRatio fit="cover"`，由 rc.3 的比例盒定位内容层并裁切，不再另加 `overflow-hidden`；子级 `Image` 仍需 `h-full w-full` 填满其自身包装层。标注首次保存示例时转 PNG 上传，随后写入标注；写入失败保留已上传 ID 与形状，重试不重复上传。裁剪等待 `ready`，从 `getCropResult().blob` 上传输出图；`cropRect` 是显示坐标，不用它冒充输出像素。提交时禁关闭和重复提交，失败保留抽屉、成功刷新“已保存”。图库卡片的多动作、瀑布流与轮播需要现有组合，`Gallery` 仅提供图片集与当前索引，保持现有组合。
 
 `/files` 每页 20 条，筛选和翻页清除旧选择。详情统一进入 `/files/:id`（`media:view`），双端 `page-map` 提供懒加载入口，Shell 高亮文件菜单并追加媒体详情面包屑，tags-view 复用文件管理标签。详情按 ID 读取，取消旧请求并清理旧数据，区分无效 ID / 404、403、加载失败与重试；展示元数据、只读标注和引用来源，使用 `CopyButton` 复制资源 URL 或站内链接。文件上传失败保留原文件以重试，重复文件提供已有详情入口；删除前引用读取失败时禁止提交，普通删除与清理 Logo / 头像 / 文章附件的强制删除共用一个确认弹层。暗色使用主题 token。
 

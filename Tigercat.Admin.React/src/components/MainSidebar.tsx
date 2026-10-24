@@ -189,7 +189,7 @@ export function MainSidebar({
             searchable={!displayCollapsed}
             searchPlaceholder="搜索菜单"
             emptyText="没有匹配的菜单"
-            className={`!min-w-0 ${displayCollapsed ? 'menu-collapsed' : ''}`}
+            className="!min-w-0"
             onSelect={handleSelect}
             onOpenChange={(_key, info) =>
               displayCollapsed
@@ -207,7 +207,7 @@ export function MainSidebar({
             popupPortal
             mode="inline"
             items={bottomMenuItems}
-            className={`!min-w-0 ${displayCollapsed ? 'menu-collapsed' : ''}`}
+            className="!min-w-0"
             onSelect={handleSelect}
           />
         </div>

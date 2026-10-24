@@ -62,7 +62,7 @@ const goToLogin = () => {
 <template>
   <div
     class="flex flex-col md:flex-row w-full min-h-[500px] rounded-2xl overflow-hidden shadow-lg border border-(--tiger-border,#e2e8f0)/30 bg-(--tiger-surface) animate-fade-in-up motion-reduce:animate-none"
-    style="--tiger-primary: #7c3aed; --tiger-primary-hover: #6d28d9; --tiger-primary-disabled: #ddd6fe; --tiger-focus-ring: #7c3aed;"
+    style="--tiger-primary: light-dark(#7c3aed, #c4b5fd); --tiger-primary-foreground: light-dark(#ffffff, #0f172a); --tiger-primary-hover: light-dark(#6d28d9, #ddd6fe); --tiger-primary-disabled: light-dark(#ddd6fe, #5b21b6); --tiger-focus-ring: light-dark(#7c3aed, #c4b5fd);"
   >
     <!-- Left side: branding/decoration -->
     <div class="hidden md:flex md:w-[42%] bg-gradient-to-br from-indigo-600 via-violet-600 to-pink-600 p-8 flex-col justify-between text-white relative overflow-hidden">

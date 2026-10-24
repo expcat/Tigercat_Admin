@@ -37,7 +37,7 @@ const changeForm = ref({ oldPassword: '', newPassword: '' })
 const session = ref<Session | null>(safeParse(localStorage.getItem(SESSION_KEY)) || null)
 
 const homeMessage = ref('')
-const loading = ref(false)
+const changeSaving = ref(false)
 const homeError = ref('')
 const changeOpen = ref(false)
 
@@ -174,7 +174,8 @@ onUnmounted(() => {
 })
 
 const handleChangePassword = async () => {
-  loading.value = true
+  if (changeSaving.value) return
+  changeSaving.value = true
   try {
     const payload = await apiRequest<{ message: string }>('/api/auth/change-password', {
       method: 'POST',
@@ -192,8 +193,9 @@ const handleChangePassword = async () => {
       content: error.message,
       duration: 3000
     })
+    return false
   } finally {
-    loading.value = false
+    changeSaving.value = false
   }
 }
 
@@ -216,6 +218,7 @@ if (session.value?.token && !permission.loaded.value) {
 provide('session', session)
 provide('changeForm', changeForm)
 provide('changeOpen', changeOpen)
+provide('changeSaving', changeSaving)
 provide('handleLogout', handleLogout)
 provide('handleChangePassword', handleChangePassword)
 provide('homeMessage', homeMessage)

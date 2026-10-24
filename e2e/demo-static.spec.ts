@@ -1,6 +1,16 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
+async function getTigercatVersion(projectName: string): Promise<string> {
+  const framework = projectName.startsWith('react') ? 'react' : 'vue';
+  const directory = framework === 'react' ? 'Tigercat.Admin.React' : 'Tigercat.Admin.Vue';
+  const packageJson = JSON.parse(await readFile(
+    `${directory}/node_modules/@expcat/tigercat-${framework}/package.json`,
+    'utf8',
+  ));
+  return packageJson.version;
+}
+
 async function login(
   page: import('@playwright/test').Page,
   options: { withTour?: boolean } = {},
@@ -418,7 +428,7 @@ test.describe('阶段 4 — 运维自动化', () => {
 });
 
 test.describe('阶段 5 — 帮助与报表', () => {
-  test('帮助中心加载并可展开常见问题', async ({ page }) => {
+  test('帮助中心加载并可展开常见问题', async ({ page }, testInfo) => {
     const consoleErrors: string[] = [];
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push(message.text());
@@ -458,12 +468,12 @@ test.describe('阶段 5 — 帮助与报表', () => {
     await expect(page).toHaveURL(/#\/files$/);
     await page.goto('/#/about');
     await expect(page.locator('#about-info').getByText('static-demo', { exact: true })).toBeVisible();
-    await expect(page.getByText('Tigercat UI 3.0.0-rc.2', { exact: true })).toBeVisible();
+    await expect(page.getByText(`Tigercat UI ${await getTigercatVersion(testInfo.project.name)}`, { exact: true })).toBeVisible();
 
     expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
   });
 
-  test('关于页服务失败关闭提示后仍失败，重试按真实响应恢复', async ({ page }) => {
+  test('关于页服务失败关闭提示后仍失败，重试按真实响应恢复', async ({ page }, testInfo) => {
     await login(page);
     await page.evaluate(() => {
       const originalFetch = window.fetch;
@@ -486,7 +496,7 @@ test.describe('阶段 5 — 帮助与报表', () => {
     await overview.getByRole('button', { name: '重新连接服务', exact: true }).press('Enter');
     await expect(overview.getByText('已连接', { exact: true })).toBeVisible();
     await expect(overview.getByText('api-test-1.7', { exact: true })).toBeVisible();
-    await expect(overview.getByText('3.0.0-rc.2', { exact: true })).toHaveCount(0);
+    await expect(overview.getByText(await getTigercatVersion(testInfo.project.name), { exact: true })).toHaveCount(0);
   });
 
   test('报表预览与导出使用相同系统统计及 UTC 天数', async ({ page }) => {

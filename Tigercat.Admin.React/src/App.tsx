@@ -22,6 +22,7 @@ import {
   Outlet,
 } from 'react-router-dom';
 import { Container } from '@expcat/tigercat-react/Container';
+import { Alert } from '@expcat/tigercat-react/Alert';
 import { Form } from '@expcat/tigercat-react/Form';
 import { FormItem } from '@expcat/tigercat-react/FormItem';
 import { Input } from '@expcat/tigercat-react/Input';
@@ -39,6 +40,7 @@ import { PermissionRoute } from './components/PermissionRoute';
 import {
   collectShellMenuNodes,
   getShellNavigatePath,
+  loadShellMenuSchema,
   resetShellMenuSchema,
   resolveShellPageKey,
   useShellMenuSchema,
@@ -164,6 +166,8 @@ interface ProtectedLayoutProps {
   onProfile: () => void;
   onNavigate: (key: string) => void;
   changeOpen: boolean;
+  changeSaving: boolean;
+  changeError: string;
   changeForm: ChangePasswordForm;
   onChangeField: (field: ChangePasswordField, value: string) => void;
   onChangePasswordSubmit: () => void;
@@ -183,6 +187,8 @@ function ProtectedLayout({
   onProfile,
   onNavigate,
   changeOpen,
+  changeSaving,
+  changeError,
   changeForm,
   onChangeField,
   onChangePasswordSubmit,
@@ -212,14 +218,22 @@ function ProtectedLayout({
       <Modal
         open={changeOpen}
         title="修改密码"
+        closable={!changeSaving}
+        keyboard={!changeSaving}
+        maskClosable={!changeSaving}
         showDefaultFooter
         okText="确认修改"
         cancelText="取消"
         onOk={onChangePasswordSubmit}
         onCancel={onCloseChangeModal}>
+        {changeError && (
+          <Alert type="error" title="密码修改失败" description={changeError} className="mb-4" />
+        )}
         <Form value={changeForm} labelWidth={88}>
           <FormItem name="oldPassword" label="旧密码">
             <Input
+              type="password"
+              autoComplete="current-password"
               value={changeForm.oldPassword}
               placeholder="请输入旧密码"
               onChange={(value) =>
@@ -229,6 +243,8 @@ function ProtectedLayout({
           </FormItem>
           <FormItem name="newPassword" label="新密码">
             <Input
+              type="password"
+              autoComplete="new-password"
               value={changeForm.newPassword}
               placeholder="请输入新密码"
               onChange={(value) =>
@@ -277,6 +293,14 @@ function App() {
   const location = useLocation();
   const permission = usePermission();
   const menuSchema = useShellMenuSchema();
+  const [menuSchemaReady, setMenuSchemaReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void loadShellMenuSchema().then(() => {
+      if (!cancelled) setMenuSchemaReady(true);
+    });
+    return () => { cancelled = true; };
+  }, []);
   const schemaNodes = useMemo(
     () => collectShellMenuNodes(menuSchema),
     [menuSchema],
@@ -317,6 +341,8 @@ function App() {
   const [notice, setNotice] = useState<Notice>({ type: '', message: '' });
   const [homeError, setHomeError] = useState('');
   const [changeOpen, setChangeOpen] = useState(false);
+  const [changeSaving, setChangeSaving] = useState(false);
+  const [changeError, setChangeError] = useState('');
 
   /* ── Theme ────────────────────────────────────── */
   const [themePrefs, setThemePrefs] =
@@ -480,6 +506,9 @@ function App() {
   ]);
 
   const handleChangePassword = async () => {
+    if (changeSaving) return;
+    setChangeSaving(true);
+    setChangeError('');
     setNotice({ type: '', message: '' });
     try {
       const payload = await apiRequest('/api/auth/change-password', {
@@ -494,12 +523,16 @@ function App() {
       setChangeForm({ oldPassword: '', newPassword: '' });
       setChangeOpen(false);
     } catch (error: any) {
-      setNotice({ type: 'error', message: error.message });
+      setChangeError(error.message || '密码修改失败');
+    } finally {
+      setChangeSaving(false);
     }
   };
 
   const handleCloseChangeModal = () => {
+    if (changeSaving) return;
     setChangeOpen(false);
+    setChangeError('');
     setNotice({ type: '', message: '' });
     setChangeForm({ oldPassword: '', newPassword: '' });
   };
@@ -584,12 +617,14 @@ function App() {
               activeMenu={activeMenu}
               themePrefs={themePrefs}
               onLogout={handleLogout}
-              onChangePassword={() => setChangeOpen(true)}
+              onChangePassword={() => { setChangeError(''); setChangeOpen(true); }}
               onToggleTheme={toggleThemeMode}
               onUpdateTheme={updateTheme}
               onProfile={() => navigate('/profile')}
               onNavigate={handleNavigate}
               changeOpen={changeOpen}
+              changeSaving={changeSaving}
+              changeError={changeError}
               changeForm={changeForm}
               onChangeField={handleChangeField}
               onChangePasswordSubmit={handleChangePassword}
@@ -604,6 +639,7 @@ function App() {
           <Route path="/projects/:id" element={<ProjectDetailPage />} />
           <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
         </Route>
+        <Route path="*" element={menuSchemaReady ? <Navigate to="/404" replace /> : <PageLoader />} />
       </Route>
 
       <Route path="/" element={<Navigate to="/login" replace />} />
@@ -631,7 +667,6 @@ function App() {
           </Suspense>
         }
       />
-      <Route path="*" element={<Navigate to="/404" replace />} />
     </Routes>
       <MessageContainer />
     </ConfigProvider>

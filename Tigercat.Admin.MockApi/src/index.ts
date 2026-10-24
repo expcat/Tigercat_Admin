@@ -1756,6 +1756,36 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     }
   }
 
+  if (path === '/api/users/batch-status' && method === 'POST') {
+    const denied = requireMenuPermission(state, request, init, 'user:edit');
+    if (denied) return denied;
+    const ids = Array.isArray(body.ids) ? [...new Set(body.ids as number[])] : [];
+    if (!ids.length) return makeError('请选择要更新状态的用户', 400);
+    const status = body.status;
+    if (status !== 0 && status !== 1) return makeError('无效的用户状态', 400);
+    const users = state.users.filter((user) => ids.includes(user.id));
+    const missingIds = ids.filter((id) => !users.some((user) => user.id === id));
+    if (missingIds.length) return makeError(`以下用户 ID 不存在: ${missingIds.join(', ')}`, 404);
+    if (status === 1) {
+      const username = sessionUsername(request, init);
+      if (users.some((user) => user.username.toLowerCase() === username.toLowerCase())) {
+        return makeError('不能禁用当前登录用户', 400);
+      }
+      const adminRoleId = state.roles.find((role) => role.name === 'Admin')?.id;
+      if (adminRoleId !== undefined && users.some((user) => user.roleIds.includes(adminRoleId)) &&
+        !state.users.some((user) => !ids.includes(user.id) && user.status === 0 && user.roleIds.includes(adminRoleId))) {
+        return makeError('不能禁用最后一个可用管理员用户', 400);
+      }
+    }
+    const updatedAt = new Date().toISOString();
+    for (const user of users) {
+      user.status = status;
+      user.updatedAt = updatedAt;
+    }
+    writeState(storageKey, state);
+    return makeJson({ message: `成功更新 ${users.length} 个用户状态` });
+  }
+
   if (path === '/api/users/batch-delete' && method === 'POST') {
     const ids = Array.isArray(body.ids) ? (body.ids as number[]) : [];
     state.users = state.users.filter((user) => user.username === 'admin' || !ids.includes(user.id));

@@ -37,6 +37,8 @@ Monitor / Chat SignalR（`/hubs/monitor`、`/hubs/chat`）使用同一套会话 
 
 .NET 的认证账号、管理用户与导入用户共用当前 provider 的 EF 用户表；禁用 / 删除与会话失效、即时权限读取和 Hub 连接边界见 [认证专题](api/auth.md#用户状态会话与权限变化)。
 
+静态 Mock 的用户批量状态已覆盖权限、整批校验与当前标签页持久化；与 .NET 会话及事件的区别见 [用户管理](api/users.md)。
+
 ## OpenAPI
 
 开发环境提供 Scalar 与 OpenAPI JSON，用来对照本文件和 [docs/api](api) 专题，不是第二份契约：

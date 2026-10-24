@@ -39,14 +39,12 @@ export default function ExceptionPage({ status }: ExceptionPageProps) {
   const countdownTarget = useMemo(() => Date.now() + 5000, [status]);
   const [autoJumpEnabled, setAutoJumpEnabled] = useState(status === 404);
   useEffect(() => setAutoJumpEnabled(status === 404), [status]);
-  // React Router 把 idx 写进 history.state；未知路径走 Navigate replace 时
-  // navigationType 是 REPLACE，但上一页仍在栈里，idx > 0 才能返回。
-  const historyState = window.history.state as { back?: unknown; idx?: number; position?: number } | null;
+  const historyState = window.history.state as { back?: unknown; idx?: number } | null;
   const canGoBack =
     historyState?.back != null ||
     (typeof historyState?.idx === 'number' && historyState.idx > 0) ||
-    (typeof historyState?.position === 'number' && historyState.position > 0) ||
-    window.history.length > 1;
+    // Browser hash navigation can create entries without a router index.
+    (historyState?.idx == null && window.history.length > 2);
 
   const goBack = () => {
     setAutoJumpEnabled(false);

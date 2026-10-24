@@ -271,7 +271,7 @@ async function applyCrop() {
     <ImageGroup v-else-if="filtered.length">
       <Masonry :columns="MASONRY_COLUMNS" :gap="16">
         <Card v-for="(img, index) in filtered" :key="img.id">
-          <AspectRatio :ratio="aspectRatioOf(img)" class-name="overflow-hidden rounded-lg">
+          <AspectRatio :ratio="aspectRatioOf(img)" fit="cover" class-name="rounded-lg">
             <Image :src="srcOf(img)" :alt="img.title" fit="cover" class="h-full w-full" />
           </AspectRatio>
           <div class="mt-3 flex items-center justify-between gap-2">

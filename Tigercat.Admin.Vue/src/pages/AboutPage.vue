@@ -20,6 +20,8 @@ import { apiRequest } from '../utils'
 import Icon from '../components/Icon.vue'
 import PageHeader from '../components/PageHeader.vue'
 
+const tigercatVersion = import.meta.env.VITE_TIGERCAT_UI_VERSION
+
 const info = ref<InfoResponse | null>(null)
 const loading = ref(true)
 const errorMessage = ref('')
@@ -121,7 +123,7 @@ const techStack = [
   },
   {
     label: 'UI 组件',
-    value: 'Tigercat UI 3.0.0-rc.2',
+    value: `Tigercat UI ${tigercatVersion}`,
     icon: 'palette',
     iconClass: 'bg-(--tiger-primary)/10 text-(--tiger-primary)'
   }
@@ -245,7 +247,7 @@ onMounted(() => {
       <div class="mb-4 flex flex-wrap items-center gap-3">
         <Tag :variant="connectionStatus.variant as TagVariant">{{ connectionStatus.label }}</Tag>
         <Button variant="outline" size="sm" :loading="loading" :disabled="loading" @click="loadInfo">重新连接服务</Button>
-        <CopyButton v-if="info" :text="`服务：${info.name}\nAPI 服务版本：${info.version}\n描述：${info.description}\nTigercat UI：3.0.0-rc.2`" label="复制服务信息" />
+        <CopyButton v-if="info" :text="`服务：${info.name}\nAPI 服务版本：${info.version}\n描述：${info.description}\nTigercat UI：${tigercatVersion}`" label="复制服务信息" />
       </div>
       <div v-if="loading" class="flex items-center justify-center py-10">
         <Text size="sm" color="secondary">正在加载服务信息...</Text>

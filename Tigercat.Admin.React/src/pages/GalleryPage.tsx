@@ -271,7 +271,7 @@ function GalleryPage() {
           <Masonry columns={MASONRY_COLUMNS} gap={16}>
             {filtered.map((img, index) => (
               <Card key={img.id}>
-                <AspectRatio ratio={aspectRatioOf(img)} className="overflow-hidden rounded-lg">
+                <AspectRatio ratio={aspectRatioOf(img)} fit="cover" className="rounded-lg">
                   <Image src={srcOf(img)} alt={img.title} fit="cover" className="h-full w-full" />
                 </AspectRatio>
                 <div className="mt-3 flex items-center justify-between gap-2">

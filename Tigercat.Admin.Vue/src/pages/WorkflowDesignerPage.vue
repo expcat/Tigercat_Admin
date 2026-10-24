@@ -21,6 +21,7 @@ import {
   loadDesignerDraft,
 } from '../utils/workflow-designer'
 
+const tigercatVersion = import.meta.env.VITE_TIGERCAT_UI_VERSION
 const steps = ref<WorkflowTimelineStep[]>(loadDesignerDraft())
 const stepCount = computed(() => countWorkflowSteps(steps.value))
 const blockingIssues = computed(() => designerBlockingIssues(steps.value))
@@ -63,7 +64,7 @@ function publishDesigner() {
       subtitle="纵向摘要卡流程画布 + 右侧 Inspector。点选节点编辑审批人、按钮和表单权限。"
       :tags="[
         { label: '演示', variant: 'primary' },
-        { label: 'v3.0.0-rc.2', variant: 'info' },
+        { label: `v${tigercatVersion}`, variant: 'info' },
       ]"
     />
 

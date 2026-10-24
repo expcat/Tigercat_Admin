@@ -24,10 +24,8 @@ import {
   getShellBreadcrumbItems,
   getShellNavigatePath,
   getShellPageTitle,
-  isShellPageKey,
   resolveShellPageKey,
   useShellMenuSchema,
-  type ShellPageKey
 } from '../utils/shell-navigation'
 import { useTagsView } from '../utils/tags-view'
 import { useLockScreen } from '../utils/lock-screen'
@@ -57,7 +55,7 @@ defineEmits<{
 const route = useRoute()
 const router = useRouter()
 const handleSkipLink = (event: MouseEvent) => {
-  if (!(event.target instanceof Element) || !event.target.closest('a[href="#tiger-main"]')) return
+  if (!(event.target instanceof Element) || !event.target.closest('a[href="#main-content-scroll"]')) return
   // Keep the skip link from replacing the hash route.
   event.preventDefault()
   document.getElementById('main-content-scroll')?.focus()
@@ -79,7 +77,7 @@ const sidebarOpen = ref(false)
 const chatOpen = ref(false)
 
 const selectedMenuKey = ref('home')
-const activeMenu = ref<ShellPageKey>('home')
+const activeMenu = ref('home')
 
 const detailTitle = computed(() => /^\/files\/.+/.test(route.path) ? '媒体详情' : /^\/import\/.+/.test(route.path) ? '导入结果' : '')
 const pageTitle = computed(() => detailTitle.value || getShellPageTitle(selectedMenuKey.value, schemaNodes.value))
@@ -183,9 +181,7 @@ watch(
   ([path, menuKey]) => {
     const fromMeta = typeof menuKey === 'string' ? menuKey : undefined
     selectedMenuKey.value = fromMeta || resolveShellPageKey(path)
-    if (isShellPageKey(selectedMenuKey.value)) {
-      activeMenu.value = selectedMenuKey.value
-    }
+    activeMenu.value = selectedMenuKey.value
 
     if (isMobile.value) {
       handleSidebarClose()
@@ -275,6 +271,7 @@ watch(
 
       <div class="relative" :class="SHELL_WATERMARK_PANE_CLASS">
         <TagsView
+          :get-title="(key) => getShellPageTitle(key, schemaNodes)"
           :keys="tagKeys"
           :active-key="activeMenu"
           @select="selectTab"

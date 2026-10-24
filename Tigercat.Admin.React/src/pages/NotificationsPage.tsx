@@ -37,6 +37,7 @@ import {
   findNotificationById,
   getNotificationGroupLabel,
   notifyNotificationsChanged,
+  NOTIFICATIONS_CHANGED_EVENT,
   setNotificationReadState,
 } from '../utils/notifications';
 import { apiRequest, getAuthHeaders, normalizeInput } from '../utils';
@@ -146,8 +147,13 @@ function NotificationsPage() {
   }, []);
 
   useEffect(() => {
+    const onChanged = () => { void loadNotifications(); };
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, onChanged);
     void loadNotifications();
-    return () => loadController.current?.abort();
+    return () => {
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, onChanged);
+      loadController.current?.abort();
+    };
   }, [loadNotifications]);
 
   const notificationGroups = useMemo(

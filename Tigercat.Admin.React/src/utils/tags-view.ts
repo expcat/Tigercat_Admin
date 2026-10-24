@@ -1,20 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  isShellPageKey,
-  type ShellPageKey,
-} from './shell-navigation';
 
 export const TAGS_VIEW_STORAGE_KEY = 'tigercat-admin:tags-view';
-export const TAGS_VIEW_HOME_KEY: ShellPageKey = 'home';
+export const TAGS_VIEW_HOME_KEY: string = 'home';
 
 export type TagsViewState = {
-  keys: ShellPageKey[];
-  activeKey: ShellPageKey;
+  keys: string[];
+  activeKey: string;
 };
 
 export function areTagKeysEqual(
-  left: readonly ShellPageKey[],
-  right: readonly ShellPageKey[],
+  left: readonly string[],
+  right: readonly string[],
 ): boolean {
   return (
     left.length === right.length &&
@@ -22,20 +18,20 @@ export function areTagKeysEqual(
   );
 }
 
-export function ensureHomeTab(keys: readonly ShellPageKey[]): ShellPageKey[] {
+export function ensureHomeTab(keys: readonly string[]): string[] {
   const rest = keys.filter((key) => key !== TAGS_VIEW_HOME_KEY);
   return [TAGS_VIEW_HOME_KEY, ...rest];
 }
 
-export function normalizeTagsViewKeys(keys: unknown): ShellPageKey[] {
+export function normalizeTagsViewKeys(keys: unknown): string[] {
   if (!Array.isArray(keys)) {
     return [TAGS_VIEW_HOME_KEY];
   }
 
-  const seen = new Set<ShellPageKey>();
-  const next: ShellPageKey[] = [];
+  const seen = new Set<string>();
+  const next: string[] = [];
   for (const key of keys) {
-    if (!isShellPageKey(key) || seen.has(key)) {
+    if ((typeof key !== 'string' || key.length === 0) || seen.has(key)) {
       continue;
     }
     seen.add(key);
@@ -69,7 +65,7 @@ export function loadTagsViewState(): TagsViewState {
     const record = parsed as Record<string, unknown>;
     const keys = normalizeTagsViewKeys(record.keys);
     const activeKey =
-      isShellPageKey(record.activeKey) && keys.includes(record.activeKey)
+      typeof record.activeKey === 'string' && keys.includes(record.activeKey)
         ? record.activeKey
         : TAGS_VIEW_HOME_KEY;
 
@@ -87,7 +83,7 @@ export function saveTagsViewState(state: TagsViewState): void {
   try {
     const keys = normalizeTagsViewKeys(state.keys);
     const activeKey =
-      isShellPageKey(state.activeKey) && keys.includes(state.activeKey)
+      typeof state.activeKey === 'string' && keys.includes(state.activeKey)
         ? state.activeKey
         : TAGS_VIEW_HOME_KEY;
     window.sessionStorage.setItem(
@@ -100,9 +96,9 @@ export function saveTagsViewState(state: TagsViewState): void {
 }
 
 export function openTagsViewTab(
-  keys: readonly ShellPageKey[],
-  key: ShellPageKey,
-): ShellPageKey[] {
+  keys: readonly string[],
+  key: string,
+): string[] {
   const normalized = ensureHomeTab(keys);
   if (normalized.includes(key)) {
     return areTagKeysEqual(keys, normalized) ? [...keys] : normalized;
@@ -111,9 +107,9 @@ export function openTagsViewTab(
 }
 
 export function closeTagsViewTab(
-  keys: readonly ShellPageKey[],
-  key: ShellPageKey,
-  activeKey: ShellPageKey,
+  keys: readonly string[],
+  key: string,
+  activeKey: string,
 ): TagsViewState {
   const current = ensureHomeTab(keys);
   if (key === TAGS_VIEW_HOME_KEY) {
@@ -147,24 +143,24 @@ export function closeTagsViewTab(
 }
 
 export function closeOtherTagsViewTabs(
-  keys: readonly ShellPageKey[],
-  keepKey: ShellPageKey,
-): ShellPageKey[] {
+  keys: readonly string[],
+  keepKey: string,
+): string[] {
   if (keepKey === TAGS_VIEW_HOME_KEY) {
     return [TAGS_VIEW_HOME_KEY];
   }
   return ensureHomeTab(keys.filter((key) => key === keepKey));
 }
 
-export function closeAllTagsViewTabs(): ShellPageKey[] {
+export function closeAllTagsViewTabs(): string[] {
   return [TAGS_VIEW_HOME_KEY];
 }
 
 export function useTagsView(
-  activeKey: ShellPageKey,
+  activeKey: string,
   onNavigate?: (key: string) => void,
 ) {
-  const [keys, setKeys] = useState<ShellPageKey[]>(
+  const [keys, setKeys] = useState<string[]>(
     () => loadTagsViewState().keys,
   );
 
@@ -180,7 +176,7 @@ export function useTagsView(
   }, [keys, activeKey]);
 
   const selectTab = useCallback(
-    (key: ShellPageKey) => {
+    (key: string) => {
       if (key !== activeKey) {
         onNavigate?.(key);
       }
@@ -189,7 +185,7 @@ export function useTagsView(
   );
 
   const closeTab = useCallback(
-    (key: ShellPageKey) => {
+    (key: string) => {
       const next = closeTagsViewTab(keys, key, activeKey);
       setKeys(next.keys);
       if (next.activeKey !== activeKey) {

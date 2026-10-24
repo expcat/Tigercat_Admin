@@ -19,9 +19,9 @@ pnpm create vite my-admin --template react-ts   # React
 pnpm create vite my-admin --template vue-ts     # Vue
 ```
 
-依赖清单（版本以蓝本 [Tigercat.Admin.React/package.json](../../Tigercat.Admin.React/package.json) / [Tigercat.Admin.Vue/package.json](../../Tigercat.Admin.Vue/package.json) 为准，当前蓝本为 Tigercat `3.0.0-rc.2`）：
+依赖清单（版本以蓝本 [Tigercat.Admin.React/package.json](../../Tigercat.Admin.React/package.json) / [Tigercat.Admin.Vue/package.json](../../Tigercat.Admin.Vue/package.json) 为准，当前蓝本为 Tigercat `3.0.0-rc.3`）：
 
-本仓库直接使用 npm 发布包。新项目按下表安装同版本的 Core 与框架包；需要联调上游源码时再参考 [Tigercat 本地构建联调](../operations.md#tigercat-本地构建联调)，不要把临时 `file:` 覆盖复制到新项目。
+当前发布蓝本使用 npm 正式发布的 `3.0.0-rc.3`，已移除临时 `file:` 覆盖，见 [rc.3 接入与验收](../frontend-rc3-validation.md)。新项目按下表安装同版本的 Core 与框架包；需要联调上游源码时再参考 [Tigercat 本地构建联调](../operations.md#tigercat-本地构建联调)，不要把临时 `file:` 覆盖复制到新项目。页脚和关于页的 UI 版本由双端 Vite 配置读取实际安装包，复制这些页面时应同时保留该定义与环境类型。
 
 | 类别 | React 端 | Vue 端 | 说明 |
 | ---- | -------- | ------ | ---- |
@@ -33,12 +33,12 @@ pnpm create vite my-admin --template vue-ts     # Vue
 
 ```bash
 # React
-pnpm add --save-exact @expcat/tigercat-core@3.0.0-rc.2 @expcat/tigercat-react@3.0.0-rc.2
+pnpm add --save-exact @expcat/tigercat-core@3.0.0-rc.3 @expcat/tigercat-react@3.0.0-rc.3
 pnpm add react-router-dom tailwindcss postcss autoprefixer
 pnpm add -D @tailwindcss/postcss
 
 # Vue
-pnpm add --save-exact @expcat/tigercat-core@3.0.0-rc.2 @expcat/tigercat-vue@3.0.0-rc.2
+pnpm add --save-exact @expcat/tigercat-core@3.0.0-rc.3 @expcat/tigercat-vue@3.0.0-rc.3
 pnpm add vue-router tailwindcss postcss autoprefixer
 pnpm add -D @tailwindcss/postcss
 ```

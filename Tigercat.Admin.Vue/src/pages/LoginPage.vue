@@ -158,7 +158,7 @@ async function handleVerify() {
 <template>
   <div
     class="flex flex-col md:flex-row w-full min-h-[500px] rounded-2xl overflow-hidden shadow-lg border border-(--tiger-border,#e2e8f0)/30 bg-(--tiger-surface) animate-fade-in-up motion-reduce:animate-none"
-    style="--tiger-primary: #4f46e5; --tiger-primary-hover: #4338ca; --tiger-primary-disabled: #c7d2fe; --tiger-focus-ring: #4f46e5;"
+    style="--tiger-primary: light-dark(#4f46e5, #a5b4fc); --tiger-primary-foreground: light-dark(#ffffff, #0f172a); --tiger-primary-hover: light-dark(#4338ca, #c7d2fe); --tiger-primary-disabled: light-dark(#c7d2fe, #3730a3); --tiger-focus-ring: light-dark(#4f46e5, #a5b4fc);"
   >
     <!-- Left side: branding/decoration -->
     <div class="hidden md:flex md:w-[42%] bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 p-8 flex-col justify-between text-white relative overflow-hidden">

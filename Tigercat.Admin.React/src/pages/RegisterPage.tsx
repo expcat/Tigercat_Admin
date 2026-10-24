@@ -61,10 +61,11 @@ function RegisterPage() {
     <div
       className="flex flex-col md:flex-row w-full min-h-[500px] rounded-2xl overflow-hidden shadow-lg border border-(--tiger-border,#e2e8f0)/30 bg-(--tiger-surface) animate-fade-in-up motion-reduce:animate-none"
       style={{
-        '--tiger-primary': '#7c3aed', // violet-600
-        '--tiger-primary-hover': '#6d28d9', // violet-700
-        '--tiger-primary-disabled': '#ddd6fe', // violet-200
-        '--tiger-focus-ring': '#7c3aed',
+        '--tiger-primary': 'light-dark(#7c3aed, #c4b5fd)', // violet-600
+        '--tiger-primary-foreground': 'light-dark(#ffffff, #0f172a)',
+        '--tiger-primary-hover': 'light-dark(#6d28d9, #ddd6fe)', // violet-700
+        '--tiger-primary-disabled': 'light-dark(#ddd6fe, #5b21b6)', // violet-200
+        '--tiger-focus-ring': 'light-dark(#7c3aed, #c4b5fd)',
       } as React.CSSProperties}
     >
       {/* Left side: branding/decoration */}

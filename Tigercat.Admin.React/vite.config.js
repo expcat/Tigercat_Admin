@@ -1,6 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import process from 'node:process';
+import { readFileSync } from 'node:fs';
+
+const tigercatVersion = JSON.parse(readFileSync(
+  new URL('./node_modules/@expcat/tigercat-react/package.json', import.meta.url),
+  'utf8',
+)).version;
 
 function isTigercatBarrel(id) {
   return /node_modules[/\\]@expcat[/\\]tigercat-(?:react|vue)[/\\]dist[/\\]index\.m?js/.test(
@@ -31,6 +37,9 @@ function isStaticallyReachableFromEntry(id, getModuleInfo) {
 export default defineConfig({
   base: process.env.VITE_TIGERCAT_BASE_PATH || '/',
   plugins: [react()],
+  define: {
+    'import.meta.env.VITE_TIGERCAT_UI_VERSION': JSON.stringify(tigercatVersion),
+  },
   server: {
     port: parseInt(process.env.PORT || '5174'),
     proxy: {

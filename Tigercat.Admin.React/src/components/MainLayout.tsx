@@ -22,9 +22,7 @@ import {
   collectShellMenuNodes,
   getShellBreadcrumbItems,
   getShellPageTitle,
-  isShellPageKey,
   useShellMenuSchema,
-  type ShellPageKey,
 } from '../utils/shell-navigation';
 import { useTagsView } from '../utils/tags-view';
 import { TagsView } from './TagsView';
@@ -78,9 +76,7 @@ export function MainLayout({
     activeMenu ?? 'home',
   );
   const currentActiveMenu = activeMenu ?? internalActiveMenu;
-  const currentPageKey: ShellPageKey = isShellPageKey(currentActiveMenu)
-    ? currentActiveMenu
-    : 'home';
+  const currentPageKey = currentActiveMenu;
   const menuSchema = useShellMenuSchema();
   const schemaNodes = collectShellMenuNodes(menuSchema);
   const tagsView = useTagsView(currentPageKey, onNavigate);
@@ -162,7 +158,7 @@ export function MainLayout({
       >
     <Layout className="h-screen w-full overflow-hidden !flex-row"
       onClickCapture={(event) => {
-        if (!(event.target instanceof Element) || !event.target.closest('a[href="#tiger-main"]')) return;
+        if (!(event.target instanceof Element) || !event.target.closest('a[href="#main-content-scroll"]')) return;
         // Keep the skip link from replacing the hash route.
         event.preventDefault();
         document.getElementById('main-content-scroll')?.focus();
@@ -242,6 +238,7 @@ export function MainLayout({
 
         <div className={`relative ${SHELL_WATERMARK_PANE_CLASS}`}>
           <TagsView
+            getTitle={(key) => getShellPageTitle(key, schemaNodes)}
             keys={tagsView.keys}
             activeKey={currentPageKey}
             onSelect={tagsView.selectTab}

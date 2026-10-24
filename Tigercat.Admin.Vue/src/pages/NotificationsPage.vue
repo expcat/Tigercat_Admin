@@ -31,6 +31,7 @@ import {
   findNotificationById,
   getNotificationGroupLabel,
   notifyNotificationsChanged,
+  NOTIFICATIONS_CHANGED_EVENT,
   setNotificationReadState
 } from '../utils/notifications'
 import { apiRequest, getAuthHeaders } from '../utils'
@@ -258,8 +259,15 @@ async function submitCreate() {
   }
 }
 
-onMounted(loadNotifications)
-onBeforeUnmount(() => loadController?.abort())
+const onNotificationsChanged = () => { void loadNotifications() }
+onMounted(() => {
+  void loadNotifications()
+  window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, onNotificationsChanged)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, onNotificationsChanged)
+  loadController?.abort()
+})
 </script>
 
 <template>

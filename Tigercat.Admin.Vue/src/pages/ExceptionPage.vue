@@ -42,11 +42,11 @@ watch(() => props.status, (status) => {
   autoJumpEnabled.value = status === 404
 })
 function canGoBack() {
-  const state = window.history.state as { back?: unknown; idx?: number; position?: number } | null
+  const state = window.history.state as { back?: unknown; idx?: number } | null
   if (state?.back != null) return true
   if (typeof state?.idx === 'number' && state.idx > 0) return true
-  if (typeof state?.position === 'number' && state.position > 0) return true
-  return window.history.length > 1
+  // Browser hash navigation can create entries without a router back link.
+  return state?.back == null && window.history.length > 2
 }
 
 function goHome() {
