@@ -5,13 +5,14 @@ import { Text } from '@expcat/tigercat-vue/Text'
 defineProps<{
   title: string
   description: string
+  stacked?: boolean
 }>()
 </script>
 
 <template>
   <Card>
-    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-      <div class="min-w-0">
+    <div class="flex flex-col gap-4" :class="stacked ? '' : 'lg:flex-row lg:items-center lg:justify-between'">
+      <div class="min-w-0 space-y-1">
         <Text weight="bold">{{ title }}</Text>
         <Text size="sm" color="secondary">
           {{ description }}
@@ -19,7 +20,7 @@ defineProps<{
       </div>
       <div
         v-if="$slots.actions"
-        class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center"
+        :class="stacked ? 'w-full' : 'flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center'"
       >
         <slot name="actions" />
       </div>

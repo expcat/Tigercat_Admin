@@ -250,7 +250,7 @@ function HomePage() {
   const errorMessage = homeError || statsError || trendError;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* 通知提示 */}
       {notice?.message && (
         <Alert
@@ -336,7 +336,7 @@ function HomePage() {
       </MetricGrid>
 
       {/* 图表区域 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* 用户创建趋势（折线图） */}
         <Card className="lg:col-span-2">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -354,13 +354,13 @@ function HomePage() {
             </div>
           </div>
           {statsLoading || trendLoading ? (
-            <div className="flex items-center justify-center h-52">
+            <div className="flex items-center justify-center h-48">
               <Loading />
             </div>
           ) : trendChartData.length ? (
             <LineChart
               data={trendChartData}
-              height={220}
+              height={192}
               responsive
               showArea={true}
               areaOpacity={0.15}
@@ -377,20 +377,20 @@ function HomePage() {
               pointGradient={true}
             />
           ) : (
-            <ChartEmptyState description="暂无趋势数据" />
+            <ChartEmptyState description="暂无趋势数据" heightClassName="h-48" />
           )}
         </Card>
 
         {/* 用户状态分布（饼图） */}
         <Card header={<Text size="base" weight="bold">用户状态分布</Text>} className="lg:col-span-1 overflow-visible">
           {statsLoading ? (
-            <div className="flex items-center justify-center h-52">
+            <div className="flex items-center justify-center h-48">
               <Loading />
             </div>
           ) : distributionChartData.length ? (
             <PieChart
               data={distributionChartData}
-              height={220}
+              height={192}
               colors={[chartPrimary, chartError]}
               showLabels={true}
               labelPosition="inside"
@@ -400,13 +400,13 @@ function HomePage() {
               gradient={true}
             />
           ) : (
-            <ChartEmptyState description="暂无分布数据" />
+            <ChartEmptyState description="暂无分布数据" heightClassName="h-48" />
           )}
         </Card>
       </div>
 
       {/* 内容区域 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* 快捷操作 */}
         <Card header={<Text size="base" weight="bold">快捷操作</Text>} className="lg:col-span-1">
           <div className="grid grid-cols-2 gap-3">
@@ -432,13 +432,13 @@ function HomePage() {
         {/* 概览详情（柱状图） */}
         <Card header={<Text size="base" weight="bold">用户概览</Text>} className="lg:col-span-2">
           {statsLoading ? (
-            <div className="flex items-center justify-center h-52">
+            <div className="flex items-center justify-center h-48">
               <Loading />
             </div>
           ) : barChartData.length ? (
             <BarChart
               data={barChartData}
-              height={220}
+              height={192}
               responsive
               showGrid={true}
               animated={true}
@@ -447,7 +447,7 @@ function HomePage() {
               gradient={true}
             />
           ) : (
-            <ChartEmptyState description="暂无概览数据" />
+            <ChartEmptyState description="暂无概览数据" heightClassName="h-48" />
           )}
         </Card>
       </div>

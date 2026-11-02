@@ -68,8 +68,8 @@ export function resolveEffectiveMode(mode: ThemeMode): 'light' | 'dark' {
  */
 const DARK_TOKEN_OVERRIDES: Record<string, string> = {
   '--tiger-text': '#f0f6fc',
-  '--tiger-text-secondary': '#8b949f',
-  '--tiger-border': '#304050',
+  '--tiger-text-secondary': '#a8b3c1',
+  '--tiger-border': '#46586c',
   '--tiger-shadow': '0 1px 3px rgba(0,0,0,0.4)',
 };
 

@@ -587,7 +587,7 @@ export interface GalleryImage {
   id: string;
   title: string;
   album: 'product' | 'team' | 'media';
-  hue: number;
+  src?: string;
   media?: MediaItem;
 }
 

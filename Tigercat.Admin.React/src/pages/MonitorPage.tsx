@@ -22,7 +22,6 @@ import {
   ChartEmptyState,
   MetricCard,
   MetricGrid,
-  MutedPanel,
   PageActionPanel,
 } from '../components/PageFragments';
 import {
@@ -217,7 +216,7 @@ function MonitorPage() {
       <PageHeader
         icon={<MonitorIcon size={24} />}
         title="实时监控"
-        subtitle="演示监控快照，展示资源水位、吞吐延迟与节点事件"
+        subtitle="非真实主机的演示快照，展示资源水位、吞吐延迟与节点事件"
         tags={[
           { label: '实时快照', variant: 'success' },
           { label: '登录可见', variant: 'info' },
@@ -226,7 +225,7 @@ function MonitorPage() {
 
       <PageActionPanel
         title="刷新控制"
-        description="按所选间隔更新演示快照，默认 3 秒。暂停后保留最后快照，继续时恢复更新。"
+        description="默认每 3 秒更新；暂停保留当前快照，继续后恢复，图表保留最近 20 次采样。"
         actions={
           <>
             <Segmented
@@ -294,7 +293,7 @@ function MonitorPage() {
               value={gauge.value}
               min={0}
               max={100}
-              height={180}
+              height={144}
               label={gauge.label}
               segments={GAUGE_SEGMENTS}
               valueFormatter={(value) => `${Math.round(value)}%`}
@@ -410,10 +409,6 @@ function MonitorPage() {
       </div>
 
       </>}
-      <MutedPanel
-        title="演示说明"
-        description="指标由服务端生成演示快照，不读取真实主机。QPS 与延迟显示最近 20 个采样点；暂停后停止更新。"
-      />
     </div>
   );
 }

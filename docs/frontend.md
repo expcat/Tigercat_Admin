@@ -121,7 +121,7 @@ React 通过 `ProtectedRoute` / `GuestRoute` / `PermissionRoute` 和 `react-rout
 - `Tag` 只使用 `variant` 表达状态，不使用 `color`；历史颜色名映射为 `green -> success`、`red/rose -> danger`、`orange -> warning`、`blue -> primary`、`gray -> default`、`purple -> info`。
 - `Button` 不使用 `color`：主色用 `variant`（`primary` / `secondary` / `outline` / `ghost` / `link`，默认 `primary`），危险/删除操作改用布尔属性 `danger`（与 `variant` 叠加，如 `variant="ghost" danger`）。
 - 指标区使用 `MetricGrid` + `MetricCard`。四列组在移动端显示两列、`lg` 起四列；三列组在移动端单列、`sm` 起三列。装饰图标在移动端隐藏，数值按 `value ?? badge` 独立显示，未读数字不会随图标消失。
-- 页面操作说明使用 `PageActionPanel`，提示或说明用 `MutedPanel`，图表无数据用 `ChartEmptyState`。
+- 页面操作说明使用 `PageActionPanel`，提示或说明用 `MutedPanel`，图表无数据用 `ChartEmptyState`。`PageActionPanel` 默认在 `lg` 让说明与操作同排；多组动作或整行筛选使用 `stacked`，由实际操作区分组并负责窄屏换行。
 - 弹层内容长时使用 `p2-modal-scroll`，确认类操作优先用 Tigercat `Modal`、`Popconfirm`、`Message`。
 - 日期 / 时间 / 树选择层一次 Escape 后隐藏并恢复原触发输入或同一输入控件中的按钮；嵌套 Drawer 保留父层。验收同时看可见状态、aria-expanded 与 activeElement，不接受焦点落到 BODY。
 - Switch 必须由 FormItem 标签关联，或提供与可见标题一致的 aria-label；任务列表名称包含任务名。不要把旁边的独立 Text 当作已经关联的标签。
@@ -244,6 +244,8 @@ Vue 的 SVG 内部基元 `ChartAxis` / `ChartGrid` / `ChartSeries` 是同步导�
 ### 页面中的布局与图表约定
 
 - 审计导出字段的 `CheckboxGroup` 显式 `orientation="horizontal"`，允许横排换行。Reports 的 A4 纸保持固定宽度，宿主 Card 用 `overflow-x-auto print:overflow-visible`，手机可在纸张区域内横滚。`p2-print-paper` 在该区域固定浅色文本、边框与表面 token，确保暗色 Shell 中的白纸仍可读。
+- Reports 的整行操作区按「区间 / 刷新」「打印」「导出」分组。Tasks 使用整行筛选，超期与阻塞数值通过 `MetricCard.value` 直接显示，最近动作使用 compact `MutedPanel`。
+- Home 三个图表高度为 192，加载与空态同步使用 `h-48`；Monitor 仪表高度为 144。Monitor 的演示与采样说明并入页头和刷新控制，Analytics 的固定示例范围并入页头，不再重复显示独立说明段。
 - Monitor 保留 20 个滚动数据点，但横轴只显示首、中、末三个时刻、纵轴 `yTicks=3`，并开启 hover。资源百分比用 `Progress variant` 表达健康色；不要用 `status="success"`，该状态会把进度强制完成为 100%。
 - Tasks 筛选控件窄屏全宽、`sm` 起用定宽；日期输入提供「开始日期」/「结束日期」可访问名称。完成任务先阻止 Modal 默认关闭，写回后的状态仍留在详情供用户确认。
 - Performance 自由排序在 `useDrag` 的 `onDrop` 回调中调用 `reorder` 并写回队列，直接保留组件的 item / zone bindings。不要在父级 DOM drop 冒泡后再读拖动状态：卡片 binding 已先执行 drop 并清空状态，父级此时无法重排。hook 回调也覆盖触摸指针提交。
@@ -285,6 +287,7 @@ FAQ 以实际存储为准：Mock 业务写入在当前标签页 `sessionStorage`
 
 - **窄屏卡片模式**：用户/角色页的 `DataTableWithToolbar` 启用 `responsiveMode="card"` + `cardBreakpoint="md"`（Vue 为 `responsive-mode="card"` + `card-breakpoint="md"`），与 Shell 左侧菜单隐藏断点 `(max-width: 767px)` 对齐；低于 `md` 时表格渲染为堆叠卡片。列级配置：`id` → `hideInCard: true`（卡片省略）、`username`/`name` → `cardTitle: true`（卡片标题），其余列保持原顺序（可用 `cardPriority` 调整权重）。卡片模式下行选择、列 `render`、分页均可用，`fixed` 固定列配置自动失效。`v1.2.39` 起卡片增强为上游内置，无需页面适配：展开/收起、全选、排序文案走 locale；存在 `sortable` 列时卡片列表上方自动渲染排序 `Select`；行选择为主题 `Checkbox`/`Radio` 并带「全选」控件；空状态走 `Empty` 组件渲染 `emptyText`。需要深度定制时可用 `cardClassName` / `renderCard`（本项目暂未使用）。
 - **卡片排列**：`v1.2.44` 起 Card 模式支持网格排列。常规数据工作台先用默认顺序 + `hideInCard` / `cardTitle` / `cardPriority`；需要二维排布时优先在列配置里使用 `cardGrid`；需要跨页面复用或集中覆盖时使用表级 `cardLayout`（React prop 为 `cardLayout`，Vue 为 `:card-layout`）。`cardGrid` 与 `cardLayout` 都支持 `colSpan`（1-12）、`rowSpan`（1-6）、`hideLabel`、`labelPosition: 'left' | 'top'`；列级 `cardGrid` 双端都写在 `columns` 内，表级 `cardLayout` 通过 `key` 指向目标列。用户/角色页已用表级 `cardLayout` 在窄屏卡片中启用紧凑信息行：字段全宽、标签和值左右排列，操作区整行展示并隐藏字段标签。
+- **移动端密度**：用户页的保存视图在低于 `md` 时用原生 `details/summary` 默认收起，桌面保持展开；用户/角色页的 `p2-table-toolbar-stack` 同时约束工具栏、分页与卡片文字动作的移动触控目标，不另建移动表格。
 - **表格文案**：Table / DataTableWithToolbar 文案统一走 ConfigProvider locale 的 `table` 分节。双端 `src/utils/tigercatText.ts` 导出 `appLocale`（官方 `zhCN` + `appText` overlay），根节点 `ConfigProvider locale={appLocale}`。不要把 `defineText` overlay 单独当完整语言包（v2.1.3 缺键回落 en-US）。卡片排序 Select 的占位与空列表走 locale `select.placeholder` / `emptyText`（「请选择」/「暂无选项」），不要在 Users / Tasks 页硬编码覆盖。页面级覆盖业务文案用 `emptyText`（如「暂无用户数据」）或 `labels` prop；不要再在 toolbar 上硬编码 `searchButtonText` / `bulkActionsLabel` 通用文案，业务化的 `searchPlaceholder`（如「搜索用户名或显示名...」）保留在页面。
 - **锁定列背景**：上游锁定列背景读组件 Token 链 `--tiger-table-bg → --tiger-component-table-bg → --tiger-surface`（stripe/hover/header 同理），`v1.2.43+` 已对 `striped + fixed` 单元格使用不透明 `color-mix(...)` 背景，避免横向滚动时透出下层内容。本项目在双端全局 CSS 的 `.dark` 块中将 `--tiger-component-table-bg/stripe-bg/hover-bg/header-bg` 映射到 `--tiger-bg-card`/`--tiger-bg-page`/`--tiger-bg-hover`，不再使用 `[style*="position: sticky"]` 全局覆盖。需要进一步定制时使用列级 `fixedClassName` / `fixedHeaderClassName`。固定列位置用逻辑边 `start` / `end`，不要写 `left` / `right`。
 - **列显隐面板**：用户/角色页在 `DataTableWithToolbar` 的 `toolbar` 中启用 `showColumnSettings: true`，并使用 Table 受控隐藏列能力保存状态：React 传 `hiddenColumnKeys` + `onHiddenColumnKeysChange`，Vue 传 `:hidden-column-keys` + `@hidden-column-keys-change`。不要再自建 `Popover + Checkbox` 列显隐面板，也不要在页面侧过滤 `columns`；隐藏列由上游 Table 统一处理，sessionStorage 仍保存 `hiddenColumnKeys`。
@@ -353,9 +356,9 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 ## 已对齐的上游能力
 
-本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `3.0.0-rc.3`，React、Vue 与 MockApi 的 Core 依赖保持同版本（3.0 不向前兼容：modern 预设走 `createTigercatPlugin` / `ConfigProvider theme`，`Stepper` / `Kanban` / `DonutChart` / `ImageViewer` 已从调用面移除）。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 Captcha 仍跳过（登录无明示需求）。
+本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `3.0.0`，React、Vue 与 MockApi 的 Core 依赖保持同版本（3.0 不向前兼容：modern 预设走 `createTigercatPlugin` / `ConfigProvider theme`，`Stepper` / `Kanban` / `DonutChart` / `ImageViewer` 已从调用面移除）。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 Captcha 仍跳过（登录无明示需求）。
 
-React、Vue 与 MockApi 的发布依赖清单均固定 npm `3.0.0-rc.3`，workspace 本地覆盖已移除，lockfile 使用 registry integrity。三者及框架库共用同一 Core，React / React DOM / Vue 使用各应用的同一份框架 peer。正式包逐文件来源核验、能力对照和历史候选验收分别记录于 [rc.3 接入与验收](frontend-rc3-validation.md)，不把历史截图改称 registry 复测。本轮不保留 node_modules 补丁或 `patchedDependencies`。本地联调的临时用法见 [Tigercat 本地构建联调](operations.md#tigercat-本地构建联调)。浮层与焦点回归见 [e2e/overlay-focus.spec.ts](../e2e/overlay-focus.spec.ts)，审批确认与提交路径见 [e2e/approvals.spec.ts](../e2e/approvals.spec.ts)。
+React、Vue 与 MockApi 的发布依赖清单均固定 npm `3.0.0`，workspace 本地覆盖已移除，lockfile 使用 registry integrity。三者及框架库共用同一 Core，React / React DOM / Vue 使用各应用的同一份框架 peer。rc.3 正式包逐文件来源核验、能力对照和历史候选验收分别记录于 [rc.3 接入与验收](frontend-rc3-validation.md)，不把历史截图改称 registry 复测。本轮不保留 node_modules 补丁或 `patchedDependencies`。本地联调的临时用法见 [Tigercat 本地构建联调](operations.md#tigercat-本地构建联调)。浮层与焦点回归见 [e2e/overlay-focus.spec.ts](../e2e/overlay-focus.spec.ts)，审批确认与提交路径见 [e2e/approvals.spec.ts](../e2e/approvals.spec.ts)。
 
 升级时对照 [rc.2 迁移指南](https://github.com/expcat/Tigercat/blob/v3.0.0-rc.2/docs/MIGRATION.md)：`Slider` 不再接受 `vertical` / `showInput`，`LoadingBar` 不再接受 `renderBar`，`VirtualList` 仅使用纵向列表契约，不再传 `columns` / `orientation` / `stickyIndexes`。上传文案读取 `getUploadLabels(locale, overrides)`，不要导入已删除的英文常量；自定义拖拽项完整展开 `getDragItemProps` / `getDragItemAttrs` 的返回值，保留数字 key 所需的 `data-drag-id-type`。
 

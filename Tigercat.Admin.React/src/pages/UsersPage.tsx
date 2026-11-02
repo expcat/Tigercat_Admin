@@ -125,6 +125,7 @@ function UsersPage() {
   const account = useMemo(() => safeParse<Session>(localStorage.getItem(SESSION_KEY))?.username ?? '', []);
   const [userViews, setUserViews] = useState(() => loadUserViews(account));
   const [viewName, setViewName] = useState(userViews.activeViewName ?? '');
+  const [viewControlsOpen, setViewControlsOpen] = useState(true);
   const savedWorkbench = useMemo(() => {
     const state = loadWorkbenchState('users', {
         queryState: { page: 1, pageSize: 10, status: null },
@@ -318,10 +319,15 @@ function UsersPage() {
   }, []);
 
   useEffect(() => {
+    const viewControlsQuery = window.matchMedia('(max-width: 767px)');
+    const syncViewControls = () => setViewControlsOpen(!viewControlsQuery.matches);
+    syncViewControls();
+    viewControlsQuery.addEventListener('change', syncViewControls);
     persistWorkbench(savedWorkbench);
     loadUsers();
     loadRoles();
     return () => {
+      viewControlsQuery.removeEventListener('change', syncViewControls);
       clearTimeout(searchTimer.current);
       requestRef.current?.abort();
     };
@@ -813,7 +819,7 @@ function UsersPage() {
         align: 'center',
         fixed: 'end',
         render: (record) => (
-          <div className="flex items-center justify-center gap-2">
+          <div className="p2-table-card-actions flex items-center justify-center gap-2">
             {canEdit && (
               <Dropdown
                 trigger="click"
@@ -998,10 +1004,10 @@ function UsersPage() {
 
   const serverPaginationHint = useMemo(() => {
     if (total > pageSize) {
-      return `列表采用服务端分页，当前页仅加载 ${pageSize} / ${total} 条结果。后端每页最多返回 100 条记录，请通过翻页或缩小筛选范围查看更多数据。`;
+      return `服务端分页：本页 ${pageSize} / 共 ${total} 条；每页最多 100 条，请翻页或筛选查看更多。`;
     }
 
-    return '列表采用服务端分页，当前仅加载本页数据。后端每页最多返回 100 条记录。';
+    return '服务端分页：仅加载本页，每页最多 100 条。';
   }, [pageSize, total]);
 
   // ---- Form field helpers ----
@@ -1027,7 +1033,7 @@ function UsersPage() {
         ]}
       />
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
         <PermissionGuard code="user:view">
           <Button variant="outline" onClick={openExportModal}>
             <span className="flex items-center gap-1">
@@ -1050,22 +1056,28 @@ function UsersPage() {
         {serverPaginationHint}
       </div>
 
-      <div className="p2-muted-panel space-y-2 p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-          <Select aria-label="用户筛选视图" placeholder="选择已保存视图" className="w-full sm:w-52"
-            value={userViews.activeViewName ?? undefined} clearable
-            options={userViews.views.map(view => ({ label: view.name, value: view.name }))}
-            onChange={switchUserView} />
-          <Input aria-label="视图名称" placeholder="视图名称" maxLength={40} className="w-full sm:w-52"
-            value={viewName} onChange={value => setViewName(normalizeInput(value))} />
-          <Button variant="outline" disabled={!account || !viewName.trim()} onClick={saveUserView}>保存视图</Button>
-          <Button variant="ghost" disabled={!userViews.activeViewName} onClick={deleteUserView}>删除视图</Button>
+      <details
+        className="p2-muted-panel"
+        open={viewControlsOpen}
+        onToggle={(event) => setViewControlsOpen(event.currentTarget.open)}>
+        <summary className="cursor-pointer px-4 py-3 text-sm font-medium md:hidden">视图管理</summary>
+        <div className="space-y-2 border-t border-[var(--tiger-border)]/30 p-4 md:border-t-0">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <Select aria-label="用户筛选视图" placeholder="选择已保存视图" className="w-full sm:w-52"
+              value={userViews.activeViewName ?? undefined} clearable
+              options={userViews.views.map(view => ({ label: view.name, value: view.name }))}
+              onChange={switchUserView} />
+            <Input aria-label="视图名称" placeholder="视图名称" maxLength={40} className="w-full sm:w-52"
+              value={viewName} onChange={value => setViewName(normalizeInput(value))} />
+            <Button variant="outline" disabled={!account || !viewName.trim()} onClick={saveUserView}>保存视图</Button>
+            <Button variant="ghost" disabled={!userViews.activeViewName} onClick={deleteUserView}>删除视图</Button>
+          </div>
+          <p className="p2-text-secondary text-sm" role="status">
+            {activeView ? `当前视图：${activeView.name}${viewModified ? '（已修改，尚未保存）' : ''}。` : ''}
+            视图仅保存在当前浏览器的当前账号下，包含筛选、排序、每页条数和可见列；切换或重新载入视图不会恢复勾选项。
+          </p>
         </div>
-        <p className="p2-text-secondary text-sm" role="status">
-          {activeView ? `当前视图：${activeView.name}${viewModified ? '（已修改，尚未保存）' : ''}。` : ''}
-          视图仅保存在当前浏览器的当前账号下，包含筛选、排序、每页条数和可见列；切换或重新载入视图不会恢复勾选项。
-        </p>
-      </div>
+      </details>
       {loadError && <div role="alert" className="p2-muted-panel flex items-center justify-between gap-3 p-4">
         <span>{loadError}</span><Button variant="outline" onClick={() => { void loadUsers(); }}>重试加载用户</Button>
       </div>}

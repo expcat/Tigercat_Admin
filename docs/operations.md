@@ -49,7 +49,7 @@ cd Tigercat.Admin.Vue && pnpm dev
 
 ### Tigercat 本地构建联调
 
-当前 React、Vue、MockApi 的依赖清单及根 lockfile 均使用 npm `3.0.0-rc.3`，`pnpm-workspace.yaml` 已移除本地覆盖，并同步该版本的 minimumReleaseAge 例外。正式包来源、SHA256 / SHA512 与历史候选的区别见 [rc.3 接入与验收](frontend-rc3-validation.md)。pnpm 为框架包接入 Admin 的 React / Vue peer 依赖，三个消费者共用同一 Core。
+当前 React、Vue、MockApi 的依赖清单及根 lockfile 均使用 npm `3.0.0`，`pnpm-workspace.yaml` 已移除本地覆盖，并同步该版本的 minimumReleaseAge 例外。历史候选的正式包来源、SHA256 / SHA512 与验收记录见 [rc.3 接入与验收](frontend-rc3-validation.md)。pnpm 为框架包接入 Admin 的 React / Vue peer 依赖，三个消费者共用同一 Core。
 
 以下仅用于联调未发布候选：上游已有验收过的 tarball 时直接消费该产物，不重建；上游修复后重新生成候选，更新三个覆盖路径并执行 `pnpm install --no-frozen-lockfile`，再重建 Admin。历史三包覆盖示例（ADMIN-02 round-06，已从当前配置移除）：
 

@@ -89,15 +89,22 @@ function ReportsPage() {
         tags={[{ label: '系统统计', variant: 'primary' }]} />
       <PageActionPanel title="报表参数"
         description="概览为当前累计值；天数仅筛选按 UTC 日期统计的用户创建趋势。打印可另存为 PDF。"
-        actions={<>
-          <Segmented value={trendDays} options={REPORT_DAYS} disabled={exporting} onChange={(value) => setTrendDays(Number(value))} />
-          <Button variant="outline" disabled={loading || exporting} onClick={() => setReload((value) => value + 1)}>刷新报表</Button>
-          <Button disabled={!ready || exporting} onClick={() => printRef.current?.print()}>打印</Button>
-          {EXPORT_FORMATS.map((format) => <DataExport key={format} columns={exportColumns} dataSource={[]}
-            formats={DATA_EXPORT_TRIGGER_FORMATS} fileName="overview"
-            labels={{ xlsxText: `导出 ${EXPORT_FORMAT_LABELS[format]}`, exportingText: '导出中...', triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}` }}
-            disabled={!ready || exporting} customExport={() => onExport(format)} />)}
-        </>} />
+        stacked
+        actions={<div className="flex w-full flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <Segmented value={trendDays} options={REPORT_DAYS} disabled={exporting} onChange={(value) => setTrendDays(Number(value))} />
+            <Button variant="outline" disabled={loading || exporting} onClick={() => setReload((value) => value + 1)}>刷新报表</Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button disabled={!ready || exporting} onClick={() => printRef.current?.print()}>打印</Button>
+            <div className="flex flex-wrap items-center gap-2 sm:border-l sm:border-(--tiger-border)/30 sm:pl-3">
+              {EXPORT_FORMATS.map((format) => <DataExport key={format} columns={exportColumns} dataSource={[]}
+                formats={DATA_EXPORT_TRIGGER_FORMATS} fileName="overview"
+                labels={{ xlsxText: `导出 ${EXPORT_FORMAT_LABELS[format]}`, exportingText: '导出中...', triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}` }}
+                disabled={!ready || exporting} customExport={() => onExport(format)} />)}
+            </div>
+          </div>
+        </div>} />
       {errorMessage && <div className="space-y-3"><Alert type="error" title="报表加载失败" description={errorMessage} />
         <Button variant="outline" onClick={() => setReload((value) => value + 1)}>重试</Button></div>}
       {loading ? <div className="flex h-40 items-center justify-center" role="status" aria-label="报表加载中"><Loading /></div> : ready ? (

@@ -21,7 +21,6 @@ import type {
 import PageHeader from '../components/PageHeader.vue'
 import MetricGrid from '../components/MetricGrid.vue'
 import MetricCard from '../components/MetricCard.vue'
-import MutedPanel from '../components/MutedPanel.vue'
 import PageActionPanel from '../components/PageActionPanel.vue'
 import ChartEmptyState from '../components/ChartEmptyState.vue'
 import Icon from '../components/Icon.vue'
@@ -222,7 +221,7 @@ function formatTickLabel(value: string | number) {
     <PageHeader
       icon="monitor"
       title="实时监控"
-      subtitle="演示监控快照，展示资源水位、吞吐延迟与节点事件"
+      subtitle="非真实主机的演示快照，展示资源水位、吞吐延迟与节点事件"
       :tags="[
         { label: '实时快照', variant: 'success' },
         { label: '登录可见', variant: 'info' },
@@ -231,7 +230,7 @@ function formatTickLabel(value: string | number) {
 
     <PageActionPanel
       title="刷新控制"
-      description="按所选间隔更新演示快照，默认 3 秒。暂停后保留最后快照，继续时恢复更新。"
+      description="默认每 3 秒更新；暂停保留当前快照，继续后恢复，图表保留最近 20 次采样。"
     >
       <template #actions>
         <Segmented
@@ -292,7 +291,7 @@ function formatTickLabel(value: string | number) {
           :value="gauge.value"
           :min="0"
           :max="100"
-          :height="180"
+          :height="144"
           :label="gauge.label"
           :segments="GAUGE_SEGMENTS"
           :value-formatter="formatGaugeValue"
@@ -394,9 +393,5 @@ function formatTickLabel(value: string | number) {
     </div>
 
     </template>
-    <MutedPanel
-      title="演示说明"
-      description="指标由服务端生成演示快照，不读取真实主机。QPS 与延迟显示最近 20 个采样点；暂停后停止更新。"
-    />
   </div>
 </template>

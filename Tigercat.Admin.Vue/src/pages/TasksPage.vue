@@ -333,8 +333,10 @@ onBeforeUnmount(() => { listRequest?.abort(); detailRequest?.abort() })
     <PageActionPanel
       title="异步任务入口"
       description="当前任务来自后端模型，创建、负责人、截止时间和状态流转会持久化并写入审计事件。"
+      stacked
     >
       <template #actions>
+        <div class="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <Input
             :model-value="filterText"
             :disabled="saving || completing"
@@ -382,6 +384,7 @@ onBeforeUnmount(() => { listRequest?.abort(); detailRequest?.abort() })
           <Button variant="outline" data-testid="tasks-refresh" :disabled="saving || completing" @click="handleResetBoard">
             刷新看板
           </Button>
+        </div>
       </template>
     </PageActionPanel>
 
@@ -389,19 +392,19 @@ onBeforeUnmount(() => { listRequest?.abort(); detailRequest?.abort() })
       <MetricCard title="任务总数" :value="loading || loadError ? '—' : serverTotal" :description="`当前显示 ${totalCount} 条；统计与 WIP 限于已加载任务。`">
         <template #icon><Icon name="clipboard" :size="20" /></template>
       </MetricCard>
-      <MetricCard title="超期任务" :description="`已加载任务中有 ${overdueCount} 个超过计划时间。`">
+      <MetricCard title="超期任务" :value="loading || loadError ? '—' : overdueCount" description="已加载任务中超过计划时间。">
         <template #icon><Icon name="clock" :size="20" /></template>
       </MetricCard>
-      <MetricCard title="阻塞项" :description="`当前有 ${blockedCount} 个任务被阻塞，不能直接移动到已完成。`">
+      <MetricCard title="阻塞项" :value="loading || loadError ? '—' : blockedCount" description="已加载任务中处于阻塞状态。">
         <template #icon><Icon name="zap" :size="20" /></template>
       </MetricCard>
     </MetricGrid>
 
     <Card title="任务流转验证">
       <MutedPanel
+        compact
         class="mb-4"
-        title="最近动作"
-        :description="loading ? '正在同步后端任务...' : lastAction"
+        :description="`最近动作：${loading ? '正在同步后端任务...' : lastAction}`"
       />
 
       <div v-if="loadError" role="alert" class="space-y-3"><Text color="danger">{{ loadError }}</Text><Button variant="outline" @click="handleResetBoard">重试任务列表</Button></div>

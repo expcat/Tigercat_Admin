@@ -333,53 +333,63 @@ function selectLog(id: unknown) {
     <PageActionPanel
       title="审计事件查询"
       description="页面通过 API 查询 Redis Streams 聚合结果，支持分页、筛选、详情和导出。"
+      stacked
     >
       <template #actions>
-          <Input
-            :model-value="keyword"
-            placeholder="筛选标题、说明或事件类型"
-            @update:model-value="handleKeywordChange"
-          />
-          <Select
-            :model-value="category"
-            :options="categoryOptions"
-            placeholder="筛选分类"
-            :clearable="false"
-            @update:model-value="handleCategoryChange"
-          />
-          <Tag variant="primary" size="sm">认证事件 {{ authCount }}</Tag>
-          <Tag variant="success" size="sm">用户事件 {{ userCount }}</Tag>
-          <Tag variant="info" size="sm">当前页 {{ logs.length }} · 匹配 {{ total }}</Tag>
-          <Button variant="outline" @click="loadAuditLogs">
-            刷新日志
-          </Button>
-          <template v-if="canExport">
-            <DataExport
-              v-for="format in EXPORT_FORMATS"
-              :key="format"
-              :columns="exportColumns"
-              :data-source="[]"
-              :formats="DATA_EXPORT_TRIGGER_FORMATS"
-              file-name="audit-logs"
-              :labels="{
-                xlsxText: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
-                exportingText: '导出中...',
-                triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
-              }"
-              :disabled="exporting || loading"
-              :custom-export="() => onExport(format)"
+        <div class="space-y-3">
+          <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <Input
+              :model-value="keyword"
+              placeholder="筛选标题、说明或事件类型"
+              class="w-full sm:w-80"
+              @update:model-value="handleKeywordChange"
             />
-            <CheckboxGroup
-              orientation="horizontal"
-              :model-value="exportFields"
-              class-name="flex w-full flex-wrap gap-x-4 gap-y-2 sm:w-auto"
-              @update:model-value="setExportFields"
-            >
-              <Checkbox v-for="field in AUDIT_EXPORT_FIELDS" :key="field.key" :value="field.key">
-                {{ field.label }}
-              </Checkbox>
-            </CheckboxGroup>
-          </template>
+            <Select
+              :model-value="category"
+              :options="categoryOptions"
+              placeholder="筛选分类"
+              class="w-full sm:w-48"
+              :clearable="false"
+              @update:model-value="handleCategoryChange"
+            />
+            <Button variant="outline" @click="loadAuditLogs">
+              刷新日志
+            </Button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <Tag variant="primary" size="sm">认证事件 {{ authCount }}</Tag>
+            <Tag variant="success" size="sm">用户事件 {{ userCount }}</Tag>
+            <Tag variant="info" size="sm">当前页 {{ logs.length }} · 匹配 {{ total }}</Tag>
+            <template v-if="canExport">
+              <DataExport
+                v-for="format in EXPORT_FORMATS"
+                :key="format"
+                :columns="exportColumns"
+                :data-source="[]"
+                :formats="DATA_EXPORT_TRIGGER_FORMATS"
+                file-name="audit-logs"
+                :labels="{
+                  xlsxText: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
+                  exportingText: '导出中...',
+                  triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
+                }"
+                :disabled="exporting || loading"
+                :custom-export="() => onExport(format)"
+              />
+            </template>
+          </div>
+          <CheckboxGroup
+            v-if="canExport"
+            orientation="horizontal"
+            :model-value="exportFields"
+            class-name="flex w-full flex-wrap gap-x-4 gap-y-2"
+            @update:model-value="setExportFields"
+          >
+            <Checkbox v-for="field in AUDIT_EXPORT_FIELDS" :key="field.key" :value="field.key">
+              {{ field.label }}
+            </Checkbox>
+          </CheckboxGroup>
+        </div>
       </template>
     </PageActionPanel>
 

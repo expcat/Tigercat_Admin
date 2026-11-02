@@ -345,7 +345,7 @@ onBeforeUnmount(() => { loadController?.abort(); deleteController?.abort(); uplo
           </Tag>
         </div>
 
-        <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div class="flex flex-wrap items-center gap-2 sm:justify-end">
           <Button
             variant="outline"
             :disabled="loading || !!loadError || selectedIds.length !== 1"

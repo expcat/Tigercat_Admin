@@ -101,6 +101,12 @@ function confirmContextDelete() {
 const account = safeParse<Session>(localStorage.getItem(SESSION_KEY))?.username ?? ''
 const userViews = ref(loadUserViews(account))
 const viewName = ref(userViews.value.activeViewName ?? '')
+const viewControlsOpen = ref(true)
+let viewControlsQuery: MediaQueryList | null = null
+const syncViewControls = () => { viewControlsOpen.value = !(viewControlsQuery?.matches ?? false) }
+function onViewControlsToggle(event: Event) {
+  viewControlsOpen.value = (event.currentTarget as HTMLDetailsElement).open
+}
 
 const DEFAULT_EXPORT_FIELDS = ['id', 'username', 'displayName', 'status', 'createdAt', 'updatedAt', 'roles']
 const USER_CARD_LAYOUT: TableCardLayoutItem[] = [
@@ -576,7 +582,7 @@ const columns = computed<TableColumn[]>(() => {
             })
           )
         }
-        return h('div', { class: 'flex items-center justify-center gap-1' }, buttons)
+        return h('div', { class: 'p2-table-card-actions flex items-center justify-center gap-2' }, buttons)
       },
     })
   }
@@ -788,10 +794,10 @@ const tableToolbar = computed(() => ({
 
 const serverPaginationHint = computed(() => {
   if (total.value > pageSize.value) {
-    return `列表采用服务端分页，当前页仅加载 ${pageSize.value} / ${total.value} 条结果。后端每页最多返回 100 条记录，请通过翻页或缩小筛选范围查看更多数据。`
+    return `服务端分页：本页 ${pageSize.value} / 共 ${total.value} 条；每页最多 100 条，请翻页或筛选查看更多。`
   }
 
-  return '列表采用服务端分页，当前仅加载本页数据。后端每页最多返回 100 条记录。'
+  return '服务端分页：仅加载本页，每页最多 100 条。'
 })
 
 // ---- Export ----
@@ -854,11 +860,15 @@ async function handleExport() {
 
 // ---- Lifecycle ----
 onMounted(() => {
+  viewControlsQuery = window.matchMedia('(max-width: 767px)')
+  syncViewControls()
+  viewControlsQuery.addEventListener('change', syncViewControls)
   persistWorkbench(savedWorkbench)
   loadUsers()
   loadRoles()
 })
 onBeforeUnmount(() => {
+  viewControlsQuery?.removeEventListener('change', syncViewControls)
   clearTimeout(searchTimer)
   requestController?.abort()
 })
@@ -876,7 +886,7 @@ onBeforeUnmount(() => {
       ]"
     />
 
-    <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+    <div class="flex flex-wrap justify-end gap-2">
       <Button
         v-permission="'user:view'"
         variant="outline"
@@ -902,21 +912,24 @@ onBeforeUnmount(() => {
       {{ serverPaginationHint }}
     </div>
 
-    <div class="p2-muted-panel space-y-2 p-4">
-      <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-        <Select aria-label="用户筛选视图" placeholder="选择已保存视图" class="w-full sm:w-52"
-          :model-value="userViews.activeViewName ?? undefined" clearable
-          :options="userViews.views.map(view => ({ label: view.name, value: view.name }))"
-          @update:model-value="switchUserView" />
-        <Input aria-label="视图名称" placeholder="视图名称" :maxlength="40" class="w-full sm:w-52" v-model="viewName" />
-        <Button variant="outline" :disabled="!account || !viewName.trim()" @click="saveUserView">保存视图</Button>
-        <Button variant="ghost" :disabled="!userViews.activeViewName" @click="deleteUserView">删除视图</Button>
+    <details class="p2-muted-panel" :open="viewControlsOpen" @toggle="onViewControlsToggle">
+      <summary class="cursor-pointer px-4 py-3 text-sm font-medium md:hidden">视图管理</summary>
+      <div class="space-y-2 border-t border-[var(--tiger-border)]/30 p-4 md:border-t-0">
+        <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <Select aria-label="用户筛选视图" placeholder="选择已保存视图" class="w-full sm:w-52"
+            :model-value="userViews.activeViewName ?? undefined" clearable
+            :options="userViews.views.map(view => ({ label: view.name, value: view.name }))"
+            @update:model-value="switchUserView" />
+          <Input aria-label="视图名称" placeholder="视图名称" :maxlength="40" class="w-full sm:w-52" v-model="viewName" />
+          <Button variant="outline" :disabled="!account || !viewName.trim()" @click="saveUserView">保存视图</Button>
+          <Button variant="ghost" :disabled="!userViews.activeViewName" @click="deleteUserView">删除视图</Button>
+        </div>
+        <p class="p2-text-secondary text-sm" role="status">
+          <template v-if="activeView">当前视图：{{ activeView.name }}{{ viewModified ? '（已修改，尚未保存）' : '' }}。</template>
+          视图仅保存在当前浏览器的当前账号下，包含筛选、排序、每页条数和可见列；切换或重新载入视图不会恢复勾选项。
+        </p>
       </div>
-      <p class="p2-text-secondary text-sm" role="status">
-        <template v-if="activeView">当前视图：{{ activeView.name }}{{ viewModified ? '（已修改，尚未保存）' : '' }}。</template>
-        视图仅保存在当前浏览器的当前账号下，包含筛选、排序、每页条数和可见列；切换或重新载入视图不会恢复勾选项。
-      </p>
-    </div>
+    </details>
     <div v-if="loadError" role="alert" class="p2-muted-panel flex items-center justify-between gap-3 p-4">
       <span>{{ loadError }}</span><Button variant="outline" @click="loadUsers">重试加载用户</Button>
     </div>

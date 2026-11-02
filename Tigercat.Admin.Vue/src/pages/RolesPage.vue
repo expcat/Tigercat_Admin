@@ -419,7 +419,7 @@ const columns = computed<TableColumn[]>(() => {
             })
           )
         }
-        return h('div', { class: 'flex items-center justify-center gap-1' }, buttons)
+        return h('div', { class: 'p2-table-card-actions flex items-center justify-center gap-2' }, buttons)
       },
     })
   }
@@ -499,10 +499,10 @@ const tableToolbar = computed(() => ({
 
 const serverPaginationHint = computed(() => {
   if (total.value > pageSize.value) {
-    return `列表采用服务端分页，当前页仅加载 ${pageSize.value} / ${total.value} 条结果。后端每页最多返回 100 条记录，请通过翻页或缩小筛选范围查看更多数据。`
+    return `服务端分页：本页 ${pageSize.value} / 共 ${total.value} 条；每页最多 100 条，请翻页或筛选查看更多。`
   }
 
-  return '列表采用服务端分页，当前仅加载本页数据。后端每页最多返回 100 条记录。'
+  return '服务端分页：仅加载本页，每页最多 100 条。'
 })
 
 // ---- Export ----
@@ -585,7 +585,7 @@ onBeforeUnmount(() => {
       ]"
     />
 
-    <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+    <div class="flex flex-wrap justify-end gap-2">
       <Button
         v-permission="'role:view'"
         variant="outline"
@@ -635,6 +635,7 @@ onBeforeUnmount(() => {
       card-breakpoint="md"
       :card-layout="ROLE_CARD_LAYOUT"
       empty-text="暂无角色数据"
+      class="p2-table-toolbar-stack"
       :toolbar="tableToolbar"
       @page-change="handlePageChange"
       @page-size-change="handlePageSizeChange"

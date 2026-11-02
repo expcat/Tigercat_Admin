@@ -24,6 +24,7 @@ interface PageActionPanelProps {
   title: string;
   description: ReactNode;
   actions?: ReactNode;
+  stacked?: boolean;
 }
 
 interface MutedPanelProps {
@@ -73,7 +74,7 @@ export function MetricCard({
           <Text weight="bold">{title}</Text>
         )}
         {description ? (
-          <Text size="sm" color="secondary">
+          <Text size="sm" color="secondary" className="mt-1 block">
             {description}
           </Text>
         ) : null}
@@ -105,18 +106,19 @@ export function PageActionPanel({
   title,
   description,
   actions,
+  stacked = false,
 }: PageActionPanelProps) {
   return (
     <Card>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0">
+      <div className={'flex flex-col gap-4 ' + (stacked ? '' : 'lg:flex-row lg:items-center lg:justify-between')}>
+        <div className="min-w-0 space-y-1">
           <Text weight="bold">{title}</Text>
           <Text size="sm" color="secondary">
             {description}
           </Text>
         </div>
         {actions ? (
-          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+          <div className={stacked ? 'w-full' : 'flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center'}>
             {actions}
           </div>
         ) : null}

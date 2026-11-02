@@ -75,7 +75,7 @@ export function ThemeConfigDrawer({
         </div>
 
         <div className="flex items-center justify-between gap-4">
-          <div className="min-w-0">
+          <div className="min-w-0 space-y-1">
             <Text weight="medium" className="block">
               紧凑密度
             </Text>

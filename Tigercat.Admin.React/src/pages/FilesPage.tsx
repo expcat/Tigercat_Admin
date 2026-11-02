@@ -346,7 +346,7 @@ function FilesPage() {
             )}
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             <Button
               variant="outline"
               disabled={loading || !!loadError || selectedIds.length !== 1}

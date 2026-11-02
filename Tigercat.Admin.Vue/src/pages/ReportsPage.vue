@@ -86,15 +86,24 @@ async function onExport(format: ExportFormat) {
       subtitle="当前系统概览与用户创建趋势，预览、打印和导出使用相同数据域与天数"
       :tags="[{ label: '系统统计', variant: 'primary' }]" />
     <PageActionPanel title="报表参数"
-      description="概览为当前累计值；天数仅筛选按 UTC 日期统计的用户创建趋势。打印可另存为 PDF。">
+      description="概览为当前累计值；天数仅筛选按 UTC 日期统计的用户创建趋势。打印可另存为 PDF。"
+      stacked>
       <template #actions>
-        <Segmented :model-value="trendDays" :options="REPORT_DAYS" :disabled="exporting" @update:model-value="trendDays = Number($event)" />
-        <Button variant="outline" :disabled="loading || exporting" @click="reload++">刷新报表</Button>
-        <Button :disabled="!ready || exporting" @click="printRef?.print()">打印</Button>
-        <DataExport v-for="format in EXPORT_FORMATS" :key="format" :columns="exportColumns" :data-source="[]"
-          :formats="DATA_EXPORT_TRIGGER_FORMATS" file-name="overview"
-          :labels="{ xlsxText: `导出 ${EXPORT_FORMAT_LABELS[format]}`, exportingText: '导出中...', triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}` }"
-          :disabled="!ready || exporting" :custom-export="() => onExport(format)" />
+        <div class="flex w-full flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between">
+          <div class="flex flex-wrap items-center gap-3">
+            <Segmented :model-value="trendDays" :options="REPORT_DAYS" :disabled="exporting" @update:model-value="trendDays = Number($event)" />
+            <Button variant="outline" :disabled="loading || exporting" @click="reload++">刷新报表</Button>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <Button :disabled="!ready || exporting" @click="printRef?.print()">打印</Button>
+            <div class="flex flex-wrap items-center gap-2 sm:border-l sm:border-(--tiger-border)/30 sm:pl-3">
+              <DataExport v-for="format in EXPORT_FORMATS" :key="format" :columns="exportColumns" :data-source="[]"
+                :formats="DATA_EXPORT_TRIGGER_FORMATS" file-name="overview"
+                :labels="{ xlsxText: `导出 ${EXPORT_FORMAT_LABELS[format]}`, exportingText: '导出中...', triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}` }"
+                :disabled="!ready || exporting" :custom-export="() => onExport(format)" />
+            </div>
+          </div>
+        </div>
       </template>
     </PageActionPanel>
     <div v-if="errorMessage" class="space-y-3"><Alert type="error" title="报表加载失败" :description="errorMessage" />

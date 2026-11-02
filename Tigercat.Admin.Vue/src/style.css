@@ -13,8 +13,8 @@
   --tiger-bg-card: #161b22;
   --tiger-bg-hover: #1b212c;
   --tiger-text: #f0f6fc;
-  --tiger-text-secondary: #8b949f;
-  --tiger-border: #304050;
+  --tiger-text-secondary: #a8b3c1;
+  --tiger-border: #46586c;
   --tiger-shadow: 0 1px 3px rgba(0,0,0,0.4);
   /* Table 组件 Token（1.2.37+），锁定列背景跟随暗色主题 */
   --tiger-component-table-bg: var(--tiger-bg-card);
@@ -125,6 +125,34 @@
     .p2-table-toolbar-stack [class*="toolbar"] > * {
       width: 100%;
       max-width: 100%;
+    }
+
+    .p2-table-toolbar-stack [role="toolbar"] button,
+    .p2-table-toolbar-stack [role="toolbar"] input,
+    .p2-table-toolbar-stack [role="toolbar"] [role="combobox"],
+    .p2-table-toolbar-stack nav[aria-label="分页"] button,
+    .p2-table-toolbar-stack nav[aria-label="分页"] select {
+      min-height: 2.5rem;
+    }
+
+    .p2-table-toolbar-stack nav[aria-label="分页"] {
+      gap: 0.5rem;
+    }
+
+    .p2-table-toolbar-stack nav[aria-label="分页"] button {
+      min-width: 2.5rem;
+    }
+
+    .p2-table-toolbar-stack .p2-table-card-actions {
+      justify-content: flex-end;
+      margin-top: 0.25rem;
+      border-top: 1px solid color-mix(in srgb, var(--tiger-border) 30%, transparent);
+      padding-top: 0.75rem;
+    }
+
+    .p2-table-toolbar-stack .p2-table-card-actions button {
+      min-width: 4rem;
+      min-height: 2.5rem;
     }
   }
 
@@ -244,4 +272,20 @@ html.compact .p2-main-header {
 /* Keep the notification panel inside narrow viewports. */
 .tiger-popover-content[aria-label="通知"] {
   max-width: calc(100vw - 1rem);
+}
+
+.content-editor [role='toolbar'] {
+  position: relative;
+  z-index: 21;
+}
+
+@media (max-width: 767px) {
+  .content-editor [role='toolbar'] {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .content-editor [role='toolbar'] > * {
+    flex-shrink: 0;
+  }
 }

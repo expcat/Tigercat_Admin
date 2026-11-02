@@ -532,7 +532,7 @@ function RolesPage() {
         align: 'center',
         fixed: 'end',
         render: (record) => (
-          <div className="flex items-center justify-center gap-2">
+          <div className="p2-table-card-actions flex items-center justify-center gap-2">
             {canEdit && (
               <Dropdown
                 trigger="click"
@@ -654,10 +654,10 @@ function RolesPage() {
 
   const serverPaginationHint = useMemo(() => {
     if (total > pageSize) {
-      return `列表采用服务端分页，当前页仅加载 ${pageSize} / ${total} 条结果。后端每页最多返回 100 条记录，请通过翻页或缩小筛选范围查看更多数据。`;
+      return `服务端分页：本页 ${pageSize} / 共 ${total} 条；每页最多 100 条，请翻页或筛选查看更多。`;
     }
 
-    return '列表采用服务端分页，当前仅加载本页数据。后端每页最多返回 100 条记录。';
+    return '服务端分页：仅加载本页，每页最多 100 条。';
   }, [pageSize, total]);
 
   return (
@@ -672,7 +672,7 @@ function RolesPage() {
         ]}
       />
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
         <PermissionGuard code="role:view">
           <Button variant="outline" onClick={openExportModal}>
             <span className="flex items-center gap-1">
@@ -717,6 +717,7 @@ function RolesPage() {
         cardBreakpoint="md"
         cardLayout={ROLE_CARD_LAYOUT}
         emptyText="暂无角色数据"
+        className="p2-table-toolbar-stack"
         toolbar={tableToolbar}
         onPageChange={handlePageChange}
         onPageSizeChange={handlePageSizeChange}

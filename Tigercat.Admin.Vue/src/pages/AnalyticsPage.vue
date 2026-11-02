@@ -279,7 +279,7 @@ function handlePageChange(value: number) {
     <PageHeader
       icon="trendingUp"
       title="数据分析"
-      subtitle="图表与渠道明细使用示例数据，可调整区间查看不同规模"
+      subtitle="示例数据：区间控制图表与渠道明细规模；能力、散点与组织图为固定示例"
       :tags="[
         { label: '示例数据', variant: 'success' },
         { label: 'BI', variant: 'primary' },
@@ -310,8 +310,6 @@ function handlePageChange(value: number) {
         </div>
       </div>
     </Card>
-
-    <p class="text-sm text-(--tiger-text-secondary)">区间控制示例规模；能力、散点与组织图为固定示例。真实系统统计请前往「系统统计报表」。</p>
 
     <!-- KPI -->
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

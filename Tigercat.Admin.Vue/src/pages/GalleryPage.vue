@@ -36,33 +36,30 @@ const ALBUM_OPTIONS = [
   { label: '空相册', value: 'empty' },
 ]
 
-function makePlaceholder(label: string, hue: number, w = 480, h = 320): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="hsl(${hue},72%,56%)"/><stop offset="100%" stop-color="hsl(${(hue + 40) % 360},70%,42%)"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><text x="50%" y="50%" fill="rgba(255,255,255,0.92)" font-family="system-ui,sans-serif" font-size="30" font-weight="600" text-anchor="middle" dominant-baseline="middle">${label}</text></svg>`
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
-}
+const galleryAsset = (name: string) => `${import.meta.env.BASE_URL}gallery/${name}.png`
 
 const IMAGES: GalleryImage[] = [
-  { id: 'p1', title: '产品概览', album: 'product', hue: 210 },
-  { id: 'p2', title: '仪表盘截图', album: 'product', hue: 250 },
-  { id: 'p3', title: '移动端预览', album: 'product', hue: 285 },
-  { id: 'p4', title: '主题配色', album: 'product', hue: 20 },
-  { id: 't1', title: '团队合影', album: 'team', hue: 150 },
-  { id: 't2', title: '线下沙龙', album: 'team', hue: 175 },
-  { id: 't3', title: '协作白板', album: 'team', hue: 120 },
+  { id: 'p1', title: '产品概览', album: 'product', src: galleryAsset('product-overview') },
+  { id: 'p2', title: '仪表盘截图', album: 'product', src: galleryAsset('product-dashboard') },
+  { id: 'p3', title: '移动端预览', album: 'product', src: galleryAsset('product-mobile') },
+  { id: 'p4', title: '主题配色', album: 'product', src: galleryAsset('product-theme') },
+  { id: 't1', title: '团队合影', album: 'team', src: galleryAsset('team-gathering') },
+  { id: 't2', title: '线下沙龙', album: 'team', src: galleryAsset('team-salon') },
+  { id: 't3', title: '协作白板', album: 'team', src: galleryAsset('team-whiteboard') },
 ]
 
 const MASONRY_COLUMNS = { xs: 1, sm: 2, lg: 3 }
 const ASPECT_RATIOS = ['16/9', '4/3', '1/1'] as const
 
-const srcOf = (img: GalleryImage) => img.media?.url ?? makePlaceholder(img.title, img.hue)
+const srcOf = (img: GalleryImage) => img.media?.url ?? img.src ?? ''
 
 function aspectRatioOf(img: GalleryImage): (typeof ASPECT_RATIOS)[number] {
   const index = IMAGES.findIndex((item) => item.id === img.id)
   return ASPECT_RATIOS[(index < 0 ? 0 : index) % ASPECT_RATIOS.length]
 }
 
-const compareBeforeSrc = makePlaceholder('改版前', 210)
-const compareAfterSrc = makePlaceholder('改版后', 20)
+const compareBeforeSrc = galleryAsset('compare-before')
+const compareAfterSrc = galleryAsset('compare-after')
 
 const router = useRouter()
 const { has } = usePermission()
@@ -87,7 +84,7 @@ async function refresh() {
   try {
     const { data } = await listMedia({ page: mediaPage.value, pageSize: 12, contentType: 'image/', sortOrder: 'desc' }, controller.signal)
     if (controller.signal.aborted) return
-    mediaImages.value = data.items.map((media) => ({ id: `media-${media.id}`, title: media.originalFileName, album: 'media', hue: 210, media }))
+    mediaImages.value = data.items.map((media) => ({ id: `media-${media.id}`, title: media.originalFileName, album: 'media', media }))
     mediaTotal.value = data.total
   } catch (error) {
     if (!controller.signal.aborted) loadError.value = error instanceof Error ? error.message : '图库加载失败'
@@ -299,7 +296,7 @@ async function applyCrop() {
     <Card>
       <template #header><Text weight="bold">版本对比</Text></template>
       <Text size="sm" color="secondary" class="mb-3 block">
-        拖动滑块对比改版前后的产品封面（演示占位图，不接入上传）。
+        拖动滑块对比改版前后的产品封面（本地演示素材，不接入上传）。
       </Text>
       <ImageCompare
         :before-src="compareBeforeSrc"

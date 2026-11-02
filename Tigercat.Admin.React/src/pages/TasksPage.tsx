@@ -410,8 +410,9 @@ function TasksPage() {
       <PageActionPanel
         title="异步任务入口"
         description="当前任务来自后端模型，创建、负责人、截止时间和状态流转会持久化并写入审计事件。"
+        stacked
         actions={
-          <>
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <Input
               value={filterText}
               disabled={saving || completing}
@@ -459,7 +460,7 @@ function TasksPage() {
             <Button variant="outline" data-testid="tasks-refresh" disabled={saving || completing} onClick={handleResetBoard}>
               刷新看板
             </Button>
-          </>
+          </div>
         }
       />
 
@@ -472,21 +473,23 @@ function TasksPage() {
         />
         <MetricCard
           title="超期任务"
-          description={`已加载任务中有 ${overdueCount} 个超过计划时间。`}
+          value={loading || loadError ? '—' : overdueCount}
+          description="已加载任务中超过计划时间。"
           icon={<ClockIcon size={20} />}
         />
         <MetricCard
           title="阻塞项"
-          description={`当前有 ${blockedCount} 个任务被阻塞，不能直接移动到已完成。`}
+          value={loading || loadError ? '—' : blockedCount}
+          description="已加载任务中处于阻塞状态。"
           icon={<ZapIcon size={20} />}
         />
       </MetricGrid>
 
       <Card title="任务流转验证">
         <MutedPanel
+          compact
           className="mb-4"
-          title="最近动作"
-          description={loading ? '正在同步后端任务...' : lastAction}
+          description={`最近动作：${loading ? '正在同步后端任务...' : lastAction}`}
         />
 
         {loadError ? <div role="alert" className="space-y-3"><Text color="danger">{loadError}</Text><Button variant="outline" onClick={handleResetBoard}>重试任务列表</Button></div> : <TaskBoard

@@ -39,7 +39,7 @@ withDefaults(
         </template>
         <Statistic v-else-if="value !== undefined || badge !== undefined" :title="title" :value="value ?? badge ?? ''" />
         <Text v-else weight="bold">{{ title }}</Text>
-        <Text v-if="description" size="sm" color="secondary">
+        <Text v-if="description" size="sm" color="secondary" class="mt-1 block">
           {{ description }}
         </Text>
       </div>

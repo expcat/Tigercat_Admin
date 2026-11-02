@@ -82,7 +82,7 @@ function focusTrigger() {
       </div>
 
       <div class="flex items-center justify-between gap-4">
-        <div class="min-w-0">
+        <div class="min-w-0 space-y-1">
           <Text weight="medium" class="block">紧凑密度</Text>
           <Text size="sm" color="secondary">收紧内容区内边距，侧栏默认折叠</Text>
         </div>

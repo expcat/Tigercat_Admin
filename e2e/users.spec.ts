@@ -282,11 +282,6 @@ test.describe('用户管理主流程', () => {
     await gotoUsers(page);
     await createUser(page, { username, password: 'e2e_pass123', role: 'Admin' });
     try {
-      // InMemory API tests keep authentication records separate from management users.
-      const registration = await page.request.post('/api/auth/register', {
-        data: { username, password: 'e2e_pass123' },
-      });
-      expect(registration.ok()).toBe(true);
       await searchUser(page, 'admin');
       await page.getByRole('button', { name: /^按 用户名 排序/ }).click();
       await page.waitForLoadState('networkidle');

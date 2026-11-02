@@ -177,7 +177,7 @@ const ANNOUNCEMENTS = [
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-5">
     <PageHeader
       icon="dashboard"
       :title="`欢迎回来，${session?.username || 'Admin'}！`"
@@ -251,7 +251,7 @@ const ANNOUNCEMENTS = [
     </MetricGrid>
 
     <!-- 图表区域 -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <!-- 用户创建趋势（折线图） -->
       <Card class="lg:col-span-2">
         <template #header>
@@ -267,13 +267,13 @@ const ANNOUNCEMENTS = [
             </div>
           </div>
         </template>
-        <div v-if="statsLoading || trendLoading" class="flex items-center justify-center h-52">
+        <div v-if="statsLoading || trendLoading" class="flex items-center justify-center h-48">
           <Loading />
         </div>
         <LineChart
           v-else-if="trendChartData.length"
           :data="trendChartData"
-          :height="220"
+          :height="192"
           responsive
           :show-area="true"
           :area-opacity="0.15"
@@ -289,7 +289,7 @@ const ANNOUNCEMENTS = [
           :stroke-gradient="true"
           :point-gradient="true"
         />
-        <ChartEmptyState v-else description="暂无趋势数据" />
+        <ChartEmptyState v-else description="暂无趋势数据" height-class="h-48" />
       </Card>
 
       <!-- 用户状态分布（饼图） -->
@@ -297,13 +297,13 @@ const ANNOUNCEMENTS = [
         <template #header>
           <Text size="base" weight="bold">用户状态分布</Text>
         </template>
-        <div v-if="statsLoading" class="flex items-center justify-center h-52">
+        <div v-if="statsLoading" class="flex items-center justify-center h-48">
           <Loading />
         </div>
         <PieChart
           v-else-if="distributionChartData.length"
           :data="distributionChartData"
-          :height="220"
+          :height="192"
           responsive
           :colors="[chartPrimary, chartError]"
           :show-labels="true"
@@ -313,12 +313,12 @@ const ANNOUNCEMENTS = [
           :shadow="true"
           :gradient="true"
         />
-        <ChartEmptyState v-else description="暂无分布数据" />
+        <ChartEmptyState v-else description="暂无分布数据" height-class="h-48" />
       </Card>
     </div>
 
     <!-- 内容区域 -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <!-- 快捷操作 -->
       <Card class="lg:col-span-1">
         <template #header>
@@ -344,7 +344,7 @@ const ANNOUNCEMENTS = [
         <template #header>
           <Text size="base" weight="bold">用户概览</Text>
         </template>
-        <div v-if="statsLoading" class="flex items-center justify-center h-52">
+        <div v-if="statsLoading" class="flex items-center justify-center h-48">
           <Loading />
         </div>
         <BarChart
@@ -356,7 +356,7 @@ const ANNOUNCEMENTS = [
             { x: '角色', y: overview.totalRoles, color: chartInfo },
             { x: '权限', y: overview.totalPermissions, color: chartWarning },
           ]"
-          :height="220"
+          :height="192"
           responsive
           :show-grid="true"
           :animated="true"
@@ -364,7 +364,7 @@ const ANNOUNCEMENTS = [
           y-axis-label="数量"
           :gradient="true"
         />
-        <ChartEmptyState v-else description="暂无概览数据" />
+        <ChartEmptyState v-else description="暂无概览数据" height-class="h-48" />
       </Card>
     </div>
 

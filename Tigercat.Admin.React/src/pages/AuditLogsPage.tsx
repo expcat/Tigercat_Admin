@@ -359,64 +359,69 @@ function AuditLogsPage() {
       <PageActionPanel
         title="审计事件查询"
         description="页面通过 API 查询 Redis Streams 聚合结果，支持分页、筛选、详情和导出。"
+        stacked
         actions={
-          <>
-            <Input
-              value={keyword}
-              placeholder="筛选标题、说明或事件类型"
-              onChange={handleKeywordChange}
-            />
-            <Select
-              value={category}
-              options={CATEGORY_OPTIONS}
-              placeholder="筛选分类"
-              clearable={false}
-              onChange={handleCategoryChange}
-            />
-            <Tag variant="primary" size="sm">
-              认证事件 {authCount}
-            </Tag>
-            <Tag variant="success" size="sm">
-              用户事件 {userCount}
-            </Tag>
-            <Tag variant="info" size="sm">
-              当前页 {logs.length} · 匹配 {total}
-            </Tag>
-            <Button variant="outline" onClick={loadAuditLogs}>
-              刷新日志
-            </Button>
+          <div className="space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <Input
+                value={keyword}
+                placeholder="筛选标题、说明或事件类型"
+                className="w-full sm:w-80"
+                onChange={handleKeywordChange}
+              />
+              <Select
+                value={category}
+                options={CATEGORY_OPTIONS}
+                placeholder="筛选分类"
+                className="w-full sm:w-48"
+                clearable={false}
+                onChange={handleCategoryChange}
+              />
+              <Button variant="outline" onClick={loadAuditLogs}>
+                刷新日志
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Tag variant="primary" size="sm">
+                认证事件 {authCount}
+              </Tag>
+              <Tag variant="success" size="sm">
+                用户事件 {userCount}
+              </Tag>
+              <Tag variant="info" size="sm">
+                当前页 {logs.length} · 匹配 {total}
+              </Tag>
+              {canExport ? EXPORT_FORMATS.map((format) => (
+                <DataExport
+                  key={format}
+                  columns={exportColumns}
+                  dataSource={[]}
+                  formats={DATA_EXPORT_TRIGGER_FORMATS}
+                  fileName="audit-logs"
+                  labels={{
+                    xlsxText: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
+                    exportingText: '导出中...',
+                    triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
+                  }}
+                  disabled={exporting || loading}
+                  customExport={() => onExport(format)}
+                />
+              )) : null}
+            </div>
             {canExport ? (
-              <>
-                {EXPORT_FORMATS.map((format) => (
-                  <DataExport
-                    key={format}
-                    columns={exportColumns}
-                    dataSource={[]}
-                    formats={DATA_EXPORT_TRIGGER_FORMATS}
-                    fileName="audit-logs"
-                    labels={{
-                      xlsxText: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
-                      exportingText: '导出中...',
-                      triggerAriaLabel: `导出 ${EXPORT_FORMAT_LABELS[format]}`,
-                    }}
-                    disabled={exporting || loading}
-                    customExport={() => onExport(format)}
-                  />
+              <CheckboxGroup
+                orientation="horizontal"
+                value={exportFields}
+                className="flex w-full flex-wrap gap-x-4 gap-y-2"
+                onChange={(value) => setExportFields(value.map(String))}>
+                {AUDIT_EXPORT_FIELDS.map((field) => (
+                  <Checkbox key={field.key} value={field.key}>
+                    {field.label}
+                  </Checkbox>
                 ))}
-                <CheckboxGroup
-                  orientation="horizontal"
-                  value={exportFields}
-                  className="flex w-full flex-wrap gap-x-4 gap-y-2 sm:w-auto"
-                  onChange={(value) => setExportFields(value.map(String))}>
-                  {AUDIT_EXPORT_FIELDS.map((field) => (
-                    <Checkbox key={field.key} value={field.key}>
-                      {field.label}
-                    </Checkbox>
-                  ))}
-                </CheckboxGroup>
-              </>
+              </CheckboxGroup>
             ) : null}
-          </>
+          </div>
         }
       />
 
