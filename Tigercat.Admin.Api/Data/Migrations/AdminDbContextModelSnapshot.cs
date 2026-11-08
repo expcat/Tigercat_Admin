@@ -624,6 +624,21 @@ namespace Tigercat.Admin.Api.Data.Migrations
                     b.ToTable("MediaResources");
                 });
 
+            modelBuilder.Entity("Tigercat.Admin.Api.Data.Entities.MenuSchemaEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SchemaJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MenuSchemas");
+                });
+
             modelBuilder.Entity("Tigercat.Admin.Api.Data.Entities.PermissionEntity", b =>
                 {
                     b.Property<int>("Id")

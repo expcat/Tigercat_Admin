@@ -8,7 +8,7 @@
 
 `path` 是站内路径。Shell 用 `schemaToRouteRecords` + `pageMap` 生成主要业务路由，点击侧栏按节点 `path` 跳转（`getShellNavigatePath`），不会把 `path` 写成 `MenuItem.href`，以免 hash 演示路由整页跳走。菜单管理轻页可增删改节点；新 key 若在 `pageMap` 里有对应页，或带安全 `iframeSrc`，会进入 mixed 路由；否则侧栏能显示但没有可挂载的页面。
 
-schema 存在内存（.NET 进程内 `MenuSchemaStore`；MockApi 写入 `sessionStorage` 演示状态）。重启 .NET API 会回到种子树；Mock 演示刷新会话前会保留 CRUD 结果。
+.NET API 通过现有 `AdminDbContext` 的 EF provider 保存完整 schema；首次读取空表时从 `MenusCatalog` 写入种子树。SQLite 已通过真实 API 重启验收，InMemory 重启后重置；PostgreSQL 仍受[现有迁移链问题](../operations.md#数据库)阻塞，尚未完成重启验收。MockApi 仍写入 `sessionStorage` 演示状态，当前标签页刷新后仍保留 CRUD 结果，不代表数据库持久化。
 
 ## 对象
 
@@ -63,4 +63,4 @@ schema 存在内存（.NET 进程内 `MenuSchemaStore`；MockApi 写入 `session
 
 角色预览不走独立接口：管理页 `GET /api/roles/{id}` 取权限码，在前端调用 core `filterMenuByPermission`。
 
-MockApi 与 .NET API 共用同一棵种子树（含系统管理下的「菜单管理」、协作下的「审批中心」与「流程设计」），CRUD 写回各自的内存 / 演示状态。
+MockApi 与 .NET API 共用同一棵种子树（含系统管理下的「菜单管理」、协作下的「审批中心」与「流程设计」）；.NET CRUD 写回 EF provider，Mock CRUD 写回当前标签页的演示状态。

@@ -147,35 +147,35 @@ public abstract class MenusEndpointsTests<TFixture> : IClassFixture<TFixture>
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    private async Task<MenuSchemaResponse> GetSchemaAsync(string token)
+    protected async Task<MenuSchemaResponse> GetSchemaAsync(string token, HttpClient? client = null)
     {
-        var response = await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/menus/schema", token));
+        var response = await (client ?? _client).SendAsync(AuthRequest(HttpMethod.Get, "/api/menus/schema", token));
         response.EnsureSuccessStatusCode();
         var body = await response.ReadApiResponseAsync<MenuSchemaResponse>();
         Assert.NotNull(body?.Data);
         return body.Data;
     }
 
-    private async Task<string> LoginAsAdminAsync()
+    protected async Task<string> LoginAsAdminAsync(HttpClient? client = null)
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("admin", "admin123"));
+        var response = await (client ?? _client).PostAsJsonAsync("/api/auth/login", new LoginRequest("admin", "admin123"));
         response.EnsureSuccessStatusCode();
         var body = await response.ReadApiResponseAsync<LoginResponse>();
         Assert.NotNull(body?.Data?.Token);
         return body.Data.Token;
     }
 
-    private static string UniqueKey(string prefix)
+    protected static string UniqueKey(string prefix)
         => $"{prefix}{Guid.NewGuid():N}"[..16];
 
-    private static HttpRequestMessage AuthRequest(HttpMethod method, string url, string token)
+    protected static HttpRequestMessage AuthRequest(HttpMethod method, string url, string token)
     {
         var request = new HttpRequestMessage(method, url);
         request.Headers.Add("X-Token", token);
         return request;
     }
 
-    private static HttpRequestMessage AuthJson(HttpMethod method, string url, string token, object body)
+    protected static HttpRequestMessage AuthJson(HttpMethod method, string url, string token, object body)
     {
         var request = AuthRequest(method, url, token);
         request.Content = JsonContent.Create(body);
@@ -194,5 +194,55 @@ public class MenusEndpointsTestsSqlite : MenusEndpointsTests<SqliteRedisStubApiF
 {
     public MenusEndpointsTestsSqlite(SqliteRedisStubApiFactory factory) : base(factory)
     {
+    }
+
+    [Fact]
+    public async Task MenuNodeUpdate_SurvivesSqliteHostRestart()
+    {
+        var dbPath = Path.Combine(Path.GetTempPath(), $"tigercat_menu_restart_{Guid.NewGuid():N}.db");
+        var key = UniqueKey("restart");
+        try
+        {
+            MenuSchemaResponse expected;
+            using (var factory = new SqliteApiFactory(dbPath, deleteDatabaseOnDispose: false))
+            using (var client = factory.CreateClient())
+            {
+                var token = await LoginAsAdminAsync(client);
+                var created = await client.SendAsync(AuthJson(
+                    HttpMethod.Post,
+                    "/api/menus/nodes",
+                    token,
+                    new { key, label = "重启前", parentKey = "system" }));
+                Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+
+                var updated = await client.SendAsync(AuthJson(
+                    HttpMethod.Put,
+                    $"/api/menus/nodes/{key}",
+                    token,
+                    new { label = "重启后保留", parentKey = "system" }));
+                updated.EnsureSuccessStatusCode();
+                expected = await GetSchemaAsync(token, client);
+            }
+
+            using (var factory = new SqliteApiFactory(dbPath, deleteDatabaseOnDispose: false))
+            using (var client = factory.CreateClient())
+            {
+                var token = await LoginAsAdminAsync(client);
+                var actual = await GetSchemaAsync(token, client);
+                var expectedSystem = expected.Items.First(item => item.Key == "system");
+                var actualSystem = actual.Items.First(item => item.Key == "system");
+                var actualChildren = actualSystem.Children!;
+
+                Assert.Equal(expected.Items.Select(item => item.Key), actual.Items.Select(item => item.Key));
+                Assert.Equal(
+                    expectedSystem.Children!.Select(item => item.Key),
+                    actualChildren.Select(item => item.Key));
+                Assert.Equal("重启后保留", actualChildren.Single(item => item.Key == key).Label);
+            }
+        }
+        finally
+        {
+            if (File.Exists(dbPath)) File.Delete(dbPath);
+        }
     }
 }

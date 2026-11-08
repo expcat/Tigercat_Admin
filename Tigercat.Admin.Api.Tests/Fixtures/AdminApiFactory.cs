@@ -120,9 +120,19 @@ public class InMemoryApiFactory : AdminApiFactory
 /// </summary>
 public class SqliteApiFactory : AdminApiFactory
 {
-    private readonly string _dbPath = Path.Combine(
-        Path.GetTempPath(),
-        $"tigercat_test_{Guid.NewGuid():N}.db");
+    private readonly string _dbPath;
+    private readonly bool _deleteDatabaseOnDispose;
+
+    public SqliteApiFactory()
+        : this(Path.Combine(Path.GetTempPath(), $"tigercat_test_{Guid.NewGuid():N}.db"))
+    {
+    }
+
+    internal SqliteApiFactory(string dbPath, bool deleteDatabaseOnDispose = true)
+    {
+        _dbPath = dbPath;
+        _deleteDatabaseOnDispose = deleteDatabaseOnDispose;
+    }
 
     protected override Dictionary<string, string?> ConfigurationOverrides => new()
     {
@@ -137,7 +147,7 @@ public class SqliteApiFactory : AdminApiFactory
     {
         base.Dispose(disposing);
 
-        if (File.Exists(_dbPath))
+        if (_deleteDatabaseOnDispose && File.Exists(_dbPath))
         {
             try { File.Delete(_dbPath); } catch { /* best effort */ }
         }

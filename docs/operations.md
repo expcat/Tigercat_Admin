@@ -152,7 +152,9 @@ export Database__Provider=PostgreSql
 export ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=tigercat_admin;Username=postgres;Password=postgres"
 ```
 
-SQLite 与 PostgreSQL 共用 EF Core migrations。`AddMediaAnnotations` 为 `MediaResources` 增加必填 `AnnotationsJson`（默认 `[]`，最大 64000 字符），现有记录无需回填；文章附件复用 `MediaReferences`，不新增附件表。备份和恢复需同时保留数据库中的标注、引用与媒体卷。`AddCsvImportRows` 为现有 `ImportJobs` 添加 `Total`、`Processed`、`Failed`（默认 0）、`RowsJson`（默认 `[]`）、`Operator`（默认空）。旧文件名演示任务没有原 CSV，不能继续真实导入，需重新选择文件。任务行包含敏感密码哈希，按现有用户数据库的访问和备份规则保存；不要记录 CSV 请求体。验证迁移和恢复时使用临时数据库，避免改动本地开发数据。生产发布前生成并评审幂等 SQL：
+SQLite 与 PostgreSQL 共用 EF Core migrations。`AddMenuSchema` 新增单行 `MenuSchemas` JSON 记录，SQLite 菜单 CRUD 已通过真实 API 重启验收，InMemory 仍随进程重置。PostgreSQL 尚未通过：当前 SQLite 模型快照触发 `PendingModelChangesWarning`；诊断时临时忽略后，种子因 `Permissions.Id` 没有生成策略报 `23502`。仅在临时库补齐 21 个整数主键的 identity 后，种子仍因 `AdminNotifications.Read` 的 integer / boolean 类型不匹配报 `42804`，日期列也被历史迁移建为 text；这些跨表迁移问题未在菜单批次中修复，不能据此宣称 PostgreSQL 菜单持久化验收通过。
+
+`AddMediaAnnotations` 为 `MediaResources` 增加必填 `AnnotationsJson`（默认 `[]`，最大 64000 字符），现有记录无需回填；文章附件复用 `MediaReferences`，不新增附件表。备份和恢复需同时保留数据库中的标注、引用与媒体卷。`AddCsvImportRows` 为现有 `ImportJobs` 添加 `Total`、`Processed`、`Failed`（默认 0）、`RowsJson`（默认 `[]`）、`Operator`（默认空）。旧文件名演示任务没有原 CSV，不能继续真实导入，需重新选择文件。任务行包含敏感密码哈希，按现有用户数据库的访问和备份规则保存；不要记录 CSV 请求体。验证迁移和恢复时使用临时数据库，避免改动本地开发数据。生产发布前生成并评审幂等 SQL：
 
 ```bash
 pnpm db:script:postgres

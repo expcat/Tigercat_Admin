@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Tigercat.Admin.Api.Data;
+using Tigercat.Admin.Api.Data.Entities;
 using Tigercat.Admin.Api.Serialization;
 
 namespace Tigercat.Admin.Api.Endpoints;
@@ -22,24 +24,27 @@ internal sealed class MenuSchemaStore
     private const int PathMaxLength = 128;
     private const int PermissionMaxLength = 64;
     private const int IframeSrcMaxLength = 512;
+    private const int SchemaRecordId = 1;
 
     private static readonly Regex KeyPattern = new(
         @"^[A-Za-z][A-Za-z0-9_-]{0,63}$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private readonly object _gate = new();
-    private MenuSchemaResponse _schema;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public MenuSchemaStore()
+    public MenuSchemaStore(IServiceScopeFactory scopeFactory)
     {
-        _schema = Clone(MenusCatalog.Schema);
+        _scopeFactory = scopeFactory;
     }
 
     public MenuSchemaResponse Snapshot()
     {
         lock (_gate)
         {
-            return Clone(_schema);
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
+            return ReadSchema(LoadRecord(db));
         }
     }
 
@@ -47,7 +52,10 @@ internal sealed class MenuSchemaStore
     {
         lock (_gate)
         {
-            var schema = Clone(_schema);
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
+            var record = LoadRecord(db);
+            var schema = ReadSchema(record);
             var keyError = ValidateKey(request.Key, required: true);
             if (keyError is not null)
             {
@@ -75,7 +83,7 @@ internal sealed class MenuSchemaStore
             var node = ApplyFields(new MenuSchemaNodeResponse { Key = key }, request, replacing: false);
             siblings!.Add(node);
             WriteSiblings(schema, request.ParentKey, request.Placement, siblings);
-            _schema = schema;
+            SaveSchema(db, record, schema);
             return new MenuSchemaMutation(true, 201, "Success", CloneNode(node));
         }
     }
@@ -84,12 +92,15 @@ internal sealed class MenuSchemaStore
     {
         lock (_gate)
         {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
             if (string.IsNullOrWhiteSpace(key))
             {
                 return Fail(400, "请提供菜单节点 key");
             }
 
-            var schema = Clone(_schema);
+            var record = LoadRecord(db);
+            var schema = ReadSchema(record);
             var current = Find(schema, key);
             if (current is null)
             {
@@ -137,7 +148,7 @@ internal sealed class MenuSchemaStore
                 ApplyFields(current.Node, request, replacing: true);
             }
 
-            _schema = schema;
+            SaveSchema(db, record, schema);
             return new MenuSchemaMutation(true, 200, "Success", CloneNode(current.Node));
         }
     }
@@ -146,6 +157,8 @@ internal sealed class MenuSchemaStore
     {
         lock (_gate)
         {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
             if (string.IsNullOrWhiteSpace(key))
             {
                 return Fail(400, "请提供菜单节点 key");
@@ -156,7 +169,8 @@ internal sealed class MenuSchemaStore
                 return Fail(400, "不能删除仪表盘节点");
             }
 
-            var schema = Clone(_schema);
+            var record = LoadRecord(db);
+            var schema = ReadSchema(record);
             var current = Find(schema, key);
             if (current is null)
             {
@@ -170,13 +184,43 @@ internal sealed class MenuSchemaStore
 
             current.Siblings.RemoveAll(item => string.Equals(item.Key, key, StringComparison.Ordinal));
             WriteSiblings(schema, current.ParentKey, current.Placement, current.Siblings);
-            _schema = schema;
+            SaveSchema(db, record, schema);
             return new MenuSchemaMutation(true, 200, "删除成功", null);
         }
     }
 
     private static MenuSchemaMutation Fail(int status, string message)
         => new(false, status, message, null);
+
+    private static MenuSchemaEntity LoadRecord(AdminDbContext db)
+    {
+        var record = db.MenuSchemas.SingleOrDefault(item => item.Id == SchemaRecordId);
+        if (record is not null)
+        {
+            return record;
+        }
+
+        record = new MenuSchemaEntity
+        {
+            Id = SchemaRecordId,
+            SchemaJson = JsonSerializer.Serialize(MenusCatalog.Schema, AppJsonContext.Default.MenuSchemaResponse),
+        };
+        db.MenuSchemas.Add(record);
+        db.SaveChanges();
+        return record;
+    }
+
+    private static MenuSchemaResponse ReadSchema(MenuSchemaEntity record)
+        => JsonSerializer.Deserialize(record.SchemaJson, AppJsonContext.Default.MenuSchemaResponse)!;
+
+    private static void SaveSchema(
+        AdminDbContext db,
+        MenuSchemaEntity record,
+        MenuSchemaResponse schema)
+    {
+        record.SchemaJson = JsonSerializer.Serialize(schema, AppJsonContext.Default.MenuSchemaResponse);
+        db.SaveChanges();
+    }
 
     private static string? ValidateKey(string? key, bool required)
     {
@@ -412,12 +456,6 @@ internal sealed class MenuSchemaStore
         }
 
         return false;
-    }
-
-    private static MenuSchemaResponse Clone(MenuSchemaResponse source)
-    {
-        var json = JsonSerializer.Serialize(source, AppJsonContext.Default.MenuSchemaResponse);
-        return JsonSerializer.Deserialize(json, AppJsonContext.Default.MenuSchemaResponse)!;
     }
 
     private static MenuSchemaNodeResponse CloneNode(MenuSchemaNodeResponse source)

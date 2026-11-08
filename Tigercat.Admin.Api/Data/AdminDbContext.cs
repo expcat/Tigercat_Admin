@@ -16,6 +16,7 @@ public class AdminDbContext : DbContext
     public DbSet<UserRoleEntity> UserRoles => Set<UserRoleEntity>();
     public DbSet<RolePermissionEntity> RolePermissions => Set<RolePermissionEntity>();
     public DbSet<SystemSettingEntity> SystemSettings => Set<SystemSettingEntity>();
+    public DbSet<MenuSchemaEntity> MenuSchemas => Set<MenuSchemaEntity>();
     public DbSet<MediaResourceEntity> MediaResources => Set<MediaResourceEntity>();
     public DbSet<MediaReferenceEntity> MediaReferences => Set<MediaReferenceEntity>();
     public DbSet<AdminNotificationEntity> AdminNotifications => Set<AdminNotificationEntity>();
@@ -115,6 +116,13 @@ public class AdminDbContext : DbContext
             entity.Property(e => e.Key).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Value).IsRequired().HasMaxLength(2000);
             entity.Property(e => e.Description).HasMaxLength(500);
+        });
+
+        // MenuSchema
+        modelBuilder.Entity<MenuSchemaEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SchemaJson).IsRequired();
         });
 
         // MediaResource
