@@ -310,7 +310,7 @@ type InstallOptions = {
 const DEFAULT_STORAGE_KEY = 'tigercat.admin.demo.mock-state';
 const DEMO_TOKEN = 'demo-static-token';
 const CREATED_AT = '2026-06-03T02:00:00.000Z';
-const DEMO_OTP_CODE = '123456';
+const DEMO_OTP_CODE = '123456'; // Static demo only; never used by the production .NET host.
 
 const permissions: PermissionInfo[] = [
   ['dashboard:view', '查看仪表盘'],
@@ -339,6 +339,9 @@ const permissions: PermissionInfo[] = [
   ['menu:create', '创建菜单节点'],
   ['menu:edit', '编辑菜单节点'],
   ['menu:delete', '删除菜单节点'],
+  ['job:view', '查看定时任务'],
+  ['job:edit', '编辑定时任务'],
+  ['job:execute', '执行定时任务'],
 ].map(([code, description], index) => ({
   id: index + 1,
   code,
@@ -411,7 +414,7 @@ function initialState(): DemoState {
         description: '编辑员，可查看和编辑',
         createdAt: '2026-01-02T00:00:00.000Z',
         permissionIds: permissions
-          .filter((item) => !['user:delete', 'role:delete', 'menu:delete', 'audit:export'].includes(item.code))
+          .filter((item) => !['user:delete', 'role:delete', 'menu:delete', 'audit:export', 'job:execute'].includes(item.code))
           .map((item) => item.id),
       },
       {
@@ -436,7 +439,7 @@ function initialState(): DemoState {
       setting(9, 'theme.primaryColor', '#2563eb', '默认主色调'),
       setting(10, 'theme.compactMode', 'false', '紧凑模式（侧边栏默认折叠）'),
       setting(11, 'ops.auditRetentionDays', '90', '审计日志保留天数'),
-      setting(12, 'security.permissionSeedVersion', '2026.08.27.1', '权限种子数据版本'),
+      setting(12, 'security.permissionSeedVersion', '2026.11.08.1', '权限种子数据版本'),
       setting(13, 'security.permissionSeedChecksum', 'demo-static-checksum', '权限种子数据摘要'),
     ],
     media: [
@@ -1380,7 +1383,7 @@ function readState(storageKey: string): DemoState {
     const raw = window.sessionStorage.getItem(storageKey);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<DemoState>;
-      return {
+      const state: DemoState = {
         ...seeded,
         ...parsed,
         tickets: parsed.tickets ?? seeded.tickets,
@@ -1403,6 +1406,24 @@ function readState(storageKey: string): DemoState {
         pendingTwoFactor: parsed.pendingTwoFactor ?? {},
         pendingForgot: parsed.pendingForgot ?? {},
       };
+      const seedVersion = seeded.settings.find((item) => item.key === 'security.permissionSeedVersion')!;
+      const storedVersion = state.settings.find((item) => item.key === seedVersion.key);
+      if (storedVersion?.value !== seedVersion.value) {
+        const jobPermissionIds = new Set(permissions.filter((item) => item.code.startsWith('job:')).map((item) => item.id));
+        for (const seedRole of seeded.roles) {
+          const role = state.roles.find((item) => item.name === seedRole.name);
+          if (role) role.permissionIds = [...new Set([...role.permissionIds, ...seedRole.permissionIds.filter((id) => jobPermissionIds.has(id))])];
+        }
+        const nodes = [...state.menuSchema.items, ...state.menuSchema.bottomItems];
+        for (const node of nodes) {
+          if (node.key === 'jobs' && !node.permission) node.permission = 'job:view';
+          if (node.children) nodes.push(...node.children);
+        }
+        if (storedVersion) storedVersion.value = seedVersion.value;
+        else state.settings.push({ ...seedVersion });
+        writeState(storageKey, state);
+      }
+      return state;
     }
   } catch {
     // Fall through and re-seed.
@@ -1674,12 +1695,9 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
 
   if (path === '/api/auth/permissions' && method === 'GET') {
     const username = sessionUsername(request, init);
-    const accountPermissions =
-      username === 'demo'
-        ? permissions.filter((item) => DEMO_ACCOUNT_PERMISSIONS.includes(item.code))
-        : username === 'admin'
-          ? permissions
-          : [];
+    if (!username) return makeError('未授权', 401);
+    const codes = userPermissionCodes(state, username);
+    const accountPermissions = permissions.filter((item) => codes.includes(item.code));
     return makeJson({ username, permissions: accountPermissions });
   }
 
@@ -2708,11 +2726,15 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/jobs' && method === 'GET') {
+    const denied = requireMenuPermission(state, request, init, 'job:view');
+    if (denied) return denied;
     const items = [...state.jobs].sort((a, b) => a.id.localeCompare(b.id));
     return makeJson(items);
   }
 
   if (path === '/api/jobs' && method === 'POST') {
+    const denied = requireMenuPermission(state, request, init, 'job:edit');
+    if (denied) return denied;
     const name = String(body.name ?? '').trim();
     if (!name) return makeError('任务名称不能为空', 400);
     const enabled = body.enabled !== false;
@@ -2740,6 +2762,8 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
 
   const jobMatch = path.match(/^\/api\/jobs\/([^/]+)$/);
   if (jobMatch && method === 'PUT') {
+    const denied = requireMenuPermission(state, request, init, 'job:edit');
+    if (denied) return denied;
     const item = state.jobs.find((job) => job.id === decodeURIComponent(jobMatch[1]));
     if (!item) return makeError('任务不存在', 404);
     if (body.name != null) {

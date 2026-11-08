@@ -66,6 +66,7 @@ builder.Services.AddHybridCache();
 builder.Services.AddSingleton<ICacheService, HybridCacheService>();
 builder.Services.AddHostedService<ImportJobProgressService>();
 builder.Services.AddSignalR();
+builder.Services.AddSingleton<SessionRevocationNotifier>();
 builder.Services.AddSingleton<MonitorSnapshotSource>();
 builder.Services.AddSingleton<MonitorPushRegistry>();
 builder.Services.AddSingleton<ChatRealtimeNotifier>();

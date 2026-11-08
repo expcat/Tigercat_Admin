@@ -19,6 +19,7 @@ import { Gantt } from '../utils/lazyTigercat';
 import { parseOptionalInt, validateCronExpression, type CronPreset } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { MetricCard, MetricGrid, MutedPanel } from '../components/PageFragments';
+import { usePermission } from '../utils/permission';
 import {
   ActivityIcon,
   BanIcon,
@@ -60,6 +61,8 @@ const readErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
 
 function JobsPage() {
+  const { has } = usePermission();
+  const canEdit = has('job:edit');
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -116,7 +119,7 @@ function JobsPage() {
   }, []);
 
   const toggleJob = async (job: Job, next: boolean) => {
-    if (writePending.current) return;
+    if (!canEdit || writePending.current) return;
     writePending.current = true;
     setTogglingId(job.id);
     setJobs((items) => items.map((item) => item.id === job.id ? { ...item, enabled: next } : item));
@@ -232,12 +235,12 @@ function JobsPage() {
             个 running 示例状态
           </Text>
         </div>
-        <Button disabled={loading || togglingId !== null || submitting} onClick={openCreate}>
+        {canEdit && <Button disabled={loading || togglingId !== null || submitting} onClick={openCreate}>
           <span className="mr-1 inline-flex align-middle">
             <PlusIcon size={16} />
           </span>
           新建任务
-        </Button>
+        </Button>}
       </div>
 
       {errorMessage && <div role="alert"><Alert type="error" title={errorMessage} /><Button disabled={loading || togglingId !== null || submitting} onClick={() => void loadJobs()}>重试任务列表</Button></div>}
@@ -246,7 +249,7 @@ function JobsPage() {
         {loading && jobs.length === 0 ? (
           <MutedPanel compact description="正在加载任务…" />
         ) : jobs.length === 0 ? (
-          <MutedPanel description={errorMessage ? '任务列表尚未加载，请重试。' : '暂无任务配置，可新建任务。'} />
+          <MutedPanel description={errorMessage ? '任务列表尚未加载，请重试。' : canEdit ? '暂无任务配置，可新建任务。' : '暂无任务配置。'} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] border-collapse text-sm">
@@ -257,7 +260,7 @@ function JobsPage() {
                   <th className="px-3 py-2 font-medium">状态</th>
                   <th className="px-3 py-2 font-medium">上次 / 下次（示例）</th>
                   <th className="px-3 py-2 font-medium">进度（示例）</th>
-                  <th className="px-3 py-2 font-medium text-right">操作</th>
+                  {canEdit && <th className="px-3 py-2 font-medium text-right">操作</th>}
                 </tr>
               </thead>
               <tbody>
@@ -281,12 +284,12 @@ function JobsPage() {
                     </td>
                     <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-2">
-                        <Switch
+                        {canEdit && <Switch
                           aria-label={`启用任务：${job.name}`}
                           checked={job.enabled}
                           disabled={loading || togglingId !== null || submitting}
                           onChange={(checked) => void toggleJob(job, checked)}
-                        />
+                        />}
                         <Tag variant={STATUS_META[job.status].variant} size="sm">
                           {STATUS_META[job.status].label}
                         </Tag>
@@ -305,14 +308,14 @@ function JobsPage() {
                         />
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    {canEdit && <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <Button variant="outline" size="sm" disabled={loading || togglingId !== null || submitting} onClick={() => openEdit(job)}>
                         <span className="mr-1 inline-flex align-middle">
                           <EditIcon size={14} />
                         </span>
                         编辑
                       </Button>
-                    </td>
+                    </td>}
                   </tr>
                 ))}
               </tbody>

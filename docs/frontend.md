@@ -254,7 +254,7 @@ Vue 的 SVG 内部基元 `ChartAxis` / `ChartGrid` / `ChartSeries` 是同步导�
 
 ### 定时任务与大数据演示
 
-Jobs 的公共 `Job` / `JobForm` / 创建更新类型放在双端 `utils/types.ts`，请求与表单校验放在 `utils/jobs.ts`。列表请求取消前次读取，加载 / 空 / 错误状态同时覆盖列表与 Gantt；失败可重试。启停先更新勾选值，失败还原原配置；创建 / 编辑先应用写入响应，再刷新列表，刷新失败仍保留已保存值。页面以写入锁阻止重复提交与并行启停，提交期间禁用字段、取消、Esc 和遮罩关闭；保存失败保留 Drawer 与草稿。名称、并发数和 Cron 校验失败聚焦实际输入，表单支持 Enter 提交。
+Jobs 的公共 `Job` / `JobForm` / 创建更新类型放在双端 `utils/types.ts`，请求与表单校验放在 `utils/jobs.ts`。API、MockApi 与打包菜单的 Jobs 节点要求 `job:view`，因此菜单和动态路由使用同一权限；新建、编辑和启停控件要求 `job:edit`，无权限时隐藏且不发送写请求。列表请求取消前次读取，加载 / 空 / 错误状态同时覆盖列表与 Gantt；失败可重试。启停先更新勾选值，失败还原原配置；创建 / 编辑先应用写入响应，再刷新列表，刷新失败仍保留已保存值。页面以写入锁阻止重复提交与并行启停，提交期间禁用字段、取消、Esc 和遮罩关闭；保存失败保留 Drawer 与草稿。名称、并发数和 Cron 校验失败聚焦实际输入，表单支持 Enter 提交。
 
 Cron 使用 rc.2 `CronEditor` 的 `onValidate` / `@validate` 和 Core `validateCronExpression`，不复制解析器。组件允许空值，页面额外要求非空、最长 64 字；并发数为空时保留 `null`，要求 1–20 的整数。rc.2 的非整数数值草稿不会提交到表达式或触发校验，因此提交前用 Core `parseOptionalInt` 检查 CronEditor 内 `inputmode="numeric"` 的当前值。每次打开新建 / 编辑递增组件 key，取消后重开从默认值 / 已保存配置重新初始化所有子字段。语法合法但 `nextCronRun` 为 `null`（如 `0 0 31 2 *`）仍可保存配置。timeout / batchSize 只检查 16 字长度，不强加数值契约，见 [Jobs API](api/jobs.md)。中文摘要与草稿校验缺口见 [上游需求 2.2](tigercat-upstream-requirements.md#cron-summary)。
 
@@ -320,7 +320,7 @@ AuditLogs 的列表 effect / watch 只依赖权限、查询、页码与目标事
 - 会话存在 `SESSION_KEY`，认证头由 `getAuthHeaders()` 或等价工具生成。Monitor / Chat 实时连接用 `utils/realtime.ts`（`@microsoft/signalr` 动态导入），token 走 `getSessionToken()`；演示模式（`VITE_TIGERCAT_DEMO`）不连 hub。
 - API 返回结构使用 `ApiResponse<T>`；分页列表使用 `PagedResult<T>`。
 - 权限列表从 `/api/auth/permissions` 加载，菜单和按钮按权限隐藏。按钮级演示在 `/permission-demo`：React 用 `PermissionGuard` / `usePermission`，Vue 用 `v-permission` / `usePermission`。不要新增 Tigercat 权限组件，也不要自写第二套权限指令。
-- .NET 权限从当前 EF 授权读取；角色变更后刷新页面可重新加载菜单和路由权限。禁用 / 删除使原 token 失效；新 Hub 连接和既有长连接的区别见 [认证专题](api/auth.md#用户状态会话与权限变化)。
+- .NET 权限从当前 EF 授权读取；角色变更后刷新页面可重新加载菜单和路由权限。禁用 / 删除、改密和密码重置使旧 token 失效；新 Hub 连接拒绝失效会话，撤销也会断开既有 Monitor / Chat 连接，见 [认证专题](api/auth.md#用户状态会话与权限变化)。
 - 用户、角色、文件、审计等数据工作台复用 `utils/workbench.ts`，以 sessionStorage 保留查询、排序、选中行、隐藏列和导出状态。用户页临时状态以当前会话 `username` 隔离，不读取旧的公共 users 键。
 - 用户页命名筛选视图另存 localStorage，键为 `tigercat.admin.workbench.users.<encodeURIComponent(username)>.views`，只在当前浏览器当前账号内生效。保存关键字、状态、排序、每页条数、隐藏列；不保存页码、选择或导出。输入同名保存会替换原快照，另起名称保存为新视图，删除视图保留当前筛选。修改后显示「已修改」，需再次保存；切换 / 重新载入活动视图时恢复已保存快照、回到第 1 页并清空选择。没有活动视图时仍沿用临时工作台返回恢复行为。
 - 用户批量启用 / 禁用共用 `POST /api/users/batch-status`；静态 Mock 已补齐该端点和整批校验，取消不请求，失败保留选择与确认框。成功后列表与状态筛选读取更新后的值；Mock 会话及事件边界见 [用户 API](api/users.md)。
@@ -333,7 +333,7 @@ AuditLogs 的列表 effect / watch 只依赖权限、查询、页码与目标事
 
 - 登录 / 注册使用官方 `Form.rules` 与 `FormItem.name`，由 Form 校验并聚焦首个无效字段；提交按钮走原生 submit，保留 Enter 路径。请求期间阻止重复提交，离页或返回时中止请求，并丢弃迟到响应。
 - 双端 `utils/auth.ts` 的 `getSafeReturnTo` 统一检查登录返回路径：只接受站内根路径或 `#/…`，排除外部地址、反斜杠、控制字符，以及带查询参数或尾斜杠的认证 / 异常入口。合法目标保留 query / hash。注册、找回密码和结果页继续传递原目标；登录完成加载期间若会话已被清除，不再跳转。
-- 登录 2FA 的「重新获取验证码」会重新调用登录端点获取 challenge，失败后可重试，成功后才重置 60s 倒计时。返回账号登录会清空验证码与 challenge；验证通过前不写会话。当前验证码仍为固定演示码，不表示已发送短信或邮件。
+- 登录 2FA 的「重新获取验证码」会重新调用登录端点获取 challenge，失败后可重试，成功后才重置 60s 倒计时。返回账号登录会清空验证码与 challenge；验证通过前不写会话。非 Production 的验证码仍为固定演示码，不表示已发送短信或邮件；Production 未配置真实 TOTP / 投递通道时相关接口返回 `503`，页面展示服务端错误，不把演示流程当成生产能力。
 - 找回密码先检查邮箱 / 11 位手机号与 6 位验证码格式，更换账号立即清除旧验证信息；切换手机掩码输入后恢复焦点。验证码由最终重置端点校验，失败返回验证码字段；密码错误留在新密码步骤，其他错误保留重试入口。
 - 个人中心只有用户名来自当前会话，2FA 开关读写当前账号 API。读取失败时状态未知、开关禁用并可重试；启用前需输入演示码确认，取消不写回并恢复开关焦点，保存失败保留待确认状态。当前 API 未提供 TOTP 配置，不展示虚构绑定二维码。
 - 个人资料、统计、设备 / 历史明确数据来源。手机号、签名、登录提醒、异地保护和偏好仅为页面演示，不声称已持久化或已启用通知 / 防护；全站主题仍使用 Shell 配置。

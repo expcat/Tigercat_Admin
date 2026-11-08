@@ -351,3 +351,67 @@ public class ProductionHealthPasswordTests : IClassFixture<ProductionSecurityApi
         Assert.Contains("Default admin password", body.Data.Details["security"].Message);
     }
 }
+
+public class ProductionDemoAuthenticationTests : IClassFixture<ProductionSecurityApiFactory>
+{
+    private readonly ProductionSecurityApiFactory _factory;
+    private readonly HttpClient _client;
+
+    public ProductionDemoAuthenticationTests(ProductionSecurityApiFactory factory)
+    {
+        _factory = factory;
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task ProductionDemoCode_CannotCompleteTwoFactorOrPasswordRecovery()
+    {
+        var challengedLogin = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("demo", "demo"));
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, challengedLogin.StatusCode);
+
+        var verify = await _client.PostAsJsonAsync(
+            "/api/auth/two-factor/verify",
+            new TwoFactorVerifyRequest("demo", AuthDemoCodes.OtpCode));
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, verify.StatusCode);
+
+        var send = await _client.PostAsJsonAsync(
+            "/api/auth/forgot-password/code",
+            new ForgotPasswordCodeRequest("email", "demo@tigercat.local"));
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, send.StatusCode);
+
+        var reset = await _client.PostAsJsonAsync(
+            "/api/auth/forgot-password",
+            new ForgotPasswordResetRequest("email", "demo@tigercat.local", AuthDemoCodes.OtpCode, "new-pass-123"));
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, reset.StatusCode);
+        var body = await reset.ReadApiResponseAsync<MessageResponse>();
+        Assert.Contains("未配置真实邮件或短信投递通道", body?.Message);
+
+        var adminLogin = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("admin", "admin123"));
+        var admin = await adminLogin.ReadApiResponseAsync<LoginResponse>();
+        var update = new HttpRequestMessage(HttpMethod.Put, "/api/auth/two-factor")
+        {
+            Content = JsonContent.Create(new UpdateTwoFactorRequest(true)),
+        };
+        update.Headers.Add("X-Token", admin!.Data!.Token);
+        var updateResponse = await _client.SendAsync(update);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, updateResponse.StatusCode);
+
+        string demoToken;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var sessions = scope.ServiceProvider.GetRequiredService<ISessionStore>();
+            demoToken = (await sessions.CreateSessionAsync("demo", TimeSpan.FromMinutes(5))).Token;
+        }
+        var disable = new HttpRequestMessage(HttpMethod.Put, "/api/auth/two-factor")
+        {
+            Content = JsonContent.Create(new UpdateTwoFactorRequest(false)),
+        };
+        disable.Headers.Add("X-Token", demoToken);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, (await _client.SendAsync(disable)).StatusCode);
+        var status = new HttpRequestMessage(HttpMethod.Get, "/api/auth/two-factor");
+        status.Headers.Add("X-Token", demoToken);
+        Assert.True((await (await _client.SendAsync(status)).ReadApiResponseAsync<TwoFactorStatusResponse>())!.Data!.Enabled);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable,
+            (await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("demo", "demo"))).StatusCode);
+    }
+}

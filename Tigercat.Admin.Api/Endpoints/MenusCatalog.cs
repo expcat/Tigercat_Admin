@@ -32,7 +32,7 @@ internal static class MenusCatalog
         var calendar = Page("calendar", "团队日历", "calendar", "/calendar");
         var content = Page("content", "内容编辑", "edit", "/content");
         var gallery = Page("gallery", "媒体图库", "image", "/gallery");
-        var jobs = Page("jobs", "定时任务", "clock", "/jobs");
+        var jobs = Page("jobs", "定时任务", "clock", "/jobs", "job:view");
         var import = Page("import", "数据导入", "upload", "/import", "user:create");
         var performance = Page("performance", "大数据演示", "zap", "/performance");
         var help = Page("help", "帮助中心", "help", "/help");

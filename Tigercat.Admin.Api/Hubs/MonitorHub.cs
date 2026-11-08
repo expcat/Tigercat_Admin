@@ -1,8 +1,12 @@
 using Microsoft.AspNetCore.SignalR;
+using Tigercat.Admin.Api.Auth;
 
 namespace Tigercat.Admin.Api.Hubs;
 
-public sealed class MonitorHub(MonitorPushRegistry registry, MonitorSnapshotSource snapshots) : Hub
+public sealed class MonitorHub(
+    MonitorPushRegistry registry,
+    MonitorSnapshotSource snapshots,
+    SessionRevocationNotifier revocationNotifier) : SessionBoundHub(revocationNotifier)
 {
     public async Task Start(int intervalSeconds)
     {

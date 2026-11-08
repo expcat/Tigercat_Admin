@@ -9,10 +9,12 @@ namespace Tigercat.Admin.Api.Auth;
 public class EfSessionStore : ISessionStore
 {
     private readonly AdminDbContext _context;
+    private readonly SessionRevocationNotifier _revocationNotifier;
 
-    public EfSessionStore(AdminDbContext context)
+    public EfSessionStore(AdminDbContext context, SessionRevocationNotifier revocationNotifier)
     {
         _context = context;
+        _revocationNotifier = revocationNotifier;
     }
 
     public async Task<SessionRecord> CreateSessionAsync(string username, TimeSpan ttl, CancellationToken ct = default)
@@ -85,7 +87,20 @@ public class EfSessionStore : ISessionStore
         {
             _context.Sessions.Remove(session);
             await _context.SaveChangesAsync(ct);
+            _revocationNotifier.Publish(session.Username, token);
         }
+    }
+
+    public async Task RevokeAllAsync(string username, CancellationToken ct = default)
+    {
+        var sessions = await _context.Sessions.Where(s => s.Username == username).ToListAsync(ct);
+        if (sessions.Count > 0)
+        {
+            _context.Sessions.RemoveRange(sessions);
+            await _context.SaveChangesAsync(ct);
+        }
+
+        _revocationNotifier.Publish(username);
     }
 
     private static string GenerateToken()

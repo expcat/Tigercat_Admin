@@ -29,15 +29,15 @@ public class JobsEndpoints : IEndpointDefinition
             .WithTags("Jobs");
 
         group.MapGet("", GetJobs)
-            .RequireLogin()
+            .RequirePermission("job:view")
             .WithName("GetJobs");
 
         group.MapPost("", CreateJob)
-            .RequireLogin()
+            .RequirePermission("job:edit")
             .WithName("CreateJob");
 
         group.MapPut("/{id}", UpdateJob)
-            .RequireLogin()
+            .RequirePermission("job:edit")
             .WithName("UpdateJob");
     }
 

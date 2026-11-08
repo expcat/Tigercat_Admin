@@ -90,7 +90,7 @@ Monitor / Chat SignalR（`/hubs/monitor`、`/hubs/chat`）使用同一套会话 
 | 项目 | [api/projects.md](api/projects.md) | `/api/projects`、`/api/projects/{id}` |
 | 日历 | [api/calendar.md](api/calendar.md) | `/api/calendar/events` |
 | 内容文章 | [api/content.md](api/content.md) | `/api/content/articles`、保存草稿 / 发布、媒体附件引用 |
-| 定时任务 | [api/jobs.md](api/jobs.md) | `/api/jobs`、启停与编辑 |
+| 定时任务 | [api/jobs.md](api/jobs.md) | `/api/jobs` 查看需 `job:view`，新建、启停与编辑需 `job:edit`；`job:execute` 仅登记，尚无执行端点 |
 | 数据导入 | [api/import.md](api/import.md) | `/api/import-jobs/preview`、真实用户 CSV 导入、只读逐行结果（均需 `user:create`） |
 | 系统设置 | [api/settings.md](api/settings.md) | `/api/settings` |
 | 媒体资源 | [api/media.md](api/media.md) | `/api/media`、图片标注持久化、内容读取、删除、孤儿清理 |

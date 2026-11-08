@@ -129,6 +129,41 @@ public abstract class ContentJobsImportEndpointsTests<TFixture> : IClassFixture<
         Assert.True(enabled.Data.Enabled);
         Assert.Equal("running", enabled.Data.Status);
         Assert.Equal("待调度", enabled.Data.NextRun);
+
+        var demoToken = await LoginAsDemoAsync();
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/jobs", demoToken))).StatusCode);
+        var create = AuthRequest(HttpMethod.Post, "/api/jobs", demoToken);
+        create.Content = JsonContent.Create(new { name = "无权限任务" });
+        Assert.Equal(HttpStatusCode.Forbidden, (await _client.SendAsync(create)).StatusCode);
+        var update = AuthRequest(HttpMethod.Put, "/api/jobs/JOB-1001", demoToken);
+        update.Content = JsonContent.Create(new { enabled = false });
+        Assert.Equal(HttpStatusCode.Forbidden, (await _client.SendAsync(update)).StatusCode);
+
+        foreach (var roleName in new[] { "Editor", "Viewer" })
+        {
+            int roleId;
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
+                roleId = await db.Roles.Where(role => role.Name == roleName).Select(role => role.Id).SingleAsync();
+            }
+            var username = $"jobs-{Guid.NewGuid():N}"[..24];
+            var createUser = AuthRequest(HttpMethod.Post, "/api/users", token);
+            createUser.Content = JsonContent.Create(new { username, password = "jobs-pass-123", roleIds = new[] { roleId } });
+            (await _client.SendAsync(createUser)).EnsureSuccessStatusCode();
+            var login = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest(username, "jobs-pass-123"));
+            login.EnsureSuccessStatusCode();
+            var roleToken = (await login.ReadApiResponseAsync<LoginResponse>())!.Data!.Token!;
+            (await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/jobs", roleToken))).EnsureSuccessStatusCode();
+            var expectedWriteStatus = roleName == "Editor" ? HttpStatusCode.OK : HttpStatusCode.Forbidden;
+            var createJob = AuthRequest(HttpMethod.Post, "/api/jobs", roleToken);
+            createJob.Content = JsonContent.Create(new { name = $"{roleName} 任务" });
+            Assert.Equal(expectedWriteStatus, (await _client.SendAsync(createJob)).StatusCode);
+            var updateJob = AuthRequest(HttpMethod.Put, "/api/jobs/JOB-1001", roleToken);
+            updateJob.Content = JsonContent.Create(new { enabled = true });
+            Assert.Equal(expectedWriteStatus, (await _client.SendAsync(updateJob)).StatusCode);
+        }
     }
 
     [Fact]
@@ -235,6 +270,17 @@ public abstract class ContentJobsImportEndpointsTests<TFixture> : IClassFixture<
         var body = await response.ReadApiResponseAsync<LoginResponse>();
         Assert.NotNull(body?.Data?.Token);
         return body.Data.Token;
+    }
+
+    private async Task<string> LoginAsDemoAsync()
+    {
+        var login = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("demo", "demo"));
+        var challenge = await login.ReadApiResponseAsync<LoginResponse>();
+        var verify = await _client.PostAsJsonAsync(
+            "/api/auth/two-factor/verify",
+            new TwoFactorVerifyRequest("demo", AuthDemoCodes.OtpCode, challenge!.Data!.ChallengeId));
+        verify.EnsureSuccessStatusCode();
+        return (await verify.ReadApiResponseAsync<LoginResponse>())!.Data!.Token!;
     }
 
     private static HttpRequestMessage AuthRequest(HttpMethod method, string url, string token)

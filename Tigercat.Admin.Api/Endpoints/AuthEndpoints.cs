@@ -13,6 +13,8 @@ namespace Tigercat.Admin.Api.Endpoints;
 
 public class AuthEndpoints : IEndpointDefinition
 {
+    private const string ProductionTwoFactorUnavailable = "生产环境未配置真实 TOTP 验证，两步验证已关闭";
+    private const string ProductionPasswordRecoveryUnavailable = "生产环境未配置真实邮件或短信投递通道，找回密码已关闭";
     private static readonly ConcurrentDictionary<string, LoginAttemptState> LoginAttempts = new(StringComparer.Ordinal);
 
     public void DefineEndpoints(IEndpointRouteBuilder app)
@@ -125,6 +127,7 @@ public class AuthEndpoints : IEndpointDefinition
         ICacheService cache,
         IEventPublisher eventPublisher,
         AdminDbContext db,
+        IHostEnvironment environment,
         HttpContext httpContext,
         CancellationToken ct)
     {
@@ -168,6 +171,14 @@ public class AuthEndpoints : IEndpointDefinition
 
         if (await userStore.GetTwoFactorEnabledAsync(username, ct))
         {
+            if (environment.IsProduction())
+            {
+                return Results.Json(
+                    ApiResult.Fail<LoginResponse>(ProductionTwoFactorUnavailable, 503),
+                    AppJsonContext.Default.ApiResponseLoginResponse,
+                    statusCode: 503);
+            }
+
             var challengeId = Guid.NewGuid().ToString("N");
             await cache.SetAsync(CacheKeys.TwoFactorChallenge(challengeId), username, AuthDemoCodes.CodeTtl, ct);
             await cache.SetAsync(CacheKeys.TwoFactorUser(username), challengeId, AuthDemoCodes.CodeTtl, ct);
@@ -187,9 +198,18 @@ public class AuthEndpoints : IEndpointDefinition
         ICacheService cache,
         IEventPublisher eventPublisher,
         AdminDbContext db,
+        IHostEnvironment environment,
         HttpContext httpContext,
         CancellationToken ct)
     {
+        if (environment.IsProduction())
+        {
+            return Results.Json(
+                ApiResult.Fail<LoginResponse>(ProductionTwoFactorUnavailable, 503),
+                AppJsonContext.Default.ApiResponseLoginResponse,
+                statusCode: 503);
+        }
+
         var username = NormalizeUsername(request.Username ?? string.Empty);
         var code = (request.Code ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(code))
@@ -258,8 +278,17 @@ public class AuthEndpoints : IEndpointDefinition
         UpdateTwoFactorRequest request,
         HttpContext httpContext,
         IUserStore userStore,
+        IHostEnvironment environment,
         CancellationToken ct)
     {
+        if (environment.IsProduction())
+        {
+            return Results.Json(
+                ApiResult.Fail<TwoFactorStatusResponse>(ProductionTwoFactorUnavailable, 503),
+                AppJsonContext.Default.ApiResponseTwoFactorStatusResponse,
+                statusCode: 503);
+        }
+
         if (!TryGetUsername(httpContext, out var username))
         {
             return Results.Json(
@@ -285,8 +314,17 @@ public class AuthEndpoints : IEndpointDefinition
     private static async Task<IResult> SendForgotPasswordCode(
         ForgotPasswordCodeRequest request,
         ICacheService cache,
+        IHostEnvironment environment,
         CancellationToken ct)
     {
+        if (environment.IsProduction())
+        {
+            return Results.Json(
+                ApiResult.Fail<ForgotPasswordCodeResponse>(ProductionPasswordRecoveryUnavailable, 503),
+                AppJsonContext.Default.ApiResponseForgotPasswordCodeResponse,
+                statusCode: 503);
+        }
+
         var target = (request.Target ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(target))
         {
@@ -308,8 +346,18 @@ public class AuthEndpoints : IEndpointDefinition
         IUserStore userStore,
         ICacheService cache,
         AdminDbContext db,
+        ISessionStore sessionStore,
+        IHostEnvironment environment,
         CancellationToken ct)
     {
+        if (environment.IsProduction())
+        {
+            return Results.Json(
+                ApiResult.Fail<MessageResponse>(ProductionPasswordRecoveryUnavailable, 503),
+                AppJsonContext.Default.ApiResponseMessageResponse,
+                statusCode: 503);
+        }
+
         var target = (request.Target ?? string.Empty).Trim();
         var code = (request.Code ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(target))
@@ -354,6 +402,8 @@ public class AuthEndpoints : IEndpointDefinition
                     AppJsonContext.Default.ApiResponseMessageResponse,
                     statusCode: 500);
             }
+
+            await sessionStore.RevokeAllAsync(username, ct);
         }
 
         await cache.RemoveAsync(cacheKey, ct);
@@ -390,6 +440,7 @@ public class AuthEndpoints : IEndpointDefinition
         ChangePasswordRequest request,
         HttpContext httpContext,
         IUserStore userStore,
+        ISessionStore sessionStore,
         IEventPublisher eventPublisher,
         AdminDbContext db,
         CancellationToken ct)
@@ -429,6 +480,8 @@ public class AuthEndpoints : IEndpointDefinition
                 AppJsonContext.Default.ApiResponseMessageResponse,
                 statusCode: 500);
         }
+
+        await sessionStore.RevokeAllAsync(username, ct);
 
         var envelope = EventEnvelope.Create(
             "auth.user.password.changed",

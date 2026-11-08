@@ -241,6 +241,42 @@ test.describe('运维工作流后端化页面', () => {
     await expect(edit).toBeHidden();
   });
 
+  test('Jobs 只读用户可选择任务但不能进入编辑', async ({ page }) => {
+    await page.evaluate(async ({ key, username }) => {
+      const admin = JSON.parse(localStorage.getItem(key)!) as { token: string };
+      const headers = { 'Content-Type': 'application/json', 'X-Token': admin.token };
+      const roles = await (await fetch('/api/roles?pageSize=100', { headers })).json();
+      const viewer = roles.data.items.find((role: { name: string }) => role.name === 'Viewer');
+      const created = await fetch('/api/users', {
+        method: 'POST', headers,
+        body: JSON.stringify({ username, password: 'jobs-pass-123', roleIds: [viewer.id] }),
+      });
+      if (!created.ok) throw new Error(await created.text());
+      const login = await fetch('/api/auth/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password: 'jobs-pass-123' }),
+      });
+      if (!login.ok) throw new Error(await login.text());
+      localStorage.setItem(key, JSON.stringify((await login.json()).data));
+    }, { key: SESSION_KEY, username: `jobs_viewer_${uniqueSuffix()}` });
+
+    const writes: string[] = [];
+    page.on('request', request => {
+      if (/\/api\/jobs(?:\/|$)/.test(new URL(request.url()).pathname) && request.method() !== 'GET') writes.push(request.method());
+    });
+    await page.goto('/jobs');
+    await expect(page.getByText('任务配置展示', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '新建任务', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '编辑', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('switch')).toHaveCount(0);
+    const select = page.getByRole('button', { name: /^查看任务：/ }).first();
+    await select.click();
+    await select.press('Enter');
+    await select.locator('xpath=ancestor::tr').click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect(writes).toEqual([]);
+  });
+
   test('用户 CSV 实际导入、结果刷新与失败行下载', async ({ page }) => {
     const username = `csv_${uniqueSuffix()}`;
     const password = 'ImportSecret42!';

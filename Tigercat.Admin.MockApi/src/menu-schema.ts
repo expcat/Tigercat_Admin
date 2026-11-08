@@ -109,6 +109,7 @@ const pageNodes: Record<string, MockMenuSchemaNode> = {
     key: 'jobs',
     label: '定时任务',
     icon: 'clock',
+    permission: 'job:view',
     path: '/jobs',
   },
   import: {

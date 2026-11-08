@@ -23,6 +23,7 @@ import MetricGrid from '../components/MetricGrid.vue'
 import MetricCard from '../components/MetricCard.vue'
 import MutedPanel from '../components/MutedPanel.vue'
 import Icon from '../components/Icon.vue'
+import { usePermission } from '../utils/permission'
 import {
   createJob,
   fetchJobs,
@@ -35,6 +36,8 @@ import {
 } from '../utils/jobs'
 
 const RUN_PHASES = ['排队', '运行', '回调', '完成']
+const { has } = usePermission()
+const canEdit = computed(() => has('job:edit'))
 
 const CRON_PRESETS: CronPreset[] = [
   { label: '每分钟', value: '* * * * *', description: '每分钟执行一次' },
@@ -93,7 +96,7 @@ function selectJob(id: string) {
 }
 
 async function toggleJob(job: Job, next: boolean) {
-  if (writePending) return
+  if (!canEdit.value || writePending) return
   writePending = true
   togglingId.value = job.id
   jobs.value = jobs.value.map(item => item.id === job.id ? { ...item, enabled: next } : item)
@@ -242,7 +245,7 @@ onBeforeUnmount(() => listController?.abort())
         <Badge :content="runningCount" variant="success" standalone />
         <Text size="sm" color="secondary">个 running 示例状态</Text>
       </div>
-      <Button :disabled="loading || togglingId !== null || submitting" @click="openCreate">
+      <Button v-if="canEdit" :disabled="loading || togglingId !== null || submitting" @click="openCreate">
         <Icon name="plus" :size="16" class="mr-1" />
         新建任务
       </Button>
@@ -252,7 +255,7 @@ onBeforeUnmount(() => listController?.abort())
 
     <Card class="overflow-hidden">
       <MutedPanel v-if="loading && jobs.length === 0" compact description="正在加载任务…" />
-      <MutedPanel v-else-if="jobs.length === 0" :description="errorMessage ? '任务列表尚未加载，请重试。' : '暂无任务配置，可新建任务。'" />
+      <MutedPanel v-else-if="jobs.length === 0" :description="errorMessage ? '任务列表尚未加载，请重试。' : canEdit ? '暂无任务配置，可新建任务。' : '暂无任务配置。'" />
       <div v-else class="overflow-x-auto">
         <table class="w-full min-w-[720px] border-collapse text-sm">
           <thead>
@@ -262,7 +265,7 @@ onBeforeUnmount(() => listController?.abort())
               <th class="px-3 py-2 font-medium">状态</th>
               <th class="px-3 py-2 font-medium">上次 / 下次（示例）</th>
               <th class="px-3 py-2 font-medium">进度（示例）</th>
-              <th class="px-3 py-2 font-medium text-right">操作</th>
+              <th v-if="canEdit" class="px-3 py-2 font-medium text-right">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -287,6 +290,7 @@ onBeforeUnmount(() => listController?.abort())
               <td class="px-3 py-3" @click.stop>
                 <div class="flex items-center gap-2">
                   <Switch
+                    v-if="canEdit"
                     :aria-label="`启用任务：${job.name}`"
                     :model-value="job.enabled"
                     :disabled="loading || togglingId !== null || submitting"
@@ -310,7 +314,7 @@ onBeforeUnmount(() => listController?.abort())
                   />
                 </div>
               </td>
-              <td class="px-3 py-3 text-right" @click.stop>
+              <td v-if="canEdit" class="px-3 py-3 text-right" @click.stop>
                 <Button variant="outline" size="sm" :disabled="loading || togglingId !== null || submitting" @click="openEdit(job)">
                   <Icon name="edit" :size="14" class="mr-1" />
                   编辑

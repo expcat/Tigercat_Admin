@@ -675,7 +675,9 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         };
 
         db.Roles.Add(adminRole);
+        db.Roles.AddRange(new RoleEntity { Name = "Editor" }, new RoleEntity { Name = "Viewer" }, new RoleEntity { Name = "Demo" });
         db.Permissions.Add(legacyPermission);
+        db.SystemSettings.Add(new SystemSettingEntity { Key = DbInitializer.PermissionSeedVersionKey, Value = "2026.09.08.1" });
         await db.SaveChangesAsync();
 
         db.RolePermissions.Add(new RolePermissionEntity
@@ -703,6 +705,20 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
         Assert.Equal(allPermissionCodes.Length, adminPermissionCodes.Length);
         Assert.Contains("audit:export", adminPermissionCodes);
         Assert.Contains("task:edit", adminPermissionCodes);
+        Assert.Contains("job:execute", adminPermissionCodes);
+
+        var roleGrants = await db.Roles
+            .Select(role => new
+            {
+                role.Name,
+                Codes = role.RolePermissions.Select(rp => rp.Permission.Code).ToArray()
+            })
+            .ToDictionaryAsync(role => role.Name, role => role.Codes);
+        Assert.True(roleGrants["Editor"].Contains("job:view"));
+        Assert.True(roleGrants["Editor"].Contains("job:edit"));
+        Assert.False(roleGrants["Editor"].Contains("job:execute"));
+        Assert.Equal(["job:view"], roleGrants["Viewer"].Where(code => code.StartsWith("job:", StringComparison.Ordinal)).ToArray());
+        Assert.DoesNotContain(roleGrants["Demo"], code => code.StartsWith("job:", StringComparison.Ordinal));
     }
 
     [Fact]

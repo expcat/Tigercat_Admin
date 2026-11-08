@@ -274,6 +274,7 @@ public class UsersEndpoints : IEndpointDefinition
         int id,
         UpdateUserRequest request,
         AdminDbContext db,
+        ISessionStore sessionStore,
         IMediaReferenceService mediaReferenceService,
         IEventPublisher eventPublisher,
         HttpContext httpContext,
@@ -424,11 +425,12 @@ public class UsersEndpoints : IEndpointDefinition
             }
         }
 
-        if (user.Status == UserStatus.Disabled)
-        {
-            db.Sessions.RemoveRange(await db.Sessions.Where(s => s.Username == user.Username).ToListAsync(ct));
-        }
         await db.SaveChangesAsync(ct);
+
+        if (user.Status == UserStatus.Disabled || !string.IsNullOrWhiteSpace(request.Password))
+        {
+            await sessionStore.RevokeAllAsync(user.Username, ct);
+        }
 
         if (request.AvatarMediaId.HasValue)
         {
@@ -469,6 +471,7 @@ public class UsersEndpoints : IEndpointDefinition
     private static async Task<IResult> DeleteUser(
         int id,
         AdminDbContext db,
+        ISessionStore sessionStore,
         IMediaReferenceService mediaReferenceService,
         IEventPublisher eventPublisher,
         HttpContext httpContext,
@@ -519,9 +522,9 @@ public class UsersEndpoints : IEndpointDefinition
 
         await mediaReferenceService.SyncUserAvatarReferenceAsync(user.Id, user.Username, null, ct);
         db.UserRoles.RemoveRange(user.UserRoles);
-        db.Sessions.RemoveRange(await db.Sessions.Where(s => s.Username == user.Username).ToListAsync(ct));
         db.Users.Remove(user);
         await db.SaveChangesAsync(ct);
+        await sessionStore.RevokeAllAsync(deletedUsername, ct);
 
         await eventPublisher.PublishAsync(
             EventEnvelope.Create(
@@ -545,6 +548,7 @@ public class UsersEndpoints : IEndpointDefinition
     private static async Task<IResult> BatchDeleteUsers(
         BatchDeleteUsersRequest request,
         AdminDbContext db,
+        ISessionStore sessionStore,
         IEventPublisher eventPublisher,
         HttpContext httpContext,
         CancellationToken ct)
@@ -605,7 +609,6 @@ public class UsersEndpoints : IEndpointDefinition
 
         var deletedIds = users.Select(static user => user.Id).ToArray();
         var deletedUsernames = users.Select(static user => user.Username).ToArray();
-        db.Sessions.RemoveRange(await db.Sessions.Where(s => deletedUsernames.Contains(s.Username)).ToListAsync(ct));
         var deletedAvatarKeys = deletedIds.Select(MediaReferences.UserAvatarKey).ToArray();
         var avatarReferences = await db.MediaReferences
             .Where(r => r.ReferenceType == MediaReferences.UserAvatarType && deletedAvatarKeys.Contains(r.ReferenceKey))
@@ -614,6 +617,10 @@ public class UsersEndpoints : IEndpointDefinition
         db.MediaReferences.RemoveRange(avatarReferences);
         db.Users.RemoveRange(users);
         await db.SaveChangesAsync(ct);
+        foreach (var username in deletedUsernames)
+        {
+            await sessionStore.RevokeAllAsync(username, ct);
+        }
 
         await eventPublisher.PublishAsync(
             EventEnvelope.Create(
@@ -638,6 +645,7 @@ public class UsersEndpoints : IEndpointDefinition
     private static async Task<IResult> BatchUpdateUserStatus(
         BatchUpdateUserStatusRequest request,
         AdminDbContext db,
+        ISessionStore sessionStore,
         IEventPublisher eventPublisher,
         HttpContext httpContext,
         CancellationToken ct)
@@ -712,12 +720,15 @@ public class UsersEndpoints : IEndpointDefinition
             user.UpdatedAt = DateTime.UtcNow;
         }
 
+        await db.SaveChangesAsync(ct);
+
         if (nextStatus == UserStatus.Disabled)
         {
-            var usernames = users.Select(user => user.Username).ToArray();
-            db.Sessions.RemoveRange(await db.Sessions.Where(s => usernames.Contains(s.Username)).ToListAsync(ct));
+            foreach (var user in users)
+            {
+                await sessionStore.RevokeAllAsync(user.Username, ct);
+            }
         }
-        await db.SaveChangesAsync(ct);
 
         await eventPublisher.PublishAsync(
             EventEnvelope.Create(

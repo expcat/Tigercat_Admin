@@ -1,6 +1,8 @@
 using System.Net.Http.Json;
+using System.Net;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.AspNetCore.Http.Connections;
 using Tigercat.Admin.Api.Auth;
 using Tigercat.Admin.Api.Common;
 using Tigercat.Admin.Api.Endpoints;
@@ -134,12 +136,105 @@ public abstract class RealtimeHubTests<TFixture> : IClassFixture<TFixture>
         Assert.Equal(HubConnectionState.Disconnected, connection.State);
     }
 
+    [Fact]
+    public async Task PasswordChangeAndReset_RevokeAllHttpSessionsAndDisconnectHubs()
+    {
+        var username = $"session-{Guid.NewGuid():N}"[..24];
+        const string oldPassword = "old-pass-123";
+        const string newPassword = "new-pass-456";
+        const string resetPassword = "reset-pass-789";
+        (await _client.PostAsJsonAsync("/api/auth/register", new RegisterRequest(username, oldPassword))).EnsureSuccessStatusCode();
+
+        var firstToken = await LoginAsync(username, oldPassword);
+        var secondToken = await LoginAsync(username, oldPassword);
+        await using var monitor = CreateHubConnection(RealtimeHubs.MonitorPath, firstToken);
+        await using var chat = CreateHubConnection(RealtimeHubs.ChatPath, secondToken);
+        var monitorClosed = TrackClosed(monitor);
+        var chatClosed = TrackClosed(chat);
+        await monitor.StartAsync();
+        await chat.StartAsync();
+        await monitor.InvokeAsync("Start", 2);
+
+        var change = AuthRequest(HttpMethod.Post, "/api/auth/change-password", firstToken);
+        change.Content = JsonContent.Create(new ChangePasswordRequest(oldPassword, newPassword));
+        (await _client.SendAsync(change)).EnsureSuccessStatusCode();
+
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/home", firstToken))).StatusCode);
+        var sendWithOldToken = AuthRequest(HttpMethod.Post, "/api/chat/messages", secondToken);
+        sendWithOldToken.Content = JsonContent.Create(new { content = "撤销后不能发送" });
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _client.SendAsync(sendWithOldToken)).StatusCode);
+        await Task.WhenAll(monitorClosed, chatClosed).WaitAsync(TimeSpan.FromSeconds(5));
+
+        await using var staleMonitor = CreateHubConnection(RealtimeHubs.MonitorPath, firstToken);
+        await using var staleChat = CreateHubConnection(RealtimeHubs.ChatPath, secondToken);
+        Assert.NotNull(await Record.ExceptionAsync(() => staleMonitor.StartAsync()));
+        Assert.NotNull(await Record.ExceptionAsync(() => staleChat.StartAsync()));
+
+        firstToken = await LoginAsync(username, newPassword);
+        secondToken = await LoginAsync(username, newPassword);
+        await using var resetMonitor = CreateHubConnection(RealtimeHubs.MonitorPath, firstToken);
+        await using var resetChat = CreateHubConnection(RealtimeHubs.ChatPath, secondToken);
+        monitorClosed = TrackClosed(resetMonitor);
+        chatClosed = TrackClosed(resetChat);
+        await resetMonitor.StartAsync();
+        await resetChat.StartAsync();
+        await resetMonitor.InvokeAsync("Start", 2);
+
+        var target = $"{username}@tigercat.local";
+        (await _client.PostAsJsonAsync(
+            "/api/auth/forgot-password/code",
+            new ForgotPasswordCodeRequest("email", target))).EnsureSuccessStatusCode();
+        (await _client.PostAsJsonAsync(
+            "/api/auth/forgot-password",
+            new ForgotPasswordResetRequest("email", target, AuthDemoCodes.OtpCode, resetPassword))).EnsureSuccessStatusCode();
+
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/home", firstToken))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/home", secondToken))).StatusCode);
+        await Task.WhenAll(monitorClosed, chatClosed).WaitAsync(TimeSpan.FromSeconds(5));
+        await using var staleResetMonitor = CreateHubConnection(RealtimeHubs.MonitorPath, firstToken);
+        await using var staleResetChat = CreateHubConnection(RealtimeHubs.ChatPath, secondToken);
+        Assert.NotNull(await Record.ExceptionAsync(() => staleResetMonitor.StartAsync()));
+        Assert.NotNull(await Record.ExceptionAsync(() => staleResetChat.StartAsync()));
+        await LoginAsync(username, resetPassword);
+    }
+
+    private static Task TrackClosed(HubConnection connection)
+    {
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.Closed += _ =>
+        {
+            closed.TrySetResult();
+            return Task.CompletedTask;
+        };
+        return closed.Task;
+    }
+
+    private async Task<string> LoginAsync(string username, string password)
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest(username, password));
+        response.EnsureSuccessStatusCode();
+        return (await response.ReadApiResponseAsync<LoginResponse>())!.Data!.Token!;
+    }
+
     private HubConnection CreateHubConnection(string path, string? token)
     {
         return new HubConnectionBuilder()
             .WithUrl(new Uri(_factory.Server.BaseAddress!, path.TrimStart('/')), options =>
             {
                 options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
+                options.Transports = HttpTransportType.WebSockets;
+                options.WebSocketFactory = async (context, cancellationToken) =>
+                {
+                    var client = _factory.Server.CreateWebSocketClient();
+                    if (!string.IsNullOrWhiteSpace(token))
+                    {
+                        client.ConfigureRequest = request => request.Headers[AuthConstants.TokenHeader] = token;
+                    }
+                    return await client.ConnectAsync(context.Uri, cancellationToken);
+                };
                 if (!string.IsNullOrWhiteSpace(token))
                 {
                     options.AccessTokenProvider = () => Task.FromResult<string?>(token);

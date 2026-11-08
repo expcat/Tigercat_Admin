@@ -10,7 +10,7 @@ namespace Tigercat.Admin.Api.Data;
 
 public static class DbInitializer
 {
-    public const string PermissionSeedVersion = "2026.09.08.1";
+    public const string PermissionSeedVersion = "2026.11.08.1";
     public const string PermissionSeedVersionKey = "security.permissionSeedVersion";
     public const string PermissionSeedChecksumKey = "security.permissionSeedChecksum";
 
@@ -65,6 +65,9 @@ public static class DbInitializer
         ("task:view",      "查看任务面板"),
         ("task:create",    "创建运维任务"),
         ("task:edit",      "编辑运维任务"),
+        ("job:view",       "查看定时任务"),
+        ("job:edit",       "编辑定时任务"),
+        ("job:execute",    "执行定时任务"),
     ];
 
     public static string PermissionSeedChecksum { get; } = BuildPermissionSeedChecksum();
@@ -79,9 +82,9 @@ public static class DbInitializer
     [
         ("Admin",  "超级管理员，拥有所有权限", SeedPermissions.Select(p => p.Code).ToArray()),
         ("Editor", "编辑员，可查看和编辑",
-            ["dashboard:view", "user:view", "user:edit", "role:view", "role:edit", "setting:view", "setting:edit", "media:view", "media:upload", "audit:view", "notification:view", "notification:edit", "notification:create", "task:view", "task:create", "task:edit"]),
+            ["dashboard:view", "user:view", "user:edit", "role:view", "role:edit", "setting:view", "setting:edit", "media:view", "media:upload", "audit:view", "notification:view", "notification:edit", "notification:create", "task:view", "task:create", "task:edit", "job:view", "job:edit"]),
         ("Viewer", "只读用户，仅可查看",
-            ["dashboard:view", "user:view", "role:view", "setting:view", "media:view", "audit:view", "notification:view", "task:view"]),
+            ["dashboard:view", "user:view", "role:view", "setting:view", "media:view", "audit:view", "notification:view", "task:view", "job:view"]),
         ("Demo", "演示账号，只读浏览（无用户/角色管理，用于 403 演示）",
             ["dashboard:view", "setting:view", "media:view", "audit:view", "notification:view", "task:view"]),
     ];
