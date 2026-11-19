@@ -184,6 +184,14 @@ function ProfilePage() {
   const [bio, setBio] = useState('');
   const [emailDigest, setEmailDigest] = useState(true);
 
+  const handleQuietHoursChange = (index: 0 | 1, value: string | null) => {
+    setQuietHours((current) => {
+      const next: TimePickerRangeTuple = [current?.[0] ?? null, current?.[1] ?? null];
+      next[index] = value;
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -384,6 +392,7 @@ function ProfilePage() {
                 <div className="max-w-sm">
                   <Slider
                     value={fontSize}
+                    aria-label="界面字号"
                     onChange={(v) => setFontSize(typeof v === 'number' ? v : v[0])}
                     min={12}
                     max={20}
@@ -403,9 +412,23 @@ function ProfilePage() {
                 </div>
                 <div>
                   <Text weight="medium" className="mb-2 block">
-                    免打扰时段
+                    免打扰时段（可跨午夜）
                   </Text>
-                  <TimePicker range value={quietHours} onChange={(t) => setQuietHours(t)} showSeconds={false} />
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <TimePicker
+                      aria-label="免打扰开始时间"
+                      value={quietHours?.[0] ?? null}
+                      onChange={(value) => handleQuietHoursChange(0, value)}
+                      showSeconds={false}
+                    />
+                    <TimePicker
+                      aria-label="免打扰结束时间"
+                      labels={{ toggle: '打开免打扰结束时间选择器' }}
+                      value={quietHours?.[1] ?? null}
+                      onChange={(value) => handleQuietHoursChange(1, value)}
+                      showSeconds={false}
+                    />
+                  </div>
                 </div>
               </div>
 

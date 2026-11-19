@@ -22,6 +22,11 @@ function closeChangeModal() {
   changeOpen.value = false
   changeForm.value = { oldPassword: '', newPassword: '' }
 }
+
+function handleChangeOpen(open: boolean) {
+  if (open) changeOpen.value = true
+  else closeChangeModal()
+}
 </script>
 
 <template>
@@ -47,7 +52,8 @@ function closeChangeModal() {
     </RouterView>
 
     <Modal
-      v-model:open="changeOpen"
+      :open="changeOpen"
+      @update:open="handleChangeOpen"
       title="修改密码"
       :closable="!changeSaving"
       :keyboard="!changeSaving"

@@ -62,7 +62,7 @@ export function LockScreen({ session, onUnlock }: LockScreenProps) {
       }
 
       const focusable = overlay.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        'button:not([disabled]):not([tabindex="-1"]), [href]:not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])',
       );
       if (focusable.length === 0) {
         event.preventDefault();
@@ -109,8 +109,8 @@ export function LockScreen({ session, onUnlock }: LockScreenProps) {
       aria-labelledby="shell-lock-screen-title"
       data-testid="shell-lock-screen"
       tabIndex={-1}
-      className="fixed inset-0 z-[2000] flex items-center justify-center overflow-hidden bg-(--tiger-bg-page,#0f172a)/92 px-4 py-4 backdrop-blur-sm">
-      <div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-card,#ffffff) p-6 shadow-lg">
+      className="fixed inset-0 z-[2000] flex items-center justify-center overflow-y-auto bg-(--tiger-bg-page,#0f172a)/92 px-4 py-4 backdrop-blur-sm">
+      <div className="my-auto flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl border border-(--tiger-border,#e2e8f0) bg-(--tiger-bg-card,#ffffff) p-6 shadow-lg">
         <Avatar
           size="xl"
           className="p2-avatar font-bold text-lg bg-gradient-to-tr from-(--tiger-primary,#3b82f6) to-blue-400 text-white">
@@ -147,7 +147,7 @@ export function LockScreen({ session, onUnlock }: LockScreenProps) {
           mode="number"
           maxLength={LOCK_SCREEN_PIN_LENGTH}
           deleteText="删除"
-          confirmText="确定"
+          showConfirm={false}
           ariaLabel="锁屏 PIN 数字键盘"
           onChange={handlePinChange}
         />

@@ -47,6 +47,7 @@ const otpDeadline = ref<number | null>(null)
 const otpCanResend = ref(false)
 const otpError = ref('')
 const otpNotice = ref('')
+let sessionApplied = false
 
 function startOtp(username: string, challengeId?: string) {
   otpUsername.value = username
@@ -60,6 +61,7 @@ function startOtp(username: string, challengeId?: string) {
 }
 
 function applySession(data: { token: string; username: string; expiresAt: string }) {
+  sessionApplied = true
   emit('success', {
     token: data.token,
     username: data.username,
@@ -95,7 +97,7 @@ async function handleLogin(resend = false) {
     if (resend) otpError.value = content
     Message.error({ content, duration: 3000 })
   } finally {
-    if (request === controller && !controller.signal.aborted) {
+    if (request === controller && !controller.signal.aborted && !sessionApplied) {
       request = null
       loading.value = false
     }
@@ -147,7 +149,7 @@ async function handleVerify() {
     Message.error({ content: otpError.value, duration: 3000 })
     void nextTick(() => otpRef.value?.focus())
   } finally {
-    if (request === controller && !controller.signal.aborted) {
+    if (request === controller && !controller.signal.aborted && !sessionApplied) {
       request = null
       loading.value = false
     }

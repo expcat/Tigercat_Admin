@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Button } from '@expcat/tigercat-react/Button';
+import { Alert } from '@expcat/tigercat-react/Alert';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Message } from '@expcat/tigercat-react/Message';
 import { Tag } from '@expcat/tigercat-react/Tag';
@@ -9,6 +10,7 @@ import { MutedPanel } from '../components/PageFragments';
 import { PermissionGuard } from '../components/PermissionGuard';
 import { LockIcon } from '../components/Icons';
 import { usePermission } from '../utils/permission';
+import { getSessionToken } from '../utils/auth';
 
 const DEMO_ACTIONS = [
   { code: 'user:create', label: '新增用户' },
@@ -27,8 +29,13 @@ function handleDemoAction(label: string) {
 }
 
 function PermissionDemoPage() {
-  const { codes, loaded, has, hasAny } = usePermission();
+  const { codes, loaded, loading, error, load, has, hasAny } = usePermission();
   const codeList = useMemo(() => [...codes].sort(), [codes]);
+
+  const reloadPermissions = () => {
+    const token = getSessionToken();
+    if (token) void load(token);
+  };
 
   return (
     <div className="space-y-6">
@@ -48,7 +55,15 @@ function PermissionDemoPage() {
       />
 
       <Card header={<Text weight="bold">当前会话权限码</Text>}>
-        {!loaded ? (
+        {error ? (
+          <Alert
+            type="error"
+            title="权限加载失败"
+            description={error}
+            showIcon
+            action={<Button size="sm" variant="outline" loading={loading} onClick={reloadPermissions}>重试</Button>}
+          />
+        ) : !loaded ? (
           <MutedPanel compact description="正在加载权限…" />
         ) : codeList.length ? (
           <div className="flex flex-wrap gap-2">
@@ -107,8 +122,10 @@ function PermissionDemoPage() {
           </PermissionGuard>
         </div>
         <Text size="sm" color="secondary" className="mt-3 block">
-          any：{hasAny('user:view', 'role:view') ? '通过' : '未通过'}（user:view 或 role:view）。all：
-          {has('user:create', 'role:create') ? '通过' : '未通过'}（user:create 且 role:create）。
+          {error ? '权限加载失败，暂无法判断。' : <>
+            any：{hasAny('user:view', 'role:view') ? '通过' : '未通过'}（user:view 或 role:view）。all：
+            {has('user:create', 'role:create') ? '通过' : '未通过'}（user:create 且 role:create）。
+          </>}
         </Text>
       </Card>
     </div>

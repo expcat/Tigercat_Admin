@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
+import { Alert } from '@expcat/tigercat-react/Alert';
+import { Button } from '@expcat/tigercat-react/Button';
 import { SESSION_KEY, safeParse, type Session, usePermission } from '../utils';
 
 interface PermissionRouteProps {
@@ -14,7 +16,7 @@ interface PermissionRouteProps {
 }
 
 export function PermissionRoute({ code, mode = 'all' }: PermissionRouteProps) {
-  const { loaded, loading, load, has, hasAny } = usePermission();
+  const { loaded, loading, error, load, has, hasAny } = usePermission();
   const session = safeParse<Session>(localStorage.getItem(SESSION_KEY));
   // 仅在本守卫内主动补偿加载一次，避免接口持续失败时无限重试。
   const loadAttemptedRef = useRef(false);
@@ -31,6 +33,20 @@ export function PermissionRoute({ code, mode = 'all' }: PermissionRouteProps) {
   // redirected to /login. Keep the same fail-closed fallback here.
   if (!session?.token) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full min-h-50 p-4">
+        <Alert
+          type="error"
+          title="权限加载失败"
+          description={error}
+          showIcon
+          action={<Button size="sm" variant="outline" loading={loading} onClick={() => void load(session.token)}>重试</Button>}
+        />
+      </div>
+    );
   }
 
   if (!loaded) {

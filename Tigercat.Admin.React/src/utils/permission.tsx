@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { Message } from '@expcat/tigercat-react/Message';
 import { apiRequest } from './request';
 import type { UserPermissions } from './types';
 
@@ -19,6 +20,8 @@ export interface PermissionContextValue {
   loaded: boolean;
   /** Whether a load request is currently in flight. */
   loading: boolean;
+  /** Latest permission load failure, if any. */
+  error: string;
   /** Fetch permissions from the API. */
   load: (token: string) => Promise<void>;
   /** Clear cached permissions (e.g. on logout). */
@@ -39,6 +42,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
   const [codes, setCodes] = useState<Set<string>>(EMPTY_SET);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Monotonically increasing id to discard stale responses.
   const requestIdRef = useRef(0);
@@ -48,6 +52,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
     const requestId = ++requestIdRef.current;
     activeRef.current += 1;
     setLoading(true);
+    setError('');
     try {
       const res = await apiRequest<UserPermissions>('/api/auth/permissions', {
         headers: { Authorization: `Bearer ${token}` },
@@ -56,10 +61,13 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
       const permCodes = res.data?.permissions?.map((p) => p.code) ?? [];
       setCodes(new Set(permCodes));
       setLoaded(true);
-    } catch {
+    } catch (cause: unknown) {
       if (requestId === requestIdRef.current) {
+        const content = cause instanceof Error && cause.message ? cause.message : '权限加载失败，请重试';
         setCodes(EMPTY_SET);
         setLoaded(false);
+        setError(content);
+        Message.error({ content: `权限加载失败：${content}`, duration: 3000 });
       }
     } finally {
       activeRef.current -= 1;
@@ -74,6 +82,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
     setLoading(false);
     setCodes(EMPTY_SET);
     setLoaded(false);
+    setError('');
   }, []);
 
   const has = useCallback(
@@ -87,8 +96,8 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<PermissionContextValue>(
-    () => ({ codes, loaded, loading, load, clear, has, hasAny }),
-    [codes, loaded, loading, load, clear, has, hasAny],
+    () => ({ codes, loaded, loading, error, load, clear, has, hasAny }),
+    [codes, loaded, loading, error, load, clear, has, hasAny],
   );
 
   return (

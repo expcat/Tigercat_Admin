@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Button } from '@expcat/tigercat-vue/Button'
+import { Alert } from '@expcat/tigercat-vue/Alert'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Message } from '@expcat/tigercat-vue/Message'
 import { Tag } from '@expcat/tigercat-vue/Tag'
@@ -8,6 +9,7 @@ import { Text } from '@expcat/tigercat-vue/Text'
 import PageHeader from '../components/PageHeader.vue'
 import MutedPanel from '../components/MutedPanel.vue'
 import { usePermission } from '../utils/permission'
+import { getSessionToken } from '../utils/auth'
 
 const DEMO_ACTIONS = [
   { code: 'user:create', label: '新增用户' },
@@ -21,8 +23,13 @@ const DEMO_ACTIONS = [
 
 const MISSING_CODE = 'demo:forbidden'
 
-const { codes, loaded, has, hasAny } = usePermission()
+const { codes, loaded, loading, error, load, has, hasAny } = usePermission()
 const codeList = computed(() => [...codes.value].sort())
+
+function reloadPermissions() {
+  const token = getSessionToken()
+  if (token) void load(token)
+}
 
 function handleDemoAction(label: string) {
   Message.info({ content: `已触发「${label}」（演示，无写操作）`, duration: 2000 })
@@ -48,7 +55,10 @@ function handleDemoAction(label: string) {
 
     <Card>
       <template #header><Text weight="bold">当前会话权限码</Text></template>
-      <MutedPanel v-if="!loaded" compact description="正在加载权限…" />
+      <Alert v-if="error" type="error" title="权限加载失败" :description="error" show-icon>
+        <template #action><Button size="sm" variant="outline" :loading="loading" @click="reloadPermissions">重试</Button></template>
+      </Alert>
+      <MutedPanel v-else-if="!loaded" compact description="正在加载权限…" />
       <div v-else-if="codeList.length" class="flex flex-wrap gap-2">
         <Tag v-for="code in codeList" :key="code" variant="info" size="sm">
           {{ code }}
@@ -103,8 +113,11 @@ function handleDemoAction(label: string) {
         </Button>
       </div>
       <Text size="sm" color="secondary" class="mt-3 block">
-        any：{{ hasAny('user:view', 'role:view') ? '通过' : '未通过' }}（user:view 或 role:view）。all：
-        {{ has('user:create', 'role:create') ? '通过' : '未通过' }}（user:create 且 role:create）。
+        <template v-if="error">权限加载失败，暂无法判断。</template>
+        <template v-else>
+          any：{{ hasAny('user:view', 'role:view') ? '通过' : '未通过' }}（user:view 或 role:view）。all：
+          {{ has('user:create', 'role:create') ? '通过' : '未通过' }}（user:create 且 role:create）。
+        </template>
       </Text>
     </Card>
   </div>

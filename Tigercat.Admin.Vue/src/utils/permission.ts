@@ -1,4 +1,5 @@
 import { ref, inject, type Ref, type InjectionKey } from 'vue';
+import { Message } from '@expcat/tigercat-vue/Message';
 import { apiRequest } from './request';
 import type { UserPermissions } from './types';
 
@@ -10,6 +11,9 @@ const loaded = ref(false);
 
 /** Whether a load request is currently in flight. */
 const loading = ref(false);
+
+/** Latest permission load failure, if any. */
+const error = ref('');
 
 /** Monotonically increasing id for permission load requests. */
 let currentRequestId = 0;
@@ -28,6 +32,7 @@ export async function loadPermissions(token: string): Promise<void> {
   const requestId = ++currentRequestId;
   activeRequests += 1;
   loading.value = true;
+  error.value = '';
   try {
     const res = await apiRequest<UserPermissions>('/api/auth/permissions', {
       headers: { Authorization: `Bearer ${token}` },
@@ -37,10 +42,13 @@ export async function loadPermissions(token: string): Promise<void> {
     const codes = res.data?.permissions?.map((p) => p.code) ?? [];
     permissionCodes.value = new Set(codes);
     loaded.value = true;
-  } catch {
+  } catch (cause: unknown) {
     if (requestId === currentRequestId) {
+      const content = cause instanceof Error && cause.message ? cause.message : '权限加载失败，请重试';
       permissionCodes.value = new Set();
       loaded.value = false;
+      error.value = content;
+      Message.error({ content: `权限加载失败：${content}`, duration: 3000 });
     }
   } finally {
     activeRequests -= 1;
@@ -57,6 +65,7 @@ export function clearPermissions(): void {
   loading.value = false;
   permissionCodes.value = new Set();
   loaded.value = false;
+  error.value = '';
 }
 
 /**
@@ -80,6 +89,7 @@ export interface PermissionContext {
   codes: Ref<Set<string>>;
   loaded: Ref<boolean>;
   loading: Ref<boolean>;
+  error: Ref<string>;
   load: (token: string) => Promise<void>;
   clear: () => void;
   has: (...codes: string[]) => boolean;
@@ -96,6 +106,7 @@ export function createPermissionContext(): PermissionContext {
     codes: permissionCodes,
     loaded,
     loading,
+    error,
     load: loadPermissions,
     clear: clearPermissions,
     has: hasPermission,

@@ -319,24 +319,25 @@ AuditLogs 的列表 effect / watch 只依赖权限、查询、页码与目标事
 - API 调用统一走双端 `src/utils/request.ts` 的 `apiRequest`。
 - 会话存在 `SESSION_KEY`，认证头由 `getAuthHeaders()` 或等价工具生成。Monitor / Chat 实时连接用 `utils/realtime.ts`（`@microsoft/signalr` 动态导入），token 走 `getSessionToken()`；演示模式（`VITE_TIGERCAT_DEMO`）不连 hub。
 - API 返回结构使用 `ApiResponse<T>`；分页列表使用 `PagedResult<T>`。
-- 权限列表从 `/api/auth/permissions` 加载，菜单和按钮按权限隐藏。按钮级演示在 `/permission-demo`：React 用 `PermissionGuard` / `usePermission`，Vue 用 `v-permission` / `usePermission`。不要新增 Tigercat 权限组件，也不要自写第二套权限指令。
+- 权限列表从 `/api/auth/permissions` 加载，菜单和按钮按权限隐藏。权限上下文分别用 `loaded` / `loading` / `error` 表示已加载、请求中和最近一次失败；失败时显示错误与重试入口，不把它当作正常缺权。按钮级演示在 `/permission-demo`：React 用 `PermissionGuard` / `usePermission`，Vue 用 `v-permission` / `usePermission`。不要新增 Tigercat 权限组件，也不要自写第二套权限指令。
 - .NET 权限从当前 EF 授权读取；角色变更后刷新页面可重新加载菜单和路由权限。禁用 / 删除、改密和密码重置使旧 token 失效；新 Hub 连接拒绝失效会话，撤销也会断开既有 Monitor / Chat 连接，见 [认证专题](api/auth.md#用户状态会话与权限变化)。
 - 用户、角色、文件、审计等数据工作台复用 `utils/workbench.ts`，以 sessionStorage 保留查询、排序、选中行、隐藏列和导出状态。用户页临时状态以当前会话 `username` 隔离，不读取旧的公共 users 键。
 - 用户页命名筛选视图另存 localStorage，键为 `tigercat.admin.workbench.users.<encodeURIComponent(username)>.views`，只在当前浏览器当前账号内生效。保存关键字、状态、排序、每页条数、隐藏列；不保存页码、选择或导出。输入同名保存会替换原快照，另起名称保存为新视图，删除视图保留当前筛选。修改后显示「已修改」，需再次保存；切换 / 重新载入活动视图时恢复已保存快照、回到第 1 页并清空选择。没有活动视图时仍沿用临时工作台返回恢复行为。
 - 用户批量启用 / 禁用共用 `POST /api/users/batch-status`；静态 Mock 已补齐该端点和整批校验，取消不请求，失败保留选择与确认框。成功后列表与状态筛选读取更新后的值；Mock 会话及事件边界见 [用户 API](api/users.md)。
 - 系统设置初次 GET 失败时仅显示错误与重试，不展示可编辑空表单。保存只 PUT 有变化的项，成功使用响应更新已保存值；失败保留草稿和确认框，取消不发送 PUT。Logo 上传只改表单引用，预览 / 当前表单值与当前持久化值分别显示；恢复默认值也需确认保存。服务端 `theme.mode` / `theme.primaryColor` / `theme.compactMode` 与 Shell 本机外观偏好分别保存，水印开关为本机立即生效。
 - Logo 选择沿用原生文件输入与 `uploadMediaFile`，保持 React 开发 StrictMode 可用；校验图片 MIME 和 2 MB 上限，上传失败 / 取消保留旧草稿与持久化值。上传期间禁保存 / 恢复，取消中止请求、忽略迟到响应并将焦点恢复到选择按钮；离页中止上传。工单没有附件接口，新建表单只说明该边界，不提供无效文件选择。
-- Vue `Modal` 的 `@ok` 校验失败或请求失败必须 `return false`，否则组件会关闭 `v-model:open`。双端直接返回提交 Promise，让组件在处理中阻止重复确认；取消路径只关闭弹层。
+- Vue `Modal` 的 `@ok` 校验失败或请求失败必须 `return false`，否则组件会关闭 `v-model:open`。双端直接返回提交 Promise，让组件在处理中阻止重复确认；取消路径只关闭弹层。修改密码弹层使用受控 `:open` + `@update:open`，保存中的关闭请求与取消都必须保留弹层。
 - 通知 `linkUrl` 只允许站内路径，跳转前检查目标页面权限。
 
 ### 认证、个人中心与异常恢复
 
-- 登录 / 注册使用官方 `Form.rules` 与 `FormItem.name`，由 Form 校验并聚焦首个无效字段；提交按钮走原生 submit，保留 Enter 路径。请求期间阻止重复提交，离页或返回时中止请求，并丢弃迟到响应。
+- 登录 / 注册使用官方 `Form.rules` 与 `FormItem.name`，由 Form 校验并聚焦首个无效字段；提交按钮走原生 submit，保留 Enter 路径。请求及登录成功后的交接期间阻止重复提交，离页或返回时中止请求，并丢弃迟到响应。
 - 双端 `utils/auth.ts` 的 `getSafeReturnTo` 统一检查登录返回路径：只接受站内根路径或 `#/…`，排除外部地址、反斜杠、控制字符，以及带查询参数或尾斜杠的认证 / 异常入口。合法目标保留 query / hash。注册、找回密码和结果页继续传递原目标；登录完成加载期间若会话已被清除，不再跳转。
 - 登录 2FA 的「重新获取验证码」会重新调用登录端点获取 challenge，失败后可重试，成功后才重置 60s 倒计时。返回账号登录会清空验证码与 challenge；验证通过前不写会话。非 Production 的验证码仍为固定演示码，不表示已发送短信或邮件；Production 未配置真实 TOTP / 投递通道时相关接口返回 `503`，页面展示服务端错误，不把演示流程当成生产能力。
-- 找回密码先检查邮箱 / 11 位手机号与 6 位验证码格式，更换账号立即清除旧验证信息；切换手机掩码输入后恢复焦点。验证码由最终重置端点校验，失败返回验证码字段；密码错误留在新密码步骤，其他错误保留重试入口。
+- 找回密码先检查邮箱 / 11 位手机号与 6 位验证码格式，更换账号立即清除旧验证信息；完整 11 位手机号才切换掩码输入并恢复焦点，避免吞掉以 `1` 开头的邮箱字符。验证码由最终重置端点校验，失败返回验证码字段；密码错误留在新密码步骤，其他错误保留重试入口。
 - 个人中心只有用户名来自当前会话，2FA 开关读写当前账号 API。读取失败时状态未知、开关禁用并可重试；启用前需输入演示码确认，取消不写回并恢复开关焦点，保存失败保留待确认状态。当前 API 未提供 TOTP 配置，不展示虚构绑定二维码。
-- 个人资料、统计、设备 / 历史明确数据来源。手机号、签名、登录提醒、异地保护和偏好仅为页面演示，不声称已持久化或已启用通知 / 防护；全站主题仍使用 Shell 配置。
+- 个人资料、统计、设备 / 历史明确数据来源。手机号、签名、登录提醒、异地保护和偏好仅为页面演示，不声称已持久化或已启用通知 / 防护；全站主题仍使用 Shell 配置。免打扰时段用两个单值 `TimePicker` 保存开始 / 结束，支持 `22:00–07:00` 跨午夜；界面字号 `Slider` 使用明确的可访问名称。
+- 锁屏只保留 InputOTP 与数字键盘的 roving tabindex 实际 Tab 停靠点，隐藏无操作的确认键；矮视口下遮罩可纵向滚动，不裁掉 PIN 或数字键盘。
 - 403 / 404 / 500 复用页面时更新状态、历史判断和倒计时；手动返回取消自动跳转，回首页使用 replace。`/500` 仍是独立演示入口。
 - 异常页优先读取路由历史的 `idx` / `back`；无这些标记的原生 hash 跳转仅在历史长度超过初始空白页与当前页时允许后退，直接新开页面回首页 / 登录。Vue 未匹配路径先同步菜单，再以原 query / hash 重新匹配；内部 `router.push` 保留上一页，已经写入浏览器历史的 hash 跳转才替换当前项。访客重定向同样避免把未知 hash 留成返回登录的循环。
 - Iframe 通过 load / error 事件及 15s 计时提供恢复提示；load 仅表示 frame 响应，不能证明跨域内容可读。浏览器无法可靠区分跨域 CSP / X-Frame-Options 拦截，重载与新窗口入口始终可用。

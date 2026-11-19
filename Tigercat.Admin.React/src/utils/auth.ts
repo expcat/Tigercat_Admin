@@ -28,7 +28,7 @@ export function detectForgotChannel(target: string): ForgotChannel {
 
 export function isPhoneIdentity(target: string): boolean {
   const value = target.trim();
-  return value.length > 0 && !value.includes('@') && /^1\d*$/.test(value.replace(/\s/g, ''));
+  return !value.includes('@') && /^1\d{10}$/.test(value.replace(/\s/g, ''));
 }
 
 export function getSafeReturnTo(value: unknown): string {

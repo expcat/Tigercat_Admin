@@ -35,7 +35,7 @@ import type {
   TimelineItem,
   ListItem,
   DatePickerModelValue,
-  TimePickerModelValue,
+  TimePickerRangeTuple,
 } from '@expcat/tigercat-core'
 import {
   DEMO_OTP_CODE,
@@ -166,7 +166,7 @@ const density = ref<string>('comfortable')
 const themeColor = ref<string>('#3b82f6')
 const fontSize = ref<number>(14)
 const birthday = ref<DatePickerModelValue>(null)
-const quietHours = ref<TimePickerModelValue>(['22:00', '07:00'])
+const quietHours = ref<TimePickerRangeTuple>(['22:00', '07:00'])
 const bio = ref('')
 const emailDigest = ref(true)
 const swatchColors = ['#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#f97316', '#14b8a6']
@@ -197,8 +197,10 @@ function handleFontSizeChange(value: number | [number, number]) {
 function handleBirthdayChange(value: unknown) {
   birthday.value = value as DatePickerModelValue
 }
-function handleQuietHoursChange(value: TimePickerModelValue) {
-  quietHours.value = value
+function handleQuietHoursChange(index: 0 | 1, value: string | null) {
+  const next: TimePickerRangeTuple = [...quietHours.value]
+  next[index] = value
+  quietHours.value = next
 }
 </script>
 
@@ -369,6 +371,7 @@ function handleQuietHoursChange(value: TimePickerModelValue) {
               <div class="max-w-sm">
                 <Slider
                   :model-value="fontSize"
+                  aria-label="界面字号"
                   @update:model-value="handleFontSizeChange"
                   :min="12"
                   :max="20"
@@ -390,13 +393,22 @@ function handleQuietHoursChange(value: TimePickerModelValue) {
                 />
               </div>
               <div>
-                <Text weight="medium" class="mb-2 block">免打扰时段</Text>
-                <TimePicker
-                  :model-value="quietHours"
-                  @update:model-value="handleQuietHoursChange"
-                  range
-                  :show-seconds="false"
-                />
+                <Text weight="medium" class="mb-2 block">免打扰时段（可跨午夜）</Text>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <TimePicker
+                    aria-label="免打扰开始时间"
+                    :model-value="quietHours[0]"
+                    :show-seconds="false"
+                    @update:model-value="(value: string | null) => handleQuietHoursChange(0, value)"
+                  />
+                  <TimePicker
+                    aria-label="免打扰结束时间"
+                    :labels="{ toggle: '打开免打扰结束时间选择器' }"
+                    :model-value="quietHours[1]"
+                    :show-seconds="false"
+                    @update:model-value="(value: string | null) => handleQuietHoursChange(1, value)"
+                  />
+                </div>
               </div>
             </div>
 
