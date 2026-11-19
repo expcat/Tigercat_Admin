@@ -402,7 +402,7 @@ function ContentPage() {
                 onSearchChange={setTitle}
               />
               <Watermark content={['草稿 DRAFT', '内部预览']} font={{ fontSize: 15 }}>
-                <div className="content-editor rounded-lg border border-(--tiger-border,#e5e7eb) p-1">
+                <div className="content-editor rounded-lg border border-(--tiger-border,#e5e7eb) p-1 max-md:[&_[role=toolbar]]:flex-wrap! max-md:[&_[role=toolbar]]:overflow-x-visible!">
                   {editorType === 'rich' && (
                     <RichTextEditor value={richValue} height={320} onChange={setRichValue} placeholder="输入富文本内容…" />
                   )}

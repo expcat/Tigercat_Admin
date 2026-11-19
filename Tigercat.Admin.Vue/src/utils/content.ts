@@ -4,12 +4,6 @@ import { getAuthHeaders } from './auth';
 import type { Article, ArticleEditorType, SaveArticlePayload } from './types';
 export type { Article, ArticleEditorType, SaveArticlePayload } from './types';
 
-export function fetchArticles() {
-  return apiRequest<Article[]>('/api/content/articles', {
-    headers: getAuthHeaders(),
-  });
-}
-
 export function fetchArticle(id: string, signal?: AbortSignal) {
   return apiRequest<Article>(`/api/content/articles/${encodeURIComponent(id)}`, {
     headers: getAuthHeaders(),
@@ -23,11 +17,6 @@ export function saveArticle(id: string, payload: SaveArticlePayload) {
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
-}
-
-export function unwrapArticles(data: Article[] | { items?: Article[] } | null | undefined): Article[] {
-  if (Array.isArray(data)) return data;
-  return data?.items ?? [];
 }
 
 export function asCategoryKey(value: unknown): string {

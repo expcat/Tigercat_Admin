@@ -256,11 +256,11 @@ function JobsPage() {
               <thead>
                 <tr className="border-b border-(--tiger-border,#e5e7eb) text-left text-(--tiger-text-secondary,#64748b)">
                   <th className="px-3 py-2 font-medium">任务名称</th>
-                  <th className="px-3 py-2 font-medium">调度表达式</th>
+                  {canEdit && <th className="px-3 py-2 font-medium text-right">操作</th>}
                   <th className="px-3 py-2 font-medium">状态</th>
+                  <th className="px-3 py-2 font-medium">调度表达式</th>
                   <th className="px-3 py-2 font-medium">上次 / 下次（示例）</th>
                   <th className="px-3 py-2 font-medium">进度（示例）</th>
-                  {canEdit && <th className="px-3 py-2 font-medium text-right">操作</th>}
                 </tr>
               </thead>
               <tbody>
@@ -277,11 +277,14 @@ function JobsPage() {
                       <button type="button" className="text-left" aria-label={`查看任务：${job.name}`} aria-pressed={job.id === selectedId} onClick={() => setSelectedId(job.id)}><Text weight="medium">{job.name}</Text></button>
                       <div className="text-xs text-(--tiger-text-secondary,#64748b)">{job.id}</div>
                     </td>
-                    <td className="px-3 py-3">
-                      <Tag variant="info" size="sm">
-                        {job.cron}
-                      </Tag>
-                    </td>
+                    {canEdit && <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <Button variant="outline" size="sm" disabled={loading || togglingId !== null || submitting} onClick={() => openEdit(job)}>
+                        <span className="mr-1 inline-flex align-middle">
+                          <EditIcon size={14} />
+                        </span>
+                        编辑
+                      </Button>
+                    </td>}
                     <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-2">
                         {canEdit && <Switch
@@ -296,6 +299,11 @@ function JobsPage() {
                       </div>
                     </td>
                     <td className="px-3 py-3">
+                      <Tag variant="info" size="sm">
+                        {job.cron}
+                      </Tag>
+                    </td>
+                    <td className="px-3 py-3">
                       <div className="text-xs text-(--tiger-text-secondary,#64748b)">上次 {job.lastRun}</div>
                       <div className="text-xs text-(--tiger-text-secondary,#64748b)">下次 {job.nextRun}</div>
                     </td>
@@ -308,14 +316,6 @@ function JobsPage() {
                         />
                       </div>
                     </td>
-                    {canEdit && <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="outline" size="sm" disabled={loading || togglingId !== null || submitting} onClick={() => openEdit(job)}>
-                        <span className="mr-1 inline-flex align-middle">
-                          <EditIcon size={14} />
-                        </span>
-                        编辑
-                      </Button>
-                    </td>}
                   </tr>
                 ))}
               </tbody>

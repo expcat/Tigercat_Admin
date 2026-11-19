@@ -261,11 +261,11 @@ onBeforeUnmount(() => listController?.abort())
           <thead>
             <tr class="border-b border-(--tiger-border,#e5e7eb) text-left text-(--tiger-text-secondary,#64748b)">
               <th class="px-3 py-2 font-medium">任务名称</th>
-              <th class="px-3 py-2 font-medium">调度表达式</th>
+              <th v-if="canEdit" class="px-3 py-2 font-medium text-right">操作</th>
               <th class="px-3 py-2 font-medium">状态</th>
+              <th class="px-3 py-2 font-medium">调度表达式</th>
               <th class="px-3 py-2 font-medium">上次 / 下次（示例）</th>
               <th class="px-3 py-2 font-medium">进度（示例）</th>
-              <th v-if="canEdit" class="px-3 py-2 font-medium text-right">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -284,8 +284,11 @@ onBeforeUnmount(() => listController?.abort())
                 <button type="button" class="text-left" :aria-label="`查看任务：${job.name}`" :aria-pressed="job.id === selectedId" @click="selectJob(job.id)"><Text weight="medium">{{ job.name }}</Text></button>
                 <div class="text-xs text-(--tiger-text-secondary,#64748b)">{{ job.id }}</div>
               </td>
-              <td class="px-3 py-3">
-                <Tag variant="info" size="sm">{{ job.cron }}</Tag>
+              <td v-if="canEdit" class="px-3 py-3 text-right" @click.stop>
+                <Button variant="outline" size="sm" :disabled="loading || togglingId !== null || submitting" @click="openEdit(job)">
+                  <Icon name="edit" :size="14" class="mr-1" />
+                  编辑
+                </Button>
               </td>
               <td class="px-3 py-3" @click.stop>
                 <div class="flex items-center gap-2">
@@ -302,6 +305,9 @@ onBeforeUnmount(() => listController?.abort())
                 </div>
               </td>
               <td class="px-3 py-3">
+                <Tag variant="info" size="sm">{{ job.cron }}</Tag>
+              </td>
+              <td class="px-3 py-3">
                 <div class="text-xs text-(--tiger-text-secondary,#64748b)">上次 {{ job.lastRun }}</div>
                 <div class="text-xs text-(--tiger-text-secondary,#64748b)">下次 {{ job.nextRun }}</div>
               </td>
@@ -313,12 +319,6 @@ onBeforeUnmount(() => listController?.abort())
                     size="sm"
                   />
                 </div>
-              </td>
-              <td v-if="canEdit" class="px-3 py-3 text-right" @click.stop>
-                <Button variant="outline" size="sm" :disabled="loading || togglingId !== null || submitting" @click="openEdit(job)">
-                  <Icon name="edit" :size="14" class="mr-1" />
-                  编辑
-                </Button>
               </td>
             </tr>
           </tbody>

@@ -404,7 +404,7 @@ const currentColumnText = computed(() => {
             @update:search-value="(query: string) => (title = query)"
           />
           <Watermark :content="['草稿 DRAFT', '内部预览']" :font="{ fontSize: 15 }">
-            <div class="content-editor rounded-lg border border-(--tiger-border,#e5e7eb) p-1">
+            <div class="content-editor rounded-lg border border-(--tiger-border,#e5e7eb) p-1 max-md:[&_[role=toolbar]]:flex-wrap! max-md:[&_[role=toolbar]]:overflow-x-visible!">
               <RichTextEditor
                 v-if="editorType === 'rich'"
                 v-model="richValue"

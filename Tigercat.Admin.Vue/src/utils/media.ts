@@ -62,14 +62,6 @@ export function getMediaDetail(id: number, signal?: AbortSignal) {
   });
 }
 
-export function deleteMedia(id: number, force = false) {
-  const suffix = force ? '?force=true' : '';
-  return apiRequest<MessageResult>(`/api/media/${id}${suffix}`, {
-    method: 'DELETE',
-    headers: getAuthHeaders(),
-  });
-}
-
 export function batchDeleteMedia(ids: number[], force = false) {
   return apiRequest<MessageResult>(`/api/media/batch-delete`, {
     method: 'POST',
