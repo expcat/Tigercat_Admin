@@ -322,40 +322,45 @@ test.describe('运维工作流后端化页面', () => {
   });
 
   test('铃铛重叠加载会中止旧请求且不写回过期通知', async ({ page }) => {
+    const baseTitle = `基线通知 ${uniqueSuffix()}`;
     const staleTitle = `过期通知 ${uniqueSuffix()}`;
     const freshTitle = `最新通知 ${uniqueSuffix()}`;
+    let armed = false;
     let requestCount = 0;
     let releaseStale: (() => void) | undefined;
     let finishStale: (() => void) | undefined;
     const staleGate = new Promise<void>((resolve) => { releaseStale = resolve; });
     const staleFinished = new Promise<void>((resolve) => { finishStale = resolve; });
+    const payload = (title: string) => ({
+      success: true,
+      code: 200,
+      message: 'OK',
+      data: {
+        items: [{
+          id: `e2e-${title}`,
+          groupKey: 'ops',
+          title,
+          description: title,
+          time: new Date().toISOString(),
+          read: false,
+          toastType: 'info',
+        }],
+        total: 1,
+        page: 1,
+        pageSize: 100,
+      },
+    });
 
     await page.route(/\/api\/notifications\?page=1&pageSize=100$/, async (route) => {
+      // 挂载与首次打开的加载不参与本用例，避免依赖登录后挂载时序。
+      if (!armed) {
+        await route.fulfill({ json: payload(baseTitle) });
+        return;
+      }
       const currentRequest = ++requestCount;
       if (currentRequest === 1) await staleGate;
-      const title = currentRequest === 1 ? staleTitle : freshTitle;
       try {
-        await route.fulfill({
-          json: {
-            success: true,
-            code: 200,
-            message: 'OK',
-            data: {
-              items: [{
-                id: `e2e-${currentRequest}`,
-                groupKey: 'ops',
-                title,
-                description: title,
-                time: new Date().toISOString(),
-                read: false,
-                toastType: 'info',
-              }],
-              total: 1,
-              page: 1,
-              pageSize: 100,
-            },
-          },
-        });
+        await route.fulfill({ json: payload(currentRequest === 1 ? staleTitle : freshTitle) });
       } catch {
         // The superseded request is aborted by the bell.
       } finally {
@@ -364,6 +369,11 @@ test.describe('运维工作流后端化页面', () => {
     });
 
     await page.locator('[data-tour="notification-bell"]').click();
+    await expect(page.getByText(baseTitle, { exact: true }).first()).toBeVisible();
+    armed = true;
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event('tigercat-admin:notifications-changed'));
+    });
     await expect.poll(() => requestCount).toBe(1);
     await page.evaluate(() => {
       window.dispatchEvent(new Event('tigercat-admin:notifications-changed'));
