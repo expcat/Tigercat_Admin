@@ -356,9 +356,9 @@ LLM 生成新页面或复刻页面时，至少满足：
 
 ## 已对齐的上游能力
 
-本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `3.0.0`，React、Vue 与 MockApi 的 Core 依赖保持同版本（3.0 不向前兼容：modern 预设走 `createTigercatPlugin` / `ConfigProvider theme`，`Stepper` / `Kanban` / `DonutChart` / `ImageViewer` 已从调用面移除）。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 Captcha 仍跳过（登录无明示需求）。
+本项目此前记录的上游诉求已经补齐（Shell 相关于 `v1.2.23`，表格/卡片/弹层相关于 `v1.2.37`–`v1.2.44`，通知 toast 操作按钮于 `v2.1.2`）。当前蓝本为 Tigercat `3.0.2`，React、Vue 与 MockApi 的 Core 依赖保持同版本（3.0 不向前兼容：modern 预设走 `createTigercatPlugin` / `ConfigProvider theme`，`Stepper` / `Kanban` / `DonutChart` / `ImageViewer` 已从调用面移除）。尚未提供或不够用的包能力见 [tigercat-upstream-requirements.md](tigercat-upstream-requirements.md)；开放项短清单见 [frontend-upstream-suggestions.md](frontend-upstream-suggestions.md)。 Captcha 仍跳过（登录无明示需求）。
 
-React、Vue 与 MockApi 的发布依赖清单均固定 npm `3.0.0`，workspace 本地覆盖已移除，lockfile 使用 registry integrity。三者及框架库共用同一 Core，React / React DOM / Vue 使用各应用的同一份框架 peer。rc.3 正式包逐文件来源核验、能力对照和历史候选验收分别记录于 [rc.3 接入与验收](frontend-rc3-validation.md)，不把历史截图改称 registry 复测。本轮不保留 node_modules 补丁或 `patchedDependencies`。本地联调的临时用法见 [Tigercat 本地构建联调](operations.md#tigercat-本地构建联调)。浮层与焦点回归见 [e2e/overlay-focus.spec.ts](../e2e/overlay-focus.spec.ts)，审批确认与提交路径见 [e2e/approvals.spec.ts](../e2e/approvals.spec.ts)。
+React、Vue 与 MockApi 的发布依赖清单均固定 npm `3.0.2`，workspace 本地覆盖已移除，lockfile 使用 registry integrity。三者及框架库共用同一 Core，React / React DOM / Vue 使用各应用的同一份框架 peer。rc.3 正式包逐文件来源核验、能力对照和历史候选验收分别记录于 [rc.3 接入与验收](frontend-rc3-validation.md)，不把历史截图改称 registry 复测。本轮不保留 node_modules 补丁或 `patchedDependencies`。本地联调的临时用法见 [Tigercat 本地构建联调](operations.md#tigercat-本地构建联调)。浮层与焦点回归见 [e2e/overlay-focus.spec.ts](../e2e/overlay-focus.spec.ts)，审批确认与提交路径见 [e2e/approvals.spec.ts](../e2e/approvals.spec.ts)。
 
 升级时对照 [rc.2 迁移指南](https://github.com/expcat/Tigercat/blob/v3.0.0-rc.2/docs/MIGRATION.md)：`Slider` 不再接受 `vertical` / `showInput`，`LoadingBar` 不再接受 `renderBar`，`VirtualList` 仅使用纵向列表契约，不再传 `columns` / `orientation` / `stickyIndexes`。上传文案读取 `getUploadLabels(locale, overrides)`，不要导入已删除的英文常量；自定义拖拽项完整展开 `getDragItemProps` / `getDragItemAttrs` 的返回值，保留数字 key 所需的 `data-drag-id-type`。
 

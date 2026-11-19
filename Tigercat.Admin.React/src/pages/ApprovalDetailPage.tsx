@@ -225,7 +225,6 @@ function ApprovalDetailPage() {
       <AssigneePicker
         options={pickerContacts.map((user) => ({ id: user.id, name: `${user.name}（${user.username}）`, department: user.deptName }))}
         selectedIds={ctx.value?.id ? [String(ctx.value.id)] : []}
-        locale="zh-CN"
         onChange={(ids) => {
           const user = pickerContacts.find((item) => item.id === ids[ids.length - 1]);
           ctx.onChange(user ? contactActorOf(user) : undefined);

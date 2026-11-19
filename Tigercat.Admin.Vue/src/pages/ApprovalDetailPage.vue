@@ -244,7 +244,6 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
     h(AssigneePicker, {
       options: pickerContacts.value.map((user) => ({ id: user.id, name: `${user.name}（${user.username}）`, department: user.deptName })),
       selectedIds: ctx.value?.id ? [String(ctx.value.id)] : [],
-      locale: 'zh-CN',
       onChange: (ids: string[]) => {
         const user = pickerContacts.value.find((item) => item.id === ids[ids.length - 1])
         ctx.onChange(user ? contactActorOf(user) : undefined)

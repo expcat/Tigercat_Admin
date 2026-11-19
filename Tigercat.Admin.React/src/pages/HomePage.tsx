@@ -226,7 +226,7 @@ function HomePage() {
     return () => controller.abort();
   }, [trendDays, reload]);
 
-  const handleTrendDaysChange = (value: number | string | undefined) => {
+  const handleTrendDaysChange = (value: number | string | null | undefined) => {
     const days = Number(value);
     if (trendDaysOptions.some((option) => option.value === days)) setTrendDays(days);
   };
