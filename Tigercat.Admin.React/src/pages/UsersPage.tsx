@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   type MouseEvent as ReactMouseEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { Avatar } from '@expcat/tigercat-react/Avatar';
 import { Button } from '@expcat/tigercat-react/Button';
@@ -184,6 +185,7 @@ function UsersPage() {
   const [modalTitle, setModalTitle] = useState('新增用户');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingAvatarId, setEditingAvatarId] = useState<number | null>(null);
+  const avatarUploadVersion = useRef(0);
   const [formData, setFormData] = useState<UserFormData>({ ...INITIAL_FORM });
   const [formErrors, setFormErrors] = useState({ username: '', password: '' });
   const usernameInputRef = useRef<HTMLInputElement>(null);
@@ -196,6 +198,7 @@ function UsersPage() {
     open: boolean;
     status: 0 | 1;
   }>({ open: false, status: 1 });
+  const [batchStatusIds, setBatchStatusIds] = useState<number[]>([]);
 
   // All roles for select
   const [allRoles, setAllRoles] = useState<RoleInfo[]>([]);
@@ -229,6 +232,20 @@ function UsersPage() {
 
   const userRowClassName = (record: UserItem | Record<string, unknown>) =>
     `js-user-row-${(record as UserItem).id}`;
+
+  const focusUserAction = (userId?: number) => {
+    requestAnimationFrame(() => {
+      const row = userId
+        ? document.querySelector<HTMLElement>(`.js-user-row-${userId}`)
+        : null;
+      const target = row?.querySelector<HTMLElement>(
+        '.p2-table-card-actions button:not(:disabled)',
+      ) ?? document.querySelector<HTMLElement>(
+        '[class*="js-user-row-"] .p2-table-card-actions button:not(:disabled)',
+      ) ?? document.querySelector<HTMLElement>('.js-users-create');
+      target?.focus();
+    });
+  };
 
   const persistQuery = useCallback((next: Partial<typeof queryRef.current>) => {
     queryRef.current = { ...queryRef.current, ...next };
@@ -308,11 +325,20 @@ function UsersPage() {
   const loadRoles = useCallback(async () => {
     if (!hasPerm('role:view')) return;
     try {
-      const res = await apiRequest<{ items: RoleInfo[] }>(
-        '/api/roles?pageSize=100',
+      const first = await apiRequest<PagedResult<RoleInfo>>(
+        '/api/roles?page=1&pageSize=100',
         { headers: getAuthHeaders() },
       );
-      setAllRoles(res.data.items.map((r: any) => ({ id: r.id, name: r.name })));
+      const items = [...first.data.items];
+      const lastPage = Math.ceil(first.data.total / 100);
+      for (let page = 2; page <= lastPage; page += 1) {
+        const res = await apiRequest<PagedResult<RoleInfo>>(
+          `/api/roles?page=${page}&pageSize=100`,
+          { headers: getAuthHeaders() },
+        );
+        items.push(...res.data.items);
+      }
+      setAllRoles(items.map((role) => ({ id: role.id, name: role.name })));
     } catch {
       setAllRoles([]);
     }
@@ -330,13 +356,21 @@ function UsersPage() {
       viewControlsQuery.removeEventListener('change', syncViewControls);
       clearTimeout(searchTimer.current);
       requestRef.current?.abort();
+      avatarUploadVersion.current += 1;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const closeModal = () => {
+    avatarUploadVersion.current += 1;
+    setAvatarUploading(false);
+    setModalVisible(false);
+  };
+
   // ---- Form submit (create / update) ----
   const handleSubmit = async () => {
     if (!modalVisible) return;
+    const submittedId = editingId;
 
     const errors = {
       username: !editingId && !formData.username.trim() ? '请输入用户名' : '',
@@ -356,7 +390,7 @@ function UsersPage() {
     try {
       if (editingId) {
         const body: Record<string, any> = {
-          displayName: formData.displayName || null,
+          displayName: formData.displayName,
           status: formData.status,
           roleIds: formData.roleIds,
         };
@@ -385,8 +419,9 @@ function UsersPage() {
         });
         Message.success({ content: '用户创建成功', duration: 3000 });
       }
-      setModalVisible(false);
-      loadUsers();
+      closeModal();
+      await loadUsers();
+      if (submittedId) focusUserAction(submittedId);
     } catch (e: any) {
       Message.error({ content: e.message || '操作失败', duration: 3000 });
     }
@@ -406,7 +441,8 @@ function UsersPage() {
         persistWorkbench({ selectedRowKeys: next });
         return next;
       });
-      loadUsers();
+      await loadUsers();
+      focusUserAction(userId);
     } catch (e: any) {
       Message.error({ content: e.message || '删除失败', duration: 3000 });
     }
@@ -438,7 +474,8 @@ function UsersPage() {
       setBatchDeleteConfirmVisible(false);
       setSelectedRowKeys([]);
       clearWorkbenchSelection('users', account);
-      loadUsers();
+      await loadUsers();
+      focusUserAction();
     } catch (e: any) {
       Message.error({ content: e.message || '批量删除失败', duration: 3000 });
     }
@@ -451,8 +488,7 @@ function UsersPage() {
     }
 
     const next = keys.map(Number).filter((id) => Number.isFinite(id));
-    setSelectedRowKeys(next);
-    persistWorkbench({ selectedRowKeys: next });
+    setBatchStatusIds(next);
     setBatchStatusConfirm({ open: true, status });
   };
 
@@ -462,7 +498,7 @@ function UsersPage() {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
-          ids: selectedRowKeys,
+          ids: batchStatusIds,
           status: batchStatusConfirm.status,
         }),
       });
@@ -473,7 +509,8 @@ function UsersPage() {
       setBatchStatusConfirm((prev) => ({ ...prev, open: false }));
       setSelectedRowKeys([]);
       clearWorkbenchSelection('users', account);
-      loadUsers();
+      await loadUsers();
+      focusUserAction(batchStatusIds.length === 1 ? batchStatusIds[0] : undefined);
     } catch (e: any) {
       Message.error({
         content: e.message || '批量状态更新失败',
@@ -538,7 +575,9 @@ function UsersPage() {
   };
 
   // ---- Modal helpers ----
-  const resolveUserFromEvent = (event: ReactMouseEvent): UserItem | null => {
+  const resolveUserFromEvent = (
+    event: ReactMouseEvent | ReactKeyboardEvent,
+  ): UserItem | null => {
     const marked = (event.target as HTMLElement | null)?.closest(
       '[class*="js-user-row-"]',
     );
@@ -571,6 +610,13 @@ function UsersPage() {
     }
   };
 
+  const onUsersKeyDown = (event: ReactKeyboardEvent) => {
+    if (event.key !== 'F10' || !event.shiftKey) return;
+    const user = resolveUserFromEvent(event);
+    setContextUser(user);
+    if (!user) event.stopPropagation();
+  };
+
   const editContextUser = () => {
     if (!contextUser || !canEdit) return;
     openEditModal(contextUser);
@@ -599,6 +645,8 @@ function UsersPage() {
   };
 
   const openCreateModal = () => {
+    avatarUploadVersion.current += 1;
+    setAvatarUploading(false);
     setFormErrors({ username: '', password: '' });
     setEditingId(null);
     setEditingAvatarId(null);
@@ -608,6 +656,8 @@ function UsersPage() {
   };
 
   const openEditModal = (user: UserItem) => {
+    avatarUploadVersion.current += 1;
+    setAvatarUploading(false);
     setFormErrors({ username: '', password: '' });
     setEditingId(user.id);
     setEditingAvatarId(user.avatarMediaId);
@@ -625,14 +675,17 @@ function UsersPage() {
   };
 
   const handleAvatarCropComplete = async (result: { blob: Blob }) => {
-    if (!editingId) return;
+    const userId = editingId;
+    if (!userId) return;
+    const uploadVersion = ++avatarUploadVersion.current;
     try {
       setAvatarUploading(true);
       const media = await uploadMediaBlob(
         result.blob,
-        `avatar-${editingId}.png`,
+        `avatar-${userId}.png`,
         'avatar',
       );
+      if (avatarUploadVersion.current !== uploadVersion) return;
       setFormData((prev) => ({
         ...prev,
         avatarMediaId: media.id,
@@ -640,9 +693,10 @@ function UsersPage() {
       }));
       Message.success({ content: '头像已上传，请保存用户资料', duration: 3000 });
     } catch (e: any) {
+      if (avatarUploadVersion.current !== uploadVersion) return;
       Message.error({ content: e.message || '头像上传失败', duration: 3000 });
     } finally {
-      setAvatarUploading(false);
+      if (avatarUploadVersion.current === uploadVersion) setAvatarUploading(false);
     }
   };
 
@@ -1043,7 +1097,7 @@ function UsersPage() {
           </Button>
         </PermissionGuard>
         <PermissionGuard code="user:create">
-          <Button onClick={openCreateModal}>
+          <Button className="js-users-create" onClick={openCreateModal}>
             <span className="flex items-center gap-1">
               <UserPlusIcon size={16} />
               新增用户
@@ -1083,7 +1137,7 @@ function UsersPage() {
       </div>}
 
       <ContextMenu asChild>
-        <div onContextMenuCapture={onUsersContextMenu}>
+        <div onContextMenuCapture={onUsersContextMenu} onKeyDownCapture={onUsersKeyDown}>
           <DataTableWithToolbar
             columns={columns as unknown as TableColumn<Record<string, unknown>>[]}
             dataSource={users as unknown as Record<string, unknown>[]}
@@ -1150,7 +1204,7 @@ function UsersPage() {
         okText="确定"
         cancelText="取消"
         onOk={handleSubmit}
-        onCancel={() => setModalVisible(false)}>
+        onCancel={closeModal}>
         <div className="p2-modal-scroll">
         <Form value={formData} labelWidth={88}>
           <FormItem label="用户名" name="username" error={formErrors.username}>
@@ -1318,12 +1372,12 @@ function UsersPage() {
         onOk={confirmBatchStatus}
         onCancel={() => setBatchStatusConfirm((prev) => ({ ...prev, open: false }))}
         role="alertdialog"
-        aria-label={`确认批量${batchStatusConfirm.status === 0 ? '启用' : '禁用'} ${selectedRowKeys.length} 个用户`}>
+        aria-label={`确认批量${batchStatusConfirm.status === 0 ? '启用' : '禁用'} ${batchStatusIds.length} 个用户`}>
         <p className="p2-text-secondary">
           将选中的
           <span className="p2-text-primary font-semibold">
             {' '}
-            {selectedRowKeys.length}{' '}
+            {batchStatusIds.length}{' '}
           </span>
           个用户设为{batchStatusConfirm.status === 0 ? '正常' : '禁用'}状态。
         </p>

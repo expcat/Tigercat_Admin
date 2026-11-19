@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, h } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, h, nextTick } from 'vue'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Checkbox } from '@expcat/tigercat-vue/Checkbox'
 import { DataTableWithToolbar } from '@expcat/tigercat-vue/DataTableWithToolbar'
@@ -41,6 +41,22 @@ const ROLE_CARD_LAYOUT: TableCardLayoutItem[] = [
   { key: 'createdAt', colSpan: 12, labelPosition: 'left' },
   { key: 'actions', colSpan: 12, hideLabel: true },
 ]
+
+function roleRowClassName(record: RoleItem | Record<string, unknown>) {
+  return `js-role-row-${(record as RoleItem).id}`
+}
+
+function focusRoleAction(roleId?: number) {
+  requestAnimationFrame(() => {
+    const row = roleId
+      ? document.querySelector<HTMLElement>(`.js-role-row-${roleId}`)
+      : null
+    const target = row?.querySelector<HTMLElement>('.p2-table-card-actions button:not(:disabled)')
+      ?? document.querySelector<HTMLElement>('[class*="js-role-row-"] .p2-table-card-actions button:not(:disabled)')
+      ?? document.querySelector<HTMLElement>('.js-roles-create')
+    target?.focus()
+  })
+}
 const savedWorkbench = loadWorkbenchState('roles', {
   queryState: { page: 1, pageSize: 10 },
   selectedRowKeys: [],
@@ -79,14 +95,20 @@ const formData = ref({
   description: '',
   permissionIds: [] as number[],
 })
+const formErrors = ref({ name: '', description: '' })
+const nameInputRef = ref<{ focus: () => void } | null>(null)
+const descriptionInputRef = ref<{ focus: () => void } | null>(null)
 
 // Permission config modal
 const permModalVisible = ref(false)
 const permConfigRole = ref<RoleItem | null>(null)
 const permConfigIds = ref<number[]>([])
+const permSaving = ref(false)
 
 // All permissions for selection
 const allPermissions = ref<PermissionInfo[]>([])
+const permissionLoading = ref(false)
+const permissionLoadError = ref('')
 
 // ---- Export state ----
 const exportModalVisible = ref(false)
@@ -169,30 +191,40 @@ async function loadRoles() {
 }
 
 async function loadAllPermissions() {
+  permissionLoading.value = true
+  permissionLoadError.value = ''
   try {
     const res = await apiRequest<PermissionInfo[]>('/api/roles/permissions', {
       headers: getAuthHeaders(),
     })
     allPermissions.value = res.data
-  } catch {
+  } catch (e: any) {
     allPermissions.value = []
+    permissionLoadError.value = e.message || '权限目录加载失败'
+  } finally {
+    permissionLoading.value = false
   }
 }
 
 async function handleSubmit() {
   if (!modalVisible.value) return
-
-  // Validation
-  if (!formData.value.name.trim()) {
-    Message.error({ content: '请输入角色名称', duration: 3000 })
-    return false
+  const submittedId = editingId.value
+  const name = formData.value.name.trim()
+  const errors = {
+    name: !name
+      ? '请输入角色名称'
+      : name.length < 2 || name.length > 50
+        ? '角色名称长度需在 2-50 个字符之间'
+        : '',
+    description: formData.value.description.length > 200
+      ? '描述长度不能超过 200 字符'
+      : '',
   }
-  if (formData.value.name.trim().length < 2 || formData.value.name.trim().length > 50) {
-    Message.error({ content: '角色名称长度需在 2-50 之间', duration: 3000 })
-    return false
-  }
-  if (formData.value.description && formData.value.description.length > 200) {
-    Message.error({ content: '描述长度不能超过 200', duration: 3000 })
+  formErrors.value = errors
+  if (errors.name || errors.description) {
+    await nextTick()
+    const input = errors.name ? nameInputRef : descriptionInputRef
+    input.value?.focus()
     return false
   }
 
@@ -204,7 +236,7 @@ async function handleSubmit() {
         headers: getAuthHeaders(),
         body: JSON.stringify({
           name: formData.value.name.trim(),
-          description: formData.value.description || null,
+          description: formData.value.description,
           permissionIds: formData.value.permissionIds,
         }),
       })
@@ -224,6 +256,7 @@ async function handleSubmit() {
     }
     modalVisible.value = false
     await loadRoles()
+    if (submittedId) focusRoleAction(submittedId)
   } catch (e: any) {
     Message.error({ content: e.message || '操作失败', duration: 3000 })
     return false
@@ -238,12 +271,14 @@ async function handleDelete(role: RoleItem) {
     })
     Message.success({ content: '删除成功', duration: 3000 })
     await loadRoles()
+    focusRoleAction(role.id)
   } catch (e: any) {
     Message.error({ content: e.message || '删除失败', duration: 3000 })
   }
 }
 
 function openCreateModal() {
+  formErrors.value = { name: '', description: '' }
   editingId.value = null
   modalTitle.value = '新增角色'
   formData.value = { name: '', description: '', permissionIds: [] }
@@ -251,6 +286,7 @@ function openCreateModal() {
 }
 
 function openEditModal(role: RoleItem) {
+  formErrors.value = { name: '', description: '' }
   editingId.value = role.id
   modalTitle.value = '编辑角色'
   formData.value = {
@@ -268,7 +304,9 @@ function openPermModal(role: RoleItem) {
 }
 
 async function handlePermSubmit() {
-  if (!permConfigRole.value) return
+  if (!permConfigRole.value || permSaving.value || permissionLoading.value || permissionLoadError.value) return false
+  const roleId = permConfigRole.value.id
+  permSaving.value = true
 
   try {
     await apiRequest(`/api/roles/${permConfigRole.value.id}/permissions`, {
@@ -280,9 +318,12 @@ async function handlePermSubmit() {
     permModalVisible.value = false
     permConfigRole.value = null
     await loadRoles()
+    focusRoleAction(roleId)
   } catch (e: any) {
     Message.error({ content: e.message || '权限配置失败', duration: 3000 })
     return false
+  } finally {
+    permSaving.value = false
   }
 }
 
@@ -599,6 +640,7 @@ onBeforeUnmount(() => {
       <Button
         v-permission="'role:create'"
         variant="primary"
+        class="js-roles-create"
         @click="openCreateModal"
       >
         <span class="flex items-center gap-1">
@@ -629,6 +671,8 @@ onBeforeUnmount(() => {
       :sort="sortState"
       column-lockable
       row-key="id"
+      :row-class-name="roleRowClassName"
+      :card-class-name="roleRowClassName"
       :hoverable="true"
       :striped="true"
       responsive-mode="card"
@@ -656,15 +700,19 @@ onBeforeUnmount(() => {
     >
       <div class="p2-modal-scroll">
       <Form :model-value="formData" :label-width="88">
-        <FormItem label="角色名称" name="name">
+        <FormItem label="角色名称" name="name" :error="formErrors.name">
           <Input
+            ref="nameInputRef"
             v-model="formData.name"
+            @update:model-value="formErrors.name = ''"
             placeholder="请输入角色名称（2-50 个字符）"
           />
         </FormItem>
-        <FormItem label="描述" name="description">
+        <FormItem label="描述" name="description" :error="formErrors.description">
           <Input
+            ref="descriptionInputRef"
             v-model="formData.description"
+            @update:model-value="formErrors.description = ''"
             placeholder="请输入角色描述（选填，最多 200 字符）"
           />
         </FormItem>
@@ -684,20 +732,27 @@ onBeforeUnmount(() => {
     <Modal
       v-model:open="permModalVisible"
       :title="`权限配置 - ${permConfigRole?.name || ''}`"
-      show-default-footer
-      ok-text="保存"
-      cancel-text="取消"
-      @ok="handlePermSubmit"
       @cancel="permModalVisible = false"
     >
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <Button variant="outline" :disabled="permSaving" @click="permModalVisible = false">取消</Button>
+          <Button :loading="permSaving" :disabled="permSaving || permissionLoading || Boolean(permissionLoadError)" @click="handlePermSubmit">保存</Button>
+        </div>
+      </template>
       <div class="p2-modal-scroll space-y-3">
         <div class="flex flex-col gap-2 text-sm text-(--tiger-text-secondary,#64748b) sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <span>按分组勾选权限，保存时仍提交扁平 permissionIds。</span>
-          <Tag variant="primary" size="sm">
+          <Tag v-if="!permissionLoadError" variant="primary" size="sm">
             {{ permConfigIds.length }} / {{ allPermissions.length }}
           </Tag>
         </div>
-        <div class="max-h-96 overflow-y-auto rounded-lg border border-(--tiger-border,#e2e8f0) p-3">
+        <div v-if="permissionLoading" role="status" class="p2-text-secondary py-8 text-center">权限目录加载中...</div>
+        <div v-else-if="permissionLoadError" role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-(--tiger-border,#e2e8f0) p-3">
+          <span>{{ permissionLoadError }}</span>
+          <Button variant="outline" @click="loadAllPermissions">重试加载权限</Button>
+        </div>
+        <div v-else class="max-h-96 overflow-y-auto rounded-lg border border-(--tiger-border,#e2e8f0) p-3">
           <Tree
             :tree-data="permissionTreeData"
             :checked-keys="permConfigIds"

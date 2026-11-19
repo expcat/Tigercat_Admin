@@ -66,6 +66,24 @@ const INITIAL_FORM: RoleFormData = {
   permissionIds: [],
 };
 
+function roleRowClassName(record: RoleItem | Record<string, unknown>) {
+  return `js-role-row-${(record as RoleItem).id}`;
+}
+
+function focusRoleAction(roleId?: number) {
+  requestAnimationFrame(() => {
+    const row = roleId
+      ? document.querySelector<HTMLElement>(`.js-role-row-${roleId}`)
+      : null;
+    const target = row?.querySelector<HTMLElement>(
+      '.p2-table-card-actions button:not(:disabled)',
+    ) ?? document.querySelector<HTMLElement>(
+      '[class*="js-role-row-"] .p2-table-card-actions button:not(:disabled)',
+    ) ?? document.querySelector<HTMLElement>('.js-roles-create');
+    target?.focus();
+  });
+}
+
 const EXPORT_FIELD_OPTIONS = [
   { key: 'id', label: 'ID' },
   { key: 'name', label: '角色名称' },
@@ -129,14 +147,20 @@ function RolesPage() {
   const [modalTitle, setModalTitle] = useState('新增角色');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<RoleFormData>({ ...INITIAL_FORM });
+  const [formErrors, setFormErrors] = useState({ name: '', description: '' });
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const descriptionInputRef = useRef<HTMLInputElement>(null);
 
   // Permission configuration modal
   const [permModalVisible, setPermModalVisible] = useState(false);
   const [permConfigRole, setPermConfigRole] = useState<RoleItem | null>(null);
   const [permConfigIds, setPermConfigIds] = useState<number[]>([]);
+  const [permSaving, setPermSaving] = useState(false);
 
   // All available permissions for select
   const [allPermissions, setAllPermissions] = useState<PermissionInfo[]>([]);
+  const [permissionLoading, setPermissionLoading] = useState(false);
+  const [permissionLoadError, setPermissionLoadError] = useState('');
 
   // Export state
   const [exportModalVisible, setExportModalVisible] = useState(false);
@@ -233,13 +257,18 @@ function RolesPage() {
   }, [persistQuery]);
 
   const loadPermissions = useCallback(async () => {
+    setPermissionLoading(true);
+    setPermissionLoadError('');
     try {
       const res = await apiRequest<PermissionInfo[]>('/api/roles/permissions', {
         headers: getAuthHeaders(),
       });
       setAllPermissions(res.data ?? []);
-    } catch {
+    } catch (e: any) {
       setAllPermissions([]);
+      setPermissionLoadError(e.message || '权限目录加载失败');
+    } finally {
+      setPermissionLoading(false);
     }
   }, []);
 
@@ -256,20 +285,23 @@ function RolesPage() {
   // ---- Form submit (create / update) ----
   const handleSubmit = async () => {
     if (!modalVisible) return;
-
-    if (!formData.name.trim()) {
-      Message.error({ content: '请输入角色名称', duration: 3000 });
-      return;
-    }
-    if (formData.name.trim().length < 2 || formData.name.trim().length > 50) {
-      Message.error({
-        content: '角色名称长度需在 2-50 个字符之间',
-        duration: 3000,
+    const submittedId = editingId;
+    const name = formData.name.trim();
+    const errors = {
+      name: !name
+        ? '请输入角色名称'
+        : name.length < 2 || name.length > 50
+          ? '角色名称长度需在 2-50 个字符之间'
+          : '',
+      description: formData.description.length > 200
+        ? '描述长度不能超过 200 字符'
+        : '',
+    };
+    setFormErrors(errors);
+    if (errors.name || errors.description) {
+      requestAnimationFrame(() => {
+        (errors.name ? nameInputRef : descriptionInputRef).current?.focus();
       });
-      return;
-    }
-    if (formData.description && formData.description.length > 200) {
-      Message.error({ content: '描述长度不能超过 200 字符', duration: 3000 });
       return;
     }
 
@@ -280,7 +312,7 @@ function RolesPage() {
           headers: getAuthHeaders(),
           body: JSON.stringify({
             name: formData.name.trim(),
-            description: formData.description || null,
+            description: formData.description,
             permissionIds: formData.permissionIds,
           }),
         });
@@ -298,7 +330,8 @@ function RolesPage() {
         Message.success({ content: '角色创建成功', duration: 3000 });
       }
       setModalVisible(false);
-      loadRoles();
+      await loadRoles();
+      if (submittedId) focusRoleAction(submittedId);
     } catch (e: any) {
       Message.error({ content: e.message || '操作失败', duration: 3000 });
     }
@@ -312,7 +345,8 @@ function RolesPage() {
         headers: getAuthHeaders(),
       });
       Message.success({ content: '删除成功', duration: 3000 });
-      loadRoles();
+      await loadRoles();
+      focusRoleAction(role.id);
     } catch (e: any) {
       Message.error({ content: e.message || '删除失败', duration: 3000 });
     }
@@ -326,7 +360,9 @@ function RolesPage() {
   };
 
   const handlePermSubmit = async () => {
-    if (!permConfigRole) return;
+    if (!permConfigRole || permSaving || permissionLoading || permissionLoadError) return;
+    const roleId = permConfigRole.id;
+    setPermSaving(true);
     try {
       await apiRequest(`/api/roles/${permConfigRole.id}/permissions`, {
         method: 'PUT',
@@ -336,12 +372,15 @@ function RolesPage() {
       Message.success({ content: '权限配置已保存', duration: 3000 });
       setPermModalVisible(false);
       setPermConfigRole(null);
-      loadRoles();
+      await loadRoles();
+      focusRoleAction(roleId);
     } catch (e: any) {
       Message.error({
         content: e.message || '权限配置失败',
         duration: 3000,
       });
+    } finally {
+      setPermSaving(false);
     }
   };
 
@@ -401,6 +440,7 @@ function RolesPage() {
 
   // ---- Modal helpers ----
   const openCreateModal = () => {
+    setFormErrors({ name: '', description: '' });
     setEditingId(null);
     setModalTitle('新增角色');
     setFormData({ ...INITIAL_FORM });
@@ -408,6 +448,7 @@ function RolesPage() {
   };
 
   const openEditModal = (role: RoleItem) => {
+    setFormErrors({ name: '', description: '' });
     setEditingId(role.id);
     setModalTitle('编辑角色');
     setFormData({
@@ -636,6 +677,9 @@ function RolesPage() {
     value: RoleFormData[K],
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === 'name' || field === 'description') {
+      setFormErrors((prev) => ({ ...prev, [field]: '' }));
+    }
   };
 
   const tableToolbar = useMemo(
@@ -682,7 +726,7 @@ function RolesPage() {
           </Button>
         </PermissionGuard>
         <PermissionGuard code="role:create">
-          <Button variant="primary" onClick={openCreateModal}>
+          <Button className="js-roles-create" variant="primary" onClick={openCreateModal}>
             <span className="flex items-center gap-1">
               <UserPlusIcon size={16} />
               新增角色
@@ -711,6 +755,8 @@ function RolesPage() {
         sort={sortState}
         columnLockable
         rowKey="id"
+        rowClassName={roleRowClassName}
+        cardClassName={roleRowClassName}
         hoverable
         striped
         responsiveMode="card"
@@ -737,15 +783,17 @@ function RolesPage() {
         onCancel={() => setModalVisible(false)}>
         <div className="p2-modal-scroll">
         <Form value={formData} labelWidth={88}>
-          <FormItem label="角色名称" name="name">
+          <FormItem label="角色名称" name="name" error={formErrors.name}>
             <Input
+              ref={nameInputRef}
               value={formData.name}
               placeholder="请输入角色名称"
               onChange={(val) => setField('name', normalizeInput(val))}
             />
           </FormItem>
-          <FormItem label="描述" name="description">
+          <FormItem label="描述" name="description" error={formErrors.description}>
             <Input
+              ref={descriptionInputRef}
               value={formData.description}
               placeholder="请输入角色描述（选填）"
               onChange={(val) => setField('description', normalizeInput(val))}
@@ -770,19 +818,26 @@ function RolesPage() {
       <Modal
         open={permModalVisible}
         title={`权限配置 — ${permConfigRole?.name ?? ''}`}
-        showDefaultFooter
-        okText="保存"
-        cancelText="取消"
-        onOk={handlePermSubmit}
+        footer={<div className="flex justify-end gap-2">
+          <Button variant="outline" disabled={permSaving} onClick={() => setPermModalVisible(false)}>取消</Button>
+          <Button loading={permSaving} disabled={permSaving || permissionLoading || Boolean(permissionLoadError)} onClick={() => { void handlePermSubmit(); }}>保存</Button>
+        </div>}
         onCancel={() => setPermModalVisible(false)}>
         <div className="p2-modal-scroll space-y-3">
           <div className="flex flex-col gap-2 text-sm text-(--tiger-text-secondary,#64748b) sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <span>按分组勾选权限，保存时仍提交扁平 permissionIds。</span>
-            <Tag variant="primary" size="sm">
+            {!permissionLoadError && <Tag variant="primary" size="sm">
               {permConfigIds.length} / {allPermissions.length}
-            </Tag>
+            </Tag>}
           </div>
-          <div className="max-h-96 overflow-y-auto rounded-lg border border-(--tiger-border,#e2e8f0) p-3">
+          {permissionLoading ? (
+            <div role="status" className="p2-text-secondary py-8 text-center">权限目录加载中...</div>
+          ) : permissionLoadError ? (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-(--tiger-border,#e2e8f0) p-3">
+              <span>{permissionLoadError}</span>
+              <Button variant="outline" onClick={() => { void loadPermissions(); }}>重试加载权限</Button>
+            </div>
+          ) : <div className="max-h-96 overflow-y-auto rounded-lg border border-(--tiger-border,#e2e8f0) p-3">
             <Tree
               treeData={permissionTreeData}
               checkable
@@ -795,7 +850,7 @@ function RolesPage() {
               ariaLabel="角色权限树"
               onCheck={handlePermTreeCheck}
             />
-          </div>
+          </div>}
         </div>
       </Modal>
 

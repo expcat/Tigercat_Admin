@@ -40,7 +40,19 @@ function userRowClassName(record: UserItem | Record<string, unknown>) {
   return `js-user-row-${(record as UserItem).id}`
 }
 
-function resolveUserFromEvent(event: MouseEvent): UserItem | null {
+function focusUserAction(userId?: number) {
+  requestAnimationFrame(() => {
+    const row = userId
+      ? document.querySelector<HTMLElement>(`.js-user-row-${userId}`)
+      : null
+    const target = row?.querySelector<HTMLElement>('.p2-table-card-actions button:not(:disabled)')
+      ?? document.querySelector<HTMLElement>('[class*="js-user-row-"] .p2-table-card-actions button:not(:disabled)')
+      ?? document.querySelector<HTMLElement>('.js-users-create')
+    target?.focus()
+  })
+}
+
+function resolveUserFromEvent(event: MouseEvent | KeyboardEvent): UserItem | null {
   const marked = (event.target as HTMLElement | null)?.closest('[class*="js-user-row-"]')
   if (marked) {
     const match = Array.from(marked.classList).find((cls) => cls.startsWith('js-user-row-'))
@@ -64,6 +76,12 @@ function onUsersContextMenu(event: MouseEvent) {
   if (!contextUser.value) {
     event.stopPropagation()
   }
+}
+
+function onUsersKeyDown(event: KeyboardEvent) {
+  if (event.key !== 'F10' || !event.shiftKey) return
+  contextUser.value = resolveUserFromEvent(event)
+  if (!contextUser.value) event.stopPropagation()
 }
 
 function editContextUser() {
@@ -163,6 +181,7 @@ const modalVisible = ref(false)
 const modalTitle = ref('新增用户')
 const editingId = ref<number | null>(null)
 const editingAvatarId = ref<number | null>(null)
+let avatarUploadVersion = 0
 const avatarUploading = ref(false)
 const formErrors = ref({ username: '', password: '' })
 const usernameInputRef = ref<{ focus: () => void } | null>(null)
@@ -180,6 +199,7 @@ const formData = ref({
 const batchDeleteConfirmVisible = ref(false)
 const batchStatusConfirmVisible = ref(false)
 const batchStatusValue = ref<0 | 1>(1)
+const batchStatusIds = ref<number[]>([])
 
 // All roles for select
 const allRoles = ref<RoleInfo[]>([])
@@ -272,20 +292,35 @@ async function loadUsers() {
 async function loadRoles() {
   if (!hasPerm('role:view')) return
   try {
-    const res = await apiRequest<{ items: RoleInfo[] }>('/api/roles?pageSize=100', {
+    const first = await apiRequest<PagedResult<RoleInfo>>('/api/roles?page=1&pageSize=100', {
       headers: getAuthHeaders(),
     })
-    allRoles.value = res.data.items.map((r: any) => ({ id: r.id, name: r.name }))
+    const items = [...first.data.items]
+    const lastPage = Math.ceil(first.data.total / 100)
+    for (let page = 2; page <= lastPage; page += 1) {
+      const res = await apiRequest<PagedResult<RoleInfo>>(`/api/roles?page=${page}&pageSize=100`, {
+        headers: getAuthHeaders(),
+      })
+      items.push(...res.data.items)
+    }
+    allRoles.value = items.map((role) => ({ id: role.id, name: role.name }))
   } catch {
     // Roles may not be accessible if user lacks permission
     allRoles.value = []
   }
 }
 
+function closeModal() {
+  avatarUploadVersion += 1
+  avatarUploading.value = false
+  modalVisible.value = false
+}
+
 async function handleSubmit() {
   if (modalVisible.value === false) {
     return
   }
+  const submittedId = editingId.value
 
   const errors = {
     username: !editingId.value && !formData.value.username.trim() ? '请输入用户名' : '',
@@ -306,7 +341,7 @@ async function handleSubmit() {
     if (editingId.value) {
       // Update
       const body: Record<string, any> = {
-        displayName: formData.value.displayName || null,
+        displayName: formData.value.displayName,
         status: formData.value.status,
         roleIds: formData.value.roleIds,
       }
@@ -336,8 +371,9 @@ async function handleSubmit() {
       })
       Message.success({ content: '用户创建成功', duration: 3000 })
     }
-    modalVisible.value = false
+    closeModal()
     await loadUsers()
+    if (submittedId) focusUserAction(submittedId)
   } catch (e: any) {
     Message.error({ content: e.message || '操作失败', duration: 3000 })
     return false
@@ -356,6 +392,7 @@ async function handleDelete(user: UserItem) {
     selectedRowKeys.value = selectedRowKeys.value.filter(k => k !== userId)
     persistWorkbench({ selectedRowKeys: selectedRowKeys.value })
     await loadUsers()
+    focusUserAction(userId)
   } catch (e: any) {
     Message.error({ content: e.message || '删除失败', duration: 3000 })
   }
@@ -383,6 +420,7 @@ async function confirmBatchDelete() {
     selectedRowKeys.value = []
     clearWorkbenchSelection('users', account)
     await loadUsers()
+    focusUserAction()
   } catch (e: any) {
     Message.error({ content: e.message || '批量删除失败', duration: 3000 })
     return false
@@ -394,8 +432,7 @@ async function handleBatchStatus(status: 0 | 1, keys = selectedRowKeys.value) {
     Message.error({ content: '请选择要更新状态的用户', duration: 3000 })
     return
   }
-  selectedRowKeys.value = keys.map(Number).filter(id => Number.isFinite(id))
-  persistWorkbench({ selectedRowKeys: selectedRowKeys.value })
+  batchStatusIds.value = keys.map(Number).filter(id => Number.isFinite(id))
   batchStatusValue.value = status
   batchStatusConfirmVisible.value = true
 }
@@ -405,13 +442,14 @@ async function confirmBatchStatus() {
     const res = await apiRequest<MessageResult>('/api/users/batch-status', {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ ids: selectedRowKeys.value, status: batchStatusValue.value }),
+      body: JSON.stringify({ ids: batchStatusIds.value, status: batchStatusValue.value }),
     })
     Message.success({ content: res.data.message || '批量状态更新成功', duration: 3000 })
     batchStatusConfirmVisible.value = false
     selectedRowKeys.value = []
     clearWorkbenchSelection('users', account)
     await loadUsers()
+    focusUserAction(batchStatusIds.value.length === 1 ? batchStatusIds.value[0] : undefined)
   } catch (e: any) {
     Message.error({ content: e.message || '批量状态更新失败', duration: 3000 })
     return false
@@ -419,6 +457,8 @@ async function confirmBatchStatus() {
 }
 
 function openCreateModal() {
+  avatarUploadVersion += 1
+  avatarUploading.value = false
   formErrors.value = { username: '', password: '' }
   editingId.value = null
   editingAvatarId.value = null
@@ -428,6 +468,8 @@ function openCreateModal() {
 }
 
 function openEditModal(user: UserItem) {
+  avatarUploadVersion += 1
+  avatarUploading.value = false
   formErrors.value = { username: '', password: '' }
   editingId.value = user.id
   editingAvatarId.value = user.avatarMediaId
@@ -445,10 +487,13 @@ function openEditModal(user: UserItem) {
 }
 
 async function handleAvatarCropComplete(result: { blob: Blob }) {
-  if (!editingId.value) return
+  const userId = editingId.value
+  if (!userId) return
+  const uploadVersion = ++avatarUploadVersion
   try {
     avatarUploading.value = true
-    const media = await uploadMediaBlob(result.blob, `avatar-${editingId.value}.png`, 'avatar')
+    const media = await uploadMediaBlob(result.blob, `avatar-${userId}.png`, 'avatar')
+    if (avatarUploadVersion !== uploadVersion) return
     formData.value = {
       ...formData.value,
       avatarMediaId: media.id,
@@ -456,9 +501,10 @@ async function handleAvatarCropComplete(result: { blob: Blob }) {
     }
     Message.success({ content: '头像已上传，请保存用户资料', duration: 3000 })
   } catch (e: any) {
+    if (avatarUploadVersion !== uploadVersion) return
     Message.error({ content: e.message || '头像上传失败', duration: 3000 })
   } finally {
-    avatarUploading.value = false
+    if (avatarUploadVersion === uploadVersion) avatarUploading.value = false
   }
 }
 
@@ -871,6 +917,7 @@ onBeforeUnmount(() => {
   viewControlsQuery?.removeEventListener('change', syncViewControls)
   clearTimeout(searchTimer)
   requestController?.abort()
+  avatarUploadVersion += 1
 })
 </script>
 
@@ -899,6 +946,7 @@ onBeforeUnmount(() => {
       </Button>
       <Button
         v-if="canCreate"
+        class="js-users-create"
         @click="openCreateModal"
       >
         <span class="flex items-center gap-1">
@@ -935,7 +983,7 @@ onBeforeUnmount(() => {
     </div>
 
     <ContextMenu as-child>
-      <div class="p2-table-toolbar-stack min-w-0" @contextmenu.capture="onUsersContextMenu">
+      <div class="p2-table-toolbar-stack min-w-0" @contextmenu.capture="onUsersContextMenu" @keydown.capture="onUsersKeyDown">
         <DataTableWithToolbar
           :columns="columns"
           :data-source="users as any"
@@ -1004,7 +1052,7 @@ onBeforeUnmount(() => {
       ok-text="确定"
       cancel-text="取消"
       @ok="handleSubmit"
-      @cancel="modalVisible = false"
+      @cancel="closeModal"
     >
       <div class="p2-modal-scroll">
       <Form :model-value="formData" :label-width="88">
@@ -1123,7 +1171,7 @@ onBeforeUnmount(() => {
     >
       <p class="p2-text-secondary">
         将选中的
-        <span class="p2-text-primary font-semibold">{{ selectedRowKeys.length }}</span>
+        <span class="p2-text-primary font-semibold">{{ batchStatusIds.length }}</span>
         个用户设为{{ batchStatusValue === 0 ? '正常' : '禁用' }}状态。
       </p>
     </Modal>

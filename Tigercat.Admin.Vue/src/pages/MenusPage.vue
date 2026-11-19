@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, onBeforeUnmount, ref } from 'vue'
+import { computed, h, onMounted, onBeforeUnmount, ref, nextTick } from 'vue'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Empty } from '@expcat/tigercat-vue/Empty'
@@ -55,6 +55,8 @@ const modalVisible = ref(false)
 const modalTitle = ref('新增菜单节点')
 const editingKey = ref<string | null>(null)
 const formData = ref<MenuNodeForm>({ ...EMPTY_MENU_FORM })
+const formErrors = ref({ key: '' })
+const keyInputRef = ref<{ focus: () => void } | null>(null)
 const submitting = ref(false)
 const roles = ref<RoleItem[]>([])
 const previewRoleId = ref<number | null>(null)
@@ -92,7 +94,7 @@ const roleOptions = computed(() =>
   roles.value.map((role) => ({ label: role.name, value: role.id })),
 )
 const previewItems = computed(() =>
-  previewMenuItems(schema.value.items, previewCodes.value),
+  previewMenuItems(schemaNodes(schema.value), previewCodes.value),
 )
 const previewRouteTotal = computed(() =>
   previewRoleId.value == null
@@ -154,6 +156,7 @@ function handleSelectedKeys(keys: TreeNodeKey[]) {
 }
 
 function openCreate() {
+  formErrors.value = { key: '' }
   modalTitle.value = '新增菜单节点'
   editingKey.value = null
   formData.value = defaultCreateForm(selectedKey.value)
@@ -165,6 +168,7 @@ function openEdit() {
     Message.warning({ content: '请先选择要编辑的节点', duration: 2000 })
     return
   }
+  formErrors.value = { key: '' }
   modalTitle.value = '编辑菜单节点'
   editingKey.value = selectedNode.value.key
   formData.value = formFromNode(schema.value, selectedNode.value)
@@ -173,7 +177,9 @@ function openEdit() {
 
 async function submitForm() {
   if (!editingKey.value && !formData.value.key.trim()) {
-    Message.warning({ content: '请输入菜单节点 key', duration: 2000 })
+    formErrors.value = { key: '请输入菜单节点 key' }
+    await nextTick()
+    keyInputRef.value?.focus()
     return false
   }
   submitting.value = true
@@ -204,6 +210,9 @@ async function handleDelete() {
     selectedKey.value = null
     resetShellMenuSchema()
     await loadSchema()
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>('.js-menu-create')?.focus()
+    })
   } catch (error: unknown) {
     Message.error({ content: readErrorMessage(error, '删除失败'), duration: 3000 })
   }
@@ -254,6 +263,7 @@ onBeforeUnmount(() => previewRequest?.abort())
             <Button
               v-permission="'menu:create'"
               size="sm"
+              class="js-menu-create"
               @click="openCreate"
             >
               新增节点
@@ -363,9 +373,11 @@ onBeforeUnmount(() => previewRequest?.abort())
     >
       <div class="p2-modal-scroll">
         <Form :label-width="96">
-          <FormItem label="Key" required>
+          <FormItem label="Key" name="key" required :error="formErrors.key">
             <Input
+              ref="keyInputRef"
               v-model="formData.key"
+              @update:model-value="formErrors.key = ''"
               placeholder="例如 reports"
               :disabled="Boolean(editingKey)"
             />
@@ -375,9 +387,10 @@ onBeforeUnmount(() => previewRequest?.abort())
           </FormItem>
           <FormItem label="图标">
             <Select
-              v-model="formData.icon"
+              :model-value="formData.icon"
               :options="MENU_ICON_OPTIONS"
               placeholder="选择图标"
+              @update:model-value="(value: unknown) => (formData.icon = String(value ?? 'menu'))"
             />
           </FormItem>
           <FormItem label="路径">

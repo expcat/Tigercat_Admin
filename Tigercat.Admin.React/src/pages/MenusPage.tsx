@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { Button } from '@expcat/tigercat-react/Button';
 import { Card } from '@expcat/tigercat-react/Card';
 import { Empty } from '@expcat/tigercat-react/Empty';
@@ -14,10 +14,19 @@ import { Switch } from '@expcat/tigercat-react/Switch';
 import { Tag } from '@expcat/tigercat-react/Tag';
 import { Text } from '@expcat/tigercat-react/Text';
 import { Tree } from '@expcat/tigercat-react/Tree';
-import type { TreeNodeKey } from '@expcat/tigercat-core';
+import type { MenuItem, TreeNodeKey } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { PermissionGuard } from '../components/PermissionGuard';
-import { MenuIcon } from '../components/Icons';
+import {
+  ClockIcon,
+  HelpIcon,
+  Icons,
+  MenuIcon,
+  MessageIcon,
+  TicketIcon,
+  UploadIcon,
+  type IconProps,
+} from '../components/Icons';
 import { normalizeInput } from '../utils';
 import { usePermission } from '../utils/permission';
 import { resetShellMenuSchema } from '../utils/shell-navigation';
@@ -49,6 +58,29 @@ function readErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
+const PREVIEW_ICONS: Record<string, ComponentType<IconProps>> = {
+  ...Icons,
+  Clock: ClockIcon,
+  Help: HelpIcon,
+  Message: MessageIcon,
+  Ticket: TicketIcon,
+  Upload: UploadIcon,
+};
+
+function withPreviewIcons(items: MenuItem[]): MenuItem[] {
+  return items.map((item) => {
+    const iconName = typeof item.icon === 'string' ? item.icon : '';
+    const IconComponent = PREVIEW_ICONS[
+      iconName.charAt(0).toUpperCase() + iconName.slice(1)
+    ];
+    return {
+      ...item,
+      icon: IconComponent ? <IconComponent size={16} /> : item.icon,
+      children: item.children ? withPreviewIcons(item.children) : undefined,
+    };
+  });
+}
+
 function MenusPage() {
   const { has: hasPerm } = usePermission();
   const canDelete = hasPerm('menu:delete');
@@ -64,6 +96,8 @@ function MenusPage() {
   const [modalTitle, setModalTitle] = useState('新增菜单节点');
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [formData, setFormData] = useState<MenuNodeForm>({ ...EMPTY_MENU_FORM });
+  const [formErrors, setFormErrors] = useState({ key: '' });
+  const keyInputRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [previewRoleId, setPreviewRoleId] = useState<number | null>(null);
@@ -103,9 +137,10 @@ function MenusPage() {
     [roles],
   );
   const previewItems = useMemo(
-    () => previewMenuItems(schema.items, previewCodes),
-    [previewCodes, schema.items],
+    () => previewMenuItems(schemaNodes(schema), previewCodes),
+    [previewCodes, schema],
   );
+  const previewMenuData = useMemo(() => withPreviewIcons(previewItems), [previewItems]);
   const previewRouteTotal =
     previewRoleId == null ? 0 : previewRouteCount(schemaNodes(schema), previewCodes);
 
@@ -153,6 +188,7 @@ function MenusPage() {
   };
 
   const openCreate = () => {
+    setFormErrors({ key: '' });
     setModalTitle('新增菜单节点');
     setEditingKey(null);
     setFormData(defaultCreateForm(selectedKey));
@@ -164,6 +200,7 @@ function MenusPage() {
       Message.warning({ content: '请先选择要编辑的节点', duration: 2000 });
       return;
     }
+    setFormErrors({ key: '' });
     setModalTitle('编辑菜单节点');
     setEditingKey(selectedNode.key);
     setFormData(formFromNode(schema, selectedNode));
@@ -172,7 +209,8 @@ function MenusPage() {
 
   const submitForm = async () => {
     if (!editingKey && !formData.key.trim()) {
-      Message.warning({ content: '请输入菜单节点 key', duration: 2000 });
+      setFormErrors({ key: '请输入菜单节点 key' });
+      requestAnimationFrame(() => keyInputRef.current?.focus());
       return;
     }
     setSubmitting(true);
@@ -205,6 +243,9 @@ function MenusPage() {
       setSelectedKey(null);
       resetShellMenuSchema();
       await loadSchema();
+      requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>('.js-menu-create')?.focus();
+      });
     } catch (error: unknown) {
       Message.error({
         content: readErrorMessage(error, '删除失败'),
@@ -237,6 +278,7 @@ function MenusPage() {
 
   const patchForm = (patch: Partial<MenuNodeForm>) => {
     setFormData((prev) => ({ ...prev, ...patch }));
+    if (patch.key !== undefined) setFormErrors({ key: '' });
   };
 
   return (
@@ -254,7 +296,7 @@ function MenusPage() {
             <Text weight="medium">菜单树</Text>
             <div className="flex flex-wrap items-center gap-2">
               <PermissionGuard code="menu:create">
-                <Button size="sm" onClick={openCreate}>
+                <Button className="js-menu-create" size="sm" onClick={openCreate}>
                   新增节点
                 </Button>
               </PermissionGuard>
@@ -347,7 +389,7 @@ function MenusPage() {
           ) : (
             <Menu
               mode="inline"
-              items={previewItems}
+              items={previewMenuData}
               selectedKeys={[]}
               aria-label="角色菜单预览"
             />
@@ -365,8 +407,9 @@ function MenusPage() {
         onCancel={() => setModalVisible(false)}>
         <div className="p2-modal-scroll">
           <Form labelWidth={96}>
-            <FormItem label="Key" required>
+            <FormItem label="Key" name="key" required error={formErrors.key}>
               <Input
+                ref={keyInputRef}
                 value={formData.key}
                 placeholder="例如 reports"
                 disabled={Boolean(editingKey)}

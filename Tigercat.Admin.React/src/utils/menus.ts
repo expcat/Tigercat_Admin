@@ -114,10 +114,19 @@ export function deleteMenuNode(key: string) {
   });
 }
 
-export function fetchRolesForPreview() {
-  return apiRequest<PagedResult<RoleItem>>('/api/roles?page=1&pageSize=100', {
+export async function fetchRolesForPreview() {
+  const first = await apiRequest<PagedResult<RoleItem>>('/api/roles?page=1&pageSize=100', {
     headers: getAuthHeaders(),
   });
+  const items = [...first.data.items];
+  const lastPage = Math.ceil(first.data.total / 100);
+  for (let page = 2; page <= lastPage; page += 1) {
+    const res = await apiRequest<PagedResult<RoleItem>>(`/api/roles?page=${page}&pageSize=100`, {
+      headers: getAuthHeaders(),
+    });
+    items.push(...res.data.items);
+  }
+  return { ...first, data: { ...first.data, items } };
 }
 
 export function fetchRoleDetail(id: number, signal?: AbortSignal) {
@@ -298,11 +307,4 @@ export function previewMenuItems(
 export function previewRouteCount(nodes: MenuSchema, codes: string[]): number {
   const allowed = new Set(codes);
   return schemaToRouteRecords(nodes, (code) => allowed.has(code)).length;
-}
-
-export function flattenPreviewLabels(items: MenuItem[]): string[] {
-  return items.flatMap((item) => [
-    String(item.label ?? item.key ?? ''),
-    ...(item.children ? flattenPreviewLabels(item.children) : []),
-  ]);
 }
