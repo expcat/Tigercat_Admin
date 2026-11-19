@@ -1,6 +1,6 @@
 import type { ProjectRecord, ProjectStatusFilter } from '../utils/types';
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Avatar } from '@expcat/tigercat-react/Avatar';
 import { AvatarGroup } from '@expcat/tigercat-react/AvatarGroup';
 import { Card } from '@expcat/tigercat-react/Card';
@@ -20,6 +20,7 @@ import { MetricCard, MetricGrid, PageActionPanel } from '../components/PageFragm
 import { CheckCircleIcon, ClockIcon, PackageIcon, TrendingUpIcon } from '../components/Icons';
 import {
   fetchProjects,
+  getProjectAvatarTextColor,
   getProjectProgressStatus,
   PROJECT_PAGE_SIZE,
   PROJECT_STATUS_FILTERS,
@@ -31,20 +32,24 @@ const readErrorMessage = (error: unknown, fallback: string) =>
 
 function ProjectsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const keyword = searchParams.get('keyword') ?? '';
   const rawStatus = searchParams.get('status');
   const statusFilter: ProjectStatusFilter = PROJECT_STATUS_FILTERS.some(item => item.value === rawStatus) ? rawStatus as ProjectStatusFilter : 'all';
   const rawPage = Number(searchParams.get('page'));
   const page = Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1;
-  const [retryVersion, setRetryVersion] = useState(0);
+  const [listRetryVersion, setListRetryVersion] = useState(0);
+  const [statsRetryVersion, setStatsRetryVersion] = useState(0);
+  const returnProjectId: unknown = (location.state as { returnProjectId?: unknown } | null)?.returnProjectId;
+  const focusRestored = useRef(false);
   const [loadError, setLoadError] = useState('');
   const [statsError, setStatsError] = useState('');
   const [statsTotal, setStatsTotal] = useState<number | null>(null);
   const updateQuery = (patch: Record<string, string>) => {
     const next = new URLSearchParams(searchParams);
     Object.entries(patch).forEach(([key, value]) => {
-      if (!value || value === 'all' || (key === 'page' && value === '1')) next.delete(key);
+      if (!value || (key === 'status' && value === 'all') || (key === 'page' && value === '1')) next.delete(key);
       else next.set(key, value);
     });
     setSearchParams(next, { replace: true });
@@ -106,7 +111,7 @@ function ProjectsPage() {
     return () => {
       controller.abort();
     };
-  }, [keyword, statusFilter, page, retryVersion]);
+  }, [keyword, statusFilter, page, listRetryVersion]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -130,7 +135,15 @@ function ProjectsPage() {
     return () => {
       controller.abort();
     };
-  }, [retryVersion]);
+  }, [statsRetryVersion]);
+
+  useEffect(() => {
+    if (focusRestored.current || loading || loadError || typeof returnProjectId !== 'string') return;
+    const card = document.querySelector<HTMLElement>(`[data-testid="project-card-${CSS.escape(returnProjectId)}"]`);
+    if (!card) return;
+    card.focus();
+    focusRestored.current = true;
+  }, [loading, loadError, projects, returnProjectId]);
 
   const handleKeywordChange = (value: string | number) => {
     updateQuery({ keyword: String(value), page: '1' });
@@ -193,7 +206,7 @@ function ProjectsPage() {
         />
       </MetricGrid>
 
-      {statsError && <div role="alert" className="flex flex-wrap items-center gap-3"><Text color="danger">{statsError}</Text><Button variant="outline" onClick={() => setRetryVersion(value => value + 1)}>重试项目统计</Button></div>}
+      {statsError && <div role="alert" className="flex flex-wrap items-center gap-3"><Text color="danger">{statsError}</Text><Button variant="outline" onClick={() => setStatsRetryVersion(value => value + 1)}>重试项目统计</Button></div>}
 
       <PageActionPanel
         title="筛选项目"
@@ -218,7 +231,7 @@ function ProjectsPage() {
         }
       />
 
-      {loadError ? <Card><div role="alert" className="space-y-3"><Text color="danger">{loadError}</Text><Button variant="outline" onClick={() => setRetryVersion(value => value + 1)}>重试项目列表</Button></div></Card> : projects.length > 0 ? (
+      {loadError ? <Card><div role="alert" className="space-y-3"><Text color="danger">{loadError}</Text><Button variant="outline" onClick={() => setListRetryVersion(value => value + 1)}>重试项目列表</Button></div></Card> : projects.length > 0 ? (
         <Row
           data-testid="projects-grid"
           gutter={[16, 16]}
@@ -308,7 +321,7 @@ function ProjectCard({
               key={member.id}
               size="sm"
               bgColor={member.color}
-              textColor="#ffffff"
+              textColor={getProjectAvatarTextColor(member.color)}
             >
               {member.name.slice(0, 1)}
             </Avatar>

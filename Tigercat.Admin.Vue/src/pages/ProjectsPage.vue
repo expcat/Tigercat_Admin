@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ProjectRecord, ProjectStatusFilter } from '../utils/types'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Avatar } from '@expcat/tigercat-vue/Avatar'
 import { AvatarGroup } from '@expcat/tigercat-vue/AvatarGroup'
@@ -23,6 +23,7 @@ import PageActionPanel from '../components/PageActionPanel.vue'
 import Icon from '../components/Icon.vue'
 import {
   fetchProjects,
+  getProjectAvatarTextColor,
   getProjectProgressStatus,
   PROJECT_PAGE_SIZE,
   PROJECT_STATUS_FILTERS,
@@ -40,12 +41,14 @@ const page = computed(() => {
 const loadError = ref('')
 const statsError = ref('')
 const statsTotal = ref<number | null>(null)
+const returnProjectId: unknown = window.history.state?.returnProjectId
+let focusRestored = false
 let listRequest: AbortController | null = null
 let statsRequest: AbortController | null = null
 function updateQuery(patch: Record<string, string>) {
   const next = { ...route.query }
   Object.entries(patch).forEach(([key, value]) => {
-    if (!value || value === 'all' || (key === 'page' && value === '1')) delete next[key]
+    if (!value || (key === 'status' && value === 'all') || (key === 'page' && value === '1')) delete next[key]
     else next[key] = value
   })
   void router.replace({ query: next })
@@ -120,10 +123,17 @@ async function loadStats() {
 }
 
 watch([keyword, statusFilter, page], () => void loadProjects(), { immediate: true })
+watch([loading, projects], async () => {
+  if (focusRestored || loading.value || loadError.value || typeof returnProjectId !== 'string') return
+  await nextTick()
+  const card = document.querySelector<HTMLElement>(`[data-testid="project-card-${CSS.escape(returnProjectId)}"]`)
+  if (!card) return
+  card.focus()
+  focusRestored = true
+}, { immediate: true })
 onMounted(() => void loadStats())
 onBeforeUnmount(() => { listRequest?.abort(); statsRequest?.abort() })
 
-function retryProjects() { void loadProjects(); void loadStats() }
 function handleStatusChange(value: string | number) { updateQuery({ status: String(value), page: '1' }) }
 function handlePageChange(value: number) { updateQuery({ page: String(value) }) }
 function openProject(id: string) {
@@ -162,7 +172,7 @@ function statusMeta(project: ProjectRecord) {
       </MetricCard>
     </MetricGrid>
 
-    <div v-if="statsError" role="alert" class="flex flex-wrap items-center gap-3"><Text color="danger">{{ statsError }}</Text><Button variant="outline" @click="retryProjects">重试项目统计</Button></div>
+    <div v-if="statsError" role="alert" class="flex flex-wrap items-center gap-3"><Text color="danger">{{ statsError }}</Text><Button variant="outline" @click="loadStats">重试项目统计</Button></div>
 
     <PageActionPanel
       title="筛选项目"
@@ -186,7 +196,7 @@ function statusMeta(project: ProjectRecord) {
       </template>
     </PageActionPanel>
 
-    <Card v-if="loadError"><div role="alert" class="space-y-3"><Text color="danger">{{ loadError }}</Text><Button variant="outline" @click="retryProjects">重试项目列表</Button></div></Card>
+    <Card v-if="loadError"><div role="alert" class="space-y-3"><Text color="danger">{{ loadError }}</Text><Button variant="outline" @click="loadProjects">重试项目列表</Button></div></Card>
     <Row
       v-else-if="projects.length"
       data-testid="projects-grid"
@@ -234,7 +244,7 @@ function statusMeta(project: ProjectRecord) {
               :key="member.id"
               size="sm"
               :bg-color="member.color"
-              text-color="#ffffff"
+              :text-color="getProjectAvatarTextColor(member.color)"
             >
               {{ member.name.slice(0, 1) }}
             </Avatar>

@@ -23,6 +23,7 @@ import {
   calendarDateCellDotClasses,
   calendarDateCellExtraClasses,
   getCalendarEventDotStyle,
+  type CalendarMode,
   type DatePickerModelValue,
   type ListItem,
   type TimePickerModelValue,
@@ -36,6 +37,7 @@ import {
   fetchCalendarEvents,
   formatCalendarDate,
   parseCalendarDate,
+  parseCalendarTimestamp,
   toCalendarCellEvents,
 } from '../utils/calendar'
 
@@ -53,6 +55,7 @@ const loadError = ref('')
 const submitError = ref('')
 const reloadVersion = ref(0)
 const clockNow = ref(Date.now())
+const clockTimer = window.setInterval(() => { clockNow.value = Date.now() }, 60000)
 const formRef = ref<HTMLFormElement | null>(null)
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 let eventsRequest: AbortController | null = null
@@ -60,13 +63,21 @@ const route = useRoute()
 const queryDate = computed(() => typeof route.query.date === 'string' ? route.query.date : null)
 const queryEventId = computed(() => typeof route.query.eventId === 'string' ? route.query.eventId : null)
 const selectedDate = ref<Date>(parseCalendarDate(queryDate.value) ?? new Date())
+const visibleDate = ref<Date>(selectedDate.value)
+const visibleMonthKey = computed(() => `${visibleDate.value.getFullYear()}-${visibleDate.value.getMonth()}`)
+const calendarMode = ref<CalendarMode>('month')
 const activeEventId = ref<string | null>(null)
 
 const readErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback
 
 function onDateChange(value: unknown) {
-  if (value instanceof Date) { selectedDate.value = value; activeEventId.value = null }
+  if (value instanceof Date) { selectedDate.value = value; visibleDate.value = value; activeEventId.value = null }
+}
+function onPanelChange(value: Date, mode: CalendarMode) {
+  visibleDate.value = value
+  calendarMode.value = mode
+  activeEventId.value = null
 }
 
 const selectedKey = computed(() => formatCalendarDate(selectedDate.value))
@@ -77,7 +88,10 @@ const eventsForSelected = computed(() =>
 )
 
 watch([queryDate, queryEventId], () => {
-  selectedDate.value = parseCalendarDate(queryDate.value) ?? new Date()
+  const nextDate = parseCalendarDate(queryDate.value) ?? new Date()
+  selectedDate.value = nextDate
+  visibleDate.value = nextDate
+  calendarMode.value = 'month'
   activeEventId.value = null
 })
 watch([events, loading, loadError, selectedKey, queryDate, queryEventId], async () => {
@@ -96,7 +110,7 @@ const targetError = computed(() => (queryDate.value !== null || queryEventId.val
   : queryEventId.value && !loading.value && !loadError.value && selectedKey.value === queryDate.value && !events.value.some(event => event.id === queryEventId.value && event.date === queryDate.value)
     ? '指定日程不存在于该日期或已被移除，请核对链接。' : '')
 
-const todayCount = computed(() => events.value.filter((e) => e.date === formatCalendarDate(new Date())).length)
+const todayCount = computed(() => events.value.filter((e) => e.date === formatCalendarDate(new Date(clockNow.value))).length)
 const monthCount = computed(() => {
   const ym = selectedKey.value.slice(0, 7)
   return events.value.filter((e) => e.date.startsWith(ym)).length
@@ -104,11 +118,12 @@ const monthCount = computed(() => {
 
 const upcoming = computed(() =>
   events.value
-    .map((e) => ({ ...e, ts: new Date(`${e.date}T${e.start}:00`).getTime() }))
-    .sort((a, b) => a.ts - b.ts),
+    .map((e) => ({ ...e, ts: parseCalendarTimestamp(e.date, e.start) }))
+    .sort((a, b) => (a.ts ?? Number.MAX_SAFE_INTEGER) - (b.ts ?? Number.MAX_SAFE_INTEGER)),
 )
-const nextEvent = computed(() => upcoming.value.find((e) => e.ts > clockNow.value) ?? null)
-const countdownTarget = computed(() => (nextEvent.value ? new Date(nextEvent.value.ts) : null))
+const hasInvalidLocalTime = computed(() => upcoming.value.some((e) => e.ts === null))
+const nextEvent = computed(() => upcoming.value.find((e) => e.ts !== null && e.ts > clockNow.value) ?? null)
+const countdownTarget = computed(() => (nextEvent.value?.ts == null ? null : new Date(nextEvent.value.ts)))
 function handleCountdownFinish() {
   clockNow.value = Date.now()
   Message.info({ content: '有一个日程已到开始时间', duration: 2600 })
@@ -118,7 +133,7 @@ const cellEvents = computed(() => toCalendarCellEvents(events.value))
 
 const upcomingList = computed<ListItem[]>(() =>
   upcoming.value
-    .filter((e) => e.ts > clockNow.value)
+    .filter((e) => e.ts !== null && e.ts > clockNow.value)
     .slice(0, 5)
     .map((e) => ({
       key: e.id,
@@ -172,7 +187,7 @@ async function loadEvents() {
   loadError.value = ''
   events.value = []
   try {
-    const range = calendarQueryRange(selectedDate.value)
+    const range = calendarQueryRange(visibleDate.value)
     const payload = await fetchCalendarEvents(range.from, range.to, controller.signal)
     if (!controller.signal.aborted) events.value = payload.data ?? []
   } catch (error: unknown) {
@@ -184,18 +199,21 @@ async function loadEvents() {
 
 async function submitEvent() {
   if (submitting.value) return
+  const invalidInput = formRef.value?.querySelector<HTMLElement>('[aria-invalid="true"]')
+  const draftField = invalidInput?.closest<HTMLElement>('[data-field]')?.dataset.field
   const title = form.value.title.trim()
   const date = toDateStr(form.value.date)
   const start = asTime(form.value.start)
   const end = asTime(form.value.end)
   const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/
-  const invalidField = !title || title.length > 120 ? 'title' : !date ? 'date'
+  const invalidField = draftField || (!title || title.length > 120 ? 'title' : !date ? 'date'
     : !timePattern.test(start) ? 'start' : !timePattern.test(end) || end <= start ? 'end'
-    : form.value.location.trim().length > 200 ? 'location' : ''
+    : form.value.location.trim().length > 200 ? 'location' : '')
   if (invalidField) {
     submitError.value = invalidField === 'title' ? '请填写 1–120 字的日程标题' : invalidField === 'date' ? '请选择有效日期'
       : invalidField === 'location' ? '地点长度不能超过 200' : '请填写有效时间，结束时间必须晚于开始时间（同一天）'
-    formRef.value?.querySelector<HTMLElement>(`[data-field="${invalidField}"] input`)?.focus()
+    const target = invalidInput ?? formRef.value?.querySelector<HTMLElement>(`[data-field="${invalidField}"] input`)
+    target?.focus()
     return
   }
   submitError.value = ''
@@ -203,6 +221,8 @@ async function submitEvent() {
   try {
     await createCalendarEvent({ date, start, end, title, type: form.value.type, location: form.value.location.trim() || '—' })
     selectedDate.value = new Date(`${date}T00:00:00`)
+    visibleDate.value = selectedDate.value
+    calendarMode.value = 'month'
     drawerOpen.value = false
     reloadVersion.value += 1
     clockNow.value = Date.now()
@@ -214,8 +234,8 @@ async function submitEvent() {
   }
 }
 function closeDrawer() { if (!submitting.value) drawerOpen.value = false }
-watch([() => `${selectedDate.value.getFullYear()}-${selectedDate.value.getMonth()}`, reloadVersion], () => void loadEvents(), { immediate: true })
-onBeforeUnmount(() => eventsRequest?.abort())
+watch([visibleMonthKey, reloadVersion], () => void loadEvents(), { immediate: true })
+onBeforeUnmount(() => { eventsRequest?.abort(); window.clearInterval(clockTimer) })
 </script>
 
 <template>
@@ -250,7 +270,7 @@ onBeforeUnmount(() => eventsRequest?.abort())
       <Card><Statistic title="所选月日程" :value="loading || loadError ? '—' : monthCount" suffix="项" /></Card>
     </div>
 
-    <MutedPanel compact :description="`共享日程按填写的日期与时间展示，不自动换算时区；倒计时按本机时区 ${timeZone} 计算。`" />
+    <MutedPanel compact :description="`共享日程按填写的日期与时间展示，不自动换算时区；倒计时按本机时区 ${timeZone} 计算。${hasInvalidLocalTime ? '部分日程的开始时间在本机时区不存在，不参与倒计时；原始时间仍在日程详情中展示。' : ''}`" />
     <Text v-if="targetError" tag="p" role="alert" color="danger">{{ targetError }}</Text>
     <div v-if="loadError" role="alert" class="flex flex-wrap items-center gap-3"><Text color="danger">{{ loadError }}</Text><Button variant="outline" @click="loadEvents">重试日程</Button></div>
     <div class="flex items-center justify-end">
@@ -265,11 +285,11 @@ onBeforeUnmount(() => eventsRequest?.abort())
         <template #header><Text weight="bold">日历</Text></template>
         <Calendar
           :model-value="selectedDate"
-          mode="month"
+          :mode="calendarMode"
           :fullscreen="true"
           :events="cellEvents"
           @update:model-value="onDateChange"
-          @panel-change="onDateChange"
+          @panel-change="onPanelChange"
         >
           <template #dateCell="{ extra }">
             <span
@@ -380,17 +400,17 @@ onBeforeUnmount(() => eventsRequest?.abort())
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div data-field="start">
-            <Text weight="medium" class="mb-1 block">开始</Text>
-            <TimePicker v-model="form.start" :show-seconds="false" />
+            <Text tag="label" for="calendar-start" weight="medium" class="mb-1 block">开始</Text>
+            <TimePicker id="calendar-start" :labels="{ selectTime: '请选择开始时间', toggle: '打开开始时间选择器' }" v-model="form.start" :show-seconds="false" />
           </div>
           <div data-field="end">
-            <Text weight="medium" class="mb-1 block">结束</Text>
-            <TimePicker v-model="form.end" :show-seconds="false" />
+            <Text tag="label" for="calendar-end" weight="medium" class="mb-1 block">结束</Text>
+            <TimePicker id="calendar-end" :labels="{ selectTime: '请选择结束时间', toggle: '打开结束时间选择器' }" v-model="form.end" :show-seconds="false" />
           </div>
         </div>
         <div>
           <Text weight="medium" class="mb-1 block">类型</Text>
-          <RadioGroup v-model="form.type">
+          <RadioGroup v-model="form.type" aria-label="日程类型">
             <Radio value="meeting">会议</Radio>
             <Radio value="review">评审</Radio>
             <Radio value="release">发布</Radio>

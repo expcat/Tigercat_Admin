@@ -24,6 +24,7 @@ import {
   getCalendarEventDotStyle,
   type BadgeVariant,
   type CalendarDateCellExtra,
+  type CalendarMode,
   type ListItem,
   type TagVariant,
 } from '@expcat/tigercat-core';
@@ -37,6 +38,7 @@ import {
   fetchCalendarEvents,
   formatCalendarDate,
   parseCalendarDate,
+  parseCalendarTimestamp,
   toCalendarCellEvents,
 } from '../utils/calendar';
 
@@ -76,6 +78,8 @@ function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(() => parseCalendarDate(queryDate) ?? new Date());
+  const [visibleDate, setVisibleDate] = useState<Date>(selectedDate);
+  const [calendarMode, setCalendarMode] = useState<CalendarMode>('month');
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState('');
   const [submitError, setSubmitError] = useState('');
@@ -102,12 +106,26 @@ function CalendarPage() {
   });
 
   const selectedKey = formatCalendarDate(selectedDate);
-  const monthKey = `${selectedDate.getFullYear()}-${selectedDate.getMonth()}`;
+  const visibleMonthKey = `${visibleDate.getFullYear()}-${visibleDate.getMonth()}`;
 
   useEffect(() => {
-    setSelectedDate(parseCalendarDate(queryDate) ?? new Date());
+    const nextDate = parseCalendarDate(queryDate) ?? new Date();
+    setSelectedDate(nextDate);
+    setVisibleDate(nextDate);
+    setCalendarMode('month');
     setActiveEventId(null);
   }, [queryDate, queryEventId]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const frame = window.requestAnimationFrame(() => document.getElementById('calendar-title')?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [drawerOpen]);
 
   useEffect(() => {
     if (loading || loadError || !parseCalendarDate(queryDate) || selectedKey !== queryDate || !queryEventId) return;
@@ -132,7 +150,7 @@ function CalendarPage() {
       setLoadError('');
       setEvents([]);
       try {
-        const range = calendarQueryRange(selectedDate);
+        const range = calendarQueryRange(visibleDate);
         const payload = await fetchCalendarEvents(range.from, range.to, controller.signal);
         if (!controller.signal.aborted) {
           setEvents(payload.data ?? []);
@@ -151,9 +169,9 @@ function CalendarPage() {
     return () => {
       controller.abort();
     };
-    // selectedDate is read inside to compute the visible-month range; monthKey is the refetch trigger.
+    // visibleDate is read inside to compute the visible-month range; visibleMonthKey is the refetch trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthKey, reloadVersion]);
+  }, [visibleMonthKey, reloadVersion]);
 
   const eventsForSelected = useMemo(
     () =>
@@ -164,8 +182,8 @@ function CalendarPage() {
   );
 
   const todayCount = useMemo(
-    () => events.filter((e) => e.date === formatCalendarDate(new Date())).length,
-    [events],
+    () => events.filter((e) => e.date === formatCalendarDate(new Date(clockNow))).length,
+    [events, clockNow],
   );
   const monthCount = useMemo(() => {
     const ym = selectedKey.slice(0, 7);
@@ -175,19 +193,20 @@ function CalendarPage() {
   const upcoming = useMemo(
     () =>
       events
-        .map((e) => ({ ...e, ts: new Date(`${e.date}T${e.start}:00`).getTime() }))
-        .sort((a, b) => a.ts - b.ts),
+        .map((e) => ({ ...e, ts: parseCalendarTimestamp(e.date, e.start) }))
+        .sort((a, b) => (a.ts ?? Number.MAX_SAFE_INTEGER) - (b.ts ?? Number.MAX_SAFE_INTEGER)),
     [events],
   );
-  const nextEvent = useMemo(() => upcoming.find((e) => e.ts > clockNow) ?? null, [upcoming, clockNow]);
-  const countdownTarget = nextEvent ? new Date(nextEvent.ts) : null;
+  const hasInvalidLocalTime = upcoming.some((e) => e.ts === null);
+  const nextEvent = useMemo(() => upcoming.find((e) => e.ts !== null && e.ts > clockNow) ?? null, [upcoming, clockNow]);
+  const countdownTarget = nextEvent?.ts == null ? null : new Date(nextEvent.ts);
 
   const cellEvents = useMemo(() => toCalendarCellEvents(events), [events]);
 
   const upcomingList: ListItem[] = useMemo(
     () =>
       upcoming
-        .filter((e) => e.ts > clockNow)
+        .filter((e) => e.ts !== null && e.ts > clockNow)
         .slice(0, 5)
         .map((e) => ({
           key: e.id,
@@ -216,17 +235,19 @@ function CalendarPage() {
 
   const submitEvent = async () => {
     if (submitPending.current) return;
+    const invalidInput = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+    const draftField = invalidInput?.closest<HTMLElement>('[data-field]')?.dataset.field;
     const title = form.title.trim();
     const date = form.date;
     const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
-    const invalidField = !title || title.length > 120 ? 'title' : !date || !Number.isFinite(date.getTime()) ? 'date'
+    const invalidField = draftField || (!title || title.length > 120 ? 'title' : !date || !Number.isFinite(date.getTime()) ? 'date'
       : !timePattern.test(form.start) ? 'start' : !timePattern.test(form.end) || form.end <= form.start ? 'end'
-      : form.location.trim().length > 200 ? 'location' : '';
+      : form.location.trim().length > 200 ? 'location' : '');
     if (invalidField) {
       const message = invalidField === 'title' ? '请填写 1–120 字的日程标题' : invalidField === 'date' ? '请选择有效日期'
         : invalidField === 'location' ? '地点长度不能超过 200' : '请填写有效时间，结束时间必须晚于开始时间（同一天）';
       setSubmitError(message);
-      formRef.current?.querySelector<HTMLElement>(`[data-field="${invalidField}"] input`)?.focus();
+      (invalidInput ?? formRef.current?.querySelector<HTMLElement>(`[data-field="${invalidField}"] input`))?.focus();
       return;
     }
     setSubmitError('');
@@ -236,6 +257,8 @@ function CalendarPage() {
       const dateKey = formatCalendarDate(date!);
       await createCalendarEvent({ date: dateKey, start: form.start, end: form.end, title, type: form.type, location: form.location.trim() || '—' });
       setSelectedDate(new Date(`${dateKey}T00:00:00`));
+      setVisibleDate(new Date(`${dateKey}T00:00:00`));
+      setCalendarMode('month');
       setDrawerOpen(false);
       setReloadVersion(value => value + 1);
       setClockNow(Date.now());
@@ -288,7 +311,7 @@ function CalendarPage() {
         </Card>
       </div>
 
-      <MutedPanel compact description={`共享日程按填写的日期与时间展示，不自动换算时区；倒计时按本机时区 ${timeZone} 计算。`} />
+      <MutedPanel compact description={`共享日程按填写的日期与时间展示，不自动换算时区；倒计时按本机时区 ${timeZone} 计算。${hasInvalidLocalTime ? '部分日程的开始时间在本机时区不存在，不参与倒计时；原始时间仍在日程详情中展示。' : ''}`} />
       {targetError && <Text tag="p" role="alert" color="danger">{targetError}</Text>}
       {loadError && <div role="alert" className="flex flex-wrap items-center gap-3"><Text color="danger">{loadError}</Text><Button variant="outline" onClick={() => setReloadVersion(value => value + 1)}>重试日程</Button></div>}
       <div className="flex items-center justify-end">
@@ -304,12 +327,12 @@ function CalendarPage() {
         <Card header={<Text weight="bold">日历</Text>} className="lg:col-span-2">
           <Calendar
             value={selectedDate}
-            mode="month"
+            mode={calendarMode}
             fullscreen
             events={cellEvents}
             dateCellRender={renderDateCell}
-            onChange={(d) => { setSelectedDate(d); setActiveEventId(null); }}
-            onPanelChange={(d) => { setSelectedDate(d); setActiveEventId(null); }}
+            onChange={(d) => { setSelectedDate(d); setVisibleDate(d); setActiveEventId(null); }}
+            onPanelChange={(d, mode) => { setVisibleDate(d); setCalendarMode(mode); setActiveEventId(null); }}
           />
           <MutedPanel
             compact
@@ -411,23 +434,23 @@ function CalendarPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div data-field="start">
-              <Text weight="medium" className="mb-1 block">
+              <Text tag="label" htmlFor="calendar-start" weight="medium" className="mb-1 block">
                 开始
               </Text>
-              <TimePicker value={form.start} onChange={(t) => setForm((s) => ({ ...s, start: t ?? '' }))} showSeconds={false} />
+              <TimePicker id="calendar-start" labels={{ selectTime: '请选择开始时间', toggle: '打开开始时间选择器' }} value={form.start} onChange={(t) => setForm((s) => ({ ...s, start: t ?? '' }))} showSeconds={false} />
             </div>
             <div data-field="end">
-              <Text weight="medium" className="mb-1 block">
+              <Text tag="label" htmlFor="calendar-end" weight="medium" className="mb-1 block">
                 结束
               </Text>
-              <TimePicker value={form.end} onChange={(t) => setForm((s) => ({ ...s, end: t ?? '' }))} showSeconds={false} />
+              <TimePicker id="calendar-end" labels={{ selectTime: '请选择结束时间', toggle: '打开结束时间选择器' }} value={form.end} onChange={(t) => setForm((s) => ({ ...s, end: t ?? '' }))} showSeconds={false} />
             </div>
           </div>
           <div>
             <Text weight="medium" className="mb-1 block">
               类型
             </Text>
-            <RadioGroup value={form.type} onChange={(value) => setForm((s) => ({ ...s, type: value as CalendarEventType }))}>
+            <RadioGroup aria-label="日程类型" value={form.type} onChange={(value) => setForm((s) => ({ ...s, type: value as CalendarEventType }))}>
               <Radio value="meeting">会议</Radio>
               <Radio value="review">评审</Radio>
               <Radio value="release">发布</Radio>

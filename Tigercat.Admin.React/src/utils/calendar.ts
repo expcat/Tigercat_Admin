@@ -31,13 +31,22 @@ export function parseCalendarDate(value: unknown): Date | null {
   return Number.isFinite(date.getTime()) && formatCalendarDate(date) === value ? date : null;
 }
 
+export function parseCalendarTimestamp(date: string, time: string): number | null {
+  const value = new Date(`${date}T${time}:00`);
+  const [hours, minutes] = time.split(':').map(Number);
+  if (!Number.isFinite(value.getTime()) || formatCalendarDate(value) !== date
+    || value.getHours() !== hours || value.getMinutes() !== minutes) return null;
+  return value.getTime();
+}
+
 export function calendarQueryRange(selected: Date): { from: string; to: string } {
   const today = new Date();
   const monthStart = new Date(selected.getFullYear(), selected.getMonth(), 1);
-  const monthEnd = new Date(selected.getFullYear(), selected.getMonth() + 1, 0);
+  const gridStart = new Date(selected.getFullYear(), selected.getMonth(), 1 - ((monthStart.getDay() + 6) % 7));
+  const gridEnd = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + 41);
   const upcomingEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 90);
-  const from = monthStart < today ? monthStart : today;
-  const to = monthEnd > upcomingEnd ? monthEnd : upcomingEnd;
+  const from = gridStart < today ? gridStart : today;
+  const to = gridEnd > upcomingEnd ? gridEnd : upcomingEnd;
   return { from: formatCalendarDate(from), to: formatCalendarDate(to) };
 }
 

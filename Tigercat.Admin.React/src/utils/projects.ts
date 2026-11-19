@@ -29,6 +29,17 @@ export const PROJECT_STATUS_FILTERS: SegmentedOption[] = [
   { value: 'done', label: '已完成' },
 ];
 
+export function getProjectAvatarTextColor(backgroundColor: string): string {
+  const match = backgroundColor.match(/^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i);
+  if (!match) return '#ffffff';
+  const channels = match.slice(1).map((value) => {
+    const channel = parseInt(value, 16) / 255;
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  const luminance = 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+  return luminance > 0.179 ? '#000000' : '#ffffff';
+}
+
 export const PROJECT_DETAIL_TABS: Array<{
   key: ProjectDetailTab;
   label: string;

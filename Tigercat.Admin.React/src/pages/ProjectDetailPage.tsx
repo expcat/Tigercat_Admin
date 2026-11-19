@@ -27,6 +27,7 @@ import {
 import { ClockIcon, PackageIcon, UsersIcon, ZapIcon } from '../components/Icons';
 import {
   fetchProject,
+  getProjectAvatarTextColor,
   getProjectProgressStatus,
   getProjectRemainDays,
   PROJECT_DETAIL_TABS,
@@ -136,7 +137,7 @@ function ProjectDetailPage() {
   }, [project]);
 
   const goBackToList = () => {
-    navigate(`/projects${location.search}`);
+    navigate(`/projects${location.search}`, { state: { returnProjectId: id } });
   };
 
   const handleTabChange = (key: string | number) => {
@@ -335,7 +336,7 @@ function ProjectDetailContent({
                           key={member.id}
                           size="md"
                           bgColor={member.color}
-                          textColor="#ffffff"
+                          textColor={getProjectAvatarTextColor(member.color)}
                         >
                           {member.name.slice(0, 1)}
                         </Avatar>

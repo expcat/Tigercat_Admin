@@ -26,6 +26,7 @@ import ChartEmptyState from '../components/ChartEmptyState.vue'
 import Icon from '../components/Icon.vue'
 import {
   fetchProject,
+  getProjectAvatarTextColor,
   getProjectProgressStatus,
   getProjectRemainDays,
   PROJECT_DETAIL_TABS,
@@ -131,7 +132,7 @@ watch(
 )
 
 function goBackToList() {
-  router.push({ name: 'projects', query: route.query })
+  router.push({ name: 'projects', query: route.query, state: { returnProjectId: id.value } })
 }
 
 function handleTabChange(key: string | number) {
@@ -300,7 +301,7 @@ function getScrollContainer(): HTMLElement | Window {
                       :key="member.id"
                       size="md"
                       :bg-color="member.color"
-                      text-color="#ffffff"
+                      :text-color="getProjectAvatarTextColor(member.color)"
                     >
                       {{ member.name.slice(0, 1) }}
                     </Avatar>
