@@ -18,6 +18,8 @@ import {
 import type { AdminNotificationItem } from '../utils/types'
 import { usePermission } from '../utils/permission'
 
+const DEMO_MODE = import.meta.env.VITE_TIGERCAT_DEMO === 'true'
+
 const router = useRouter()
 const permission = usePermission()
 const canEdit = computed(() => permission.has('notification:edit'))
@@ -29,6 +31,7 @@ const errorMessage = ref('')
 const savingRead = ref(false)
 const panelRef = ref<HTMLDivElement | null>(null)
 let loadController: AbortController | null = null
+let notificationTimer: number | undefined
 
 const unreadCount = computed(() => countUnreadNotifications(items.value))
 const recentItems = computed(() => items.value.slice(0, 5))
@@ -153,10 +156,14 @@ function onNotificationsChanged() {
 onMounted(() => {
   void loadNotifications()
   window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, onNotificationsChanged)
+  if (DEMO_MODE) {
+    notificationTimer = window.setInterval(() => void loadNotifications(), 15_000)
+  }
 })
 
 onUnmounted(() => {
   window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, onNotificationsChanged)
+  if (notificationTimer !== undefined) window.clearInterval(notificationTimer)
   loadController?.abort()
 })
 </script>
@@ -192,7 +199,12 @@ onUnmounted(() => {
     <template #content>
       <div ref="panelRef" class="flex max-h-[26rem] flex-col">
         <div class="flex items-center justify-between border-b border-(--tiger-border,#e5e7eb) px-4 py-3">
-          <Text weight="bold">通知</Text>
+          <div>
+            <Text weight="bold">通知</Text>
+            <Text v-if="DEMO_MODE" size="xs" color="secondary" class="mt-1 block">
+              演示模式每 15 秒刷新通知
+            </Text>
+          </div>
           <Button
             variant="link"
             class="!px-0"

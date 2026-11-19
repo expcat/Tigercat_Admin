@@ -16,6 +16,8 @@ import {
 import type { AdminNotificationItem } from '../utils/types';
 import { usePermission } from '../utils/permission';
 
+const DEMO_MODE = import.meta.env.VITE_TIGERCAT_DEMO === 'true';
+
 const formatTime = (value: string) =>
   new Date(value).toLocaleString('zh-CN', {
     hour12: false,
@@ -67,6 +69,12 @@ export function NotificationBell() {
   useEffect(() => {
     void loadNotifications();
     return () => loadController.current?.abort();
+  }, [loadNotifications]);
+
+  useEffect(() => {
+    if (!DEMO_MODE) return;
+    const timer = window.setInterval(() => void loadNotifications(), 15_000);
+    return () => window.clearInterval(timer);
   }, [loadNotifications]);
 
   useEffect(() => {
@@ -164,7 +172,14 @@ export function NotificationBell() {
   const panel = (
     <div ref={panelRef} className="flex max-h-[26rem] flex-col">
       <div className="flex items-center justify-between border-b border-(--tiger-border,#e5e7eb) px-4 py-3">
-        <Text weight="bold">通知</Text>
+        <div>
+          <Text weight="bold">通知</Text>
+          {DEMO_MODE && (
+            <Text size="xs" color="secondary" className="mt-1 block">
+              演示模式每 15 秒刷新通知
+            </Text>
+          )}
+        </div>
         <Button
           variant="link"
           className="!px-0"

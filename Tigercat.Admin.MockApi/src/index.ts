@@ -1752,14 +1752,21 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     const password = String(body.password ?? '');
     const user = state.users.find((item) => item.username === username);
     const expected = state.passwords[username];
-    if ((username !== 'demo' && (!user || user.status !== 0)) ||
-      !expected || !(isImportPasswordHash(expected) ? await matchesImportPassword(expected, password) : expected === password)) {
+    const passwordMatches = expected
+      ? isImportPasswordHash(expected) ? await matchesImportPassword(expected, password) : expected === password
+      : false;
+    if ((username !== 'demo' && (!user || user.status !== 0)) || !passwordMatches) {
       return makeError('用户名或密码错误', 401);
     }
-    if (state.twoFactorByUser[username]) {
+    const latest = readState(storageKey);
+    const currentUser = latest.users.find((item) => item.username === username);
+    if ((username !== 'demo' && (!currentUser || currentUser.status !== 0)) || latest.passwords[username] !== expected) {
+      return makeError('用户名或密码错误', 401);
+    }
+    if (latest.twoFactorByUser[username]) {
       const challengeId = `challenge-${username}-${Date.now()}`;
-      state.pendingTwoFactor[username] = challengeId;
-      writeState(storageKey, state);
+      latest.pendingTwoFactor[username] = challengeId;
+      writeState(storageKey, latest);
       return makeJson({ requiresTwoFactor: true, username, challengeId });
     }
     return makeJson(issueSession(username));
@@ -1828,8 +1835,10 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     if (passwordError) return makeError(passwordError, 400);
     if (state.users.some((user) => user.username.toLowerCase() === username)) return makeError('用户已存在', 409);
     const passwordHash = await hashImportPassword(password);
-    state.users.push({
-      id: state.nextUserId++,
+    const latest = readState(storageKey);
+    if (latest.users.some((user) => user.username.toLowerCase() === username)) return makeError('用户已存在', 409);
+    latest.users.push({
+      id: latest.nextUserId++,
       username,
       displayName: null,
       status: 0,
@@ -1839,8 +1848,8 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
       updatedAt: null,
       roleIds: [],
     });
-    state.passwords[username] = passwordHash;
-    writeState(storageKey, state);
+    latest.passwords[username] = passwordHash;
+    writeState(storageKey, latest);
     return makeJson({ username }, { status: 201 });
   }
 
@@ -1855,8 +1864,11 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     const newPassword = String(body.newPassword ?? '');
     const passwordError = validateImportPassword(newPassword, state);
     if (passwordError) return makeError(passwordError, 400);
-    state.passwords[username] = await hashImportPassword(newPassword);
-    writeState(storageKey, state);
+    const passwordHash = await hashImportPassword(newPassword);
+    const latest = readState(storageKey);
+    if (latest.passwords[username] !== expected) return makeError('旧密码错误', 401);
+    latest.passwords[username] = passwordHash;
+    writeState(storageKey, latest);
     return makeJson({ message: '密码修改成功' });
   }
   if (path === '/api/auth/logout' && method === 'POST') return makeJson({ message: '退出成功' });
@@ -1947,8 +1959,13 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
       return makeError('角色 ID 无效或重复', 400);
     }
     const passwordHash = await hashImportPassword(password);
+    const latest = readState(storageKey);
+    if (latest.users.some((user) => user.username === username)) return makeError('用户已存在', 409);
+    if (roleIds.some((id) => typeof id !== 'number' || !Number.isInteger(id) || !latest.roles.some((role) => role.id === id))) {
+      return makeError('角色 ID 无效或重复', 400);
+    }
     const user: DemoUser = {
-      id: state.nextUserId++,
+      id: latest.nextUserId++,
       username,
       displayName,
       status: 0,
@@ -1958,10 +1975,10 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
       updatedAt: null,
       roleIds: roleIds as number[],
     };
-    state.users.push(user);
-    state.passwords[username] = passwordHash;
-    writeState(storageKey, state);
-    return makeJson(toUserItem(state, user), { status: 201 });
+    latest.users.push(user);
+    latest.passwords[username] = passwordHash;
+    writeState(storageKey, latest);
+    return makeJson(toUserItem(latest, user), { status: 201 });
   }
 
   const userIdMatch = path.match(/^\/api\/users\/(\d+)$/);
@@ -3159,6 +3176,28 @@ export function installTigercatMockApi(options: InstallOptions = {}) {
     if (!shouldIntercept(input)) return nativeFetch(input, init);
     return handleRequest(input, init, storageKey, resumeImports);
   };
+
+  window.setInterval(() => {
+    const state = readState(storageKey);
+    if (state.notifications.filter(item => !item.read).length >= 12) return;
+    const sequence = state.notifications.filter(item => item.id.startsWith('notice-live-')).length + 1;
+    const now = new Date().toISOString();
+    state.notifications.unshift({
+      id: `notice-live-${sequence}`,
+      groupKey: (['ops', 'security', 'release'] as const)[(sequence - 1) % 3],
+      title: `演示通知 ${sequence}`,
+      description: `第 ${sequence} 条演示通知已生成，可在通知中心查看。`,
+      time: now,
+      read: false,
+      toastType: 'info',
+      meta: { source: 'demo-live', severity: 'low' },
+      linkUrl: '/notifications',
+      createdAt: now,
+      readAt: null,
+      updatedAt: null,
+    });
+    writeState(storageKey, state);
+  }, 15_000);
 }
 
 export function isTigercatDemoEnabled(value: unknown): boolean {
