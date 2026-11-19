@@ -27,6 +27,7 @@ function isProtectedRoute(route: RouteLocationNormalized) {
 const routerMode = import.meta.env.VITE_TIGERCAT_ROUTER_MODE;
 const basePath = import.meta.env.VITE_TIGERCAT_BASE_PATH || '/';
 const routerBase = import.meta.env.VITE_TIGERCAT_ROUTER_BASE ?? basePath;
+const bundledSchemaChildren = buildVueSchemaChildren();
 
 const router = createRouter({
   history:
@@ -90,9 +91,10 @@ const router = createRouter({
       children: [
         {
           path: '',
+          name: 'protected-root',
           redirect: '/dashboard',
         },
-        ...buildVueSchemaChildren(),
+        ...bundledSchemaChildren,
         {
           path: 'files/:id',
           name: 'files-detail',
@@ -148,23 +150,44 @@ const router = createRouter({
 });
 
 const permission = createPermissionContext();
+const syncedSchemaRouteNames = new Set(
+  bundledSchemaChildren.flatMap((record) =>
+    typeof record.name === 'string' ? [record.name] : [],
+  ),
+);
 
 function syncSchemaRoutes(
   payload: Parameters<typeof buildVueSchemaChildren>[0],
 ) {
-  for (const record of buildVueSchemaChildren(payload)) {
+  const records = buildVueSchemaChildren(payload);
+  const nextNames = new Set(
+    records.flatMap((record) =>
+      typeof record.name === 'string' ? [record.name] : [],
+    ),
+  );
+  for (const name of syncedSchemaRouteNames) {
+    if (!nextNames.has(name) && router.hasRoute(name)) {
+      router.removeRoute(name);
+    }
+  }
+  for (const record of records) {
     const name = typeof record.name === 'string' ? record.name : undefined;
-    if (!name || router.hasRoute(name)) {
+    if (!name) {
       continue;
+    }
+    if (router.hasRoute(name)) {
+      router.removeRoute(name);
     }
     router.addRoute('protected', record);
   }
+  syncedSchemaRouteNames.clear();
+  for (const name of nextNames) syncedSchemaRouteNames.add(name);
 }
 
 subscribeShellMenuSchema(syncSchemaRoutes);
 void loadShellMenuSchema().then(syncSchemaRoutes);
 
-router.beforeEach(async (to, _from, next) => {
+router.beforeEach(async (to, _from) => {
   const session = safeParse<Session>(localStorage.getItem(SESSION_KEY));
   const isAuthed = Boolean(session?.token);
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
@@ -183,8 +206,7 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   if (requiresAuth && !isAuthed) {
-    next({ name: 'login', query: { redirect: to.fullPath }, replace: router.options.history.location === to.fullPath });
-    return;
+    return { name: 'login', query: { redirect: to.fullPath }, replace: router.options.history.location === to.fullPath };
   }
 
   if (to.name === 'schema-not-found') {
@@ -192,10 +214,9 @@ router.beforeEach(async (to, _from, next) => {
     // Re-match the original URL after live menu routes have been registered.
     // A browser hash change is already in history; router.push is not yet committed.
     const replace = router.options.history.location === to.fullPath;
-    next(router.resolve(to.fullPath).name !== to.name
+    return router.resolve(to.fullPath).name !== to.name
       ? { path: to.path, query: to.query, hash: to.hash, replace }
-      : { path: '/404', replace });
-    return;
+      : { path: '/404', replace };
   }
 
   if (requiresGuest && isAuthed && session?.token) {
@@ -206,11 +227,9 @@ router.beforeEach(async (to, _from, next) => {
       safeParse<Session>(localStorage.getItem(SESSION_KEY))?.token,
     ) && permission.loaded.value;
     if (stillAuthed) {
-      next(getSafeReturnTo(to.query.redirect));
-      return;
+      return getSafeReturnTo(to.query.redirect);
     }
-    next();
-    return;
+    return true;
   }
 
   if (requiresPermission && isAuthed && session?.token) {
@@ -223,29 +242,26 @@ router.beforeEach(async (to, _from, next) => {
       );
       // 401 会清会话并派发 session-expired；不要再跳到仪表盘，否则登录回跳丢失原目标页。
       if (!stillAuthed) {
-        next({ name: 'login', query: { redirect: to.fullPath } });
-        return;
+        return { name: 'login', query: { redirect: to.fullPath } };
       }
       // 权限接口失败时不要取消首次导航（会留下空白页）；
       // 已有来源页则留在原地，直开受限路由则退回首页。
       if (_from.matched.length === 0) {
-        next({ name: 'dashboard' });
+        return { name: 'dashboard' };
       } else {
         LoadingBar.finish();
-        next(false);
+        return false;
       }
-      return;
     }
     const requiredCodes = Array.isArray(requiresPermission)
       ? requiresPermission
       : [requiresPermission];
     if (!permission.has(...requiredCodes)) {
-      next('/403');
-      return;
+      return '/403';
     }
   }
 
-  next();
+  return true;
 });
 
 router.afterEach(() => {

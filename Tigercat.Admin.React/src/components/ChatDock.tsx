@@ -29,7 +29,7 @@ function mapChatMessages(items: ChatMessage[] | undefined): ChatMessage[] {
 export function ChatDock({ open, floating = true, onOpenChange }: ChatDockProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
-  const [unread, setUnread] = useState(1);
+  const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(false);
   const openRef = useRef(open);
   openRef.current = open;

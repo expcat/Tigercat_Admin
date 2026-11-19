@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { type AuthForm, type AuthErrors, validate } from './validation';
+import { type AuthForm, type AuthErrors } from './validation';
 
 export function useAuthForm(initialState: AuthForm) {
   // Use a copy to avoid mutation of the passed initial state object
@@ -13,16 +13,5 @@ export function useAuthForm(initialState: AuthForm) {
     }
   };
 
-  const validateForm = (): boolean => {
-    const newErrors = validate(form.value);
-    errors.value = newErrors;
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const resetForm = () => {
-    form.value = { ...initialState };
-    errors.value = {};
-  };
-
-  return { form, errors, setField, validateForm, resetForm };
+  return { form, errors, setField };
 }

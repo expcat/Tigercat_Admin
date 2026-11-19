@@ -44,32 +44,3 @@ export function buildPermissionTreeData(
     }),
   );
 }
-
-export function toggleGroupPerms(
-  groupPerms: PermissionInfo[],
-  target: number[],
-): number[] {
-  const ids = groupPerms.map((p) => p.id);
-  const allChecked = ids.every((id) => target.includes(id));
-  if (allChecked) {
-    return target.filter((id) => !ids.includes(id));
-  }
-  const set = new Set(target);
-  ids.forEach((id) => set.add(id));
-  return [...set];
-}
-
-export function isGroupAllChecked(
-  groupPerms: PermissionInfo[],
-  target: number[],
-): boolean {
-  return groupPerms.every((p) => target.includes(p.id));
-}
-
-export function isGroupPartialChecked(
-  groupPerms: PermissionInfo[],
-  target: number[],
-): boolean {
-  const count = groupPerms.filter((p) => target.includes(p.id)).length;
-  return count > 0 && count < groupPerms.length;
-}

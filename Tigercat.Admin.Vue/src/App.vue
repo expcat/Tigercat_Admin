@@ -104,7 +104,6 @@ const onLoginSuccess = async (nextSession: Session) => {
   // Guest 401 falls back to bundled schema; SPA login must refetch live tree
   // (iframeSrc-only nodes) before the first protected navigation.
   await Promise.all([
-    loadHome(nextSession.token),
     permission.load(nextSession.token),
     resetShellMenuSchema(),
   ])
@@ -133,19 +132,38 @@ const clearAuthenticatedState = () => {
 }
 
 const handleLogout = () => {
+  const token = session.value?.token
+  if (token) {
+    void apiRequest('/api/auth/logout', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => undefined)
+  }
   clearAuthenticatedState()
   router.push({ name: 'login' })
 }
 
 function handleStorage(event: StorageEvent) {
-  if (event.key !== SESSION_KEY || event.newValue !== null) return
-  clearAuthenticatedState()
-  if (route.name !== 'login') {
-    router.replace({ name: 'login' })
+  if (event.key !== SESSION_KEY) return
+  const nextSession = safeParse<Session>(event.newValue)
+  if (!nextSession?.token) {
+    clearAuthenticatedState()
+    if (route.name !== 'login') {
+      router.replace({ name: 'login' })
+    }
+    return
   }
+  permission.clear()
+  homeMessage.value = ''
+  homeError.value = ''
+  session.value = nextSession
+  resetShellMenuSchema()
+  void permission.load(nextSession.token)
 }
 
-function handleSessionExpired() {
+function handleSessionExpired(event: Event) {
+  const token = (event as CustomEvent<{ token?: string | null }>).detail?.token
+  if (token && token !== getSessionToken()) return
   const onGuest =
     Boolean(route.meta.requiresGuest) ||
     route.name === 'login' ||
@@ -188,6 +206,8 @@ const handleChangePassword = async () => {
     })
     changeForm.value = { oldPassword: '', newPassword: '' }
     changeOpen.value = false
+    clearAuthenticatedState()
+    router.replace({ name: 'login' })
   } catch (error: any) {
     Message.error({
       content: error.message,
@@ -201,10 +221,10 @@ const handleChangePassword = async () => {
 
 // Load home data when entering dashboard & load permissions on page refresh
 watch(
-  () => route.name,
-  (routeName) => {
-    if (routeName === 'dashboard' && session.value?.token) {
-      loadHome(session.value.token)
+  () => [route.name, session.value?.token] as const,
+  ([routeName, token]) => {
+    if (routeName === 'dashboard' && token) {
+      loadHome(token)
     }
   },
   { immediate: true }

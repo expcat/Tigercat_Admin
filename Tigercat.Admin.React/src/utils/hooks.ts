@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { AuthForm, AuthErrors, validate } from './validation';
+import { AuthForm, AuthErrors } from './validation';
 import { normalizeInput } from './common';
 
 export const useAuthForm = (initialState: AuthForm) => {
@@ -23,24 +23,11 @@ export const useAuthForm = (initialState: AuthForm) => {
     [errors],
   );
 
-  const validateForm = useCallback((): boolean => {
-    const newErrors = validate(form);
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [form]);
-
-  const resetForm = useCallback(() => {
-    setForm(initialState);
-    setErrors({});
-  }, [initialState]);
-
   return {
     form,
     errors,
     setErrors,
     setField,
-    validateForm,
-    resetForm,
     setForm,
   };
 };

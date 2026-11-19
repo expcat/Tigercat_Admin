@@ -64,24 +64,7 @@ export async function exportData(options: ExportOptions): Promise<void> {
   }
   appendQueryParams(params, query);
 
-  const response = await fetch(`/api/export/${entity}?${params}`, {
-    headers: headers ? new Headers(headers) : undefined,
-  });
-
-  if (!response.ok) {
-    // 尝试从响应中提取错误信息
-    let message = `导出失败 (${response.status})`;
-    try {
-      const errorData = await response.json();
-      if (errorData?.message) message = errorData.message;
-    } catch {
-      // 忽略 JSON 解析失败
-    }
-    throw new Error(message);
-  }
-
-  const blob = await response.blob();
-  downloadBlob(blob, getFilenameFromResponse(response, entity, format));
+  await downloadExportResponse(`/api/export/${entity}?${params}`, headers, entity, format);
 }
 
 export async function exportAuditLogs(options: {
@@ -118,7 +101,9 @@ async function downloadExportResponse(
   format: ExportFormat,
 ): Promise<void> {
   const requestHeaders = headers ? new Headers(headers) : undefined;
-  const hasAuthHeader = Boolean(requestHeaders?.has('Authorization') || requestHeaders?.has('X-Token'));
+  const authorization = requestHeaders?.get('Authorization');
+  const requestToken =
+    authorization?.replace(/^Bearer\s+/i, '') || requestHeaders?.get('X-Token');
   const response = await fetch(url, {
     headers: requestHeaders,
   });
@@ -131,8 +116,12 @@ async function downloadExportResponse(
     } catch {
       // ignore non-JSON response
     }
-    if (response.status === 401 && hasAuthHeader && typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('tigercat:session-expired'));
+    if (response.status === 401 && requestToken && typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('tigercat:session-expired', {
+          detail: { token: requestToken },
+        }),
+      );
     }
     throw new Error(message);
   }

@@ -19,7 +19,7 @@ export function PageHeader({ title, subtitle, icon, tags }: PageHeaderProps) {
   return (
     <TigerPageHeader
       showBack={false}
-      className="min-w-0 overflow-hidden [&_.tiger-page-header-title-row]:flex-col [&_.tiger-page-header-title-row]:items-start"
+      className="min-w-0 [&_.tiger-page-header-title-row]:flex-col [&_.tiger-page-header-title-row]:items-start"
       subTitle={subtitle}
       title={
         <span className="flex min-w-0 items-center gap-3">

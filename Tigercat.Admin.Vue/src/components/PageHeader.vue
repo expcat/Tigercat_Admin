@@ -18,7 +18,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <TigerPageHeader :show-back="false" :sub-title="props.subtitle" class-name="min-w-0 overflow-hidden [&_.tiger-page-header-title-row]:flex-col [&_.tiger-page-header-title-row]:items-start">
+  <TigerPageHeader :show-back="false" :sub-title="props.subtitle" class-name="min-w-0 [&_.tiger-page-header-title-row]:flex-col [&_.tiger-page-header-title-row]:items-start">
     <template #title>
       <span class="flex min-w-0 items-center gap-3">
         <span class="p2-icon-chip flex h-10 w-10 shrink-0 items-center justify-center">

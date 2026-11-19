@@ -22,17 +22,10 @@ export const apiRequest = async <T = any>(
   options: RequestInit = {},
 ): Promise<ApiResponse<T>> => {
   const { headers: optionHeaders, ...restOptions } = options;
-  const hasAuthHeader =
-    optionHeaders instanceof Headers
-      ? optionHeaders.has('Authorization') || optionHeaders.has('X-Token')
-      : Array.isArray(optionHeaders)
-        ? optionHeaders.some(([key]) =>
-            ['authorization', 'x-token'].includes(key.toLowerCase()),
-          )
-        : Boolean(
-            optionHeaders &&
-              ('Authorization' in optionHeaders || 'X-Token' in optionHeaders),
-          );
+  const normalizedHeaders = new Headers(optionHeaders);
+  const authorization = normalizedHeaders.get('Authorization');
+  const requestToken =
+    authorization?.replace(/^Bearer\s+/i, '') || normalizedHeaders.get('X-Token');
   const response = await fetch(path, {
     ...restOptions,
     headers: {
@@ -59,8 +52,19 @@ export const apiRequest = async <T = any>(
       rawText ||
       response.statusText ||
       `请求失败 (${response.status})`;
-    if (response.status === 401 && hasAuthHeader && typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('tigercat:session-expired'));
+    const isAuthFlow =
+      path === '/api/auth/change-password' || path === '/api/auth/logout';
+    if (
+      response.status === 401 &&
+      requestToken &&
+      !isAuthFlow &&
+      typeof window !== 'undefined'
+    ) {
+      window.dispatchEvent(
+        new CustomEvent('tigercat:session-expired', {
+          detail: { token: requestToken },
+        }),
+      );
     }
     throw new ApiError(message, response.status, payload?.code, payload?.data);
   }

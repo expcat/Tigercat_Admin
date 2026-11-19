@@ -27,7 +27,7 @@ const emit = defineEmits<{
 
 const messages = ref<ChatMessage[]>([])
 const draft = ref('')
-const unread = ref(1)
+const unread = ref(0)
 const loading = ref(false)
 let stopChatLive: (() => void) | null = null
 

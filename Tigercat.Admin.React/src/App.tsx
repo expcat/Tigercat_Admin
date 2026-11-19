@@ -23,6 +23,7 @@ import {
 } from 'react-router-dom';
 import { Container } from '@expcat/tigercat-react/Container';
 import { Alert } from '@expcat/tigercat-react/Alert';
+import { Button } from '@expcat/tigercat-react/Button';
 import { Form } from '@expcat/tigercat-react/Form';
 import { FormItem } from '@expcat/tigercat-react/FormItem';
 import { Input } from '@expcat/tigercat-react/Input';
@@ -132,7 +133,20 @@ class RouteErrorBoundary extends Component<
 
   render() {
     if (this.state.hasError) {
-      return <PageLoader />;
+      return (
+        <div className="p-6">
+          <Alert
+            type="error"
+            title="页面渲染失败"
+            description="页面发生错误，请重试。"
+          />
+          <Button
+            className="mt-4"
+            onClick={() => this.setState({ hasError: false })}>
+            重试
+          </Button>
+        </div>
+      );
     }
     return this.props.children;
   }
@@ -406,7 +420,6 @@ function App() {
     // Guest 401 falls back to bundled schema; SPA login must refetch live tree
     // (iframeSrc-only nodes) before the first protected navigation.
     await Promise.all([
-      loadHome(nextSession.token),
       permission.load(nextSession.token),
       resetShellMenuSchema(),
     ]);
@@ -459,26 +472,46 @@ function App() {
   }, [permission, persistSession]);
 
   const handleLogout = () => {
+    const token = session?.token;
+    if (token) {
+      void apiRequest('/api/auth/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => undefined);
+    }
     clearAuthenticatedState();
     navigate('/login');
   };
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
-      if (event.key !== SESSION_KEY || event.newValue !== null) return;
-      clearAuthenticatedState();
-      if (location.pathname !== '/login') {
-        navigate('/login', { replace: true });
+      if (event.key !== SESSION_KEY) return;
+      const nextSession = safeParse<Session>(event.newValue);
+      if (!nextSession?.token) {
+        clearAuthenticatedState();
+        if (location.pathname !== '/login') {
+          navigate('/login', { replace: true });
+        }
+        return;
       }
+      permission.clear();
+      setHomeMessage('');
+      setHomeError('');
+      setSession(nextSession);
+      resetShellMenuSchema();
+      void permission.load(nextSession.token);
     };
 
-    const handleSessionExpired = () => {
+    const handleSessionExpired = (event: Event) => {
+      const token = (event as CustomEvent<{ token?: string | null }>).detail
+        ?.token;
+      if (token && token !== getSessionToken()) return;
       const onGuest =
         GUEST_PATHS.has(location.pathname) ||
         isGuestAuthPath(location.pathname) ||
         isGuestAuthPath(`${location.pathname}${location.hash}`) ||
         isBrowserOnGuestAuthPage();
-      const returnTo = `${location.pathname}${location.search}`;
+      const returnTo = `${location.pathname}${location.search}${location.hash}`;
       clearAuthenticatedState();
       if (onGuest) return;
       Message.warning({
@@ -517,11 +550,17 @@ function App() {
         body: JSON.stringify(changeForm),
       });
       setNotice({
-        type: 'success',
-        message: payload?.data?.message || '密码修改成功',
+        type: '',
+        message: '',
+      });
+      Message.success({
+        content: payload?.data?.message || '密码修改成功',
+        duration: 3000,
       });
       setChangeForm({ oldPassword: '', newPassword: '' });
       setChangeOpen(false);
+      clearAuthenticatedState();
+      navigate('/login', { replace: true });
     } catch (error: any) {
       setChangeError(error.message || '密码修改失败');
     } finally {
