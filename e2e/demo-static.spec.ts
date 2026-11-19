@@ -63,6 +63,15 @@ test.describe('静态演示模式', () => {
     expect(consoleErrors.filter((item) => item.includes('/api/'))).toEqual([]);
   });
 
+  test('演示场景默认关闭且保留用户列表', async ({ page }) => {
+    await login(page);
+    await expect(page.getByText('演示模式', { exact: true })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: '演示场景' })).toBeVisible();
+
+    await page.goto('/#/users');
+    await expect(page.getByText('管理员', { exact: true }).first()).toBeVisible();
+  });
+
   test('演示写操作在会话内给出反馈', async ({ page }) => {
     await login(page);
 

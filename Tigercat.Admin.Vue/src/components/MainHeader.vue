@@ -18,6 +18,7 @@ import { Tag } from '@expcat/tigercat-vue/Tag'
 import { Text } from '@expcat/tigercat-vue/Text'
 import Icon from './Icon.vue'
 import NotificationBell from './NotificationBell.vue'
+import DemoScenarioSwitch from './DemoScenarioSwitch.vue'
 import ThemeConfigDrawer from './ThemeConfigDrawer.vue'
 import type { ThemeMode, ThemePreferences } from '../utils/types'
 import { resolveEffectiveMode } from '../utils/theme'
@@ -111,6 +112,7 @@ function isCurrentBreadcrumb(index: number, items: string[]): boolean {
       >
         演示模式
       </Tag>
+      <DemoScenarioSwitch />
       <FullscreenButton
         data-testid="shell-fullscreen-toggle"
         :labels="{ enterAriaLabel: '进入全屏', exitAriaLabel: '退出全屏' }"

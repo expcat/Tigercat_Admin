@@ -39,6 +39,19 @@ Monitor / Chat SignalR（`/hubs/monitor`、`/hubs/chat`）使用同一套会话 
 
 静态 Mock 的用户批量状态已覆盖权限、整批校验与当前标签页持久化；与 .NET 会话及事件的区别见 [用户管理](api/users.md)。
 
+## 静态 Mock 数据规模
+
+| 集合 | 初始规模与来源 |
+| ---- | -------------- |
+| 用户 | 48：3 条手写夹具加 `generateDemoUsers()` 的 45 条 |
+| 审计日志 | 52：4 条手写夹具加 `generateDemoAuditLogs()` 的 48 条；后续操作会追加 |
+| 通知 | 18：3 条手写夹具加 `generateDemoNotifications()` 的 15 条，之后还会按演示通知机制追加 |
+| 工单 | 18：3 条手写夹具加 `generateDemoTickets()` 的 15 条 |
+| 项目 | 18：8 条手写夹具加 `generateDemoProjects()` 的 10 条 |
+| 日历 | 5 条手写夹具加 `generateDemoCalendarEvents()` 的 12 条，日期相对本机当天 |
+
+生成器使用种子常量 `DEMO_CATALOG_SEED = 20261119`；当前标签页会话快照的根级字段 `catalogVersion` 记录目录版本，当前值为 `2026.11.19.3`，版本变化会重新播种。Mock 响应形状与真 API 相同，仅行数不同；只有 Mock 日历日期相对当天，.NET 种子与已有数据库不改。JOB 与审批不属于这套目录生成器。`editor / editor123` 与 `viewer / viewer123` 仅存在于 Mock，API 模式没有这两个可登录账号，也不渲染演示场景开关。
+
 ## OpenAPI
 
 开发环境提供 Scalar 与 OpenAPI JSON，用来对照本文件和 [docs/api](api) 专题，不是第二份契约：

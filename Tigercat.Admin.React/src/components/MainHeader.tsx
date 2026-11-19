@@ -30,6 +30,7 @@ import type { ThemeMode, ThemePreferences } from '../utils/types';
 import { resolveEffectiveMode } from '../utils/theme';
 import { usePermission } from '../utils/permission';
 import { NotificationBell } from './NotificationBell';
+import { DemoScenarioSwitch } from './DemoScenarioSwitch';
 import { ThemeConfigDrawer } from './ThemeConfigDrawer';
 
 interface MainHeaderProps {
@@ -131,6 +132,7 @@ export function MainHeader({
             演示模式
           </Tag>
         )}
+        <DemoScenarioSwitch />
         <FullscreenButton
           data-testid="shell-fullscreen-toggle"
           labels={{

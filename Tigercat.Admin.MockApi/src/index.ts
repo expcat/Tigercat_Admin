@@ -324,6 +324,14 @@ type InstallOptions = {
 };
 
 const DEFAULT_STORAGE_KEY = 'tigercat.admin.demo.mock-state';
+const DEMO_SCENARIO_STORAGE_KEY = 'tigercat-admin:demo-scenario';
+const DEMO_EMPTY_LIST_PATHS = new Set([
+  '/api/users',
+  '/api/audit-logs',
+  '/api/notifications',
+  '/api/tickets',
+  '/api/projects',
+]);
 const DEMO_TOKEN = 'demo-static-token';
 const CREATED_AT = '2026-06-03T02:00:00.000Z';
 const DEMO_OTP_CODE = '123456'; // Static demo only; never used by the production .NET host.
@@ -3153,6 +3161,12 @@ function shouldIntercept(input: RequestInfo | URL): boolean {
   return url.origin === window.location.origin && url.pathname.startsWith('/api/');
 }
 
+function isDemoScenarioProtectedPath(path: string): boolean {
+  return path === '/api/home'
+    || path.startsWith('/api/health')
+    || ['/api/auth/', '/api/menus/', '/api/stats/', '/api/monitor/'].some(prefix => path.startsWith(prefix));
+}
+
 export function installTigercatMockApi(options: InstallOptions = {}) {
   if (!options.enabled || typeof window === 'undefined') return;
   const target = window as Window & { __tigercatMockApiInstalled?: boolean };
@@ -3172,9 +3186,27 @@ export function installTigercatMockApi(options: InstallOptions = {}) {
   if (readState(storageKey).importJobs.some(job => job.status === 'pending' || job.status === 'running')) resumeImports();
   const nativeFetch = window.fetch.bind(window);
 
-  window.fetch = (input: RequestInfo | URL, init: RequestInit = {}) => {
+  window.fetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
     if (!shouldIntercept(input)) return nativeFetch(input, init);
-    return handleRequest(input, init, storageKey, resumeImports);
+    const request = input instanceof Request ? input : null;
+    const method = (init.method ?? request?.method ?? 'GET').toUpperCase();
+    const rawUrl = typeof input === 'string' || input instanceof URL ? String(input) : input.url;
+    const path = new URL(rawUrl, window.location.origin).pathname;
+    if (isDemoScenarioProtectedPath(path)) return handleRequest(input, init, storageKey, resumeImports);
+    const scenario = window.sessionStorage.getItem(DEMO_SCENARIO_STORAGE_KEY) ?? 'off';
+    if (scenario === 'fail-once') {
+      window.sessionStorage.setItem(DEMO_SCENARIO_STORAGE_KEY, 'off');
+      return makeError('演示场景：依赖暂不可用', 503);
+    }
+    if (scenario === 'slow') {
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 800));
+    }
+    const response = await handleRequest(input, init, storageKey, resumeImports);
+    if (scenario === 'empty-lists' && response.ok && method === 'GET' && DEMO_EMPTY_LIST_PATHS.has(path)) {
+      const payload = await response.json() as ApiResponse<{ items: unknown[]; total: number }>;
+      return makeJson({ ...payload.data, items: [], total: 0 });
+    }
+    return response;
   };
 
   window.setInterval(() => {

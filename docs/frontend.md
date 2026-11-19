@@ -323,6 +323,7 @@ AuditLogs 的列表 effect / watch 只依赖权限、查询、页码与目标事
 ## 数据、权限与状态
 
 - API 调用统一走双端 `src/utils/request.ts` 的 `apiRequest`。
+- 静态演示模式由 `VITE_TIGERCAT_DEMO=true` 启用，Header 的 `DemoScenarioSwitch` 紧挨「演示模式」徽标，只在演示构建渲染。双端以 `sessionStorage` 键 `tigercat-admin:demo-scenario` 保存 `off` / `slow` / `fail-once` / `empty-lists`，缺省为 `off`；慢响应等待 800ms，失败一次返回 503 后自动回到 `off`，空列表只清空用户、审计、通知、工单和项目五个 GET 列表，不影响菜单、权限或登录。通知在演示模式每 15 秒再拉取一次；API 模式不渲染场景开关，也不启动这趟轮询。
 - 会话存在 `SESSION_KEY`，认证头由 `getAuthHeaders()` 或等价工具生成。Monitor / Chat 实时连接用 `utils/realtime.ts`（`@microsoft/signalr` 动态导入），token 走 `getSessionToken()`；演示模式（`VITE_TIGERCAT_DEMO`）不连 hub。
 - 主动退出发起 `POST /api/auth/logout`，并立即清本地会话、回登录页，不等待服务端响应；改密成功按服务端撤销语义回登录页。带认证头的 401 事件携带请求 token，Shell 只清理仍对应该 token 的会话；旧密码错误与主动退出的 401 作为当前操作错误处理。其他标签页删除会话时本标签退出，替换会话时本标签同步身份并重新加载权限与菜单。
 - API 返回结构使用 `ApiResponse<T>`；分页列表使用 `PagedResult<T>`。
