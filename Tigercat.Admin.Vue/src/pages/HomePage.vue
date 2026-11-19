@@ -50,7 +50,9 @@ const statsError = ref('')
 // 时间范围（天数）
 const trendDays = ref<number>(7)
 const isNarrowTrend = ref(false)
+const chartThemeRevision = ref(0)
 let narrowTrendQuery: MediaQueryList | null = null
+let chartThemeObserver: MutationObserver | null = null
 function syncNarrowTrend() {
   isNarrowTrend.value = narrowTrendQuery?.matches ?? false
 }
@@ -58,8 +60,13 @@ onMounted(() => {
   narrowTrendQuery = window.matchMedia('(max-width: 639px)')
   syncNarrowTrend()
   narrowTrendQuery.addEventListener('change', syncNarrowTrend)
+  chartThemeObserver = new MutationObserver(() => { chartThemeRevision.value++ })
+  chartThemeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] })
 })
-onBeforeUnmount(() => narrowTrendQuery?.removeEventListener('change', syncNarrowTrend))
+onBeforeUnmount(() => {
+  narrowTrendQuery?.removeEventListener('change', syncNarrowTrend)
+  chartThemeObserver?.disconnect()
+})
 const exporting = ref(false)
 const exportColumns = computed(() => toExportColumns(OVERVIEW_EXPORT_FIELDS))
 const trendDaysOptions = [
@@ -263,15 +270,17 @@ const ANNOUNCEMENTS = [
                 :options="trendDaysOptions"
                 size="sm"
                 :clearable="false"
+                aria-label="用户创建趋势时间范围"
               />
             </div>
           </div>
         </template>
-        <div v-if="statsLoading || trendLoading" class="flex items-center justify-center h-48">
+        <div v-if="trendLoading" class="flex items-center justify-center h-48">
           <Loading />
         </div>
         <LineChart
           v-else-if="trendChartData.length"
+          :key="chartThemeRevision"
           :data="trendChartData"
           :height="192"
           responsive
@@ -302,6 +311,7 @@ const ANNOUNCEMENTS = [
         </div>
         <PieChart
           v-else-if="distributionChartData.length"
+          :key="chartThemeRevision"
           :data="distributionChartData"
           :height="192"
           responsive
@@ -349,6 +359,7 @@ const ANNOUNCEMENTS = [
         </div>
         <BarChart
           v-else-if="overview"
+          :key="chartThemeRevision"
           :data="[
             { x: '总用户', y: overview.totalUsers, color: chartPrimary },
             { x: '活跃', y: overview.activeUsers, color: chartSuccess },

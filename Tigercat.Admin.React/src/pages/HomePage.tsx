@@ -142,6 +142,7 @@ function HomePage() {
   const [statsError, setStatsError] = useState('');
   const [trendDays, setTrendDays] = useState<number>(7);
   const [isNarrowTrend, setIsNarrowTrend] = useState(false);
+  const [chartThemeRevision, setChartThemeRevision] = useState(0);
   const [exporting, setExporting] = useState(false);
   const exportColumns = useMemo(() => toExportColumns(OVERVIEW_EXPORT_FIELDS), []);
 
@@ -151,6 +152,12 @@ function HomePage() {
     syncNarrowTrend();
     query.addEventListener('change', syncNarrowTrend);
     return () => query.removeEventListener('change', syncNarrowTrend);
+  }, []);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => setChartThemeRevision((value) => value + 1));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+    return () => observer.disconnect();
   }, []);
 
   // --- 快捷操作跳转 ---
@@ -349,16 +356,18 @@ function HomePage() {
                 options={trendDaysOptions}
                 size="sm"
                 clearable={false}
+                aria-label="用户创建趋势时间范围"
                 onChange={handleTrendDaysChange}
               />
             </div>
           </div>
-          {statsLoading || trendLoading ? (
+          {trendLoading ? (
             <div className="flex items-center justify-center h-48">
               <Loading />
             </div>
           ) : trendChartData.length ? (
             <LineChart
+              key={chartThemeRevision}
               data={trendChartData}
               height={192}
               responsive
@@ -389,6 +398,7 @@ function HomePage() {
             </div>
           ) : distributionChartData.length ? (
             <PieChart
+              key={chartThemeRevision}
               data={distributionChartData}
               height={192}
               colors={[chartPrimary, chartError]}
@@ -437,6 +447,7 @@ function HomePage() {
             </div>
           ) : barChartData.length ? (
             <BarChart
+              key={chartThemeRevision}
               data={barChartData}
               height={192}
               responsive

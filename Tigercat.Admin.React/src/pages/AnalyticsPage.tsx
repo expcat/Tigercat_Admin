@@ -132,6 +132,16 @@ const customLabels = ['1月', '2月', '3月', '4月', '5月', '6月'];
 
 const PAGE_SIZE = 5;
 
+function readHeatmapColors() {
+  const styles = window.getComputedStyle(document.documentElement);
+  const minColor = styles.getPropertyValue('--tiger-bg-hover').trim();
+  const maxColor = styles.getPropertyValue('--tiger-primary').trim();
+  return {
+    minColor: /^#[0-9a-f]{6}$/i.test(minColor) ? minColor : '#dbeafe',
+    maxColor: /^#[0-9a-f]{6}$/i.test(maxColor) ? maxColor : '#2563eb',
+  };
+}
+
 function AnalyticsPage() {
   const navigate = useNavigate();
   const loadingTimer = useRef<number | undefined>(undefined);
@@ -141,10 +151,18 @@ function AnalyticsPage() {
   >(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [heatmapColors, setHeatmapColors] = useState(readHeatmapColors);
 
   useEffect(() => {
     loadingTimer.current = window.setTimeout(() => setLoading(false), 500);
-    return () => window.clearTimeout(loadingTimer.current);
+    const syncHeatmapColors = () => setHeatmapColors(readHeatmapColors());
+    const observer = new MutationObserver(syncHeatmapColors);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+    syncHeatmapColors();
+    return () => {
+      window.clearTimeout(loadingTimer.current);
+      observer.disconnect();
+    };
   }, []);
 
   const triggerLoading = () => {
@@ -202,8 +220,6 @@ function AnalyticsPage() {
     ],
     [factor],
   );
-  const donutTotal = useMemo(() => donutData.reduce((sum, d) => sum + d.value, 0), [donutData]);
-
   const funnelData: FunnelChartDatum[] = useMemo(
     () => [
       { label: '曝光', value: Math.round(1000 * factor) },
@@ -362,7 +378,7 @@ function AnalyticsPage() {
           {loading ? (
             <Skeleton rows={4} />
           ) : (
-            <PieChart data={donutData} height={240} responsive innerRadiusRatio={0.6} centerValue={donutTotal} centerLabel="总访问" showLegend />
+            <PieChart data={donutData} height={240} responsive innerRadiusRatio={0.6} centerValue="100%" centerLabel="渠道占比" showLegend />
           )}
         </Card>
 
@@ -391,8 +407,8 @@ function AnalyticsPage() {
               xLabels={heatmapX}
               yLabels={heatmapY}
               height={240}
-              minColor="var(--tiger-bg-hover, #dbeafe)"
-              maxColor="var(--tiger-primary)"
+              minColor={heatmapColors.minColor}
+              maxColor={heatmapColors.maxColor}
             />
           )}
         </Card>

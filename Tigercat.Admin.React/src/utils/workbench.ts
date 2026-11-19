@@ -72,7 +72,11 @@ export function saveWorkbenchState(
     },
   });
 
-  window.sessionStorage.setItem(workbenchKey(entity, account), JSON.stringify(state));
+  try {
+    window.sessionStorage.setItem(workbenchKey(entity, account), JSON.stringify(state));
+  } catch {
+    // Temporary workbench state is best-effort; storage failures must not block the page.
+  }
 }
 
 export function clearWorkbenchSelection(entity: WorkbenchEntity, account?: string): void {

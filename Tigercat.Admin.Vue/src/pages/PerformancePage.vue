@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Card } from '@expcat/tigercat-vue/Card'
 import { Tag } from '@expcat/tigercat-vue/Tag'
@@ -228,6 +228,17 @@ function countKanbanCards(columns: TaskBoardColumn[]): number {
   return columns.reduce((sum, column) => sum + column.cards.length, 0)
 }
 
+function focusKanbanCard(cardId: string | number) {
+  window.requestAnimationFrame(() => {
+    void nextTick(() => {
+      const escapedId = CSS.escape(String(cardId))
+      document.querySelector<HTMLElement>(
+        `[data-testid="performance-kanban"] [data-tiger-taskboard-card-id="${escapedId}"]`,
+      )?.focus()
+    })
+  })
+}
+
 const activeTab = ref<DemoTab>('list')
 const logLines = createLogLines(LOG_COUNT)
 const tableRows = createTableRows(TABLE_COUNT)
@@ -297,6 +308,7 @@ function handleKanbanColumnsChange(next: TaskBoardColumn[]) {
 
 function handleKanbanCardMove(event: TaskBoardCardMoveEvent) {
   lastKanbanMove.value = `卡片 ${event.cardId}：${event.fromColumnId} → ${event.toColumnId}`
+  focusKanbanCard(event.cardId)
 }
 
 function logLine(index: number): PerformanceLog {

@@ -1,10 +1,10 @@
 import { apiRequest } from './request';
 import { getAuthHeaders } from './auth';
 import { fetchCalendarEvents, formatCalendarDate } from './calendar';
-import { fetchApprovalContacts, fetchApprovals, getApprovalDemoActor } from './approvals';
+import { fetchApprovalContacts, getApprovalDemoActor } from './approvals';
 import { getRequiredPermissionForLink, isSafeInternalLink } from './notifications';
 import type {
-  AdminNotificationItem, AdminTaskBoardCard, PagedResult,
+  AdminNotificationItem, AdminTaskBoardCard, ApprovalListItem, PagedResult,
   WorkspaceSectionData, WorkspaceSectionKey, WorkspaceSectionState,
 } from './types';
 
@@ -20,6 +20,12 @@ export function createWorkspaceState(): Record<WorkspaceSectionKey, WorkspaceSec
     items: [], total: null, note: '', loading: true, error: '',
   });
   return { tasks: initial(), notifications: initial(), calendar: initial(), approvals: initial() };
+}
+
+function getWorkspaceTargetPermission(linkUrl: string): string | undefined {
+  if (/^\/jobs(?:[/?#]|$)/.test(linkUrl)) return 'job:view';
+  if (/^\/import(?:[/?#]|$)/.test(linkUrl)) return 'user:create';
+  return getRequiredPermissionForLink(linkUrl) ?? undefined;
 }
 
 // One section per request chain; the page owns each section's cancellation and retry.
@@ -40,7 +46,7 @@ export async function fetchWorkspaceSection(key: WorkspaceSectionKey, username: 
       return { total: data.total, items: data.items.map(item => ({
         id: item.id, title: item.title, description: item.description,
         href: item.linkUrl && isSafeInternalLink(item.linkUrl) ? item.linkUrl : '/notifications',
-        permission: item.linkUrl ? getRequiredPermissionForLink(item.linkUrl) ?? undefined : undefined,
+        permission: item.linkUrl ? getWorkspaceTargetPermission(item.linkUrl) : undefined,
       })) };
     }
     case 'calendar': {
@@ -60,7 +66,11 @@ export async function fetchWorkspaceSection(key: WorkspaceSectionKey, username: 
       const contacts = await fetchApprovalContacts(signal);
       const actor = contacts.data.users.find(item => [item.id, item.username].some(value => value.toLowerCase() === actorId.toLowerCase()));
       if (!actor) return { items: [], total: null, note: `演示身份「${actorId}」未匹配审批通讯录，未读取审批待办。请在审批中心选择有效演示身份。` };
-      const { data } = await fetchApprovals({ lane: 'todo', page: 1, pageSize }, signal);
+      const params = new URLSearchParams({ lane: 'todo', page: '1', pageSize: String(pageSize) });
+      const { data } = await apiRequest<PagedResult<ApprovalListItem>>(`/api/approvals?${params}`, {
+        headers: { ...getAuthHeaders(), 'X-Demo-Actor': actorId },
+        signal,
+      });
       return { total: data.total, note: `独立演示审批身份：${actor.name}（${actor.username}）；不是当前账号的审批统计。`, items: data.items.map(item => ({
         id: item.id, title: item.title, description: `${item.id} · ${item.starter} · ${item.category}`,
         href: `/approvals/${encodeURIComponent(item.id)}`,

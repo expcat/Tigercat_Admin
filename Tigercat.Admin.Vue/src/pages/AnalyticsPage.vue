@@ -49,9 +49,20 @@ import type {
 } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 
+function readHeatmapColors() {
+  const styles = window.getComputedStyle(document.documentElement)
+  const minColor = styles.getPropertyValue('--tiger-bg-hover').trim()
+  const maxColor = styles.getPropertyValue('--tiger-primary').trim()
+  return {
+    minColor: /^#[0-9a-f]{6}$/i.test(minColor) ? minColor : '#dbeafe',
+    maxColor: /^#[0-9a-f]{6}$/i.test(maxColor) ? maxColor : '#2563eb',
+  }
+}
+
 // ── 时间范围与加载 ──────────────────────────────
 const router = useRouter()
 let loadingTimer: number | undefined
+let heatmapThemeObserver: MutationObserver | undefined
 const range = ref<string | number>('30')
 const rangeOptions: SegmentedOption[] = [
   { value: '7', label: '近 7 天' },
@@ -60,6 +71,7 @@ const rangeOptions: SegmentedOption[] = [
 ]
 const dateRange = ref<[DatePickerInputDate | null, DatePickerInputDate | null] | null>(null)
 const loading = ref(true)
+const heatmapColors = ref(readHeatmapColors())
 
 const factor = computed(() => {
   if (dateRange.value?.[0] && dateRange.value[1]) {
@@ -96,8 +108,15 @@ onMounted(() => {
   loadingTimer = window.setTimeout(() => {
     loading.value = false
   }, 500)
+  const syncHeatmapColors = () => { heatmapColors.value = readHeatmapColors() }
+  heatmapThemeObserver = new MutationObserver(syncHeatmapColors)
+  heatmapThemeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] })
+  syncHeatmapColors()
 })
-onBeforeUnmount(() => window.clearTimeout(loadingTimer))
+onBeforeUnmount(() => {
+  window.clearTimeout(loadingTimer)
+  heatmapThemeObserver?.disconnect()
+})
 
 // ── KPI ────────────────────────────────────────
 const kpis = computed(() => [
@@ -120,8 +139,6 @@ const donutData = computed<PieChartDatum[]>(() => [
   { value: Math.round(18 * factor.value), label: '社交媒体' },
   { value: Math.round(12 * factor.value), label: '推荐' },
 ])
-const donutTotal = computed(() => donutData.value.reduce((sum, d) => sum + d.value, 0))
-
 const funnelData = computed<FunnelChartDatum[]>(() => [
   { label: '曝光', value: Math.round(1000 * factor.value) },
   { label: '点击', value: Math.round(620 * factor.value) },
@@ -341,8 +358,8 @@ function handlePageChange(value: number) {
           :height="240"
           responsive
           :inner-radius-ratio="0.6"
-          :center-value="donutTotal"
-          center-label="总访问"
+          center-value="100%"
+          center-label="渠道占比"
           :show-legend="true"
         />
       </Card>
@@ -380,8 +397,8 @@ function handlePageChange(value: number) {
           :x-labels="heatmapX"
           :y-labels="heatmapY"
           :height="240"
-          min-color="var(--tiger-bg-hover, #dbeafe)"
-          max-color="var(--tiger-primary)"
+          :min-color="heatmapColors.minColor"
+          :max-color="heatmapColors.maxColor"
         />
       </Card>
 

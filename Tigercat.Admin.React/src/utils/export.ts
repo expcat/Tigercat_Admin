@@ -1,5 +1,5 @@
 import type { DataExportFormat, TableColumn } from '@expcat/tigercat-core';
-import type { AuditExportField, ExportFieldOption, ReportExportField, ReportType } from './types';
+import type { AuditExportField, ExportFieldOption } from './types';
 
 export type ExportFormat = 'csv' | 'json' | 'xlsx';
 
@@ -13,18 +13,6 @@ export const EXPORT_FORMAT_LABELS: Record<ExportFormat, string> = {
   json: 'JSON',
   xlsx: 'Excel',
 };
-
-export const REPORT_EXPORT_FIELDS: ExportFieldOption<ReportExportField>[] = [
-  { key: 'visits', label: '访问量' },
-  { key: 'orders', label: '订单数' },
-  { key: 'conversionRate', label: '转化率' },
-  { key: 'revenue', label: '收入' },
-  { key: 'channel', label: '渠道' },
-  { key: 'channelVisits', label: '渠道访问量' },
-  { key: 'channelOrders', label: '渠道订单数' },
-  { key: 'channelRate', label: '渠道转化率' },
-  { key: 'channelAmount', label: '渠道金额' },
-];
 
 export const OVERVIEW_EXPORT_FIELDS: ExportFieldOption[] = [
   { key: 'section', label: '分区' },
@@ -111,22 +99,6 @@ export async function exportAuditLogs(options: {
   await downloadExportResponse(`/api/audit-logs/export?${params}`, options.headers, 'audit-logs', format);
 }
 
-export async function exportReports(options: {
-  type: ReportType;
-  format: ExportFormat;
-  fields?: string[];
-  headers?: HeadersInit;
-}): Promise<void> {
-  const params = new URLSearchParams({
-    type: options.type,
-    format: options.format,
-  });
-  if (options.fields && options.fields.length > 0) {
-    params.set('fields', options.fields.join(','));
-  }
-  await downloadExportResponse(`/api/export/reports?${params}`, options.headers, 'reports', options.format);
-}
-
 export async function exportOverview(options: {
   format: ExportFormat;
   days?: number;
@@ -145,8 +117,10 @@ async function downloadExportResponse(
   entity: string,
   format: ExportFormat,
 ): Promise<void> {
+  const requestHeaders = headers ? new Headers(headers) : undefined;
+  const hasAuthHeader = Boolean(requestHeaders?.has('Authorization') || requestHeaders?.has('X-Token'));
   const response = await fetch(url, {
-    headers: headers ? new Headers(headers) : undefined,
+    headers: requestHeaders,
   });
 
   if (!response.ok) {
@@ -156,6 +130,9 @@ async function downloadExportResponse(
       if (errorData?.message) message = errorData.message;
     } catch {
       // ignore non-JSON response
+    }
+    if (response.status === 401 && hasAuthHeader && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('tigercat:session-expired'));
     }
     throw new Error(message);
   }

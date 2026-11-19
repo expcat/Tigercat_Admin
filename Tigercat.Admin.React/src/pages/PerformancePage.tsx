@@ -234,6 +234,15 @@ function countKanbanCards(columns: TaskBoardColumn[]): number {
   return columns.reduce((sum, column) => sum + column.cards.length, 0);
 }
 
+function focusKanbanCard(cardId: string | number) {
+  window.requestAnimationFrame(() => {
+    const escapedId = CSS.escape(String(cardId));
+    document.querySelector<HTMLElement>(
+      `[data-testid="performance-kanban"] [data-tiger-taskboard-card-id="${escapedId}"]`,
+    )?.focus();
+  });
+}
+
 function asDivProps(
   value: Record<string, unknown>,
 ): React.HTMLAttributes<HTMLDivElement> {
@@ -313,6 +322,7 @@ function PerformancePage() {
     setLastKanbanMove(
       `卡片 ${event.cardId}：${event.fromColumnId} → ${event.toColumnId}`,
     );
+    focusKanbanCard(event.cardId);
   };
 
   return (
