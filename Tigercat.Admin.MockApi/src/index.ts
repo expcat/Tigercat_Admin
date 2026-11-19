@@ -21,6 +21,7 @@ import {
   type ApprovalInstance,
 } from './approvals';
 import { findContactUser, listMockContacts } from './contacts';
+import { DEMO_CATALOG_VERSION, generateDemoUsers } from './demo-catalog';
 
 type ApiResponse<T = unknown> = {
   code: number;
@@ -269,6 +270,7 @@ type JobItem = {
 };
 
 type DemoState = {
+  catalogVersion: string;
   users: DemoUser[];
   roles: DemoRole[];
   settings: SettingItem[];
@@ -365,6 +367,7 @@ const DEMO_ACCOUNT_PERMISSIONS = [
 
 function initialState(): DemoState {
   return {
+    catalogVersion: DEMO_CATALOG_VERSION,
     users: [
       {
         id: 1,
@@ -399,6 +402,7 @@ function initialState(): DemoState {
         updatedAt: null,
         roleIds: [3],
       },
+      ...generateDemoUsers(),
     ],
     roles: [
       {
@@ -547,7 +551,7 @@ function initialState(): DemoState {
       audit('system-demo', 'system', 'demo.static.enabled', '演示模式启用', '当前页面由前端静态 Mock API 提供数据。', 'system'),
     ],
     retentionDays: 90,
-    nextUserId: 4,
+    nextUserId: 49,
     nextRoleId: 4,
     nextMediaId: 4,
     nextTaskId: 7,
@@ -1481,6 +1485,10 @@ function readState(storageKey: string): DemoState {
     const raw = window.sessionStorage.getItem(storageKey);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<DemoState>;
+      if (parsed.catalogVersion !== seeded.catalogVersion) {
+        writeState(storageKey, seeded);
+        return seeded;
+      }
       const state: DemoState = {
         ...seeded,
         ...parsed,
@@ -1873,6 +1881,8 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/users' && method === 'GET') {
+    const denied = requireMenuPermission(state, request, init, 'user:view');
+    if (denied) return denied;
     const keyword = url.searchParams.get('keyword')?.trim().toLowerCase();
     const status = url.searchParams.get('status');
     let items = state.users.map((user) => toUserItem(state, user));
