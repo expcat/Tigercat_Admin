@@ -321,6 +321,61 @@ test.describe('运维工作流后端化页面', () => {
     await expect(page.getByText('当前加载未读')).toBeVisible();
   });
 
+  test('铃铛重叠加载会中止旧请求且不写回过期通知', async ({ page }) => {
+    const staleTitle = `过期通知 ${uniqueSuffix()}`;
+    const freshTitle = `最新通知 ${uniqueSuffix()}`;
+    let requestCount = 0;
+    let releaseStale: (() => void) | undefined;
+    let finishStale: (() => void) | undefined;
+    const staleGate = new Promise<void>((resolve) => { releaseStale = resolve; });
+    const staleFinished = new Promise<void>((resolve) => { finishStale = resolve; });
+
+    await page.route(/\/api\/notifications\?page=1&pageSize=100$/, async (route) => {
+      const currentRequest = ++requestCount;
+      if (currentRequest === 1) await staleGate;
+      const title = currentRequest === 1 ? staleTitle : freshTitle;
+      try {
+        await route.fulfill({
+          json: {
+            success: true,
+            code: 200,
+            message: 'OK',
+            data: {
+              items: [{
+                id: `e2e-${currentRequest}`,
+                groupKey: 'ops',
+                title,
+                description: title,
+                time: new Date().toISOString(),
+                read: false,
+                toastType: 'info',
+              }],
+              total: 1,
+              page: 1,
+              pageSize: 100,
+            },
+          },
+        });
+      } catch {
+        // The superseded request is aborted by the bell.
+      } finally {
+        if (currentRequest === 1) finishStale?.();
+      }
+    });
+
+    await page.locator('[data-tour="notification-bell"]').click();
+    await expect.poll(() => requestCount).toBe(1);
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event('tigercat-admin:notifications-changed'));
+    });
+    await expect(page.getByText(freshTitle, { exact: true }).first()).toBeVisible();
+    releaseStale?.();
+    await staleFinished;
+
+    expect(requestCount).toBe(2);
+    await expect(page.getByText(staleTitle, { exact: true })).toHaveCount(0);
+  });
+
   test('通知点击可跳转到关联运维页面', async ({ page }) => {
     await page.goto('/notifications');
 

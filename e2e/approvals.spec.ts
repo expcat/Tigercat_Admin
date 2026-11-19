@@ -45,7 +45,7 @@ test.describe('审批中心 mock 流转', () => {
     await page.goto('/approvals');
     await expect(page.getByText('审批中心', { exact: true }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: '发起审批' })).toBeVisible();
-    await expect(page.getByLabel('演示身份')).toBeVisible();
+    await expect(page.getByRole('combobox', { name: '演示身份' })).toBeVisible();
     await expect(page.getByText('工单升级：导出报表偶发 500').first()).toBeVisible();
 
     await page.getByRole('radio', { name: '已办' }).click();
@@ -149,6 +149,35 @@ test.describe('审批中心 mock 流转', () => {
     await expect(page.getByText('王经理').first()).toBeVisible();
   });
 
+  test('加签更换人选后只提交当前一人', async ({ page }) => {
+    await page.goto('/approvals');
+    await page.getByRole('button', { name: '发起审批' }).click();
+    await page.getByPlaceholder('例如：请假、报销或工单升级').fill(`单加签 ${uniqueSuffix()}`);
+    await page.getByRole('button', { name: '提交' }).click();
+    await expect(page.getByText('申请表单', { exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: '更多' }).click();
+    await page.getByRole('menuitem', { name: '加签' }).click();
+    await page.getByText('王经理（wang）').click();
+    await page.getByText(/^李总监（/).click();
+    const requestPromise = page.waitForRequest((request) =>
+      request.method() === 'POST' && /\/api\/approvals\/[^/]+\/actions$/.test(new URL(request.url()).pathname),
+    );
+    await page.getByRole('button', { name: '确定' }).click();
+
+    const body = (await requestPromise).postDataJSON() as {
+      action: string;
+      assignee?: { id: string; name: string };
+      assignees?: { id: string; name: string }[];
+      addsignTo?: string[];
+    };
+    expect(body.action).toBe('addsign');
+    expect(body.assignee?.name).toBe('李总监');
+    expect(body.assignees).toHaveLength(1);
+    expect(body.assignees?.[0].name).toBe('李总监');
+    expect(body.addsignTo).toEqual([body.assignees?.[0].id]);
+  });
+
   test('评论失败在弹层内提示并保留草稿，可原按钮重试和恢复焦点', async ({ page }) => {
     await page.goto('/approvals');
     await page.getByRole('button', { name: '发起审批' }).click();
@@ -185,7 +214,7 @@ test.describe('审批中心 mock 流转', () => {
     await expect(amount).toBeDisabled();
     await expect(page.getByLabel('关联工单')).toHaveCount(0);
 
-    await page.getByLabel('演示身份').click();
+    await page.getByRole('combobox', { name: '演示身份' }).click();
     await page.getByRole('option', { name: /陈财务/ }).click();
     await expect(page.getByText('财务会签').first()).toBeVisible();
     await expect(page.getByLabel('金额 / 天数')).toBeEnabled();
@@ -208,7 +237,7 @@ test.describe('审批中心 mock 流转', () => {
     await page.getByText('会签审批').first().scrollIntoViewIfNeeded();
     await expect(page.getByText(/1\/3/).first()).toBeVisible();
 
-    await page.getByLabel('演示身份').click();
+    await page.getByRole('combobox', { name: '演示身份' }).click();
     await page.getByRole('option', { name: /演示用户/ }).click();
     await expect(page.getByRole('button', { name: '同意' })).toBeVisible();
     await page.getByRole('button', { name: '同意' }).click();

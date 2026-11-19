@@ -322,7 +322,7 @@ test.describe('日历 / 导入 / 任务剩余弹层', () => {
     const datePanel = page.locator('[data-tiger="datepicker-panel"]');
     await expectEscClosesNestedOverlay(page, dateTrigger, datePanel, drawer);
 
-    const timeTrigger = drawer.getByRole('button', { name: '打开时间选择器' }).first();
+    const timeTrigger = drawer.getByRole('button', { name: '打开开始时间选择器' });
     const timePanel = page.locator('[data-tiger="timepicker-panel"]');
     await expectEscClosesNestedOverlay(page, timeTrigger, timePanel, drawer);
 
@@ -330,6 +330,31 @@ test.describe('日历 / 导入 / 任务剩余弹层', () => {
     await page.keyboard.press('Escape');
     await expect(titleField).toBeHidden();
     await expectFocused(trigger);
+  });
+
+  test('/calendar 无效时间草稿拒绝提交并聚焦无效控件', async ({ page }, testInfo) => {
+    await loginAsAdmin(page, testInfo);
+    await page.goto(appPath(testInfo, '/calendar'));
+    await page.getByRole('button', { name: '新建事件' }).click();
+    const drawer = page.getByRole('dialog', { name: '新建事件' });
+    const titleInput = drawer.getByPlaceholder('例如：迭代评审会');
+    await titleInput.fill('无效草稿回归');
+    const startInput = drawer.getByPlaceholder('请选择开始时间');
+    await startInput.fill('99:99');
+    await titleInput.click();
+    await expect(startInput).toHaveAttribute('aria-invalid', 'true');
+    let createRequests = 0;
+    page.on('request', (request) => {
+      if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/calendar/events') {
+        createRequests += 1;
+      }
+    });
+
+    await drawer.getByRole('button', { name: '创建事件' }).click();
+
+    await expect(drawer.getByRole('alert')).toContainText('请填写有效时间');
+    await expectFocused(startInput);
+    expect(createRequests).toBe(0);
   });
 
   test('/tickets 确认关闭工单 Drawer Esc 后焦点回到触发器', async ({ page }, testInfo) => {

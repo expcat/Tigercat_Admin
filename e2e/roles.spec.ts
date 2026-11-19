@@ -10,9 +10,17 @@ async function gotoRoles(page: Page) {
 
 async function searchRole(page: Page, keyword: string) {
   await page.getByPlaceholder(SEARCH_PLACEHOLDER).fill(keyword);
+  const responsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname === '/api/roles' &&
+      url.searchParams.get('keyword') === keyword
+    );
+  });
   await page.getByRole('button', { name: '搜索', exact: true }).click();
-  // 列表异步刷新，等待网络空闲，避免下拉菜单在表格重渲染时被卸载（detached）。
-  await page.waitForLoadState('networkidle');
+  // SignalR 长轮询使 networkidle 不成立，直接等待本次列表刷新。
+  expect((await responsePromise).ok()).toBe(true);
 }
 
 function roleRow(page: Page, name: string) {

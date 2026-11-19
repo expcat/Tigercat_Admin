@@ -1,11 +1,12 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { createServer } from 'node:net';
 
-const host = '127.0.0.1';
-const apiPort = 55137;
-const reactPort = 54174;
-const vuePort = 54173;
+export const host = '127.0.0.1';
+export const apiPort = 55137;
+export const reactPort = 54174;
+export const vuePort = 54173;
 
 const repoRoot = path.resolve(__dirname, '..');
 const runtimeDir = path.join(repoRoot, 'test-results');
@@ -61,6 +62,7 @@ export function getManagedServers(): ServerDefinition[] {
         host,
         '--port',
         String(reactPort),
+        '--strictPort',
       ]),
       readyUrl: `http://${host}:${reactPort}/`,
       env: {
@@ -79,6 +81,7 @@ export function getManagedServers(): ServerDefinition[] {
         host,
         '--port',
         String(vuePort),
+        '--strictPort',
       ]),
       readyUrl: `http://${host}:${vuePort}/`,
       env: {
@@ -96,6 +99,7 @@ export async function startManagedServers(): Promise<void> {
 
   try {
     for (const definition of getManagedServers()) {
+      await assertPortAvailable(definition.name, Number(new URL(definition.readyUrl).port));
       const child = spawn(definition.command, definition.args, {
         cwd: repoRoot,
         env: definition.env,
@@ -109,7 +113,7 @@ export async function startManagedServers(): Promise<void> {
 
       child.unref();
       startedServers.push({ name: definition.name, pid: child.pid });
-      await waitForHttpOk(definition.readyUrl, 120_000);
+      await waitForHttpOk(definition.readyUrl, 120_000, child);
     }
 
     await writeFile(stateFile, JSON.stringify(startedServers, null, 2), 'utf8');
@@ -124,19 +128,65 @@ export async function stopManagedServers(
 ): Promise<void> {
   const managedServers = servers ?? (await readManagedServerState());
 
-  for (const server of managedServers.reverse()) {
+  const failures: string[] = [];
+
+  for (const server of [...managedServers].reverse()) {
     try {
-      if (process.platform === 'win32') {
-        await killWindowsProcessTree(server.pid);
-      } else {
-        process.kill(-server.pid, 'SIGTERM');
-      }
-    } catch {
-      // Ignore already-terminated processes.
+      await stopManagedServer(server);
+    } catch (error) {
+      failures.push(`${server.name} (pid ${server.pid}): ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
+  if (failures.length > 0) {
+    throw new Error(`Managed server cleanup failed: ${failures.join('; ')}. State file retained: ${stateFile}`);
+  }
+
   await rm(stateFile, { force: true });
+}
+
+async function stopManagedServer(server: ManagedServer): Promise<void> {
+  if (process.platform === 'win32') {
+    await killWindowsProcessTree(server.pid);
+  } else {
+    signalPosixProcessGroup(server.pid, 'SIGTERM');
+    if (!(await waitForProcessTreeExit(server.pid, 5_000))) {
+      signalPosixProcessGroup(server.pid, 'SIGKILL');
+    }
+  }
+
+  if (!(await waitForProcessTreeExit(server.pid, 5_000))) {
+    throw new Error('process tree is still running after SIGKILL');
+  }
+}
+
+function signalPosixProcessGroup(pid: number, signal: NodeJS.Signals): void {
+  try {
+    process.kill(-pid, signal);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error;
+  }
+}
+
+function processTreeIsRunning(pid: number): boolean {
+  try {
+    process.kill(process.platform === 'win32' ? pid : -pid, 0);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ESRCH') return false;
+    throw error;
+  }
+}
+
+async function waitForProcessTreeExit(pid: number, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    if (!processTreeIsRunning(pid)) return true;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  return !processTreeIsRunning(pid);
 }
 
 async function killWindowsProcessTree(pid: number): Promise<void> {
@@ -158,13 +208,20 @@ async function readManagedServerState(): Promise<ManagedServer[]> {
   }
 }
 
-async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
+async function waitForHttpOk(url: string, timeoutMs: number, child: ChildProcess): Promise<void> {
   const deadline = Date.now() + timeoutMs;
+  let processError: Error | undefined;
+  child.on('error', (error) => { processError = error; });
 
   while (Date.now() < deadline) {
+    if (processError) throw new Error(`Failed to start server for ${url}: ${processError.message}`);
+    if (child.exitCode !== null || child.signalCode !== null) {
+      throw new Error(`Server for ${url} exited before becoming ready (code ${child.exitCode}, signal ${child.signalCode}).`);
+    }
+
     try {
       const response = await fetch(url, { redirect: 'manual' });
-      if (response.ok) {
+      if (response.ok && child.exitCode === null && child.signalCode === null && !processError) {
         return;
       }
     } catch {
@@ -175,4 +232,16 @@ async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
   }
 
   throw new Error(`Timed out waiting for server: ${url}`);
+}
+
+async function assertPortAvailable(name: string, port: number): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const probe = createServer();
+    probe.once('error', (error) => {
+      reject(new Error(`Cannot start ${name}: ${host}:${port} is unavailable (${error.message}).`));
+    });
+    probe.listen({ host, port }, () => {
+      probe.close(() => resolve());
+    });
+  });
 }

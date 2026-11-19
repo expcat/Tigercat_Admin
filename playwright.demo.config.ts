@@ -21,13 +21,13 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: `pnpm --filter tigercat-admin-react exec cross-env VITE_TIGERCAT_DEMO=true VITE_TIGERCAT_ROUTER_MODE=hash VITE_TIGERCAT_BASE_PATH=/ vite preview --host ${host} --port ${reactPort}`,
+      command: `pnpm --filter tigercat-admin-react exec cross-env VITE_TIGERCAT_DEMO=true VITE_TIGERCAT_ROUTER_MODE=hash VITE_TIGERCAT_BASE_PATH=/ vite preview --host ${host} --port ${reactPort} --strictPort`,
       url: `http://${host}:${reactPort}/`,
       reuseExistingServer: false,
       timeout: 120_000,
     },
     {
-      command: `pnpm --filter tigercat-admin-vue exec cross-env VITE_TIGERCAT_DEMO=true VITE_TIGERCAT_ROUTER_MODE=hash VITE_TIGERCAT_BASE_PATH=/ vite preview --host ${host} --port ${vuePort}`,
+      command: `pnpm --filter tigercat-admin-vue exec cross-env VITE_TIGERCAT_DEMO=true VITE_TIGERCAT_ROUTER_MODE=hash VITE_TIGERCAT_BASE_PATH=/ vite preview --host ${host} --port ${vuePort} --strictPort`,
       url: `http://${host}:${vuePort}/`,
       reuseExistingServer: false,
       timeout: 120_000,

@@ -1,10 +1,6 @@
 import { defineConfig } from '@playwright/test';
 import { shellProjects } from './e2e/playwright-projects';
-
-const host = '127.0.0.1';
-const apiPort = 55137;
-const reactPort = 54174;
-const vuePort = 54173;
+import { host, reactPort, vuePort } from './e2e/server-control';
 
 export default defineConfig({
   testDir: './e2e',

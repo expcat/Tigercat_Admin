@@ -3,6 +3,17 @@ import type { Page } from '@playwright/test';
 
 const SEARCH_PLACEHOLDER = '搜索用户名或显示名...';
 
+function waitForUserList(page: Page, keyword: string) {
+  return page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname === '/api/users' &&
+      url.searchParams.get('keyword') === keyword
+    );
+  });
+}
+
 async function gotoUsers(page: Page) {
   await page.goto('/users');
   await expect(page.getByRole('button', { name: '新增用户' })).toBeVisible();
@@ -11,9 +22,10 @@ async function gotoUsers(page: Page) {
 async function searchUser(page: Page, keyword: string) {
   const box = page.getByPlaceholder(SEARCH_PLACEHOLDER);
   await box.fill(keyword);
+  const responsePromise = waitForUserList(page, keyword);
   await page.getByRole('button', { name: '搜索', exact: true }).click();
-  // 等待服务端分页刷新完成，避免表格重渲染时下拉菜单项被 detach。
-  await page.waitForLoadState('networkidle');
+  // SignalR 长轮询使 networkidle 不成立，直接等待本次列表刷新。
+  expect((await responsePromise).ok()).toBe(true);
 }
 
 async function createUser(
@@ -283,8 +295,9 @@ test.describe('用户管理主流程', () => {
     await createUser(page, { username, password: 'e2e_pass123', role: 'Admin' });
     try {
       await searchUser(page, 'admin');
+      const sortResponsePromise = waitForUserList(page, 'admin');
       await page.getByRole('button', { name: /^按 用户名 排序/ }).click();
-      await page.waitForLoadState('networkidle');
+      expect((await sortResponsePromise).ok()).toBe(true);
       await checkUserRow(page, 'admin');
       await page.getByRole('button', { name: '打开列设置' }).click();
       const createdAtColumn = page.getByRole('checkbox', { name: '创建时间', exact: true });

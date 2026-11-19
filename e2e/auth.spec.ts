@@ -117,6 +117,45 @@ test.describe('认证与受保护路由烟测', () => {
     await expect(page.getByRole('heading', { name: '欢迎回来' })).toBeVisible();
   });
 
+  test('退出登录会发起 POST logout 请求', async ({ page, loginAsAdmin }) => {
+    await loginAsAdmin();
+    const logoutRequest = page.waitForRequest((request) =>
+      request.method() === 'POST' && new URL(request.url()).pathname === '/api/auth/logout',
+    );
+
+    await page.getByRole('banner').getByRole('button', { name: 'admin', exact: true }).click();
+    await page.getByText('退出登录').click();
+
+    await logoutRequest;
+    await expect(page).toHaveURL(/\/login$/);
+  });
+
+  test('旧密码错误返回 401 时保留会话且不跳登录页', async ({
+    page,
+    loginAsAdmin,
+    expectSessionStored,
+  }) => {
+    await loginAsAdmin();
+    await page.route('**/api/auth/change-password', (route) => route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: false, code: 401, message: '旧密码错误' }),
+    }));
+
+    await page.getByRole('banner').getByRole('button', { name: 'admin', exact: true }).click();
+    await page.getByText('修改密码', { exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: '修改密码' });
+    await dialog.getByPlaceholder('请输入旧密码').fill('wrong-password');
+    await dialog.getByPlaceholder('请输入新密码').fill('new-password-123');
+    await dialog.getByRole('button', { name: '确认修改' }).click();
+
+    await expect(page.getByText('旧密码错误').first()).toBeVisible();
+    await expect(dialog).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByText('会话已过期，请重新登录')).toHaveCount(0);
+    await expectSessionStored();
+  });
+
   test('跨标签页退出后同步回到登录页', async ({ page, loginAsAdmin, logout }) => {
     await loginAsAdmin();
 
