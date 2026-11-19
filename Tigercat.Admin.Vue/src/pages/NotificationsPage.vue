@@ -123,8 +123,6 @@ const loadNotifications = async () => {
   loadController = controller
   loading.value = true
   errorMessage.value = ''
-  notifications.value = []
-  total.value = 0
 
   try {
     const payload = await fetchNotifications(controller.signal)
@@ -337,7 +335,7 @@ onBeforeUnmount(() => {
         :manage-read-state="false"
         :groups="notificationGroups"
         :empty-text="loading ? '正在加载通知...' : '暂无通知'"
-        mark-all-read-text="全部标记为已读"
+        mark-all-read-text="当前分组全部已读"
         mark-read-text="设为已读"
         mark-unread-text="恢复未读"
         all-label="全部"

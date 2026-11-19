@@ -46,7 +46,7 @@ function canGoBack() {
   if (state?.back != null) return true
   if (typeof state?.idx === 'number' && state.idx > 0) return true
   // Browser hash navigation can create entries without a router back link.
-  return state?.back == null && window.history.length > 2
+  return state?.back === undefined && state?.idx == null && window.history.length > 2
 }
 
 function goHome() {

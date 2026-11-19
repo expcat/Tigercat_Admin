@@ -126,8 +126,6 @@ function NotificationsPage() {
     loadController.current = controller;
     setLoading(true);
     setErrorMessage('');
-    setNotifications([]);
-    setTotal(0);
 
     try {
       const payload = await fetchNotifications(controller.signal);
@@ -378,7 +376,7 @@ function NotificationsPage() {
           manageReadState={false}
           groups={notificationGroups}
           emptyText={loading ? '正在加载通知...' : '暂无通知'}
-          markAllReadText="全部标记为已读"
+          markAllReadText="当前分组全部已读"
           markReadText="设为已读"
           markUnreadText="恢复未读"
           allLabel="全部"

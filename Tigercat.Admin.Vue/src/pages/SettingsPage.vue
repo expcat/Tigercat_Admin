@@ -36,7 +36,11 @@ const saveConfirmOpen = ref(false)
 const logoUploading = ref(false)
 const logoInputRef = ref<HTMLInputElement | null>(null)
 let logoUploadController: AbortController | null = null
-onBeforeUnmount(() => logoUploadController?.abort())
+let settingsLoadController: AbortController | null = null
+onBeforeUnmount(() => {
+  logoUploadController?.abort()
+  settingsLoadController?.abort()
+})
 const openSettingGroups = ref<(string | number)[]>(Object.keys(SETTINGS_GROUP_LABELS))
 const { has: hasPerm } = usePermission()
 const { watermarkEnabled, setWatermarkEnabled } = useWatermarkEnabled()
@@ -56,21 +60,27 @@ const savedLogoUrl = computed(() => settings.value.find(item => item.key === 'si
 
 /* ── API 操作 ────────────────────────────────── */
 async function fetchSettings() {
+  settingsLoadController?.abort()
+  const controller = new AbortController()
+  settingsLoadController = controller
   try {
     loading.value = true
     loadError.value = ''
     const res = await apiRequest<SettingItem[]>('/api/settings', {
       headers: getAuthHeaders(),
+      signal: controller.signal,
     })
+    if (controller.signal.aborted) return
     settings.value = res.data
     const values: Record<string, string> = {}
     for (const s of res.data) values[s.key] = s.value
     editValues.value = values
   } catch (e: any) {
+    if (controller.signal.aborted) return
     loadError.value = e.message || '加载设置失败'
     Message.error({ content: e.message || '加载设置失败', duration: 3000 })
   } finally {
-    loading.value = false
+    if (!controller.signal.aborted) loading.value = false
   }
 }
 

@@ -103,7 +103,12 @@ async function tryMonitorHub(
 
     await connection.invoke('Start', intervalSec);
     connection.onreconnected(() => {
-      if (!signal.aborted) void connection?.invoke('Start', intervalSec).catch(() => undefined);
+      if (signal.aborted) return;
+      void connection?.invoke('Start', intervalSec).catch(async (error) => {
+        if (signal.aborted) return;
+        onError(error);
+        await stopRealtimeConnection(connection);
+      });
     });
     connection.onclose(() => {
       if (signal.aborted) {

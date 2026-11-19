@@ -45,7 +45,11 @@ function SettingsPage() {
   const [logoUploading, setLogoUploading] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const logoUploadController = useRef<AbortController | null>(null);
-  useEffect(() => () => logoUploadController.current?.abort(), []);
+  const settingsLoadController = useRef<AbortController | null>(null);
+  useEffect(() => () => {
+    logoUploadController.current?.abort();
+    settingsLoadController.current?.abort();
+  }, []);
   const [openSettingGroups, setOpenSettingGroups] = useState<(string | number)[]>(
     Object.keys(SETTINGS_GROUP_LABELS),
   );
@@ -58,21 +62,27 @@ function SettingsPage() {
   );
 
   const fetchSettings = useCallback(async () => {
+    settingsLoadController.current?.abort();
+    const controller = new AbortController();
+    settingsLoadController.current = controller;
     try {
       setLoading(true);
       setLoadError('');
       const res = await apiRequest<SettingItem[]>('/api/settings', {
         headers: getAuthHeaders(),
+        signal: controller.signal,
       });
+      if (controller.signal.aborted) return;
       setSettings(res.data);
       const values: Record<string, string> = {};
       for (const s of res.data) values[s.key] = s.value;
       setEditValues(values);
     } catch (e: any) {
+      if (controller.signal.aborted) return;
       setLoadError(e.message || '加载设置失败');
       Message.error({ content: e.message || '加载设置失败', duration: 3000 });
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, []);
 

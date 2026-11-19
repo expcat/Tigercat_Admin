@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { notification } from '@expcat/tigercat-vue/notification'
 
@@ -16,12 +16,19 @@ import {
   NOTIFICATIONS_CHANGED_EVENT,
 } from '../utils/notifications'
 import type { AdminNotificationItem } from '../utils/types'
+import { usePermission } from '../utils/permission'
 
 const router = useRouter()
+const permission = usePermission()
+const canEdit = computed(() => permission.has('notification:edit'))
 
 const open = ref(false)
 const loading = ref(false)
 const items = ref<AdminNotificationItem[]>([])
+const errorMessage = ref('')
+const savingRead = ref(false)
+const panelRef = ref<HTMLDivElement | null>(null)
+let loadController: AbortController | null = null
 
 const unreadCount = computed(() => countUnreadNotifications(items.value))
 const recentItems = computed(() => items.value.slice(0, 5))
@@ -36,14 +43,22 @@ const formatTime = (value: string) =>
   })
 
 const loadNotifications = async () => {
+  loadController?.abort()
+  const controller = new AbortController()
+  loadController = controller
   loading.value = true
+  errorMessage.value = ''
   try {
-    const payload = await fetchNotifications()
+    const payload = await fetchNotifications(controller.signal)
+    if (controller.signal.aborted) return
     items.value = payload.data.items
-  } catch {
-    // 顶部铃铛失败时保持静默，通知中心页面会展示详细错误。
+  } catch (error: unknown) {
+    if (controller.signal.aborted) return
+    errorMessage.value = error instanceof Error && error.message
+      ? error.message
+      : '通知加载失败，请稍后重试。'
   } finally {
-    loading.value = false
+    if (!controller.signal.aborted) loading.value = false
   }
 }
 
@@ -82,9 +97,17 @@ const handleItemClick = (item: AdminNotificationItem) => {
 }
 
 const handleMarkAllRead = async () => {
-  if (!unreadCount.value) {
+  if (!canEdit.value) {
+    notification.warning({
+      title: '权限不足',
+      description: '当前账号没有修改通知已读状态的权限。',
+    })
     return
   }
+  if (!unreadCount.value || savingRead.value) {
+    return
+  }
+  savingRead.value = true
   try {
     await apiRequest('/api/notifications/mark-read', {
       method: 'POST',
@@ -101,6 +124,8 @@ const handleMarkAllRead = async () => {
       title: '批量已读失败',
       description: error instanceof Error ? error.message : '请稍后重试。',
     })
+  } finally {
+    savingRead.value = false
   }
 }
 
@@ -109,9 +134,15 @@ const handleViewAll = () => {
   router.push({ name: 'notifications' })
 }
 
-watch(open, (isOpen) => {
+watch(open, async (isOpen) => {
   if (isOpen) {
     void loadNotifications()
+    await nextTick()
+    requestAnimationFrame(() => {
+      panelRef.value
+        ?.querySelector<HTMLButtonElement>('button:not([disabled])')
+        ?.focus()
+    })
   }
 })
 
@@ -126,6 +157,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, onNotificationsChanged)
+  loadController?.abort()
 })
 </script>
 
@@ -158,13 +190,14 @@ onUnmounted(() => {
     </template>
 
     <template #content>
-      <div class="flex max-h-[26rem] flex-col">
+      <div ref="panelRef" class="flex max-h-[26rem] flex-col">
         <div class="flex items-center justify-between border-b border-(--tiger-border,#e5e7eb) px-4 py-3">
           <Text weight="bold">通知</Text>
           <Button
             variant="link"
             class="!px-0"
             :disabled="!unreadCount"
+            :loading="savingRead"
             @click="handleMarkAllRead"
           >
             全部已读
@@ -172,13 +205,20 @@ onUnmounted(() => {
         </div>
 
         <div class="min-h-0 flex-1 overflow-auto">
-          <div v-if="loading" class="px-4 py-6 text-center">
+          <div
+            v-if="errorMessage"
+            role="alert"
+            class="border-b border-(--tiger-border,#e5e7eb) px-4 py-3"
+          >
+            <Text size="sm" color="danger">{{ errorMessage }}</Text>
+          </div>
+          <div v-if="loading && !recentItems.length" class="px-4 py-6 text-center">
             <Text color="secondary">正在加载通知...</Text>
           </div>
-          <div v-else-if="!recentItems.length" class="px-4 py-6 text-center">
+          <div v-else-if="!recentItems.length && !errorMessage" class="px-4 py-6 text-center">
             <Text color="secondary">暂无通知</Text>
           </div>
-          <ul v-else class="divide-y divide-(--tiger-border,#e5e7eb)">
+          <ul v-else-if="recentItems.length" class="divide-y divide-(--tiger-border,#e5e7eb)">
             <li v-for="item in recentItems" :key="item.id">
               <button
                 type="button"
@@ -186,6 +226,7 @@ onUnmounted(() => {
                 @click="handleItemClick(item)"
               >
                 <span class="flex items-center gap-2">
+                  <span v-if="!item.read" class="sr-only">未读通知：</span>
                   <span
                     v-if="!item.read"
                     class="h-2 w-2 shrink-0 rounded-full bg-(--tiger-primary,#3b82f6)"

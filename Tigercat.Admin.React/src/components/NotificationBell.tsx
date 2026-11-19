@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notification } from '@expcat/tigercat-react/notification';
 import { Badge } from '@expcat/tigercat-react/Badge';
@@ -14,6 +14,7 @@ import {
   NOTIFICATIONS_CHANGED_EVENT,
 } from '../utils/notifications';
 import type { AdminNotificationItem } from '../utils/types';
+import { usePermission } from '../utils/permission';
 
 const formatTime = (value: string) =>
   new Date(value).toLocaleString('zh-CN', {
@@ -26,28 +27,46 @@ const formatTime = (value: string) =>
 
 export function NotificationBell() {
   const navigate = useNavigate();
+  const { has: hasPerm } = usePermission();
+  const canEdit = hasPerm('notification:edit');
 
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<AdminNotificationItem[]>([]);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [savingRead, setSavingRead] = useState(false);
+  const loadController = useRef<AbortController | null>(null);
+  const savingReadRef = useRef(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = useMemo(() => countUnreadNotifications(items), [items]);
   const recentItems = useMemo(() => items.slice(0, 5), [items]);
 
   const loadNotifications = useCallback(async () => {
+    loadController.current?.abort();
+    const controller = new AbortController();
+    loadController.current = controller;
     setLoading(true);
+    setErrorMessage('');
     try {
-      const payload = await fetchNotifications();
+      const payload = await fetchNotifications(controller.signal);
+      if (controller.signal.aborted) return;
       setItems(payload.data.items);
-    } catch {
-      // 顶部铃铛失败时保持静默，通知中心页面会展示详细错误。
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setErrorMessage(
+        error instanceof Error && error.message
+          ? error.message
+          : '通知加载失败，请稍后重试。',
+      );
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void loadNotifications();
+    return () => loadController.current?.abort();
   }, [loadNotifications]);
 
   useEffect(() => {
@@ -62,6 +81,11 @@ export function NotificationBell() {
     setOpen(next);
     if (next) {
       void loadNotifications();
+      requestAnimationFrame(() => {
+        panelRef.current
+          ?.querySelector<HTMLButtonElement>('button:not([disabled])')
+          ?.focus();
+      });
     }
   };
 
@@ -98,9 +122,18 @@ export function NotificationBell() {
   };
 
   const handleMarkAllRead = async () => {
-    if (!unreadCount) {
+    if (!canEdit) {
+      notification.warning({
+        title: '权限不足',
+        description: '当前账号没有修改通知已读状态的权限。',
+      });
       return;
     }
+    if (!unreadCount || savingReadRef.current) {
+      return;
+    }
+    savingReadRef.current = true;
+    setSavingRead(true);
     try {
       await apiRequest('/api/notifications/mark-read', {
         method: 'POST',
@@ -117,6 +150,9 @@ export function NotificationBell() {
         title: '批量已读失败',
         description: error instanceof Error ? error.message : '请稍后重试。',
       });
+    } finally {
+      savingReadRef.current = false;
+      setSavingRead(false);
     }
   };
 
@@ -126,13 +162,14 @@ export function NotificationBell() {
   };
 
   const panel = (
-    <div className="flex max-h-[26rem] flex-col">
+    <div ref={panelRef} className="flex max-h-[26rem] flex-col">
       <div className="flex items-center justify-between border-b border-(--tiger-border,#e5e7eb) px-4 py-3">
         <Text weight="bold">通知</Text>
         <Button
           variant="link"
           className="!px-0"
           disabled={!unreadCount}
+          loading={savingRead}
           onClick={handleMarkAllRead}
         >
           全部已读
@@ -140,15 +177,20 @@ export function NotificationBell() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
-        {loading ? (
+        {errorMessage && (
+          <div role="alert" className="border-b border-(--tiger-border,#e5e7eb) px-4 py-3">
+            <Text size="sm" color="danger">{errorMessage}</Text>
+          </div>
+        )}
+        {loading && recentItems.length === 0 ? (
           <div className="px-4 py-6 text-center">
             <Text color="secondary">正在加载通知...</Text>
           </div>
-        ) : recentItems.length === 0 ? (
+        ) : recentItems.length === 0 && !errorMessage ? (
           <div className="px-4 py-6 text-center">
             <Text color="secondary">暂无通知</Text>
           </div>
-        ) : (
+        ) : recentItems.length > 0 ? (
           <ul className="divide-y divide-(--tiger-border,#e5e7eb)">
             {recentItems.map((item) => (
               <li key={item.id}>
@@ -158,6 +200,7 @@ export function NotificationBell() {
                   onClick={() => handleItemClick(item)}
                 >
                   <span className="flex items-center gap-2">
+                    {!item.read && <span className="sr-only">未读通知：</span>}
                     {!item.read && (
                       <span
                         className="h-2 w-2 shrink-0 rounded-full bg-(--tiger-primary,#3b82f6)"
@@ -178,7 +221,7 @@ export function NotificationBell() {
               </li>
             ))}
           </ul>
-        )}
+        ) : null}
       </div>
 
       <div className="border-t border-(--tiger-border,#e5e7eb) px-4 py-2">
@@ -203,7 +246,7 @@ export function NotificationBell() {
         type="button"
         data-tour="notification-bell"
         aria-label="通知"
-        className="flex h-10 w-10 items-center justify-center rounded-lg text-(--tiger-text,#1f2937) transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9)"
+        className={`flex h-10 w-10 items-center justify-center rounded-lg text-(--tiger-text,#1f2937) transition-colors hover:bg-(--tiger-bg-hover,#f1f5f9) ${open ? 'bg-(--tiger-bg-hover,#f1f5f9)' : ''}`}
       >
         <Badge
           content={unreadCount}
