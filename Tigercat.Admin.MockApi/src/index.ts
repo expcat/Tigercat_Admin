@@ -21,7 +21,12 @@ import {
   type ApprovalInstance,
 } from './approvals';
 import { findContactUser, listMockContacts } from './contacts';
-import { DEMO_CATALOG_VERSION, generateDemoUsers } from './demo-catalog';
+import {
+  DEMO_CATALOG_VERSION,
+  generateDemoAuditLogs,
+  generateDemoNotifications,
+  generateDemoUsers,
+} from './demo-catalog';
 
 type ApiResponse<T = unknown> = {
   code: number;
@@ -119,6 +124,9 @@ type NotificationItem = {
   toastType: 'success' | 'warning' | 'error' | 'info';
   meta: Record<string, string>;
   linkUrl?: string | null;
+  createdAt: string;
+  readAt: string | null;
+  updatedAt: string | null;
 };
 
 type TaskItem = {
@@ -462,6 +470,9 @@ function initialState(): DemoState {
         toastType: 'warning',
         meta: { source: 'deployment', severity: 'medium' },
         linkUrl: '/tasks',
+        createdAt: '2026-06-03T08:00:00.000Z',
+        readAt: null,
+        updatedAt: null,
       },
       {
         id: 'security-session-review',
@@ -473,6 +484,9 @@ function initialState(): DemoState {
         toastType: 'info',
         meta: { source: 'security', severity: 'low' },
         linkUrl: '/settings',
+        createdAt: '2026-06-03T06:30:00.000Z',
+        readAt: null,
+        updatedAt: null,
       },
       {
         id: 'release-audit-ready',
@@ -484,7 +498,11 @@ function initialState(): DemoState {
         toastType: 'success',
         meta: { source: 'audit', severity: 'low' },
         linkUrl: '/audit-logs',
+        createdAt: '2026-06-02T15:20:00.000Z',
+        readAt: '2026-06-02T16:20:00.000Z',
+        updatedAt: '2026-06-02T16:20:00.000Z',
       },
+      ...generateDemoNotifications(),
     ],
     tasks: [
       task('task-asset-review', '补齐媒体资源持久化方案', '为 Logo 与头像预留真实存储方案，明确对象存储与权限校验边界。', '王一哲', 'high', 'backlog', '2026-06-03T10:00:00.000Z', 6, false),
@@ -545,6 +563,7 @@ function initialState(): DemoState {
     importJobs: [],
     menuSchema: cloneMenuSchemaPayload(),
     auditLogs: [
+      ...generateDemoAuditLogs(),
       audit('auth-login', 'auth', 'auth.user.login', '用户登录', 'admin 登录了系统。', 'admin'),
       audit('user-update', 'user', 'admin.user.updated', '更新用户', 'admin 更新了用户 editor 的资料或角色配置。', 'admin'),
       audit('task-moved', 'task', 'admin.task.moved', '任务流转', '平台运维将任务移动到执行中。', 'admin'),
@@ -2080,13 +2099,17 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     }
     if (changedKeys.length > 0) {
       const notificationId = `notif-setting-${Date.now()}-${state.nextMessageSeq++}`;
+      const notificationTime = new Date().toISOString();
       state.notifications.unshift({
         id: notificationId,
         groupKey: changedKeys.some((key) => key.startsWith('auth.')) ? 'security' : 'ops',
         title: '系统设置已更新',
         description: `admin 更新了 ${changedKeys.join(', ')}。`,
-        time: new Date().toISOString(),
+        time: notificationTime,
+        createdAt: notificationTime,
         read: false,
+        readAt: null,
+        updatedAt: null,
         toastType: changedKeys.some((key) => key.startsWith('auth.')) ? 'warning' : 'info',
         meta: { source: 'settings', severity: 'low', eventType: 'admin.setting.updated' },
         linkUrl: `/settings?key=${encodeURIComponent(changedKeys[0])}`,
@@ -2117,6 +2140,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     if (groupKey) items = items.filter((item) => item.groupKey === groupKey);
     if (unread === 'true') items = items.filter((item) => !item.read);
     if (unread === 'false') items = items.filter((item) => item.read);
+    items.sort((a, b) => Number(a.read) - Number(b.read) || Date.parse(b.createdAt) - Date.parse(a.createdAt));
     return makeJson(page(items, url, 50));
   }
 
@@ -2149,19 +2173,17 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
       title,
       description: String(body.description ?? '').trim(),
       time: now,
+      createdAt: now,
       read: false,
+      readAt: null,
+      updatedAt: null,
       toastType: toastType as NotificationItem['toastType'],
       meta,
       linkUrl: rawLink || null,
     };
     state.notifications.unshift(item);
     writeState(storageKey, state);
-    return makeJson({
-      ...item,
-      createdAt: now,
-      readAt: null,
-      updatedAt: null,
-    });
+    return makeJson(item);
   }
 
   const notificationMatch = path.match(/^\/api\/notifications\/([^/]+)\/read$/);
@@ -2169,14 +2191,22 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     const item = state.notifications.find((notification) => notification.id === notificationMatch[1]);
     if (!item) return makeError('通知不存在', 404);
     item.read = Boolean(body.read);
+    const now = new Date().toISOString();
+    item.readAt = item.read ? now : null;
+    item.updatedAt = now;
     writeState(storageKey, state);
     return makeJson(item);
   }
 
   if (path === '/api/notifications/mark-read' && method === 'POST') {
     const groupKey = body.groupKey ? String(body.groupKey) : null;
+    const now = new Date().toISOString();
     state.notifications.forEach((item) => {
-      if (!groupKey || item.groupKey === groupKey) item.read = true;
+      if ((!groupKey || item.groupKey === groupKey) && !item.read) {
+        item.read = true;
+        item.readAt = now;
+        item.updatedAt = now;
+      }
     });
     writeState(storageKey, state);
     return makeJson({ message: '标记已读成功' });
@@ -2286,8 +2316,11 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
       groupKey: 'ops',
       title: '运维任务已完成',
       description: `admin 完成了任务 ${item.title}。`,
-      time: new Date().toISOString(),
+      time: item.updatedAt,
+      createdAt: item.updatedAt,
       read: false,
+      readAt: null,
+      updatedAt: null,
       toastType: 'success',
       meta: { source: 'task', severity: 'low', eventType: 'admin.task.completed' },
       linkUrl: `/tasks?taskId=${encodeURIComponent(item.id)}`,
@@ -2318,14 +2351,18 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     const expired = state.auditLogs.filter((item) => new Date(item.occurredAtUtc).getTime() < cutoff.getTime());
     const dryRun = Boolean(body.dryRun);
     if (!dryRun) {
+      const notificationTime = new Date().toISOString();
       state.auditLogs = state.auditLogs.filter((item) => new Date(item.occurredAtUtc).getTime() >= cutoff.getTime());
       state.notifications.unshift({
         id: `notif-audit-cleanup-${Date.now()}`,
         groupKey: 'ops',
         title: '审计日志清理完成',
         description: `admin 清理了 ${expired.length} 条过期审计日志。`,
-        time: new Date().toISOString(),
+        time: notificationTime,
+        createdAt: notificationTime,
         read: false,
+        readAt: null,
+        updatedAt: null,
         toastType: 'success',
         meta: { source: 'audit', severity: 'low', eventType: 'admin.audit.retention.cleaned' },
         linkUrl: '/audit-logs',
