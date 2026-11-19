@@ -23,6 +23,7 @@ import { Textarea } from '@expcat/tigercat-react/Textarea';
 import { RadioGroup } from '@expcat/tigercat-react/RadioGroup';
 import { Radio } from '@expcat/tigercat-react/Radio';
 import { Divider } from '@expcat/tigercat-react/Divider';
+import { AssigneePicker } from '@expcat/tigercat-react/AssigneePicker';
 import { WorkflowActionBar, WorkflowTimeline } from '@expcat/tigercat-react/WorkflowTimeline';
 import type {
   ChatMessage,
@@ -32,6 +33,8 @@ import type {
   TagVariant,
   BadgeVariant,
   WorkflowActionBarItem,
+  WorkflowActionPayload,
+  WorkflowAssigneePickerContext,
 } from '@expcat/tigercat-core';
 import { PageHeader } from '../components/PageHeader';
 import { MutedPanel } from '../components/PageFragments';
@@ -106,6 +109,18 @@ const statusFilters: { value: 'all' | TicketStatus; label: string }[] = [
 /** ChatWindow fills this box; textarea resize would fight the Resizable bottom handle. */
 const TICKET_CHAT_WINDOW_CLASS = 'h-full min-h-0 [&_textarea]:resize-none';
 
+const renderAssigneePicker = (ctx: WorkflowAssigneePickerContext) => (
+  <AssigneePicker
+    aria-label="转交给"
+    options={assignees.map((user) => ({ id: String(user.value), name: String(user.label ?? user.value) }))}
+    selectedIds={ctx.value?.id ? [String(ctx.value.id)] : []}
+    onChange={(ids) => {
+      const user = assignees.find((item) => String(item.value) === String(ids[ids.length - 1]));
+      ctx.onChange(user ? { id: String(user.value), name: String(user.label ?? user.value) } : undefined);
+    }}
+  />
+);
+
 function TicketsPage() {
   const listController = useRef<AbortController | null>(null);
   const detailController = useRef<AbortController | null>(null);
@@ -134,6 +149,7 @@ function TicketsPage() {
   const [noteDraft, setNoteDraft] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [confirmingClose, setConfirmingClose] = useState(false);
+  const [closeTicketId, setCloseTicketId] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: '',
     category: '缺陷',
@@ -179,6 +195,8 @@ function TicketsPage() {
     detailController.current = controller;
     setSelectedId(id);
     setSelected(null);
+    setConfirmingClose(false);
+    setCloseTicketId(null);
     setDraft('');
     setNoteDraft('');
     setDetailError('');
@@ -264,7 +282,9 @@ function TicketsPage() {
   };
 
   const requestClose = () => {
+    if (!selected) return;
     captureDrawerTrigger();
+    setCloseTicketId(selected.id);
     setConfirmingClose(true);
   };
 
@@ -296,16 +316,17 @@ function TicketsPage() {
   const workflowActionsDisabled =
     acting || detailLoading || selected?.status === 'resolved' || selected?.status === 'closed';
 
-  const handleWorkflowAction = async (item: WorkflowActionBarItem) => {
+  const handleWorkflowAction = async (item: WorkflowActionBarItem, actionPayload?: WorkflowActionPayload) => {
     if (!selected || workflowActionsDisabled || actingRef.current) return;
     const id = selected.id;
+    const actionComment = actionPayload?.comment?.trim();
     actingRef.current = true;
     setActing(true);
     try {
       if (item.action === 'transfer' || item.action === 'comment') {
         const text = item.action === 'transfer'
-          ? '已转交（演示写回）。完整实例状态机见审批中心。'
-          : '已添加评论（演示写回）。';
+          ? `已转交给 ${actionPayload?.assignee?.name ?? actionPayload?.assignee?.id ?? ''}（演示写回）。完整实例状态机见审批中心。`
+          : actionComment || '已添加评论（演示写回）。';
         const payload = await sendTicketMessage(id, text);
         updateTicketView(payload.data);
         Message.success({
@@ -319,7 +340,10 @@ function TicketsPage() {
         Message.info({ content: '当前工单状态不能再流转', duration: 2200 });
         return;
       }
-      const payload = await updateTicket(id, { status: nextStatus });
+      let payload = await updateTicket(id, { status: nextStatus });
+      if (item.action === 'reject' && actionComment) {
+        payload = await sendTicketMessage(id, `驳回意见：${actionComment}`);
+      }
       updateTicketView(payload.data);
       void loadTickets();
       Message.success({ content: `已写回工单状态：${nextStatus}`, duration: 2200 });
@@ -374,17 +398,19 @@ function TicketsPage() {
 
   const confirmClose = async () => {
     if (actingRef.current) return;
-    if (!selected) {
+    const id = closeTicketId;
+    if (!id || selected?.id !== id || requestedTicketId !== id) {
       setConfirmingClose(false);
+      setCloseTicketId(null);
       return;
     }
-    const id = selected.id;
     actingRef.current = true;
     setActing(true);
     try {
       const payload = await updateTicket(id, { status: 'closed' });
       updateTicketView(payload.data);
       setConfirmingClose(false);
+      setCloseTicketId(null);
       void loadTickets();
       Message.success({ content: '工单已关闭', duration: 2000 });
     } catch (error: unknown) {
@@ -497,7 +523,7 @@ function TicketsPage() {
                   type="button"
                   className={`p2-filter-chip rounded-full px-3 py-1 text-xs transition-colors ${
                     statusFilter === f.value
-                      ? 'bg-(--tiger-primary,#3b82f6) text-white'
+                      ? 'bg-(--tiger-primary,#3b82f6) text-(--tiger-primary-foreground)'
                       : 'bg-(--tiger-bg-hover,#f1f5f9) text-(--tiger-text-secondary,#64748b)'
                   }`}
                   disabled={acting}
@@ -693,6 +719,7 @@ function TicketsPage() {
                     disabled={workflowActionsDisabled}
                     ariaLabel="审批操作"
                     style={{ flexWrap: 'wrap', overflowX: 'visible' }}
+                    renderAssigneePicker={renderAssigneePicker}
                     onAction={handleWorkflowAction}
                   />
                 </div>
@@ -783,7 +810,7 @@ function TicketsPage() {
       {/* 关闭确认 */}
       <Drawer
         placement="right"
-        open={confirmingClose}
+        open={confirmingClose && closeTicketId === requestedTicketId}
         title="确认关闭工单"
         width="360px"
         mask

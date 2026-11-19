@@ -14,7 +14,6 @@ import { ApprovalActorSwitcher } from '../components/ApprovalActorSwitcher';
 import { CheckCircleIcon } from '../components/Icons';
 import {
   APPROVAL_CREATE_SCHEMA,
-  APPROVAL_DEMO_ACTOR_EVENT,
   APPROVAL_LANES,
   APPROVAL_PAGE_SIZE,
   APPROVAL_STATUS_META,
@@ -24,6 +23,7 @@ import {
   fetchApprovals,
   fetchApprovalContacts,
   isApprovalLane,
+  subscribeApprovalDemoActor,
 } from '../utils/approvals';
 import type { ApprovalLane, ApprovalListItem, ApprovalStatus, ApprovalContactUser } from '../utils/types';
 
@@ -98,8 +98,7 @@ function ApprovalsPage() {
   useEffect(() => { void loadContacts(); }, [loadContacts]);
   useEffect(() => {
     const reload = () => { setPage(1); void loadList(); };
-    window.addEventListener(APPROVAL_DEMO_ACTOR_EVENT, reload);
-    return () => window.removeEventListener(APPROVAL_DEMO_ACTOR_EVENT, reload);
+    return subscribeApprovalDemoActor(reload);
   }, [loadList]);
 
   const openDetail = (id: string) => {

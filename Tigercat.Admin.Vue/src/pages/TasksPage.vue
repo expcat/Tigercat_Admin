@@ -33,6 +33,7 @@ import {
   countTaskBoardCards,
   describeTaskMove,
   findTaskBoardCard,
+  focusTaskBoardCard,
   getTaskPriorityVariant,
   getTaskPriorityLabel
 } from '../utils/task-board'
@@ -93,7 +94,6 @@ const loadTasks = async () => {
   listRequest = controller
   loading.value = true
   loadError.value = ''
-  columns.value = []
   serverTotal.value = 0
   try {
     if (!canView.value) throw new Error('无权查看任务面板。')
@@ -198,10 +198,14 @@ const handleColumnAdd = () => {
 
 const handleCardMove = async (event: TaskBoardCardMoveEvent) => {
   if (!canEdit.value || mutationPending) return
-  mutationPending = true
-  saving.value = true
   const description = describeTaskMove(event, columns.value)
   lastAction.value = description
+  if (String(event.fromColumnId) === String(event.toColumnId)) {
+    notification.info({ title: '卡片顺序已更新', description })
+    return
+  }
+  mutationPending = true
+  saving.value = true
   try {
     await apiRequest<AdminTaskBoardCard>(`/api/tasks/${encodeURIComponent(event.cardId)}/status`, {
       method: 'PUT',
@@ -209,6 +213,7 @@ const handleCardMove = async (event: TaskBoardCardMoveEvent) => {
       body: JSON.stringify({ status: String(event.toColumnId) })
     })
     await loadTasks()
+    focusTaskBoardCard(event.cardId)
     notification.info({
       title: '任务阶段已更新',
       description

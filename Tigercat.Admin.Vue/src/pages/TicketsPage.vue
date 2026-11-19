@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, h, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button } from '@expcat/tigercat-vue/Button'
 import { Alert } from '@expcat/tigercat-vue/Alert'
@@ -24,6 +24,7 @@ import { Textarea } from '@expcat/tigercat-vue/Textarea'
 import { RadioGroup } from '@expcat/tigercat-vue/RadioGroup'
 import { Radio } from '@expcat/tigercat-vue/Radio'
 import { Divider } from '@expcat/tigercat-vue/Divider'
+import { AssigneePicker } from '@expcat/tigercat-vue/AssigneePicker'
 import { WorkflowActionBar, WorkflowTimeline } from '@expcat/tigercat-vue/WorkflowTimeline'
 import type {
   ChatMessage,
@@ -31,6 +32,8 @@ import type {
   MentionOption,
   DescriptionsItem,
   WorkflowActionBarItem,
+  WorkflowActionPayload,
+  WorkflowAssigneePickerContext,
 } from '@expcat/tigercat-core'
 import PageHeader from '../components/PageHeader.vue'
 import MutedPanel from '../components/MutedPanel.vue'
@@ -104,6 +107,8 @@ const page = ref(1)
 const total = ref(0)
 const acting = ref(false)
 const creating = ref(false)
+const confirmingClose = ref(false)
+const closeTicketId = ref<string | null>(null)
 const tickets = ref<TicketView[]>([])
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -179,6 +184,8 @@ async function loadTicketDetail(id: string) {
   detailController = controller
   selectedId.value = id
   selected.value = null
+  confirmingClose.value = false
+  closeTicketId.value = null
   draft.value = ''
   noteDraft.value = ''
   detailError.value = ''
@@ -263,15 +270,16 @@ const workflowActionsDisabled = computed(
   () => acting.value || detailLoading.value || selected.value?.status === 'resolved' || selected.value?.status === 'closed',
 )
 
-async function handleWorkflowAction(item: WorkflowActionBarItem) {
+async function handleWorkflowAction(item: WorkflowActionBarItem, actionPayload?: WorkflowActionPayload) {
   const t = selected.value
   if (!t || workflowActionsDisabled.value) return
+  const actionComment = actionPayload?.comment?.trim()
   acting.value = true
   try {
     if (item.action === 'transfer' || item.action === 'comment') {
       const text = item.action === 'transfer'
-        ? '已转交（演示写回）。完整实例状态机见审批中心。'
-        : '已添加评论（演示写回）。'
+        ? `已转交给 ${actionPayload?.assignee?.name ?? actionPayload?.assignee?.id ?? ''}（演示写回）。完整实例状态机见审批中心。`
+        : actionComment || '已添加评论（演示写回）。'
       const payload = await sendTicketMessage(t.id, text)
       updateTicketView(payload.data)
       Message.success({
@@ -285,7 +293,10 @@ async function handleWorkflowAction(item: WorkflowActionBarItem) {
       Message.info({ content: '当前工单状态不能再流转', duration: 2200 })
       return
     }
-    const payload = await updateTicket(t.id, { status: nextStatus })
+    let payload = await updateTicket(t.id, { status: nextStatus })
+    if (item.action === 'reject' && actionComment) {
+      payload = await sendTicketMessage(t.id, `驳回意见：${actionComment}`)
+    }
     updateTicketView(payload.data)
     void loadTickets()
     Message.success({ content: `已写回工单状态：${nextStatus}`, duration: 2200 })
@@ -338,23 +349,26 @@ async function handleAddNote() {
 }
 
 // ── 关闭工单 ───────────────────────────────────────
-const confirmingClose = ref(false)
 function requestClose() {
+  if (!selected.value) return
   captureDrawerTrigger()
+  closeTicketId.value = selected.value.id
   confirmingClose.value = true
 }
 async function confirmClose() {
   if (acting.value) return
-  const t = selected.value
-  if (!t) {
+  const id = closeTicketId.value
+  if (!id || selected.value?.id !== id || requestedTicketId.value !== id) {
     confirmingClose.value = false
+    closeTicketId.value = null
     return
   }
   acting.value = true
   try {
-    const payload = await updateTicket(t.id, { status: 'closed' })
+    const payload = await updateTicket(id, { status: 'closed' })
     updateTicketView(payload.data)
     confirmingClose.value = false
+    closeTicketId.value = null
     void loadTickets()
     Message.success({ content: '工单已关闭', duration: 2000 })
   } catch (error: unknown) {
@@ -447,6 +461,18 @@ const CHAT_STATUS: Record<
 const chatStatus = computed(() =>
   selected.value ? CHAT_STATUS[selected.value.status] : CHAT_STATUS.progress,
 )
+
+function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
+  return h(AssigneePicker, {
+    'aria-label': '转交给',
+    options: assignees.map((user) => ({ id: String(user.value), name: String(user.label ?? user.value) })),
+    selectedIds: ctx.value?.id ? [String(ctx.value.id)] : [],
+    onChange: (ids: string[]) => {
+      const user = assignees.find((item) => String(item.value) === String(ids[ids.length - 1]))
+      ctx.onChange(user ? { id: String(user.value), name: String(user.label ?? user.value) } : undefined)
+    },
+  })
+}
 </script>
 
 <template>
@@ -491,7 +517,7 @@ const chatStatus = computed(() =>
               class="p2-filter-chip rounded-full px-3 py-1 text-xs transition-colors"
               :class="
                 statusFilter === f.value
-                  ? 'bg-(--tiger-primary,#3b82f6) text-white'
+                  ? 'bg-(--tiger-primary,#3b82f6) text-(--tiger-primary-foreground)'
                   : 'bg-(--tiger-bg-hover,#f1f5f9) text-(--tiger-text-secondary,#64748b)'
               "
               :disabled="acting"
@@ -725,6 +751,7 @@ const chatStatus = computed(() =>
                 :disabled="workflowActionsDisabled"
                 aria-label="审批操作"
                 :style="{ flexWrap: 'wrap', overflowX: 'visible' }"
+                :render-assignee-picker="renderAssigneePicker"
                 @action="handleWorkflowAction"
               />
             </div>
@@ -795,7 +822,7 @@ const chatStatus = computed(() =>
     <!-- 关闭确认 -->
     <Drawer
       placement="right"
-      :open="confirmingClose"
+      :open="confirmingClose && closeTicketId === requestedTicketId"
       title="确认关闭工单"
       width="360px"
       :mask="true"

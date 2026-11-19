@@ -88,7 +88,7 @@ function publishDesigner() {
     />
 
     <div class="min-w-0 overflow-x-auto">
-      <WorkflowDesigner v-model="steps" :schema="DESIGNER_FORM_SCHEMA" />
+      <WorkflowDesigner v-model="steps" :schema="DESIGNER_FORM_SCHEMA" @publish="publishDesigner" />
     </div>
     <details class="min-w-0 rounded-md border border-[var(--tiger-border,#e5e7eb)] px-3 py-2">
       <summary class="cursor-pointer text-sm font-medium">流程预览</summary>

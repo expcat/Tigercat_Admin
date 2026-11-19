@@ -86,7 +86,7 @@ function WorkflowDesignerPage() {
       ) : null}
 
       <div className="min-w-0 overflow-x-auto">
-        <WorkflowDesigner value={steps} schema={DESIGNER_FORM_SCHEMA} onChange={setSteps} />
+        <WorkflowDesigner value={steps} schema={DESIGNER_FORM_SCHEMA} onChange={setSteps} onPublish={publishDesigner} />
       </div>
       <details className="min-w-0 rounded-md border border-[var(--tiger-border,#e5e7eb)] px-3 py-2">
         <summary className="cursor-pointer text-sm font-medium">流程预览</summary>

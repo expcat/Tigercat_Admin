@@ -3,6 +3,7 @@ import type {
   SchemaFormSchema,
   TagVariant,
   WorkflowActionBarViewerRole,
+  WorkflowAddsignPosition,
   WorkflowActionPayload,
   WorkflowFieldPermissionMode,
   WorkflowNodeButtonPolicy,
@@ -151,8 +152,20 @@ export function setApprovalDemoActor(id: string) {
   }
 }
 
-export function approvalAuthHeaders(): HeadersInit {
-  const actor = getApprovalDemoActor();
+export function subscribeApprovalDemoActor(callback: () => void) {
+  const sync = (event: Event) => {
+    if (event.type === 'storage' && (event as StorageEvent).key !== APPROVAL_DEMO_ACTOR_KEY) return;
+    callback();
+  };
+  window.addEventListener(APPROVAL_DEMO_ACTOR_EVENT, sync);
+  window.addEventListener('storage', sync);
+  return () => {
+    window.removeEventListener(APPROVAL_DEMO_ACTOR_EVENT, sync);
+    window.removeEventListener('storage', sync);
+  };
+}
+
+export function approvalAuthHeaders(actor = getApprovalDemoActor()): HeadersInit {
   return {
     ...getAuthHeaders(),
     ...(actor ? { 'X-Demo-Actor': actor } : {}),
@@ -230,6 +243,19 @@ export function approvalReturnTargets(detail: ApprovalDetail | null): WorkflowRe
   return (detail?.returnTargets ?? []) as WorkflowReturnTarget[];
 }
 
+export function approvalAddsignPositions(detail: ApprovalDetail | null, actorId: string): WorkflowAddsignPosition[] {
+  const step = currentApprovalStep(detail);
+  if (step?.signMode === 'orsign') return ['before'];
+  if (step?.signMode === 'countersign' && detail?.tasks?.length) {
+    const openTasks = detail.tasks.filter(
+      (task) => task.nodeKey === step.key && (task.status === 'pending' || task.status === 'active'),
+    );
+    const actorIsLast = openTasks.length === 1 && sameActor(openTasks[0]?.assignee.id, actorId);
+    if (!actorIsLast) return ['before'];
+  }
+  return ['before', 'after'];
+}
+
 export function contactActorOf(user: ApprovalContactUser): WorkflowTimelineActor {
   return { id: user.id, name: user.name };
 }
@@ -293,10 +319,10 @@ export function createApproval(payload: CreateApprovalPayload) {
   });
 }
 
-export function applyApprovalAction(id: string, payload: ApprovalActionPayload) {
+export function applyApprovalAction(id: string, payload: ApprovalActionPayload, actorId?: string) {
   return apiRequest<ApprovalDetail>(`/api/approvals/${encodeURIComponent(id)}/actions`, {
     method: 'POST',
-    headers: approvalAuthHeaders(),
+    headers: approvalAuthHeaders(actorId),
     body: JSON.stringify(payload),
   });
 }
@@ -307,7 +333,9 @@ export function workflowActionToPayload(
   formValues?: FormValues,
 ): ApprovalActionPayload {
   const assignee = payload?.assignee;
-  const assignees = payload?.assignees?.length ? payload.assignees : assignee ? [assignee] : undefined;
+  const assignees = action === 'addsign'
+    ? assignee ? [assignee] : undefined
+    : payload?.assignees?.length ? payload.assignees : assignee ? [assignee] : undefined;
   return {
     action,
     comment: payload?.comment?.trim() || undefined,

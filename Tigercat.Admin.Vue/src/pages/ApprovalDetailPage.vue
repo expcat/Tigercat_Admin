@@ -34,10 +34,10 @@ import { ApiError } from '../utils/request'
 import {
   actionSuccessMessage,
   applyApprovalAction,
-  APPROVAL_DEMO_ACTOR_EVENT,
   APPROVAL_DETAIL_SCHEMA,
   APPROVAL_STATUS_META,
   actorHasOpenTask,
+  approvalAddsignPositions,
   approvalButtonPolicy,
   approvalFieldMode,
   approvalFormModel,
@@ -50,6 +50,7 @@ import {
   fetchApprovalContacts,
   getApprovalDemoActor,
   isApprovalTerminal,
+  subscribeApprovalDemoActor,
   toWorkflowSteps,
   workflowActionToPayload,
 } from '../utils/approvals'
@@ -63,6 +64,7 @@ const route = useRoute()
 const router = useRouter()
 let detailController: AbortController | null = null
 let actionLocked = false
+let unsubscribeActor: (() => void) | undefined
 const detailFormRef = ref<FormHandle | null>(null)
 const errorMessage = ref('')
 const actionError = ref('')
@@ -82,7 +84,7 @@ const commentDraft = ref('')
 const id = computed(() => {
   const raw = route.params.id
   const value = Array.isArray(raw) ? raw[0] : raw
-  return value ? decodeURIComponent(String(value)) : ''
+  return value ? String(value) : ''
 })
 
 const statusMeta = computed(() => {
@@ -105,6 +107,7 @@ const actionsDisabled = computed(() => acting.value || isApprovalTerminal(detail
 const viewerRole = computed(() => approvalViewerRole(detail.value, actorId.value))
 const isStarter = computed(() => approvalIsStarter(detail.value, actorId.value))
 const buttonPolicy = computed(() => approvalButtonPolicy(detail.value))
+const addsignPositions = computed(() => approvalAddsignPositions(detail.value, actorId.value))
 const returnTargets = computed(() => approvalReturnTargets(detail.value))
 const currentSignMode = computed(() =>
   currentStep.value?.signMode === 'countersign' || currentStep.value?.signMode === 'orsign'
@@ -168,12 +171,12 @@ watch(id, () => {
 
 onMounted(() => {
   void loadContacts()
-  window.addEventListener(APPROVAL_DEMO_ACTOR_EVENT, syncActor)
+  unsubscribeActor = subscribeApprovalDemoActor(syncActor)
 })
 
 onUnmounted(() => {
   detailController?.abort()
-  window.removeEventListener(APPROVAL_DEMO_ACTOR_EVENT, syncActor)
+  unsubscribeActor?.()
 })
 
 function handleTabChange(key: string | number) {
@@ -186,8 +189,11 @@ function handleFormChange(values: FormValues) {
 
 async function runAction(body: ApprovalActionPayload): Promise<boolean> {
   if (!detail.value || actionLocked || loading.value || isApprovalTerminal(detail.value.status)) return false
+  const actionActor = actorId.value
+  if (actionActor !== getApprovalDemoActor()) return false
   if (!['comment', 'cancel', 'withdraw'].includes(body.action) && !canAct.value) return false
   if (['cancel', 'withdraw'].includes(body.action) && !isStarter.value) return false
+  if (body.action === 'addsign' && body.position && !addsignPositions.value.includes(body.position)) return false
   if ((body.comment?.length ?? 0) > 500) {
     Message.warning({ content: '审批意见最多 500 字', duration: 2000 })
     return false
@@ -195,14 +201,19 @@ async function runAction(body: ApprovalActionPayload): Promise<boolean> {
   actionLocked = true
   const controller = detailController
   try {
-    if (!await detailFormRef.value?.validate()) return false
+    if (body.action !== 'comment' && !await detailFormRef.value?.validate()) return false
+    if (actionActor !== getApprovalDemoActor()) return false
     if (controller !== detailController || controller?.signal.aborted) return false
     acting.value = true
     actionError.value = ''
-    const result = await applyApprovalAction(detail.value.id, { ...body, formValues: formModel.value })
+    const result = await applyApprovalAction(
+      detail.value.id,
+      { ...body, formValues: body.action === 'comment' ? undefined : formModel.value },
+      actionActor,
+    )
     if (controller !== detailController || controller?.signal.aborted) return false
     detail.value = result.data
-    formModel.value = approvalFormModel(result.data)
+    if (body.action !== 'comment') formModel.value = approvalFormModel(result.data)
     failedAction.value = null
     Message.success({ content: actionSuccessMessage(body.action), duration: 2200 })
     return true
@@ -328,7 +339,7 @@ function renderAssigneePicker(ctx: WorkflowAssigneePickerContext) {
           confirm
           :button-policy="buttonPolicy"
           :return-targets="returnTargets"
-          :addsign-positions="['before', 'after']"
+          :addsign-positions="addsignPositions"
           :current-sign-mode="currentSignMode"
           :is-starter="isStarter"
           :viewer-role="viewerRole"

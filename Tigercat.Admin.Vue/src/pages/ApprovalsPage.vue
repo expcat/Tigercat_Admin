@@ -14,7 +14,6 @@ import PageHeader from '../components/PageHeader.vue'
 import ApprovalActorSwitcher from '../components/ApprovalActorSwitcher.vue'
 import {
   APPROVAL_CREATE_SCHEMA,
-  APPROVAL_DEMO_ACTOR_EVENT,
   APPROVAL_LANES,
   APPROVAL_PAGE_SIZE,
   APPROVAL_STATUS_META,
@@ -24,6 +23,7 @@ import {
   fetchApprovals,
   fetchApprovalContacts,
   isApprovalLane,
+  subscribeApprovalDemoActor,
 } from '../utils/approvals'
 import type { ApprovalLane, ApprovalListItem, ApprovalStatus, ApprovalContactUser } from '../utils/types'
 
@@ -53,6 +53,7 @@ const createOpen = ref(false)
 const creating = ref(false)
 const createFormRef = ref<FormHandle | null>(null)
 const createForm = ref<FormValues>({ ...EMPTY_APPROVAL_CREATE })
+let unsubscribeActor: (() => void) | undefined
 
 function openDetail(id: string) {
   void router.push(`/approvals/${encodeURIComponent(id)}`)
@@ -102,12 +103,12 @@ watch([lane, keyword, page, pageSize], () => {
 
 onMounted(() => {
   void loadContacts()
-  window.addEventListener(APPROVAL_DEMO_ACTOR_EVENT, reloadActor)
+  unsubscribeActor = subscribeApprovalDemoActor(reloadActor)
 })
 
 onUnmounted(() => {
   listController?.abort()
-  window.removeEventListener(APPROVAL_DEMO_ACTOR_EVENT, reloadActor)
+  unsubscribeActor?.()
 })
 
 function handleCreateModelChange(values: FormValues) {

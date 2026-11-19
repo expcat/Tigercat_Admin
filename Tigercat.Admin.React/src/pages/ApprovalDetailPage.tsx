@@ -35,10 +35,10 @@ import { ApiError } from '../utils/request';
 import {
   actionSuccessMessage,
   applyApprovalAction,
-  APPROVAL_DEMO_ACTOR_EVENT,
   APPROVAL_DETAIL_SCHEMA,
   APPROVAL_STATUS_META,
   actorHasOpenTask,
+  approvalAddsignPositions,
   approvalButtonPolicy,
   approvalFieldMode,
   approvalFormModel,
@@ -51,6 +51,7 @@ import {
   fetchApprovalContacts,
   getApprovalDemoActor,
   isApprovalTerminal,
+  subscribeApprovalDemoActor,
   toWorkflowSteps,
   workflowActionToPayload,
 } from '../utils/approvals';
@@ -63,7 +64,7 @@ function readErrorMessage(error: unknown, fallback: string) {
 function ApprovalDetailPage() {
   const navigate = useNavigate();
   const params = useParams();
-  const id = params.id ? decodeURIComponent(params.id) : '';
+  const id = params.id ?? '';
   const detailController = useRef<AbortController | null>(null);
   const actingRef = useRef(false);
   const detailFormRef = useRef<FormHandle>(null);
@@ -134,8 +135,7 @@ function ApprovalDetailPage() {
       setActorId(getApprovalDemoActor());
       void loadDetail();
     };
-    window.addEventListener(APPROVAL_DEMO_ACTOR_EVENT, sync);
-    return () => window.removeEventListener(APPROVAL_DEMO_ACTOR_EVENT, sync);
+    return subscribeApprovalDemoActor(sync);
   }, [loadContacts, loadDetail]);
 
   const statusMeta = detail
@@ -157,6 +157,7 @@ function ApprovalDetailPage() {
   const viewerRole = approvalViewerRole(detail, actorId);
   const isStarter = approvalIsStarter(detail, actorId);
   const buttonPolicy = approvalButtonPolicy(detail);
+  const addsignPositions = approvalAddsignPositions(detail, actorId);
   const returnTargets = approvalReturnTargets(detail);
   const currentSignMode =
     currentStep?.signMode === 'countersign' || currentStep?.signMode === 'orsign'
@@ -167,8 +168,11 @@ function ApprovalDetailPage() {
 
   const runAction = async (body: ApprovalActionPayload): Promise<boolean> => {
     if (!detail || actingRef.current || loading || isApprovalTerminal(detail.status)) return false;
+    const actionActor = actorId;
+    if (actionActor !== getApprovalDemoActor()) return false;
     if (body.action !== 'comment' && body.action !== 'cancel' && body.action !== 'withdraw' && !canAct) return false;
     if ((body.action === 'cancel' || body.action === 'withdraw') && !isStarter) return false;
+    if (body.action === 'addsign' && body.position && !addsignPositions.includes(body.position)) return false;
     if ((body.comment?.length ?? 0) > 500) {
       Message.warning({ content: '审批意见最多 500 字', duration: 2000 });
       return false;
@@ -176,14 +180,19 @@ function ApprovalDetailPage() {
     actingRef.current = true;
     const controller = detailController.current;
     try {
-      if (!await detailFormRef.current?.validate()) return false;
+      if (body.action !== 'comment' && !await detailFormRef.current?.validate()) return false;
+      if (actionActor !== getApprovalDemoActor()) return false;
       if (controller !== detailController.current || controller?.signal.aborted) return false;
       setActing(true);
       setActionError('');
-      const result = await applyApprovalAction(detail.id, { ...body, formValues: formModel });
+      const result = await applyApprovalAction(
+        detail.id,
+        { ...body, formValues: body.action === 'comment' ? undefined : formModel },
+        actionActor,
+      );
       if (controller !== detailController.current || controller?.signal.aborted) return false;
       setDetail(result.data);
-      setFormModel(approvalFormModel(result.data));
+      if (body.action !== 'comment') setFormModel(approvalFormModel(result.data));
       setFailedAction(null);
       Message.success({ content: actionSuccessMessage(body.action), duration: 2200 });
       return true;
@@ -327,7 +336,7 @@ function ApprovalDetailPage() {
                 confirm
                 buttonPolicy={buttonPolicy}
                 returnTargets={returnTargets}
-                addsignPositions={['before', 'after']}
+                addsignPositions={addsignPositions}
                 currentSignMode={currentSignMode}
                 isStarter={isStarter}
                 viewerRole={viewerRole}

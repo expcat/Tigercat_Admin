@@ -34,6 +34,7 @@ import {
   countTaskBoardCards,
   describeTaskMove,
   findTaskBoardCard,
+  focusTaskBoardCard,
   getTaskPriorityVariant,
   getTaskPriorityLabel,
 } from '../utils/task-board';
@@ -93,7 +94,6 @@ function TasksPage() {
     listRequest.current = controller;
     setLoading(true);
     setLoadError('');
-    setColumns([]);
     setServerTotal(0);
     try {
       if (!canView) throw new Error('无权查看任务面板。');
@@ -218,10 +218,14 @@ function TasksPage() {
   const handleCardMove = useCallback(
     async (event: TaskBoardCardMoveEvent) => {
       if (!canEdit || mutationPending.current) return;
-      mutationPending.current = true;
-      setSaving(true);
       const description = describeTaskMove(event, columns);
       setLastAction(description);
+      if (String(event.fromColumnId) === String(event.toColumnId)) {
+        notification.info({ title: '卡片顺序已更新', description });
+        return;
+      }
+      mutationPending.current = true;
+      setSaving(true);
       try {
         await apiRequest<AdminTaskBoardCard>(
           `/api/tasks/${encodeURIComponent(event.cardId)}/status`,
@@ -232,6 +236,7 @@ function TasksPage() {
           },
         );
         await loadTasks();
+        focusTaskBoardCard(event.cardId);
         notification.info({
           title: '任务阶段已更新',
           description,

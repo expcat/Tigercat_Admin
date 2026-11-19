@@ -3,16 +3,17 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { Select } from '@expcat/tigercat-vue/Select'
 import { Text } from '@expcat/tigercat-vue/Text'
 import {
-  APPROVAL_DEMO_ACTOR_EVENT,
   FALLBACK_APPROVAL_CONTACTS,
   fetchApprovalContacts,
   getApprovalDemoActor,
   setApprovalDemoActor,
+  subscribeApprovalDemoActor,
 } from '../utils/approvals'
 import type { ApprovalContactUser } from '../utils/types'
 
 const contacts = ref<ApprovalContactUser[]>(FALLBACK_APPROVAL_CONTACTS)
 const actorId = ref(getApprovalDemoActor())
+let unsubscribeActor: (() => void) | undefined
 
 const options = computed(() =>
   contacts.value.map((user) => ({
@@ -43,11 +44,11 @@ function syncActor() {
 onMounted(() => {
   syncActor()
   void loadContacts()
-  window.addEventListener(APPROVAL_DEMO_ACTOR_EVENT, syncActor)
+  unsubscribeActor = subscribeApprovalDemoActor(syncActor)
 })
 
 onUnmounted(() => {
-  window.removeEventListener(APPROVAL_DEMO_ACTOR_EVENT, syncActor)
+  unsubscribeActor?.()
 })
 </script>
 

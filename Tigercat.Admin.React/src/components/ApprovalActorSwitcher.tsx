@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Select } from '@expcat/tigercat-react/Select';
 import { Text } from '@expcat/tigercat-react/Text';
 import {
-  APPROVAL_DEMO_ACTOR_EVENT,
   FALLBACK_APPROVAL_CONTACTS,
   fetchApprovalContacts,
   getApprovalDemoActor,
   setApprovalDemoActor,
+  subscribeApprovalDemoActor,
 } from '../utils/approvals';
 import type { ApprovalContactUser } from '../utils/types';
 
@@ -26,8 +26,7 @@ export function ApprovalActorSwitcher() {
   useEffect(() => {
     void loadContacts();
     const sync = () => setActorId(getApprovalDemoActor());
-    window.addEventListener(APPROVAL_DEMO_ACTOR_EVENT, sync);
-    return () => window.removeEventListener(APPROVAL_DEMO_ACTOR_EVENT, sync);
+    return subscribeApprovalDemoActor(sync);
   }, [loadContacts]);
 
   const options = useMemo(
