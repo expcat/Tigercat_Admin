@@ -1374,22 +1374,31 @@ public class SqliteProviderRegressionTests : ProviderRegressionTests<SqliteApiFa
 
 public class ProductionSecurityHealthTests : IClassFixture<ProductionSecurityApiFactory>
 {
+    private readonly ProductionSecurityApiFactory _factory;
     private readonly HttpClient _client;
 
     public ProductionSecurityHealthTests(ProductionSecurityApiFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
     [Fact]
-    public async Task HealthCheck_ReturnsUnhealthyForDefaultProductionSecuritySettings()
+    public async Task ProductionWithoutBootstrapPassword_DoesNotCreateAdminOrLeakHealthDetails()
     {
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
+            Assert.False(await db.Users.AnyAsync(user => user.Username == "admin"));
+        }
+
         var response = await _client.GetAsync("/api/health");
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         var body = await response.ReadApiResponseAsync<HealthResponse>();
         Assert.NotNull(body?.Data?.Details);
         Assert.Equal("unhealthy", body.Data.Details["security"].Status);
-        Assert.Contains("Default admin password", body.Data.Details["security"].Message);
+        Assert.Equal("Production security configuration requires review.", body.Data.Details["security"].Message);
+        Assert.DoesNotContain(PasswordHasher.DefaultAdminPassword, body.Data.Details["security"].Message);
     }
 }

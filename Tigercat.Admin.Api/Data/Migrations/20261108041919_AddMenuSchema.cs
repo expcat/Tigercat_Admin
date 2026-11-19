@@ -14,9 +14,10 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "MenuSchemas",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
                         .Annotation("Sqlite:Autoincrement", true),
-                    SchemaJson = table.Column<string>(type: "TEXT", nullable: false)
+                    SchemaJson = table.Column<string>(nullable: false)
                 },
                 constraints: table =>
                 {

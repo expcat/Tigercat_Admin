@@ -177,7 +177,16 @@ public sealed class RedisStreamConsumer : BackgroundService
                 return;
             }
 
-            await ProcessEventAsync(envelope, stream, ct);
+            try
+            {
+                await ProcessEventAsync(envelope, stream, ct);
+            }
+            catch
+            {
+                await _idempotency.ReleaseAsync(envelope.EventId, CancellationToken.None);
+                throw;
+            }
+
             _redis.XAck(stream, _groupName, new[] { entry.id });
             AdminMetrics.RecordRedisStreamEvent("consume", stream, envelope.EventType, true);
             _logger.LogInformation("Event {EventType} acknowledged for stream {Stream}.", envelope.EventType, stream);

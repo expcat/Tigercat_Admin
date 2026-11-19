@@ -110,6 +110,8 @@ dotnet list Tigercat.ServiceDefaults/Tigercat.ServiceDefaults.csproj package --v
 
 Playwright 默认 Desktop 项目会 `grepInvert` `@mobile` / `@dark`，避免把同一批用例再跑一遍。375 视口与 `colorScheme: dark` 是独立 project，只跑带对应 tag 的用例（`e2e/viewport-a11y.spec.ts`，含 `/tickets` 对话区窄屏无 Resizable、`/approvals/:id` ActionBar + 时间线不溢出）。焦点恢复与 Vue overlay 回归在 `e2e/overlay-focus.spec.ts`（含 Shell 挂件、页面 Drawer、`/profile` / `/analytics` 选择器、`/content` 下拉、`/gallery` 灯箱与 Drawer、`/calendar` Drawer 内选择器、`/tickets` 确认关闭、`/import` 字段映射 Select、`/jobs` CronEditor），走 Desktop。只跑标注用例用 `pnpm e2e:mobile` / `pnpm e2e:dark`（demo 配置对应 `e2e:demo:mobile` / `e2e:demo:dark`）。
 
+`pnpm e2e` 的 global setup 启动 API `55137`、React `54174`、Vue `54173`，demo preview 使用 React `55174`、Vue `55173`；Vite 与 preview 均用 `--strictPort` 锁定端口，启动前发现端口被占会明确失败。`dev:demo` 默认端口仍是 React `5174`、Vue `5173`，手动指定端口时应同时加 `--strictPort`。global teardown 只清理本轮进程组：POSIX 下先发 SIGTERM，5 秒未退出再发 SIGKILL；仍无法退出时保留 `test-results/e2e-servers.json` 并让 teardown 失败。
+
 ## NuGet 依赖审计
 
 `dotnet restore` / `dotnet build` 默认开启 NuGet 漏洞审计（NU1901–NU1904）。**不要**用 `NuGetAudit=false`、降低 `NuGetAuditLevel` 或 `NuGetAuditSuppress` 消警告。
@@ -152,7 +154,7 @@ export Database__Provider=PostgreSql
 export ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=tigercat_admin;Username=postgres;Password=postgres"
 ```
 
-SQLite 与 PostgreSQL 共用 EF Core migrations。`AddMenuSchema` 新增单行 `MenuSchemas` JSON 记录，SQLite 菜单 CRUD 已通过真实 API 重启验收，InMemory 仍随进程重置。PostgreSQL 尚未通过：当前 SQLite 模型快照触发 `PendingModelChangesWarning`；诊断时临时忽略后，种子因 `Permissions.Id` 没有生成策略报 `23502`。仅在临时库补齐 21 个整数主键的 identity 后，种子仍因 `AdminNotifications.Read` 的 integer / boolean 类型不匹配报 `42804`，日期列也被历史迁移建为 text；这些跨表迁移问题未在菜单批次中修复，不能据此宣称 PostgreSQL 菜单持久化验收通过。
+SQLite 与 PostgreSQL 共用一套 EF Core migrations。迁移操作不固定 SQLite 列类型，由当前 provider 映射字符串、布尔值和日期；21 个整数主键同时携带 PostgreSQL identity 策略，SQLite 仍使用自己的主键生成规则。新增迁移后必须分别用 SQLite 与 PostgreSQL 执行 `dotnet ef database update`，并重新生成 PostgreSQL 幂等 SQL，避免快照再次绑定单一 provider。`AddMenuSchema` 新增单行 `MenuSchemas` JSON 记录，InMemory 仍随进程重置。
 
 `AddMediaAnnotations` 为 `MediaResources` 增加必填 `AnnotationsJson`（默认 `[]`，最大 64000 字符），现有记录无需回填；文章附件复用 `MediaReferences`，不新增附件表。备份和恢复需同时保留数据库中的标注、引用与媒体卷。`AddCsvImportRows` 为现有 `ImportJobs` 添加 `Total`、`Processed`、`Failed`（默认 0）、`RowsJson`（默认 `[]`）、`Operator`（默认空）。旧文件名演示任务没有原 CSV，不能继续真实导入，需重新选择文件。任务行包含敏感密码哈希，按现有用户数据库的访问和备份规则保存；不要记录 CSV 请求体。验证迁移和恢复时使用临时数据库，避免改动本地开发数据。生产发布前生成并评审幂等 SQL：
 
@@ -162,7 +164,7 @@ pnpm db:script:postgres
 
 输出位置：`artifacts/sql/tigercat-admin-postgres.sql`。
 
-应用启动会幂等写入权限、角色、默认管理员、系统设置、通知和任务种子数据。生产首次启动应通过 `BootstrapAdmin:Password` 注入默认管理员初始密码。
+应用启动会幂等写入权限、角色、系统设置、通知和任务种子数据。非生产环境未配置初始密码时保留开发账号 `admin/admin123`；生产环境必须通过 `BootstrapAdmin:Password` 注入初始密码，否则不会创建 `admin` 账号，也不会生成可用的默认口令。已有管理员账号不因重启重置密码。
 
 ## 生产配置
 
@@ -208,9 +210,11 @@ pnpm build:pages
 ### 认证与请求面
 
 - 密码存储使用 ASP.NET Identity `PasswordHasher<T>`（PBKDF2）。**不要**引入 Cookie Identity UI 或 JwtBearer；会话仍是 `X-Token` / `Authorization: Bearer` + `ISessionStore`。
+- `access_token` 查询参数只用于 `/hubs/*` 的 WebSocket 握手；普通 REST 请求必须使用 `X-Token` 或 `Authorization: Bearer`，避免会话令牌进入 URL 日志。
 - 升级前写入的 SHA256 hex 哈希在成功登录后透明重哈希。启动时若仍有旧哈希，日志会给出条数，不会在启动时批量改写（没有明文）。
-- 生产健康检查用 hasher **校验** `admin123`，同时识别 Identity 哈希和未升级的 SHA256 hex。默认管理员密码必须轮换。
-- `POST /api/auth/login`、`/api/auth/two-factor/verify`、`/api/auth/forgot-password*`、`/api/auth/register` 启用按 IP 的 ASP.NET `RateLimiter`（配置节 `AuthRateLimit`：`PermitLimit`、`WindowSeconds`）。开发默认 `AuthRateLimitOptions.DefaultPermitLimit`（120 次/60 秒）。显式 `AuthRateLimit:PermitLimit` 始终生效；生产未配置该键时回落到 `ProductionPermitLimit`（30）。生产样例写 30。账号锁定（`auth.maxAttempts`）仍然独立生效。限流拒绝返回 `ApiResponse` `429`，message 为「请求过于频繁，请稍后再试」。
+- 生产健康检查用 hasher **校验** `admin123`，同时识别 Identity 哈希和未升级的 SHA256 hex。默认管理员密码必须轮换；公开健康响应只返回通用安全配置失败说明，不泄露具体检查项。
+- `POST /api/auth/login`、`/api/auth/two-factor/verify`、`/api/auth/forgot-password*`、`/api/auth/register` 启用按 IP 的 ASP.NET `RateLimiter`（配置节 `AuthRateLimit`：`PermitLimit`、`WindowSeconds`）。基础配置不设置 `PermitLimit`，开发默认 120 次/60 秒，生产未配置该键时回落到 30；显式 `AuthRateLimit:PermitLimit` 始终生效，生产样例写 30。账号锁定（`auth.maxAttempts`）仍然独立生效，每进程最多保留 10000 个「用户名@IP」失败计数，超过后淘汰最久未更新的条目。限流拒绝返回 `ApiResponse` `429`，message 为「请求过于频繁，请稍后再试」。
+- 会话撤销通知和 SignalR 连接目前都是单进程机制，当前 Aspire 单副本部署可直接使用。水平扩展前必须接入跨实例撤销通知与 SignalR backplane，否则其他实例上的已连接 Hub 不会随禁用、改密或登出断开。
 - 限流分区键是 `Connection.RemoteIpAddress`。API 若在反向代理后面，必须配置 `ForwardedHeaders` 才会按客户端 IP 分区，否则所有用户挤在代理地址上。默认 **关闭**。只有 `ForwardedHeaders:Enabled=true` **并且** `KnownProxies` 或 `KnownNetworks` 至少有一条有效 CIDR/地址时才调用 `UseForwardedHeaders`（在 `UseRateLimiter` 之前）。不要清空 allow-list 去信任任意 `X-Forwarded-For`，那会让客户端伪造 IP 绕过限流。生产示例：
 
 ```bash
@@ -227,7 +231,7 @@ export ForwardedHeaders__KnownNetworks__0="10.0.0.0/8"
 - 上传会校验大小、MIME、扩展名和图片尺寸，并计算 SHA256；重复内容返回已有媒体资源。
 - Logo、头像或文章附件引用中的媒体普通删除会失败并发布 `admin.media.delete.failed`；强制删除会清理上述已知引用并发布 `admin.media.delete.forced`。
 - `POST /api/media/orphans/cleanup` 支持预览或清理本地孤儿文件。
-- Redis Streams 用于把任务、设置、审计清理、媒体删除失败和用户治理事件转化为通知中心消息。
+- Redis Streams 用于把任务、设置、审计清理、媒体删除失败和用户治理事件转化为通知中心消息。只有确认重复或处理成功才 Ack；锁获取异常或处理失败保持 pending，处理失败会释放本次幂等锁，供回收后重试。
 - 缓存走 `ICacheService` + HybridCache：`Infrastructure:UseInMemory=true` 时只有进程内 L1；Redis 在线时 L2 复用现有 `IConnectionMultiplexer`（`IDistributedCache`）。`GET /api/settings` 用 `GetOrSet` 防 stampede；权限每次查询当前 EF 授权，不走缓存。2FA / 忘记密码验证码仍走同一 `ICacheService` 的 Get/Set/Remove。**不要**加全局 `OutputCache`：业务 GET 几乎都要登录，Stats 若缓存必须按用户/权限 `VaryBy`，Monitor snapshot 是步进演示，缓存会破坏「每次不同」。
 - 导入任务进度由 `ImportJobProgressService`（`BackgroundService`）推进，`GET /api/import-jobs/{id}` 只读。间隔 `ImportJobs:ProgressIntervalMilliseconds`（默认 250）。每个间隔按真实 CSV 行创建用户或记录跳过 / 失败，进度按 `processed/total` 计算。任务及待处理哈希持久化，重启继续处理；公开响应不含密码 / 哈希，原 CSV 不落盘。关系数据库将每行用户和结果更新放在同一事务，异常中断保留已完成行，可用原 CSV 重新导入并跳过已有用户。配置及失败行恢复见 [用户 CSV 导入 API](api/import.md)。Mock 只在有活动任务时续跑计时器。
 
@@ -235,7 +239,7 @@ export ForwardedHeaders__KnownNetworks__0="10.0.0.0/8"
 
 无需认证的生产探针：
 
-- `/api/health`：返回现有 `ApiResponse` 包络（`status` / `timestamp` / `details`）。`details` 含 `database`、`redis`、`eventChannel`、`mediaStorage`、`configuration`、`security`。内部委托 ASP.NET `IHealthCheck`（`HealthCheckService`，tag `ready`）；契约字段和 503 语义不变。测试 host 设 `Infrastructure:UseInMemory=true` 时 Redis / 事件通道走 in-memory 分支，不碰真实 Redis。
+- `/api/health`：返回现有 `ApiResponse` 包络（`status` / `timestamp` / `details`）。`details` 含 `database`、`redis`、`eventChannel`、`mediaStorage`、`configuration`、`security`。内部委托 ASP.NET `IHealthCheck`（`HealthCheckService`，tag `ready`）；契约字段和 503 语义不变。媒体检查实际写入并删除临时文件；非内存事件通道会 ping Redis，确认三个 stream 的环境 consumer group 均存在，并要求至少一个 consumer 在最近 30 秒内与 Redis 交互。测试 host 设 `Infrastructure:UseInMemory=true` 时 Redis / 事件通道走 in-memory 分支，不碰真实 Redis。
 - `/api/health/redis`：仅在未启用 in-memory 基础设施时映射，直接 ping Redis。
 
 Aspire ServiceDefaults 另有 `/health`（全部检查）和 `/alive`（仅 `live` tag）。这两条**只在 Development 映射**，生产不暴露，避免把依赖细节放到未鉴权路径上。生产 readiness 用 `/api/health`（Docker `HEALTHCHECK` 也打这条）。不要把 Aspire `/health` 当生产探针，除非单独加鉴权或网络隔离。

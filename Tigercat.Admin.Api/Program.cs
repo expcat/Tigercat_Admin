@@ -239,7 +239,7 @@ try
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
-    await DbInitializer.InitializeAsync(dbContext, app.Configuration);
+    await DbInitializer.InitializeAsync(dbContext, app.Configuration, app.Environment);
 
     var passwordHashes = await dbContext.Users.Select(u => u.PasswordHash).ToListAsync();
     var legacyCount = passwordHashes.Count(PasswordHasher.IsLegacySha256);

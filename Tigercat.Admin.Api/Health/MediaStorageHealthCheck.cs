@@ -3,9 +3,9 @@ using Tigercat.Admin.Api.Media;
 
 namespace Tigercat.Admin.Api.Health;
 
-internal sealed class MediaStorageHealthCheck(IConfiguration configuration) : IHealthCheck
+internal sealed class MediaStorageHealthCheck(IMediaStorageProvider storage) : IHealthCheck
 {
-    public Task<HealthCheckResult> CheckHealthAsync(
+    public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
@@ -13,13 +13,15 @@ internal sealed class MediaStorageHealthCheck(IConfiguration configuration) : IH
 
         try
         {
-            var options = configuration.GetSection("Media").Get<MediaOptions>() ?? new MediaOptions();
-            var provider = MediaStorageProviderResolver.Resolve(options);
-            return Task.FromResult(HealthCheckHelpers.ToResult(HealthDependencyStatus.Healthy(provider)));
+            await using var content = new MemoryStream([0]);
+            var probe = await storage.SaveAsync(content, $"health-{Guid.NewGuid():N}", ".tmp", cancellationToken);
+            await storage.DeleteAsync(probe.StoredFileName, cancellationToken);
+            return HealthCheckHelpers.ToResult(HealthDependencyStatus.Healthy(storage.ProviderName));
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return Task.FromResult(HealthCheckHelpers.ToResult(HealthDependencyStatus.Unhealthy("media", ex.Message)));
+            return HealthCheckHelpers.ToResult(
+                HealthDependencyStatus.Unhealthy("media", "Media storage write probe failed."));
         }
     }
 }

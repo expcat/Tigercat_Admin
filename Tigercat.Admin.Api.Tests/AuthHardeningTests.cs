@@ -291,11 +291,39 @@ public class ProductionOpenApiDisabledTests : IClassFixture<ProductionSecurityAp
     }
 }
 
-public class ProductionOpenApiEnabledTests : IClassFixture<ProductionOpenApiApiFactory>
+public sealed class ProductionBootstrapApiFactory : ProductionSecurityApiFactory
+{
+    public const string AdminPassword = "configured-admin-password";
+
+    protected override Dictionary<string, string?> ConfigurationOverrides
+    {
+        get
+        {
+            var map = base.ConfigurationOverrides;
+            map["BootstrapAdmin:Password"] = AdminPassword;
+            return map;
+        }
+    }
+}
+
+public sealed class ProductionBootstrapOpenApiApiFactory : ProductionOpenApiApiFactory
+{
+    protected override Dictionary<string, string?> ConfigurationOverrides
+    {
+        get
+        {
+            var map = base.ConfigurationOverrides;
+            map["BootstrapAdmin:Password"] = ProductionBootstrapApiFactory.AdminPassword;
+            return map;
+        }
+    }
+}
+
+public class ProductionOpenApiEnabledTests : IClassFixture<ProductionBootstrapOpenApiApiFactory>
 {
     private readonly HttpClient _client;
 
-    public ProductionOpenApiEnabledTests(ProductionOpenApiApiFactory factory)
+    public ProductionOpenApiEnabledTests(ProductionBootstrapOpenApiApiFactory factory)
     {
         _client = factory.CreateClient();
     }
@@ -306,7 +334,9 @@ public class ProductionOpenApiEnabledTests : IClassFixture<ProductionOpenApiApiF
         var anonymous = await _client.GetAsync("/openapi/v1.json");
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
 
-        var login = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("admin", "admin123"));
+        var login = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequest("admin", ProductionBootstrapApiFactory.AdminPassword));
         login.EnsureSuccessStatusCode();
         var session = await login.ReadApiResponseAsync<LoginResponse>();
         Assert.False(string.IsNullOrWhiteSpace(session?.Data?.Token));
@@ -321,19 +351,19 @@ public class ProductionOpenApiEnabledTests : IClassFixture<ProductionOpenApiApiF
     }
 }
 
-public class ProductionHealthPasswordTests : IClassFixture<ProductionSecurityApiFactory>
+public class ProductionHealthPasswordTests : IClassFixture<ProductionBootstrapApiFactory>
 {
-    private readonly ProductionSecurityApiFactory _factory;
+    private readonly ProductionBootstrapApiFactory _factory;
     private readonly HttpClient _client;
 
-    public ProductionHealthPasswordTests(ProductionSecurityApiFactory factory)
+    public ProductionHealthPasswordTests(ProductionBootstrapApiFactory factory)
     {
         _factory = factory;
         _client = factory.CreateClient();
     }
 
     [Fact]
-    public async Task HealthCheck_DetectsLegacySha256DefaultAdminPassword()
+    public async Task HealthCheck_DoesNotLeakLegacySha256DefaultAdminPassword()
     {
         using (var scope = _factory.Services.CreateScope())
         {
@@ -348,16 +378,17 @@ public class ProductionHealthPasswordTests : IClassFixture<ProductionSecurityApi
         var body = await response.ReadApiResponseAsync<HealthResponse>();
         Assert.NotNull(body?.Data?.Details);
         Assert.Equal("unhealthy", body.Data.Details["security"].Status);
-        Assert.Contains("Default admin password", body.Data.Details["security"].Message);
+        Assert.Equal("Production security configuration requires review.", body.Data.Details["security"].Message);
+        Assert.DoesNotContain(PasswordHasher.DefaultAdminPassword, body.Data.Details["security"].Message);
     }
 }
 
-public class ProductionDemoAuthenticationTests : IClassFixture<ProductionSecurityApiFactory>
+public class ProductionDemoAuthenticationTests : IClassFixture<ProductionBootstrapApiFactory>
 {
-    private readonly ProductionSecurityApiFactory _factory;
+    private readonly ProductionBootstrapApiFactory _factory;
     private readonly HttpClient _client;
 
-    public ProductionDemoAuthenticationTests(ProductionSecurityApiFactory factory)
+    public ProductionDemoAuthenticationTests(ProductionBootstrapApiFactory factory)
     {
         _factory = factory;
         _client = factory.CreateClient();
@@ -386,7 +417,10 @@ public class ProductionDemoAuthenticationTests : IClassFixture<ProductionSecurit
         var body = await reset.ReadApiResponseAsync<MessageResponse>();
         Assert.Contains("未配置真实邮件或短信投递通道", body?.Message);
 
-        var adminLogin = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("admin", "admin123"));
+        var adminLogin = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequest("admin", ProductionBootstrapApiFactory.AdminPassword));
+        adminLogin.EnsureSuccessStatusCode();
         var admin = await adminLogin.ReadApiResponseAsync<LoginResponse>();
         var update = new HttpRequestMessage(HttpMethod.Put, "/api/auth/two-factor")
         {

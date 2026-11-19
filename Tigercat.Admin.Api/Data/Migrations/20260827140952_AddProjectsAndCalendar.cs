@@ -14,15 +14,16 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "CalendarEvents",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
                         .Annotation("Sqlite:Autoincrement", true),
-                    PublicId = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
-                    Date = table.Column<string>(type: "TEXT", maxLength: 10, nullable: false),
-                    Start = table.Column<string>(type: "TEXT", maxLength: 5, nullable: false),
-                    End = table.Column<string>(type: "TEXT", maxLength: 5, nullable: false),
-                    Title = table.Column<string>(type: "TEXT", maxLength: 120, nullable: false),
-                    Type = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    Location = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false)
+                    PublicId = table.Column<string>(maxLength: 64, nullable: false),
+                    Date = table.Column<string>(maxLength: 10, nullable: false),
+                    Start = table.Column<string>(maxLength: 5, nullable: false),
+                    End = table.Column<string>(maxLength: 5, nullable: false),
+                    Title = table.Column<string>(maxLength: 120, nullable: false),
+                    Type = table.Column<string>(maxLength: 20, nullable: false),
+                    Location = table.Column<string>(maxLength: 200, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -33,19 +34,20 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "Projects",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
                         .Annotation("Sqlite:Autoincrement", true),
-                    PublicId = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 120, nullable: false),
-                    Summary = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    Owner = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false),
-                    Department = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    Progress = table.Column<int>(type: "INTEGER", nullable: false),
-                    Milestone = table.Column<int>(type: "INTEGER", nullable: false),
-                    Budget = table.Column<int>(type: "INTEGER", nullable: false),
-                    StartAt = table.Column<string>(type: "TEXT", maxLength: 10, nullable: false),
-                    EndAt = table.Column<string>(type: "TEXT", maxLength: 10, nullable: false)
+                    PublicId = table.Column<string>(maxLength: 32, nullable: false),
+                    Name = table.Column<string>(maxLength: 120, nullable: false),
+                    Summary = table.Column<string>(maxLength: 500, nullable: false),
+                    Owner = table.Column<string>(maxLength: 80, nullable: false),
+                    Department = table.Column<string>(maxLength: 80, nullable: false),
+                    Status = table.Column<string>(maxLength: 20, nullable: false),
+                    Progress = table.Column<int>(nullable: false),
+                    Milestone = table.Column<int>(nullable: false),
+                    Budget = table.Column<int>(nullable: false),
+                    StartAt = table.Column<string>(maxLength: 10, nullable: false),
+                    EndAt = table.Column<string>(maxLength: 10, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -56,14 +58,15 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "ProjectActivities",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
                         .Annotation("Sqlite:Autoincrement", true),
-                    ProjectId = table.Column<int>(type: "INTEGER", nullable: false),
-                    PublicId = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    Label = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false),
-                    Content = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    Color = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    SortOrder = table.Column<int>(type: "INTEGER", nullable: false)
+                    ProjectId = table.Column<int>(nullable: false),
+                    PublicId = table.Column<string>(maxLength: 32, nullable: false),
+                    Label = table.Column<string>(maxLength: 80, nullable: false),
+                    Content = table.Column<string>(maxLength: 500, nullable: false),
+                    Color = table.Column<string>(maxLength: 20, nullable: false),
+                    SortOrder = table.Column<int>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -80,14 +83,15 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "ProjectMembers",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
                         .Annotation("Sqlite:Autoincrement", true),
-                    ProjectId = table.Column<int>(type: "INTEGER", nullable: false),
-                    PublicId = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false),
-                    Role = table.Column<string>(type: "TEXT", maxLength: 40, nullable: false),
-                    Color = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    SortOrder = table.Column<int>(type: "INTEGER", nullable: false)
+                    ProjectId = table.Column<int>(nullable: false),
+                    PublicId = table.Column<string>(maxLength: 32, nullable: false),
+                    Name = table.Column<string>(maxLength: 80, nullable: false),
+                    Role = table.Column<string>(maxLength: 40, nullable: false),
+                    Color = table.Column<string>(maxLength: 20, nullable: false),
+                    SortOrder = table.Column<int>(nullable: false)
                 },
                 constraints: table =>
                 {

@@ -15,12 +15,13 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "ChatMessages",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
                         .Annotation("Sqlite:Autoincrement", true),
-                    PublicId = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
-                    Content = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: false),
-                    Direction = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    PublicId = table.Column<string>(maxLength: 64, nullable: false),
+                    Content = table.Column<string>(maxLength: 2000, nullable: false),
+                    Direction = table.Column<string>(maxLength: 20, nullable: false),
+                    CreatedAt = table.Column<DateTime>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -31,14 +32,15 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "Comments",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
                         .Annotation("Sqlite:Autoincrement", true),
-                    PublicId = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
-                    TargetType = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    TargetId = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
-                    Body = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: false),
-                    UserName = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    PublicId = table.Column<string>(maxLength: 64, nullable: false),
+                    TargetType = table.Column<string>(maxLength: 20, nullable: false),
+                    TargetId = table.Column<string>(maxLength: 64, nullable: false),
+                    Body = table.Column<string>(maxLength: 2000, nullable: false),
+                    UserName = table.Column<string>(maxLength: 80, nullable: false),
+                    CreatedAt = table.Column<DateTime>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -49,18 +51,19 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "Tickets",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
                         .Annotation("Sqlite:Autoincrement", true),
-                    PublicId = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    Title = table.Column<string>(type: "TEXT", maxLength: 120, nullable: false),
-                    Requester = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false),
-                    Category = table.Column<string>(type: "TEXT", maxLength: 40, nullable: false),
-                    Priority = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    Satisfaction = table.Column<double>(type: "REAL", nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: false)
+                    PublicId = table.Column<string>(maxLength: 32, nullable: false),
+                    Title = table.Column<string>(maxLength: 120, nullable: false),
+                    Requester = table.Column<string>(maxLength: 80, nullable: false),
+                    Category = table.Column<string>(maxLength: 40, nullable: false),
+                    Priority = table.Column<string>(maxLength: 20, nullable: false),
+                    Status = table.Column<string>(maxLength: 20, nullable: false),
+                    CreatedAt = table.Column<DateTime>(nullable: false),
+                    UpdatedAt = table.Column<DateTime>(nullable: false),
+                    Satisfaction = table.Column<double>(nullable: false),
+                    Description = table.Column<string>(maxLength: 2000, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -71,13 +74,14 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "TicketMessages",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
                         .Annotation("Sqlite:Autoincrement", true),
-                    TicketId = table.Column<int>(type: "INTEGER", nullable: false),
-                    PublicId = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
-                    Content = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: false),
-                    Direction = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    TicketId = table.Column<int>(nullable: false),
+                    PublicId = table.Column<string>(maxLength: 64, nullable: false),
+                    Content = table.Column<string>(maxLength: 2000, nullable: false),
+                    Direction = table.Column<string>(maxLength: 20, nullable: false),
+                    CreatedAt = table.Column<DateTime>(nullable: false)
                 },
                 constraints: table =>
                 {

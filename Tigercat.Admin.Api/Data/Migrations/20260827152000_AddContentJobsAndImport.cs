@@ -14,16 +14,17 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "ContentArticles",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
                         .Annotation("Sqlite:Autoincrement", true),
-                    PublicId = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    Title = table.Column<string>(type: "TEXT", maxLength: 120, nullable: false),
-                    EditorType = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    Body = table.Column<string>(type: "TEXT", maxLength: 20000, nullable: false),
-                    TagsJson = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: false),
-                    Category = table.Column<string>(type: "TEXT", maxLength: 40, nullable: false),
-                    ColumnJson = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    Published = table.Column<bool>(type: "INTEGER", nullable: false)
+                    PublicId = table.Column<string>(maxLength: 32, nullable: false),
+                    Title = table.Column<string>(maxLength: 120, nullable: false),
+                    EditorType = table.Column<string>(maxLength: 20, nullable: false),
+                    Body = table.Column<string>(maxLength: 20000, nullable: false),
+                    TagsJson = table.Column<string>(maxLength: 1000, nullable: false),
+                    Category = table.Column<string>(maxLength: 40, nullable: false),
+                    ColumnJson = table.Column<string>(maxLength: 500, nullable: false),
+                    Published = table.Column<bool>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -34,23 +35,24 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "Jobs",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
                         .Annotation("Sqlite:Autoincrement", true),
-                    PublicId = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 120, nullable: false),
-                    Cron = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
-                    Concurrency = table.Column<int>(type: "INTEGER", nullable: false),
-                    Timeout = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false),
-                    BatchSize = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false),
-                    Enabled = table.Column<bool>(type: "INTEGER", nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    LastRun = table.Column<string>(type: "TEXT", maxLength: 40, nullable: false),
-                    NextRun = table.Column<string>(type: "TEXT", maxLength: 40, nullable: false),
-                    Progress = table.Column<int>(type: "INTEGER", nullable: false),
-                    Phase = table.Column<int>(type: "INTEGER", nullable: false),
-                    Start = table.Column<string>(type: "TEXT", maxLength: 10, nullable: false),
-                    End = table.Column<string>(type: "TEXT", maxLength: 10, nullable: false),
-                    Color = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false)
+                    PublicId = table.Column<string>(maxLength: 32, nullable: false),
+                    Name = table.Column<string>(maxLength: 120, nullable: false),
+                    Cron = table.Column<string>(maxLength: 64, nullable: false),
+                    Concurrency = table.Column<int>(nullable: false),
+                    Timeout = table.Column<string>(maxLength: 16, nullable: false),
+                    BatchSize = table.Column<string>(maxLength: 16, nullable: false),
+                    Enabled = table.Column<bool>(nullable: false),
+                    Status = table.Column<string>(maxLength: 20, nullable: false),
+                    LastRun = table.Column<string>(maxLength: 40, nullable: false),
+                    NextRun = table.Column<string>(maxLength: 40, nullable: false),
+                    Progress = table.Column<int>(nullable: false),
+                    Phase = table.Column<int>(nullable: false),
+                    Start = table.Column<string>(maxLength: 10, nullable: false),
+                    End = table.Column<string>(maxLength: 10, nullable: false),
+                    Color = table.Column<string>(maxLength: 20, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -61,20 +63,21 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "ImportJobs",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
                         .Annotation("Sqlite:Autoincrement", true),
-                    PublicId = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    Source = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    TargetJson = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    MappingsJson = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: false),
-                    Mode = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    Conflict = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    BatchSize = table.Column<int>(type: "INTEGER", nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    Progress = table.Column<int>(type: "INTEGER", nullable: false),
-                    Imported = table.Column<int>(type: "INTEGER", nullable: true),
-                    Skipped = table.Column<int>(type: "INTEGER", nullable: true),
-                    ResultMessage = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true)
+                    PublicId = table.Column<string>(maxLength: 32, nullable: false),
+                    Source = table.Column<string>(maxLength: 500, nullable: false),
+                    TargetJson = table.Column<string>(maxLength: 500, nullable: false),
+                    MappingsJson = table.Column<string>(maxLength: 2000, nullable: false),
+                    Mode = table.Column<string>(maxLength: 20, nullable: false),
+                    Conflict = table.Column<string>(maxLength: 20, nullable: false),
+                    BatchSize = table.Column<int>(nullable: false),
+                    Status = table.Column<string>(maxLength: 20, nullable: false),
+                    Progress = table.Column<int>(nullable: false),
+                    Imported = table.Column<int>(nullable: true),
+                    Skipped = table.Column<int>(nullable: true),
+                    ResultMessage = table.Column<string>(maxLength: 500, nullable: true)
                 },
                 constraints: table =>
                 {

@@ -20,7 +20,8 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "MediaResources",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false),
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     PublicId = table.Column<string>(maxLength: 64, nullable: false),
                     OriginalFileName = table.Column<string>(maxLength: 255, nullable: false),
                     StoredFileName = table.Column<string>(maxLength: 255, nullable: false),
@@ -39,7 +40,8 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "MediaReferences",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false),
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     MediaResourceId = table.Column<int>(nullable: false),
                     ReferenceType = table.Column<string>(maxLength: 50, nullable: false),
                     ReferenceKey = table.Column<string>(maxLength: 100, nullable: false),

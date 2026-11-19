@@ -21,7 +21,7 @@ public class LocalMediaStorageProvider(
         var root = GetStorageRoot();
         Directory.CreateDirectory(root);
 
-        var path = Path.Combine(root, storedFileName);
+        var path = GetSafePath(storedFileName);
         await using var output = File.Create(path);
         await stream.CopyToAsync(output, ct);
 
@@ -90,7 +90,11 @@ public class LocalMediaStorageProvider(
     {
         var root = GetStorageRoot();
         var path = Path.GetFullPath(Path.Combine(root, storedFileName));
-        if (!path.StartsWith(Path.GetFullPath(root), StringComparison.OrdinalIgnoreCase))
+        var fullRoot = Path.GetFullPath(root);
+        var rootPrefix = Path.EndsInDirectorySeparator(fullRoot)
+            ? fullRoot
+            : fullRoot + Path.DirectorySeparatorChar;
+        if (!path.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Invalid media file path.");
         }

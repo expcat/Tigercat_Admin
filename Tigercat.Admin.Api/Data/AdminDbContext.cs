@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Tigercat.Admin.Api.Data.Entities;
 
 namespace Tigercat.Admin.Api.Data;
@@ -355,5 +356,17 @@ public class AdminDbContext : DbContext
             entity.Property(e => e.RowsJson).IsRequired().HasDefaultValue("[]");
             entity.Property(e => e.Operator).IsRequired().HasMaxLength(50).HasDefaultValue("");
         });
+
+        // The shared migrations carry provider-neutral column types. Keep the
+        // PostgreSQL identity annotation identical for every runtime provider so
+        // the same model snapshot does not produce false pending-model changes.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            var idProperty = entityType.FindPrimaryKey()?.Properties
+                .SingleOrDefault(property => property.Name == "Id" && property.ClrType == typeof(int));
+            idProperty?.SetAnnotation(
+                "Npgsql:ValueGenerationStrategy",
+                NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
+        }
     }
 }

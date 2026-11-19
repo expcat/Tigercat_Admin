@@ -106,7 +106,7 @@ internal sealed class SecurityHealthCheck(
 
         var status = issues.Count == 0
             ? HealthDependencyStatus.Healthy("production")
-            : HealthDependencyStatus.Unhealthy("production", string.Join(" ", issues));
+            : HealthDependencyStatus.Unhealthy("production", "Production security configuration requires review.");
         return HealthCheckHelpers.ToResult(status);
     }
 }

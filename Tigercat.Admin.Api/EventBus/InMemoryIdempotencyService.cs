@@ -31,4 +31,11 @@ public sealed class InMemoryIdempotencyService : IIdempotencyService
             }
         }
     }
+
+    public Task ReleaseAsync(string eventId, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        _locks.TryRemove(eventId, out _);
+        return Task.CompletedTask;
+    }
 }

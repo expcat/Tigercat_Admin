@@ -22,7 +22,12 @@ public static class AuthToken
             }
         }
 
-        var accessToken = httpContext.Request.Query["access_token"].ToString();
-        return string.IsNullOrWhiteSpace(accessToken) ? null : accessToken;
+        if (httpContext.WebSockets.IsWebSocketRequest)
+        {
+            var accessToken = httpContext.Request.Query["access_token"].ToString();
+            return string.IsNullOrWhiteSpace(accessToken) ? null : accessToken;
+        }
+
+        return null;
     }
 }

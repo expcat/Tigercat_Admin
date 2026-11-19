@@ -15,7 +15,8 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "AdminNotifications",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false),
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     PublicId = table.Column<string>(maxLength: 64, nullable: false),
                     GroupKey = table.Column<string>(maxLength: 30, nullable: false),
                     Title = table.Column<string>(maxLength: 120, nullable: false),
@@ -37,7 +38,8 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "AdminTasks",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false),
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     PublicId = table.Column<string>(maxLength: 64, nullable: false),
                     Title = table.Column<string>(maxLength: 120, nullable: false),
                     Description = table.Column<string>(maxLength: 1000, nullable: true),

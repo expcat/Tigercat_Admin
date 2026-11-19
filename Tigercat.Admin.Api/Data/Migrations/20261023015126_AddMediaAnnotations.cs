@@ -13,7 +13,6 @@ namespace Tigercat.Admin.Api.Data.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "AnnotationsJson",
                 table: "MediaResources",
-                type: "TEXT",
                 maxLength: 64000,
                 nullable: false,
                 defaultValue: "[]");

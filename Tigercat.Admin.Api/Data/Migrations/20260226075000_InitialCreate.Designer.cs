@@ -24,19 +24,16 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(100);
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAt");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(200);
 
                     b.HasKey("Id");
 
@@ -50,19 +47,16 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAt");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(200);
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(50);
 
                     b.HasKey("Id");
 
@@ -74,14 +68,11 @@ namespace Tigercat.Admin.Api.Data.Migrations
 
             modelBuilder.Entity("Tigercat.Admin.Api.Data.Entities.RolePermissionEntity", b =>
                 {
-                    b.Property<int>("RoleId")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("RoleId");
 
-                    b.Property<int>("PermissionId")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("PermissionId");
 
-                    b.Property<DateTime>("AssignedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("AssignedAt");
 
                     b.HasKey("RoleId", "PermissionId");
 
@@ -94,23 +85,19 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAt");
 
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("ExpiresAt");
 
                     b.Property<string>("Token")
                         .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(64);
 
                     b.Property<string>("Username")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(50);
 
                     b.HasKey("Id");
 
@@ -124,27 +111,22 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAt");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(500);
 
                     b.Property<string>("Key")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(100);
 
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime?>("UpdatedAt");
 
                     b.Property<string>("Value")
                         .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(2000);
 
                     b.HasKey("Id");
 
@@ -158,30 +140,24 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAt");
 
                     b.Property<string>("DisplayName")
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(100);
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(128);
 
-                    b.Property<int>("Status")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("Status");
 
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime?>("UpdatedAt");
 
                     b.Property<string>("Username")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(50);
 
                     b.HasKey("Id");
 
@@ -193,14 +169,11 @@ namespace Tigercat.Admin.Api.Data.Migrations
 
             modelBuilder.Entity("Tigercat.Admin.Api.Data.Entities.UserRoleEntity", b =>
                 {
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("UserId");
 
-                    b.Property<int>("RoleId")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("RoleId");
 
-                    b.Property<DateTime>("AssignedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("AssignedAt");
 
                     b.HasKey("UserId", "RoleId");
 

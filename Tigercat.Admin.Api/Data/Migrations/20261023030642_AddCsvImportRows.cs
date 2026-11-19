@@ -13,14 +13,12 @@ namespace Tigercat.Admin.Api.Data.Migrations
             migrationBuilder.AddColumn<int>(
                 name: "Failed",
                 table: "ImportJobs",
-                type: "INTEGER",
                 nullable: false,
                 defaultValue: 0);
 
             migrationBuilder.AddColumn<string>(
                 name: "Operator",
                 table: "ImportJobs",
-                type: "TEXT",
                 maxLength: 50,
                 nullable: false,
                 defaultValue: "");
@@ -28,21 +26,18 @@ namespace Tigercat.Admin.Api.Data.Migrations
             migrationBuilder.AddColumn<int>(
                 name: "Processed",
                 table: "ImportJobs",
-                type: "INTEGER",
                 nullable: false,
                 defaultValue: 0);
 
             migrationBuilder.AddColumn<string>(
                 name: "RowsJson",
                 table: "ImportJobs",
-                type: "TEXT",
                 nullable: false,
                 defaultValue: "[]");
 
             migrationBuilder.AddColumn<int>(
                 name: "Total",
                 table: "ImportJobs",
-                type: "INTEGER",
                 nullable: false,
                 defaultValue: 0);
         }

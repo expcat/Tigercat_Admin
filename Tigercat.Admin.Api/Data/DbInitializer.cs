@@ -113,6 +113,7 @@ public static class DbInitializer
     public static async Task InitializeAsync(
         AdminDbContext context,
         IConfiguration? configuration = null,
+        IHostEnvironment? environment = null,
         CancellationToken ct = default)
     {
         // Keep schema history for relational providers. InMemory has no migrations.
@@ -298,24 +299,27 @@ public static class DbInitializer
             var adminPassword = configuration?["BootstrapAdmin:Password"];
             if (string.IsNullOrWhiteSpace(adminPassword))
             {
-                adminPassword = "admin123";
+                adminPassword = environment?.IsProduction() == true ? null : "admin123";
             }
 
-            adminUser = new UserEntity
+            if (!string.IsNullOrWhiteSpace(adminPassword))
             {
-                Username = "admin",
-                PasswordHash = PasswordHasher.Hash(adminPassword),
-                DisplayName = "管理员",
-                Status = UserStatus.Active,
-                TwoFactorEnabled = false,
-                CreatedAt = DateTime.UtcNow
-            };
-            context.Users.Add(adminUser);
-            await context.SaveChangesAsync(ct);
+                adminUser = new UserEntity
+                {
+                    Username = "admin",
+                    PasswordHash = PasswordHasher.Hash(adminPassword),
+                    DisplayName = "管理员",
+                    Status = UserStatus.Active,
+                    TwoFactorEnabled = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+                context.Users.Add(adminUser);
+                await context.SaveChangesAsync(ct);
+            }
         }
 
         // Assign Admin role to the default user if not already assigned
-        if (roleLookup.TryGetValue("Admin", out var adminRoleId))
+        if (adminUser is not null && roleLookup.TryGetValue("Admin", out var adminRoleId))
         {
             var alreadyAssigned = await context.UserRoles
                 .AnyAsync(ur => ur.UserId == adminUser.Id && ur.RoleId == adminRoleId, ct);
@@ -494,13 +498,13 @@ public static class DbInitializer
             "缺陷",
             "high",
             "progress",
-            new DateTime(2026, 6, 28, 10, 24, 0),
-            new DateTime(2026, 6, 29, 9, 2, 0),
+            new DateTime(2026, 6, 28, 10, 24, 0, DateTimeKind.Utc),
+            new DateTime(2026, 6, 29, 9, 2, 0, DateTimeKind.Utc),
             0,
             "在数据分析页导出近 90 天报表时，约 1/5 概率返回 500，刷新后可恢复。",
             [
-                ("m-2048-1", "你好，导出报表偶尔会失败，麻烦看下。", "other", new DateTime(2026, 6, 28, 10, 24, 0)),
-                ("m-2048-2", "已收到，正在排查导出服务的超时配置。", "self", new DateTime(2026, 6, 28, 11, 10, 0)),
+                ("m-2048-1", "你好，导出报表偶尔会失败，麻烦看下。", "other", new DateTime(2026, 6, 28, 10, 24, 0, DateTimeKind.Utc)),
+                ("m-2048-2", "已收到，正在排查导出服务的超时配置。", "self", new DateTime(2026, 6, 28, 11, 10, 0, DateTimeKind.Utc)),
             ]
         ),
         (
@@ -510,12 +514,12 @@ public static class DbInitializer
             "需求",
             "medium",
             "accepted",
-            new DateTime(2026, 6, 27, 16, 40, 0),
-            new DateTime(2026, 6, 28, 9, 15, 0),
+            new DateTime(2026, 6, 27, 16, 40, 0, DateTimeKind.Utc),
+            new DateTime(2026, 6, 28, 9, 15, 0, DateTimeKind.Utc),
             0,
             "用户管理列表希望增加“部门”筛选项，便于按团队管理成员。",
             [
-                ("m-2050-1", "能否在用户列表加一个部门筛选？", "other", new DateTime(2026, 6, 27, 16, 40, 0)),
+                ("m-2050-1", "能否在用户列表加一个部门筛选？", "other", new DateTime(2026, 6, 27, 16, 40, 0, DateTimeKind.Utc)),
             ]
         ),
         (
@@ -525,14 +529,14 @@ public static class DbInitializer
             "缺陷",
             "high",
             "resolved",
-            new DateTime(2026, 6, 25, 8, 12, 0),
-            new DateTime(2026, 6, 26, 17, 50, 0),
+            new DateTime(2026, 6, 25, 8, 12, 0, DateTimeKind.Utc),
+            new DateTime(2026, 6, 26, 17, 50, 0, DateTimeKind.Utc),
             4,
             "部分用户登录成功后数秒内被登出，疑似 token 续期问题。",
             [
-                ("m-2041-1", "登录后过一会就被踢出来了。", "other", new DateTime(2026, 6, 25, 8, 12, 0)),
-                ("m-2041-2", "已修复 token 续期逻辑，请再试试。", "self", new DateTime(2026, 6, 26, 17, 50, 0)),
-                ("m-2041-3", "可以了，谢谢！", "other", new DateTime(2026, 6, 26, 18, 5, 0)),
+                ("m-2041-1", "登录后过一会就被踢出来了。", "other", new DateTime(2026, 6, 25, 8, 12, 0, DateTimeKind.Utc)),
+                ("m-2041-2", "已修复 token 续期逻辑，请再试试。", "self", new DateTime(2026, 6, 26, 17, 50, 0, DateTimeKind.Utc)),
+                ("m-2041-3", "可以了，谢谢！", "other", new DateTime(2026, 6, 26, 18, 5, 0, DateTimeKind.Utc)),
             ]
         ),
     ];
@@ -545,10 +549,10 @@ public static class DbInitializer
         string UserName,
         DateTime CreatedAt)[] SeedComments =
     [
-        ("n-2048-1", "ticket", "TK-2048", "初步定位为导出队列在高峰期超时，已 @张运维 调整 worker 并发。", "李工", new DateTime(2026, 6, 28, 14, 30, 0)),
-        ("n-2041-1", "ticket", "TK-2041", "根因：刷新接口未带上最新 token，已修复并补充回归用例。", "王小虎", new DateTime(2026, 6, 26, 17, 40, 0)),
-        ("c-p-1001-1", "project", "1001", "仪表盘空状态文案建议改成「暂无运营数据」。", "赵敏", new DateTime(2026, 8, 21, 11, 20, 0)),
-        ("c-p-1001-2", "project", "1001", "权限码过滤菜单已经对上，demo 账号可用来演示 403。", "李工", new DateTime(2026, 8, 22, 9, 40, 0)),
+        ("n-2048-1", "ticket", "TK-2048", "初步定位为导出队列在高峰期超时，已 @张运维 调整 worker 并发。", "李工", new DateTime(2026, 6, 28, 14, 30, 0, DateTimeKind.Utc)),
+        ("n-2041-1", "ticket", "TK-2041", "根因：刷新接口未带上最新 token，已修复并补充回归用例。", "王小虎", new DateTime(2026, 6, 26, 17, 40, 0, DateTimeKind.Utc)),
+        ("c-p-1001-1", "project", "1001", "仪表盘空状态文案建议改成「暂无运营数据」。", "赵敏", new DateTime(2026, 8, 21, 11, 20, 0, DateTimeKind.Utc)),
+        ("c-p-1001-2", "project", "1001", "权限码过滤菜单已经对上，demo 账号可用来演示 403。", "李工", new DateTime(2026, 8, 22, 9, 40, 0, DateTimeKind.Utc)),
     ];
 
     private static async Task SeedProjectsAndCalendarAsync(AdminDbContext context, CancellationToken ct)

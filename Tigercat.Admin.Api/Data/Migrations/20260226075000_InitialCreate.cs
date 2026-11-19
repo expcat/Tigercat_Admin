@@ -15,7 +15,8 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "Permissions",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false),
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Code = table.Column<string>(maxLength: 100, nullable: false),
                     Description = table.Column<string>(maxLength: 200, nullable: true),
                     CreatedAt = table.Column<DateTime>(nullable: false)
@@ -29,7 +30,8 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "Roles",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false),
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Name = table.Column<string>(maxLength: 50, nullable: false),
                     Description = table.Column<string>(maxLength: 200, nullable: true),
                     CreatedAt = table.Column<DateTime>(nullable: false)
@@ -43,7 +45,8 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "Sessions",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false),
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Token = table.Column<string>(maxLength: 64, nullable: false),
                     Username = table.Column<string>(maxLength: 50, nullable: false),
                     ExpiresAt = table.Column<DateTime>(nullable: false),
@@ -58,7 +61,8 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "SystemSettings",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false),
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Key = table.Column<string>(maxLength: 100, nullable: false),
                     Value = table.Column<string>(maxLength: 2000, nullable: false),
                     Description = table.Column<string>(maxLength: 500, nullable: true),
@@ -74,7 +78,8 @@ namespace Tigercat.Admin.Api.Data.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false),
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Username = table.Column<string>(maxLength: 50, nullable: false),
                     PasswordHash = table.Column<string>(maxLength: 128, nullable: false),
                     DisplayName = table.Column<string>(maxLength: 100, nullable: true),
