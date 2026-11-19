@@ -107,7 +107,7 @@ public class UsersEndpoints : IEndpointDefinition
         };
 
         var users = await ordered
-            .Skip((p - 1) * ps)
+            .Skip((int)Math.Min((long)(p - 1) * ps, int.MaxValue))
             .Take(ps)
             .Select(u => new UserItemResponse(
                 u.Id,
@@ -241,17 +241,10 @@ public class UsersEndpoints : IEndpointDefinition
             return "用户名或密码不能为空";
         }
 
-        var username = request.Username!.Trim().ToLowerInvariant();
-
-        // Validate username format & length
-        if (username.Length < UsernameMinLength || username.Length > UsernameMaxLength)
+        var usernameError = ValidateUsername(request.Username);
+        if (usernameError is not null)
         {
-            return $"用户名长度需在 {UsernameMinLength}-{UsernameMaxLength} 之间";
-        }
-
-        if (!username.All(c => char.IsLetterOrDigit(c) || c is '_' or '-' or '.'))
-        {
-            return "用户名只能包含字母、数字、下划线、短横线和点";
+            return usernameError;
         }
 
         var passwordError = policy.ValidatePassword(request.Password);
@@ -264,6 +257,22 @@ public class UsersEndpoints : IEndpointDefinition
         if (request.DisplayName is { Length: > DisplayNameMaxLength })
         {
             return $"显示名称长度不能超过 {DisplayNameMaxLength}";
+        }
+
+        return null;
+    }
+
+    internal static string? ValidateUsername(string? value)
+    {
+        var username = value?.Trim().ToLowerInvariant() ?? "";
+        if (username.Length < UsernameMinLength || username.Length > UsernameMaxLength)
+        {
+            return $"用户名长度需在 {UsernameMinLength}-{UsernameMaxLength} 之间";
+        }
+
+        if (!username.All(c => char.IsLetterOrDigit(c) || c is '_' or '-' or '.'))
+        {
+            return "用户名只能包含字母、数字、下划线、短横线和点";
         }
 
         return null;
@@ -352,17 +361,6 @@ public class UsersEndpoints : IEndpointDefinition
 
             user.PasswordHash = PasswordHasher.Hash(request.Password);
 
-            // Audit: admin reset password via UpdateUser endpoint
-            var envelope = EventEnvelope.Create(
-                "admin.user.password.reset",
-                new Dictionary<string, object?>
-                {
-                    ["targetUserId"] = user.Id,
-                    ["targetUsername"] = user.Username,
-                    ["operator"] = httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var op) ? op : "unknown"
-                },
-                httpContext.TraceIdentifier);
-            await eventPublisher.PublishAsync(envelope, EventBusConstants.AuthStream, ct);
         }
 
         if (request.AvatarMediaId.HasValue)
@@ -417,6 +415,22 @@ public class UsersEndpoints : IEndpointDefinition
                     statusCode: 400);
             }
 
+            var adminRoleIds = await db.Roles
+                .Where(r => r.Name == AdminRoleName)
+                .Select(r => r.Id)
+                .ToArrayAsync(ct);
+            var removesAdmin = user.UserRoles.Any(ur => adminRoleIds.Contains(ur.RoleId)) &&
+                               !validRoleIds.Any(adminRoleIds.Contains);
+            if (removesAdmin && user.Status == UserStatus.Active &&
+                !await db.Users.AnyAsync(u => u.Id != id && u.Status == UserStatus.Active &&
+                    u.UserRoles.Any(ur => ur.Role.Name == AdminRoleName), ct))
+            {
+                return Results.Json(
+                    ApiResult.Fail<UserItemResponse>("不能移除最后一个可用管理员用户的 Admin 角色", 400),
+                    AppJsonContext.Default.ApiResponseUserItemResponse,
+                    statusCode: 400);
+            }
+
             db.UserRoles.RemoveRange(user.UserRoles);
 
             foreach (var roleId in validRoleIds)
@@ -426,6 +440,20 @@ public class UsersEndpoints : IEndpointDefinition
         }
 
         await db.SaveChangesAsync(ct);
+
+        if (!string.IsNullOrWhiteSpace(request.Password))
+        {
+            var envelope = EventEnvelope.Create(
+                "admin.user.password.reset",
+                new Dictionary<string, object?>
+                {
+                    ["targetUserId"] = user.Id,
+                    ["targetUsername"] = user.Username,
+                    ["operator"] = httpContext.Items.TryGetValue(AuthConstants.UsernameItemKey, out var op) ? op : "unknown"
+                },
+                httpContext.TraceIdentifier);
+            await eventPublisher.PublishAsync(envelope, EventBusConstants.AuthStream, ct);
+        }
 
         if (user.Status == UserStatus.Disabled || !string.IsNullOrWhiteSpace(request.Password))
         {
@@ -502,13 +530,13 @@ public class UsersEndpoints : IEndpointDefinition
 
         // Prevent deleting the last admin user
         var isAdmin = user.UserRoles.Any(ur => db.Roles.Any(r => r.Id == ur.RoleId && r.Name == AdminRoleName));
-        if (isAdmin)
+        if (isAdmin && user.Status == UserStatus.Active)
         {
-            var adminCount = await db.Users
-                .Where(u => u.UserRoles.Any(ur => ur.Role.Name == AdminRoleName))
-                .CountAsync(ct);
+            var hasOtherActiveAdmin = await db.Users
+                .AnyAsync(u => u.Id != id && u.Status == UserStatus.Active &&
+                    u.UserRoles.Any(ur => ur.Role.Name == AdminRoleName), ct);
 
-            if (adminCount <= 1)
+            if (!hasOtherActiveAdmin)
             {
                 return Results.Json(
                     ApiResult.Fail<MessageResponse>("不能删除最后一个管理员用户", 400),
@@ -588,13 +616,14 @@ public class UsersEndpoints : IEndpointDefinition
         }
 
         // Prevent deleting the last admin
-        var adminRoleUserIds = await db.Users
-            .Where(u => u.UserRoles.Any(ur => ur.Role.Name == AdminRoleName))
+        var activeAdminUserIds = await db.Users
+            .Where(u => u.Status == UserStatus.Active && u.UserRoles.Any(ur => ur.Role.Name == AdminRoleName))
             .Select(u => u.Id)
             .ToListAsync(ct);
 
-        var remainingAdmins = adminRoleUserIds.Except(request.Ids).Count();
-        if (remainingAdmins < 1 && adminRoleUserIds.Intersect(request.Ids).Any())
+        var deletedIds = users.Select(static user => user.Id).ToArray();
+        var remainingAdmins = activeAdminUserIds.Except(deletedIds).Count();
+        if (remainingAdmins < 1 && activeAdminUserIds.Intersect(deletedIds).Any())
         {
             return Results.Json(
                 ApiResult.Fail<MessageResponse>("不能删除最后一个管理员用户", 400),
@@ -607,7 +636,6 @@ public class UsersEndpoints : IEndpointDefinition
             db.UserRoles.RemoveRange(u.UserRoles);
         }
 
-        var deletedIds = users.Select(static user => user.Id).ToArray();
         var deletedUsernames = users.Select(static user => user.Username).ToArray();
         var deletedAvatarKeys = deletedIds.Select(MediaReferences.UserAvatarKey).ToArray();
         var avatarReferences = await db.MediaReferences

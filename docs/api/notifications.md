@@ -31,7 +31,7 @@
 | `title` | string | 必填标题 |
 | `description` | string | 描述，可空 |
 | `toastType` | string | 必填，`info`、`success`、`warning`、`error` |
-| `linkUrl` | string \| null | 可选站内路径，须以 `/` 开头且不能是 `//` |
+| `linkUrl` | string \| null | 可选站内路径，须以 `/` 开头，不能是 `//`，且不能包含反斜杠 |
 | `meta` | object | 可选字符串键值 |
 
 当前通知是全局列表，不是按用户分发。`POST` 创建即插入一条未读记录，前端当作广播演示。权限码 `notification:create`（「创建通知」）种子给 Admin 与 Editor；Viewer 与 Demo 不给。

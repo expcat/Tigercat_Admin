@@ -30,7 +30,7 @@
 | `end` | string | Gantt 结束日期 `YYYY-MM-DD` |
 | `color` | string | Gantt 色条 |
 
-状态机：`enabled=true` 时变为 `running`（若当前已是 `failed` 且并非从停用重新启用，则保持 `failed`）；`enabled=false` 时变为 `paused`，`nextRun` 为 `—`。新建任务的 Gantt 窗口默认为短演示区间 `2026-07-01`–`2026-07-02`。
+状态机：从停用重新启用时变为 `running`；`enabled=false` 时变为 `paused`，`nextRun` 为 `—`。未传 `status` 的其他编辑保留当前状态；显式传入 `running` / `paused` / `failed` 才更新状态，其他值返回 `400`。当前已是 `failed` 且并非从停用重新启用时保持 `failed`。新建任务的 Gantt 窗口默认为短演示区间 `2026-07-01`–`2026-07-02`。
 
 本仓库保存任务配置和启停标记，**没有**真实 cron 执行器或按表达式触发的托管调度。`status`、`lastRun`、`nextRun`、`progress`、`phase` 和 Gantt 的 `start` / `end` 是示例字段；保存 Cron 不会驱动时间轴、计算运行历史或触发执行。页面已将时间、状态和阶段明确标为示例。
 
@@ -39,7 +39,7 @@
 | 方法与路径 | 权限 | 参数 / 请求体 | `data` | 错误 |
 | ---------- | ---- | ------------- | ------ | ---- |
 | `GET /api/jobs` | `job:view` | 无 | 任务数组 | `403` 缺少查看权限 |
-| `POST /api/jobs` | `job:edit` | Body：`name` 必填；`cron`、`concurrency`、`timeout`、`batchSize`、`enabled` 可选 | 创建后的任务对象 | `400` 名称为空或字段非法；`403` 缺少编辑权限 |
+| `POST /api/jobs` | `job:edit` | Body：`name` 必填；`cron`、`concurrency`、`timeout`、`batchSize`、`enabled` 可选 | 创建后的任务对象 | `400` 名称为空或字段非法；`409` 公开号重试后仍冲突；`403` 缺少编辑权限 |
 | `PUT /api/jobs/{id}` | `job:edit` | Body：`name`、`cron`、`concurrency`、`timeout`、`batchSize`、`enabled`、`status` 均可选 | 更新后的任务对象 | `400` 字段非法；`403` 缺少编辑权限；`404` 任务不存在 |
 
 列表按任务号升序。启停走 `PUT` 的 `enabled`，随后前端再 `GET` 刷新。

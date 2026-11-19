@@ -15,6 +15,7 @@ public class AuthEndpoints : IEndpointDefinition
 {
     private const string ProductionTwoFactorUnavailable = "生产环境未配置真实 TOTP 验证，两步验证已关闭";
     private const string ProductionPasswordRecoveryUnavailable = "生产环境未配置真实邮件或短信投递通道，找回密码已关闭";
+    private const int MaxTrackedLoginAttempts = 10_000;
     private static readonly ConcurrentDictionary<string, LoginAttemptState> LoginAttempts = new(StringComparer.Ordinal);
 
     public void DefineEndpoints(IEndpointRouteBuilder app)
@@ -75,6 +76,15 @@ public class AuthEndpoints : IEndpointDefinition
         {
             return Results.Json(
                 ApiResult.Fail<UserResponse>("用户名或密码不能为空", 400),
+                AppJsonContext.Default.ApiResponseUserResponse,
+                statusCode: 400);
+        }
+
+        var usernameError = UsersEndpoints.ValidateUsername(request.Username);
+        if (usernameError is not null)
+        {
+            return Results.Json(
+                ApiResult.Fail<UserResponse>(usernameError, 400),
                 AppJsonContext.Default.ApiResponseUserResponse,
                 statusCode: 400);
         }
@@ -654,6 +664,22 @@ public class AuthEndpoints : IEndpointDefinition
             key,
             _ => new LoginAttemptState(1, DateTimeOffset.UtcNow),
             (_, current) => new LoginAttemptState(current.FailureCount + 1, DateTimeOffset.UtcNow));
+
+        var excess = LoginAttempts.Count - MaxTrackedLoginAttempts;
+        if (excess <= 0)
+        {
+            return;
+        }
+
+        var oldestKeys = LoginAttempts
+            .OrderBy(pair => pair.Value.LastFailureAt)
+            .Take(excess)
+            .Select(pair => pair.Key)
+            .ToArray();
+        foreach (var oldestKey in oldestKeys)
+        {
+            LoginAttempts.TryRemove(oldestKey, out _);
+        }
     }
 
     private static void ClearLoginFailures(string key)

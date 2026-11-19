@@ -65,7 +65,7 @@ public class NotificationsEndpoints : IEndpointDefinition
         var items = await query
             .OrderBy(n => n.Read)
             .ThenByDescending(n => n.CreatedAt)
-            .Skip((p - 1) * ps)
+            .Skip((int)Math.Min((long)(p - 1) * ps, int.MaxValue))
             .Take(ps)
             .Select(n => ToResponse(n))
             .ToArrayAsync(ct);
@@ -241,7 +241,7 @@ public class NotificationsEndpoints : IEndpointDefinition
     }
 
     internal static bool IsSafeInternalPath(string linkUrl) =>
-        linkUrl.StartsWith('/') && !linkUrl.StartsWith("//");
+        linkUrl.StartsWith('/') && !linkUrl.StartsWith("//") && !linkUrl.Contains('\\');
 
     private static IResult CreateError(string message) =>
         Results.Json(

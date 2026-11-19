@@ -46,7 +46,7 @@
 | `hideInMenu` | boolean? | 默认 false |
 | `hideInBreadcrumb` | boolean? | 默认 false |
 | `flatMenu` | boolean? | 默认 false |
-| `iframeSrc` | string? | 最长 512 |
+| `iframeSrc` | string? | 最长 512；仅允许站内绝对路径或 HTTP(S) URL，拒绝 `javascript:` 等其他协议 |
 | `parentKey` | string? | 空则挂到对应根；非空必须已存在 |
 | `placement` | string? | `items` 或 `bottomItems`；仅 `parentKey` 为空时生效，默认 `items` |
 

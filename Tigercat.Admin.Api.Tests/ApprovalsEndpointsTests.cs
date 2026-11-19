@@ -161,10 +161,7 @@ public abstract class ApprovalsEndpointsTests<TFixture> : IClassFixture<TFixture
             $"/api/approvals/{approved.Id}/actions",
             token,
             new { action = "approve", comment = "归档" }));
-        finished.EnsureSuccessStatusCode();
-        var finishedBody = await finished.ReadApiResponseAsync<ApprovalDetailResponse>();
-        Assert.Equal("approved", finishedBody?.Data?.Status);
-        Assert.All(finishedBody!.Data!.Steps, step => Assert.Equal("approved", step.Status));
+        Assert.Equal(HttpStatusCode.BadRequest, finished.StatusCode);
 
         var replay = await _client.SendAsync(AuthJson(
             HttpMethod.Post,
@@ -211,12 +208,14 @@ public abstract class ApprovalsEndpointsTests<TFixture> : IClassFixture<TFixture
         var afterTransferBody = await afterTransfer.ReadApiResponseAsync<TicketResponse>();
         Assert.Equal("progress", afterTransferBody?.Data?.Status);
 
-        var approved = await _client.SendAsync(AuthJson(
+        var approved = AuthJson(
             HttpMethod.Post,
             $"/api/approvals/{id}/actions",
             token,
-            new { action = "approve" }));
-        approved.EnsureSuccessStatusCode();
+            new { action = "approve" });
+        approved.Headers.Add("X-Demo-Actor", "demo");
+        var approvedResponse = await _client.SendAsync(approved);
+        approvedResponse.EnsureSuccessStatusCode();
 
         var afterApprove = await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/tickets/TK-2048", token));
         var afterApproveBody = await afterApprove.ReadApiResponseAsync<TicketResponse>();
@@ -314,13 +313,47 @@ public abstract class ApprovalsEndpointsTests<TFixture> : IClassFixture<TFixture
             $"/api/approvals/{id}/actions",
             token,
             new { action = "approve" }));
-        approveArchive.EnsureSuccessStatusCode();
-        var done = await approveArchive.ReadApiResponseAsync<ApprovalDetailResponse>();
-        Assert.Equal("approved", done?.Data?.Status);
+        Assert.Equal(HttpStatusCode.BadRequest, approveArchive.StatusCode);
 
         var ticketAfter = await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/tickets/TK-2050", token));
         var ticketAfterBody = await ticketAfter.ReadApiResponseAsync<TicketResponse>();
-        Assert.Equal("resolved", ticketAfterBody?.Data?.Status);
+        Assert.Equal("progress", ticketAfterBody?.Data?.Status);
+    }
+
+    [Fact]
+    public async Task ApprovalAction_RequiresCurrentUsersOpenTask()
+    {
+        var admin = await LoginAsAdminAsync();
+        var other = await RegisterAndLoginAsync("not-assignee");
+        var created = await _client.SendAsync(AuthJson(
+            HttpMethod.Post,
+            "/api/approvals",
+            admin,
+            new
+            {
+                title = "仅处理人可操作",
+                category = "工单",
+                reason = "越权任务返回 400",
+                assignee = "admin",
+                useTasks = true,
+            }));
+        created.EnsureSuccessStatusCode();
+        var detail = await created.ReadApiResponseAsync<ApprovalDetailResponse>();
+        var task = Assert.Single(detail!.Data!.Tasks!, item => item.Status is "pending" or "active");
+        var taskId = task.Id;
+
+        var denied = await _client.SendAsync(AuthJson(
+            HttpMethod.Post,
+            $"/api/approvals/{detail.Data.Id}/actions",
+            other.Token,
+            new { action = "approve", taskId }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, denied.StatusCode);
+        var deniedBody = await denied.ReadApiResponseAsync<ApprovalDetailResponse>();
+        Assert.Equal("当前用户无待办任务", deniedBody?.Message);
+        var unchanged = await _client.SendAsync(AuthRequest(HttpMethod.Get, $"/api/approvals/{detail.Data.Id}", admin));
+        var unchangedBody = await unchanged.ReadApiResponseAsync<ApprovalDetailResponse>();
+        Assert.Equal(task.Status, unchangedBody?.Data?.Tasks?.Single(item => item.Id == taskId).Status);
     }
 
     [Fact]

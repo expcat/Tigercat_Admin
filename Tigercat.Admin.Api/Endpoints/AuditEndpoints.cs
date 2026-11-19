@@ -74,7 +74,7 @@ public class AuditEndpoints : IEndpointDefinition
 
         var filtered = ApplyFilters(result.Items, category, eventType, actor, keyword, from, to).ToArray();
         var items = filtered
-            .Skip((p - 1) * ps)
+            .Skip((int)Math.Min((long)(p - 1) * ps, int.MaxValue))
             .Take(ps)
             .ToArray();
 

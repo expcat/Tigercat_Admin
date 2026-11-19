@@ -22,7 +22,7 @@ JSON API 默认返回 `ApiResponse<T>`：
 }
 ```
 
-分页响应使用 `PagedResponse<T>`：`items`、`total`、`page`、`pageSize`。
+分页响应使用 `PagedResponse<T>`：`items`、`total`、`page`、`pageSize`。极大页码的分页偏移会安全截断，不发生整数溢出；各资源的 `pageSize` 上限见对应专题。
 
 ## 认证
 

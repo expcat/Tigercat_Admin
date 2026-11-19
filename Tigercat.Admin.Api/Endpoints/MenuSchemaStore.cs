@@ -274,6 +274,15 @@ internal sealed class MenuSchemaStore
             return $"iframe 地址长度不能超过 {IframeSrcMaxLength}";
         }
 
+        if (request.IframeSrc is { Length: > 0 })
+        {
+            var iframeSrc = request.IframeSrc.Trim();
+            if (iframeSrc.Length > 0 && !IsSafeIframeSrc(iframeSrc))
+            {
+                return "iframe 地址只支持站内路径或 HTTP(S) URL";
+            }
+        }
+
         if (request.Placement is { Length: > 0 }
             && !string.Equals(request.Placement, ItemsPlacement, StringComparison.OrdinalIgnoreCase)
             && !string.Equals(request.Placement, BottomItemsPlacement, StringComparison.OrdinalIgnoreCase))
@@ -282,6 +291,17 @@ internal sealed class MenuSchemaStore
         }
 
         return null;
+    }
+
+    private static bool IsSafeIframeSrc(string src)
+    {
+        if (src.StartsWith('/') && !src.StartsWith("//"))
+        {
+            return true;
+        }
+
+        return Uri.TryCreate(src, UriKind.Absolute, out var uri) &&
+               (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
     }
 
     private static MenuSchemaNodeResponse ApplyFields(

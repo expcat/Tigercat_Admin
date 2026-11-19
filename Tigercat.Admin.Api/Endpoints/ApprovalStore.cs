@@ -101,7 +101,7 @@ internal sealed class ApprovalStore
                 .ToArray();
             var total = filtered.Length;
             var pageItems = filtered
-                .Skip((p - 1) * ps)
+                .Skip((int)Math.Min((long)(p - 1) * ps, int.MaxValue))
                 .Take(ps)
                 .Select(ToListItem)
                 .ToArray();

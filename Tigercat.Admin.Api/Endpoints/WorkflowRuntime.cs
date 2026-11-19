@@ -63,6 +63,22 @@ internal static class WorkflowRuntime
         var usesTasks = UsesTasks(item);
         var task = node is not null && usesTasks ? CurrentTask(item, node, action) : null;
 
+        if (name is not "cancel" and not "comment" && node is not null)
+        {
+            var assigned = usesTasks
+                ? task is not null && IsOpen(task) &&
+                  (SameActor(task.Assignee.Id, action.ActorId) || SameActor(task.Assignee.Name, action.ActorId))
+                : node.Actor is not null
+                    ? SameActor(node.Actor.Id, action.ActorId) || SameActor(node.Actor.Name, action.ActorId)
+                    : ResolveActors(node).Any(actor =>
+                        SameActor(actor.Id, action.ActorId) || SameActor(actor.Name, action.ActorId));
+            if (!assigned)
+            {
+                error = "当前用户无待办任务";
+                return false;
+            }
+        }
+
         var ok = name switch
         {
             "approve" => node is not null && (usesTasks
@@ -181,7 +197,9 @@ internal static class WorkflowRuntime
         ApprovalStepResponse node,
         WorkflowRuntimeAction action)
     {
-        var tasks = NodeTasks(item, node.Key);
+        var tasks = NodeTasks(item, node.Key)
+            .Where(task => SameActor(task.Assignee.Id, action.ActorId) || SameActor(task.Assignee.Name, action.ActorId))
+            .ToArray();
         if (!string.IsNullOrWhiteSpace(action.TaskId))
         {
             return tasks.FirstOrDefault(task => task.Id == action.TaskId);

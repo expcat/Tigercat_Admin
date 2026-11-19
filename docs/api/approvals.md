@@ -8,7 +8,9 @@
 
 列表按当前登录用户划分四条车道：待办（当前处理人且未结束；有 `tasks[]` 时看该用户是否有 `pending`/`active` 任务，**不含** `blocked` 前加签暂停）、已办（当前用户曾操作）、抄送（`cc` 含当前用户）、我发起的（`starter` 为当前用户）。同一实例可以同时出现在多条车道。加签待办、退回后的再提交待办走同一套 `tasks[]` 写回，不是假按钮。
 
-无 `tasks` 时写回兼容 2.4.2 **节点级**（一次同意推进当前 `kind=approve` 节点）。有 `tasks[]` 时同意写到**当前用户任务**，会签按人累计。
+无 `tasks` 时写回兼容 2.4.2 **节点级**（一次同意推进当前 `kind=approve` 节点），操作人须是当前节点 `actor`；临时加签节点未设单数 `actor` 时按 `actors` 校验。有 `tasks[]` 时同意写到**当前用户任务**，会签按人累计。
+
+除撤回和评论外，写动作都要求当前用户是对应节点的待办处理人：有 `tasks[]` 时须持有 `pending` / `active` 任务，无 `tasks` 时按上述节点处理人规则校验。指定他人 `taskId`、任务不属于当前用户或没有待办任务均返回 `400`，不会推进实例或关联工单。撤回仍只校验发起人，评论不推进流程。
 
 同意 / 驳回 / 转交 / 加签 / 退回 / 撤回 / 评论 / `request_changes` 写回实例上的 `status`、`assignee`、`steps`、`tasks`、`history`。若实例带 `ticketId`，**同意 / 驳回**才会同步关联工单：通过且仍在审批中 → `accepted`（当前步为 `lead`/`start`）或 `progress`（后续步）；整单通过 → `resolved`；驳回 → `closed`。转交 / 评论 / 加签 / 退回 / 撤回不改工单状态；同步只允许前进（`open` < `accepted` < `progress` < `resolved`/`closed`），不会把已在 `progress` 的工单打回 `accepted`。工单详情自己的操作条走工单 `PUT`，完整 Viewer + 实例写回以本接口为准。
 
@@ -69,7 +71,7 @@
 | `POST /api/approvals/resolve` | 登录 | Body：`source` 或 `sources`（`ApproverSource`）；可选 `starter`、`formValues`、`starterPick` | `{ actors: [{ id, name }] }` | — |
 | `GET /api/approvals/{id}` | 登录 | Path：审批单号 | 详情（含 `steps` / `tasks` / `history` / `returnTargets`） | `404` 实例不存在 |
 | `POST /api/approvals` | 登录 | Body：`title` 必填；`category`、`reason`、`amount`、`ticketId`、`assignee`、`cc` 可选；`useTasks` 可选（按人任务）；`template` 可选 `ticket`（默认）/ `countersign` / `sources`；`starterPick` 可选（自选审批人 / 会签名单） | 创建后的详情 | `400` 标题为空或过长；`201` 成功 |
-| `POST /api/approvals/{id}/actions` | 登录 | Body：见下表 | 写回后的详情 | `400` 动作非法、已结束、缺必填字段、当前用户无任务；`404` 实例不存在 |
+| `POST /api/approvals/{id}/actions` | 登录 | Body：见下表 | 写回后的详情 | `400` 动作非法、已结束、缺必填字段、当前用户无待办任务；`404` 实例不存在 |
 
 动作请求体：
 

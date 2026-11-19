@@ -754,6 +754,31 @@ public abstract class ProviderRegressionTests<TFixture> : IClassFixture<TFixture
     }
 
     [Fact]
+    public async Task AdminRole_UpdateCannotRenameOrReplacePermissions()
+    {
+        var token = await LoginAsAdminAsync();
+        var rolesResponse = await _client.SendAsync(AuthRequest(HttpMethod.Get, "/api/roles?page=1&pageSize=10", token));
+        rolesResponse.EnsureSuccessStatusCode();
+        var roles = await rolesResponse.ReadApiResponseAsync<PagedResponse<RoleDetailResponse>>();
+        var adminRole = Assert.Single(roles!.Data!.Items, role => role.Name == "Admin");
+
+        var rename = AuthRequest(HttpMethod.Put, $"/api/roles/{adminRole.Id}", token);
+        rename.Content = JsonContent.Create(new UpdateRoleRequest("RenamedAdmin", null, null));
+        var renameResponse = await _client.SendAsync(rename);
+        Assert.Equal(HttpStatusCode.BadRequest, renameResponse.StatusCode);
+
+        var clear = AuthRequest(HttpMethod.Put, $"/api/roles/{adminRole.Id}", token);
+        clear.Content = JsonContent.Create(new UpdateRoleRequest(null, null, []));
+        var clearResponse = await _client.SendAsync(clear);
+        Assert.Equal(HttpStatusCode.BadRequest, clearResponse.StatusCode);
+
+        var currentResponse = await _client.SendAsync(AuthRequest(HttpMethod.Get, $"/api/roles/{adminRole.Id}", token));
+        var current = await currentResponse.ReadApiResponseAsync<RoleDetailResponse>();
+        Assert.Equal("Admin", current?.Data?.Name);
+        Assert.NotEmpty(current?.Data?.Permissions ?? []);
+    }
+
+    [Fact]
     public async Task BatchDeleteUsers_PreventsDeletingCurrentAdmin()
     {
         var token = await LoginAsAdminAsync();

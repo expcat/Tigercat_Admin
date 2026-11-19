@@ -37,7 +37,7 @@
 | ---------- | ---- | ------------- | ------ | ---- |
 | `GET /api/tickets` | 登录 | Query：`page` 默认 `1`；`pageSize` 默认 `50`、范围 `1-200`；`status` 可选；`keyword` 可选（匹配标题 / 提交人 / 工单号） | 分页工单（含 `messages`） | `400` 无效工单状态 |
 | `GET /api/tickets/{id}` | 登录 | Path：工单号 | 工单对象 | `404` 工单不存在 |
-| `POST /api/tickets` | 登录 | Body：`title` 必填；`category`、`priority`、`description` 可选 | 创建后的工单对象 | `400` 标题为空、长度或优先级非法 |
+| `POST /api/tickets` | 登录 | Body：`title` 必填；`category`、`priority`、`description` 可选 | 创建后的工单对象 | `400` 标题为空、长度或优先级非法；`409` 公开号重试后仍冲突 |
 | `PUT /api/tickets/{id}` | 登录 | Body：`title`、`category`、`priority`、`status`、`description`、`satisfaction` 均可选 | 更新后的工单对象 | `400` 字段或枚举非法；`404` 工单不存在 |
 | `POST /api/tickets/{id}/messages` | 登录 | Body：`content` | 更新后的工单对象（含 self 消息与一条 other 演示回复） | `400` 内容为空或过长；`404` 工单不存在 |
 

@@ -69,7 +69,7 @@ public class ProjectsEndpoints : IEndpointDefinition
             .Include(item => item.Activities)
             .OrderBy(item => item.PublicId)
             .ThenBy(item => item.Id)
-            .Skip((p - 1) * ps)
+            .Skip((int)Math.Min((long)(p - 1) * ps, int.MaxValue))
             .Take(ps)
             .ToArrayAsync(ct);
 

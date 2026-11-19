@@ -102,7 +102,7 @@ public class MediaEndpoints : IEndpointDefinition
         };
 
         var items = await ordered
-            .Skip((p - 1) * ps)
+            .Skip((int)Math.Min((long)(p - 1) * ps, int.MaxValue))
             .Take(ps)
             .Select(m => new MediaItemResponse(
                 m.Id,

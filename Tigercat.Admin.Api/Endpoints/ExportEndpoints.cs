@@ -414,6 +414,11 @@ public class ExportEndpoints : IEndpointDefinition
             var values = accessors.Select(a =>
             {
                 var val = a.GetValue(row)?.ToString() ?? "";
+                if (val.Length > 0 && val[0] is '=' or '+' or '-' or '@')
+                {
+                    val = $"'{val}";
+                }
+
                 // Escape CSV fields that contain commas, quotes, or newlines
                 if (val.Contains(',') || val.Contains('"') || val.Contains('\n'))
                     return $"\"{val.Replace("\"", "\"\"")}\"";

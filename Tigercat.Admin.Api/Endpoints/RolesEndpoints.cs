@@ -108,7 +108,7 @@ public class RolesEndpoints : IEndpointDefinition
         var roles = await ordered
             .AsNoTracking()
             .AsSplitQuery()
-            .Skip((p - 1) * ps)
+            .Skip((int)Math.Min((long)(p - 1) * ps, int.MaxValue))
             .Take(ps)
             .Select(r => new RoleDetailResponse(
                 r.Id,
@@ -258,6 +258,24 @@ public class RolesEndpoints : IEndpointDefinition
                 ApiResult.Fail<RoleDetailResponse>("角色不存在", 404),
                 AppJsonContext.Default.ApiResponseRoleDetailResponse,
                 statusCode: 404);
+        }
+
+        var isAdminRole = string.Equals(role.Name, AdminRoleName, StringComparison.OrdinalIgnoreCase);
+        if (isAdminRole && request.Name is not null &&
+            !string.Equals(request.Name.Trim(), AdminRoleName, StringComparison.OrdinalIgnoreCase))
+        {
+            return Results.Json(
+                ApiResult.Fail<RoleDetailResponse>("不能重命名管理员角色", 400),
+                AppJsonContext.Default.ApiResponseRoleDetailResponse,
+                statusCode: 400);
+        }
+
+        if (isAdminRole && request.PermissionIds is not null)
+        {
+            return Results.Json(
+                ApiResult.Fail<RoleDetailResponse>("不能修改管理员角色的权限", 400),
+                AppJsonContext.Default.ApiResponseRoleDetailResponse,
+                statusCode: 400);
         }
 
         if (request.Name is not null)
@@ -472,23 +490,32 @@ public class RolesEndpoints : IEndpointDefinition
                 statusCode: 400);
         }
 
-        var validUserIds = await db.Users
+        var validUsers = await db.Users
             .Where(u => distinctUserIds.Contains(u.Id))
-            .Select(u => u.Id)
+            .Select(u => new { u.Id, u.Status })
             .ToListAsync(ct);
 
-        if (validUserIds.Count != distinctUserIds.Length)
+        if (validUsers.Count != distinctUserIds.Length)
         {
-            var invalidIds = distinctUserIds.Except(validUserIds);
+            var invalidIds = distinctUserIds.Except(validUsers.Select(u => u.Id));
             return Results.Json(
                 ApiResult.Fail<RoleDetailResponse>($"以下用户 ID 不存在: {string.Join(", ", invalidIds)}", 400),
                 AppJsonContext.Default.ApiResponseRoleDetailResponse,
                 statusCode: 400);
         }
 
+        if (string.Equals(role.Name, AdminRoleName, StringComparison.OrdinalIgnoreCase) &&
+            !validUsers.Any(u => u.Status == UserStatus.Active))
+        {
+            return Results.Json(
+                ApiResult.Fail<RoleDetailResponse>("管理员角色必须至少有一个可用用户", 400),
+                AppJsonContext.Default.ApiResponseRoleDetailResponse,
+                statusCode: 400);
+        }
+
         db.UserRoles.RemoveRange(role.UserRoles);
 
-        foreach (var userId in validUserIds)
+        foreach (var userId in validUsers.Select(u => u.Id))
         {
             db.UserRoles.Add(new UserRoleEntity { UserId = userId, RoleId = role.Id });
         }

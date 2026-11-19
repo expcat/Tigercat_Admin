@@ -9,7 +9,7 @@
 | `GET /api/health` | 否 | 无 | 无 | `status`、`timestamp`、`details`；`details` 含 `database`、`redis`、`eventChannel`、`mediaStorage`、`configuration`、`security` | 包络不变。内部委托 `IHealthCheck`（tag `ready`）。任一依赖或关键配置不可用时返回 `503`；`Infrastructure:UseInMemory=true` 时 Redis / 事件通道为 in-memory。生产 `security` 检查 PostgreSQL TLS、Redis TLS、CORS、`AllowedHosts`、默认管理员密码（Identity 哈希或未升级的 SHA256 hex 均按 `admin123` 校验）和安全策略。Aspire `/health` 与 `/alive` 仅 Development，不是本契约 |
 | `GET /api/health/redis` | 否 | 无 | 无 | `status`、`timestamp` | Redis 不可用返回 `503` |
 | `GET /api/info` | 否 | 无 | 无 | `name`、`version`、`description` | - |
-| `POST /api/auth/register` | 否 | 无 | `username`、`password` 必填 | `username` | `400` 用户名/密码为空或密码策略不满足；`409` 用户已存在；同一 IP 触发认证限流时 `429`（`ApiResponse`，message「请求过于频繁」）；事件 `auth.user.registered` 到 `stream:auth` |
+| `POST /api/auth/register` | 否 | 无 | `username`、`password` 必填；用户名规则与管理创建一致 | `username` | `400` 用户名/密码为空、用户名长度不在 2-50、用户名字符非法或密码策略不满足；`409` 仅用于用户已存在；同一 IP 触发认证限流时 `429`（`ApiResponse`，message「请求过于频繁」）；事件 `auth.user.registered` 到 `stream:auth` |
 | `POST /api/auth/login` | 否 | 无 | `username`、`password` 必填 | 成功：`token`、`expiresAt`、`username`。若该账号 `TwoFactorEnabled`，密码正确后不发 token，返回 `requiresTwoFactor: true`、`username`、`challengeId`。种子账号 `demo`/`demo` 默认开启 2FA，`admin` 默认关闭 | `401` 账号或密码错误；账号锁定 `429`（失败次数过多）；同一 IP 认证限流 `429`（「请求过于频繁」）；Production 下账号启用 2FA 时返回 `503`，不创建演示 challenge。锁定按账号+IP，限流按 IP，两者叠加。完整登录成功后事件 `auth.user.login` 到 `stream:auth` |
 | `POST /api/auth/two-factor/verify` | 否 | 无 | `username`、`code`，可选 `challengeId` | `token`、`expiresAt`、`username`。须先走登录 2FA 挑战；非 Production 演示环境验证码固定 `123456` | `401` 验证码错误或挑战不存在/不匹配；同一 IP 认证限流 `429`；Production 未配置真实 TOTP 时返回 `503` |
 | `GET /api/auth/two-factor` | 是 | 无 | 无 | `enabled`：当前用户是否开启 2FA | `401` 未登录 |

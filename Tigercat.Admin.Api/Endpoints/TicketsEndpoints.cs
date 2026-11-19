@@ -86,7 +86,7 @@ public class TicketsEndpoints : IEndpointDefinition
             .Include(t => t.Messages)
             .OrderByDescending(t => t.UpdatedAt)
             .ThenByDescending(t => t.Id)
-            .Skip((p - 1) * ps)
+            .Skip((int)Math.Min((long)(p - 1) * ps, int.MaxValue))
             .Take(ps)
             .ToArrayAsync(ct);
 
@@ -124,7 +124,7 @@ public class TicketsEndpoints : IEndpointDefinition
         var now = DateTime.Now;
         var ticket = new TicketEntity
         {
-            PublicId = await NextTicketIdAsync(db, ct),
+            PublicId = "",
             Title = request.Title.Trim(),
             Requester = await ResolveActorNameAsync(db, httpContext, ct),
             Category = NormalizeOptional(request.Category) ?? "缺陷",
@@ -136,12 +136,28 @@ public class TicketsEndpoints : IEndpointDefinition
             Description = NormalizeOptional(request.Description) ?? "（无描述）"
         };
 
-        db.Tickets.Add(ticket);
-        await db.SaveChangesAsync(ct);
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            ticket.PublicId = await NextTicketIdAsync(db, ct);
+            db.Tickets.Add(ticket);
+            try
+            {
+                await db.SaveChangesAsync(ct);
+                return Results.Json(
+                    ApiResult.Ok(ToResponse(ticket)),
+                    AppJsonContext.Default.ApiResponseTicketResponse);
+            }
+            catch (DbUpdateException)
+            {
+                db.Entry(ticket).State = EntityState.Detached;
+                ticket.Id = 0;
+            }
+        }
 
         return Results.Json(
-            ApiResult.Ok(ToResponse(ticket)),
-            AppJsonContext.Default.ApiResponseTicketResponse);
+            ApiResult.Fail<TicketResponse>("工单编号冲突，请重试", 409),
+            AppJsonContext.Default.ApiResponseTicketResponse,
+            statusCode: 409);
     }
 
     private static async Task<IResult> UpdateTicket(

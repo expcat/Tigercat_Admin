@@ -131,7 +131,7 @@ public class TasksEndpoints : IEndpointDefinition
             .OrderBy(t => t.Status)
             .ThenBy(t => t.DueAt)
             .ThenByDescending(t => t.Id)
-            .Skip((p - 1) * ps)
+            .Skip((int)Math.Min((long)(p - 1) * ps, int.MaxValue))
             .Take(ps)
             .Select(t => ToResponse(t))
             .ToArrayAsync(ct);

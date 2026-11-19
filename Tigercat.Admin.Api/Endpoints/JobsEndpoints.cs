@@ -74,7 +74,7 @@ public class JobsEndpoints : IEndpointDefinition
         var enabled = request.Enabled ?? true;
         var entity = new JobEntity
         {
-            PublicId = await NextJobIdAsync(db, ct),
+            PublicId = "",
             Name = request.Name!.Trim(),
             Cron = NormalizeCron(request.Cron),
             Concurrency = NormalizeConcurrency(request.Concurrency, 2),
@@ -91,13 +91,29 @@ public class JobsEndpoints : IEndpointDefinition
             Color = DefaultGanttColor
         };
 
-        db.Jobs.Add(entity);
-        await db.SaveChangesAsync(ct);
-        AdminMetrics.RecordJob("created");
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            entity.PublicId = await NextJobIdAsync(db, ct);
+            db.Jobs.Add(entity);
+            try
+            {
+                await db.SaveChangesAsync(ct);
+                AdminMetrics.RecordJob("created");
+                return Results.Json(
+                    ApiResult.Ok(ToResponse(entity)),
+                    AppJsonContext.Default.ApiResponseJobResponse);
+            }
+            catch (DbUpdateException)
+            {
+                db.Entry(entity).State = EntityState.Detached;
+                entity.Id = 0;
+            }
+        }
 
         return Results.Json(
-            ApiResult.Ok(ToResponse(entity)),
-            AppJsonContext.Default.ApiResponseJobResponse);
+            ApiResult.Fail<JobResponse>("任务编号冲突，请重试", 409),
+            AppJsonContext.Default.ApiResponseJobResponse,
+            statusCode: 409);
     }
 
     private static async Task<IResult> UpdateJob(
@@ -125,6 +141,12 @@ public class JobsEndpoints : IEndpointDefinition
         if (validation is not null)
         {
             return validation;
+        }
+
+        var requestedStatus = TicketsEndpoints.NormalizeOptional(request.Status)?.ToLowerInvariant();
+        if (requestedStatus is not null && !AllowedStatuses.Contains(requestedStatus))
+        {
+            return JobError("无效的任务状态");
         }
 
         if (request.Name is not null)
@@ -158,7 +180,7 @@ public class JobsEndpoints : IEndpointDefinition
             job.Enabled = request.Enabled.Value;
         }
 
-        ApplyStatusMachine(job, wasEnabled, request.Status);
+        ApplyStatusMachine(job, wasEnabled, requestedStatus);
         await db.SaveChangesAsync(ct);
         AdminMetrics.RecordJob("updated");
 
@@ -194,7 +216,10 @@ public class JobsEndpoints : IEndpointDefinition
         }
 
         var status = TicketsEndpoints.NormalizeOptional(requestedStatus)?.ToLowerInvariant();
-        job.Status = status is not null && AllowedStatuses.Contains(status) ? status : "running";
+        if (status is not null)
+        {
+            job.Status = status;
+        }
         if (string.IsNullOrWhiteSpace(job.NextRun) || job.NextRun == Dash)
         {
             job.NextRun = PendingNextRun;

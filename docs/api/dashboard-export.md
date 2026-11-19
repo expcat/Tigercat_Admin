@@ -34,4 +34,6 @@
 
 概览导出字段：`section`、`key`、`label`、`value`。`section` 为 `overview`（KPI）或 `trend`（按日新增用户）。
 
+CSV 单元格若以 `=`、`+`、`-` 或 `@` 开头，导出时前置单引号，避免表格软件将其作为公式执行；逗号、引号和换行仍按 CSV 规则转义。
+
 当前报表页同时读取概览与趋势，预览、A4 打印和 `/api/export/overview` 使用同一天数。导出按五项概览（`totalUsers`、`activeUsers`、`disabledUsers`、`totalRoles`、`totalPermissions`）后接逐日趋势排序；趋势的 `key` 与 `label` 均为 `YYYY-MM-DD`，`value` 为计数字符串。CSV / JSON / XLSX 的字段、顺序和数值相同。导出会重新查询，若系统数据发生变化，应先刷新预览再比较；不提供跨请求快照事务。
