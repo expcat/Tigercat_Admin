@@ -26,6 +26,12 @@ const authRules: FormRules = {
   password: { required: true, message: '请输入密码' },
 };
 
+const DEMO_MODE = import.meta.env.VITE_TIGERCAT_DEMO === 'true';
+const DEMO_ACCOUNT_HINT = `admin / admin123（管理员）
+editor / editor123（编辑）
+viewer / viewer123（只读）
+demo / demo（只读且两步验证，验证码 123456，用于看 403）`;
+
 interface LoginPageProps {
   onSuccess: (session: Session) => void | Promise<void>;
 }
@@ -271,6 +277,15 @@ function LoginPage({ onSuccess }: LoginPageProps) {
                     </button>
                   </div>
                 </div>
+                {DEMO_MODE ? (
+                  <Alert
+                    type="info"
+                    title="演示账号"
+                    description={DEMO_ACCOUNT_HINT}
+                    className="mt-4 font-mono text-xs whitespace-pre-line"
+                    showIcon
+                  />
+                ) : null}
               </Form>
             </Card>
           </>

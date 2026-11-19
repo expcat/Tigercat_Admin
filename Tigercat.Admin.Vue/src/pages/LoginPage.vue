@@ -33,6 +33,12 @@ const authRules: FormRules = {
   password: { required: true, message: '请输入密码' },
 }
 
+const DEMO_MODE = import.meta.env.VITE_TIGERCAT_DEMO === 'true'
+const DEMO_ACCOUNT_HINT = `admin / admin123（管理员）
+editor / editor123（编辑）
+viewer / viewer123（只读）
+demo / demo（只读且两步验证，验证码 123456，用于看 403）`
+
 const emit = defineEmits<{
   (e: 'success', session: Session): void;
 }>()
@@ -265,6 +271,14 @@ async function handleVerify() {
               </button>
             </div>
           </div>
+          <Alert
+            v-if="DEMO_MODE"
+            type="info"
+            title="演示账号"
+            :description="DEMO_ACCOUNT_HINT"
+            class="mt-4 font-mono text-xs whitespace-pre-line"
+            show-icon
+          />
         </Form>
         <div v-else class="flex flex-col gap-4">
           <Alert type="info" title="演示验证码：123456" description="验证通过后才会写入会话，返回登录可重新输入凭据。" />

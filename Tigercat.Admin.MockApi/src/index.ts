@@ -598,6 +598,7 @@ function initialState(): DemoState {
     nextMessageSeq: 1,
     passwords: {
       admin: 'admin123',
+      ...(import.meta.env.VITE_TIGERCAT_DEMO === 'true' ? { editor: 'editor123', viewer: 'viewer123' } : {}),
       demo: 'demo',
     },
     twoFactorByUser: {
@@ -1749,9 +1750,11 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   if (path === '/api/auth/login' && method === 'POST') {
     const username = String(body.username ?? '').trim().toLowerCase();
     const password = String(body.password ?? '');
+    const user = state.users.find((item) => item.username === username);
     const expected = state.passwords[username];
-    if (!expected || !(isImportPasswordHash(expected) ? await matchesImportPassword(expected, password) : expected === password)) {
-      return makeError('账号或密码错误', 401);
+    if ((username !== 'demo' && (!user || user.status !== 0)) ||
+      !expected || !(isImportPasswordHash(expected) ? await matchesImportPassword(expected, password) : expected === password)) {
+      return makeError('用户名或密码错误', 401);
     }
     if (state.twoFactorByUser[username]) {
       const challengeId = `challenge-${username}-${Date.now()}`;
