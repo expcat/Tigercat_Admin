@@ -101,7 +101,7 @@ UP-01 至 UP-12 已完成页面与公共组件覆盖，下一阶段不再以增�
 | 参考 | 可借鉴的成熟做法 | 本项目决定 |
 | ---- | ---------------- | ---------- |
 | [Vue Vben Admin](https://doc.vben.pro/guide/in-depth/access.html)、[Soybean Admin](https://docs.soybeanjs.cn/zh/guide/router/dynamic) | 动态路由、访问控制、多标签和主题等后台 Shell 已成为基础能力 | 当前已实现并验证，不重复建设；NX-02 只补菜单配置的持久化。 |
-| [RuoYi-Vue-Plus](https://github.com/dromara/RuoYi-Vue-Plus) | 定时任务区分定义与执行日志，调度、日志和监控有独立权限与验收路径 | NX-04 先补真实执行与运行历史；数据权限、多租户和完整监控平台不在默认队列。 |
+| <!-- markdown-link-check-disable --><!-- 直接 HEAD 复核为 200；markdown-link-check 本地 Status 0 为误报。 -->[RuoYi-Vue-Plus](https://github.com/dromara/RuoYi-Vue-Plus)<!-- markdown-link-check-enable --> | 定时任务区分定义与执行日志，调度、日志和监控有独立权限与验收路径 | NX-04 先补真实执行与运行历史；数据权限、多租户和完整监控平台不在默认队列。 |
 | [ABP Framework](https://abp.io/docs/latest/modules) | 后台任务、审计和多租户按模块提供，避免所有业务共享一套无边界实现 | 借鉴模块边界，不迁移到 ABP，也不引入完整模块化框架。 |
 
 ### 后续执行队列
