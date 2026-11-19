@@ -9,16 +9,22 @@ export type ImportJobItem = {
 };
 type ImportState = { users: { username: string }[]; roles: { id: number }[]; settings: { key: string; value: string }[] };
 
-export function validateImportUser(username: string, password: string, displayName: string | null, state: ImportState): string | null {
-  if (!username.trim() || !password.trim()) return '用户名或密码不能为空';
-  if (username.length < 2 || username.length > 50) return '用户名长度需在 2-50 之间';
-  // .NET char.IsLetterOrDigit works on UTF-16 characters, so astral code points are not accepted.
-  if (!/^[\p{L}\p{Nd}_.-]+$/u.test(username) || Array.from(username).some(c => c.length > 1)) return '用户名只能包含字母、数字、下划线、短横线和点';
+export function validateImportPassword(password: string, state: ImportState): string | null {
   const rawMin = Number(state.settings.find(s => s.key === 'auth.passwordMinLength')?.value ?? 6);
   const min = Number.isInteger(rawMin) ? Math.min(128, Math.max(6, rawMin)) : 6;
   if (password.length < min) return `密码长度不能少于 ${min} 位`;
   if (state.settings.find(s => s.key === 'auth.requireComplexPassword')?.value.toLowerCase() === 'true' &&
     (!/[\p{L}]/u.test(password) || !/[\p{Nd}]/u.test(password))) return '密码必须同时包含字母和数字';
+  return null;
+}
+
+export function validateImportUser(username: string, password: string, displayName: string | null, state: ImportState): string | null {
+  if (!username.trim() || !password.trim()) return '用户名或密码不能为空';
+  if (username.length < 2 || username.length > 50) return '用户名长度需在 2-50 之间';
+  // .NET char.IsLetterOrDigit works on UTF-16 characters, so astral code points are not accepted.
+  if (!/^[\p{L}\p{Nd}_.-]+$/u.test(username) || Array.from(username).some(c => c.length > 1)) return '用户名只能包含字母、数字、下划线、短横线和点';
+  const passwordError = validateImportPassword(password, state);
+  if (passwordError) return passwordError;
   if (displayName !== null && displayName.length > 100) return '显示名称长度不能超过 100';
   return null;
 }

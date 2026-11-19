@@ -1,4 +1,4 @@
-import { prepareUserImport, publicImportRow, publicImportJob, matchesImportPassword, isImportPasswordHash, type ImportJobItem } from './import-users';
+import { prepareUserImport, publicImportRow, publicImportJob, hashImportPassword, matchesImportPassword, isImportPasswordHash, validateImportPassword, validateImportUser, type ImportJobItem } from './import-users';
 import type { ImageAnnotation } from '@expcat/tigercat-core';
 import {
   cloneMenuSchemaPayload,
@@ -1250,8 +1250,8 @@ function makeError(message: string, status = 400, data: unknown = null): Respons
   });
 }
 
-function makeBlob(text: string, filename: string, contentType = 'text/csv; charset=utf-8'): Response {
-  return new Response(new Blob([text], { type: contentType }), {
+function makeBlob(content: string | ArrayBuffer, filename: string, contentType = 'text/csv; charset=utf-8'): Response {
+  return new Response(new Blob([content], { type: contentType }), {
     status: 200,
     headers: {
       'Content-Type': contentType,
@@ -1278,6 +1278,8 @@ const REPORT_KPI_FIELDS = ['visits', 'orders', 'conversionRate', 'revenue'];
 const REPORT_CHANNEL_FIELDS = ['channel', 'channelVisits', 'channelOrders', 'channelRate', 'channelAmount'];
 const OVERVIEW_FIELDS = ['section', 'key', 'label', 'value'];
 const AUDIT_EXPORT_FIELDS = ['id', 'stream', 'category', 'eventType', 'occurredAtUtc', 'traceId', 'title', 'description', 'actor'];
+const USER_EXPORT_FIELDS = ['id', 'username', 'displayName', 'status', 'createdAt', 'updatedAt', 'roles'];
+const ROLE_EXPORT_FIELDS = ['id', 'name', 'description', 'createdAt', 'permissions', 'userCount'];
 
 function parseExportFormat(url: URL): string | Response {
   const format = (url.searchParams.get('format') ?? 'csv').trim().toLowerCase();
@@ -1305,6 +1307,102 @@ function escapeCsv(value: unknown): string {
   return text;
 }
 
+function xmlText(value: unknown): string {
+  return String(value ?? '')
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function xlsxColumn(index: number): string {
+  let name = '';
+  for (let value = index + 1; value > 0; value = Math.floor((value - 1) / 26)) {
+    name = String.fromCharCode(65 + ((value - 1) % 26)) + name;
+  }
+  return name;
+}
+
+function crc32(bytes: Uint8Array): number {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+// XLSX is a ZIP of XML parts. Stored entries keep the demo dependency-free.
+function zipXlsxParts(parts: Array<[string, string]>): ArrayBuffer {
+  const encoder = new TextEncoder();
+  const fileChunks: Uint8Array[] = [];
+  const centralChunks: Uint8Array[] = [];
+  let offset = 0;
+  for (const [filename, text] of parts) {
+    const name = encoder.encode(filename);
+    const data = encoder.encode(text);
+    const crc = crc32(data);
+    const local = new Uint8Array(30 + name.length);
+    const localView = new DataView(local.buffer);
+    localView.setUint32(0, 0x04034b50, true);
+    localView.setUint16(4, 20, true);
+    localView.setUint16(6, 0x0800, true);
+    localView.setUint32(14, crc, true);
+    localView.setUint32(18, data.length, true);
+    localView.setUint32(22, data.length, true);
+    localView.setUint16(26, name.length, true);
+    local.set(name, 30);
+    fileChunks.push(local, data);
+
+    const central = new Uint8Array(46 + name.length);
+    const centralView = new DataView(central.buffer);
+    centralView.setUint32(0, 0x02014b50, true);
+    centralView.setUint16(4, 20, true);
+    centralView.setUint16(6, 20, true);
+    centralView.setUint16(8, 0x0800, true);
+    centralView.setUint32(16, crc, true);
+    centralView.setUint32(20, data.length, true);
+    centralView.setUint32(24, data.length, true);
+    centralView.setUint16(28, name.length, true);
+    centralView.setUint32(42, offset, true);
+    central.set(name, 46);
+    centralChunks.push(central);
+    offset += local.length + data.length;
+  }
+  const centralSize = centralChunks.reduce((total, chunk) => total + chunk.length, 0);
+  const end = new Uint8Array(22);
+  const endView = new DataView(end.buffer);
+  endView.setUint32(0, 0x06054b50, true);
+  endView.setUint16(8, parts.length, true);
+  endView.setUint16(10, parts.length, true);
+  endView.setUint32(12, centralSize, true);
+  endView.setUint32(16, offset, true);
+  const chunks = [...fileChunks, ...centralChunks, end];
+  const output = new Uint8Array(chunks.reduce((total, chunk) => total + chunk.length, 0));
+  let position = 0;
+  for (const chunk of chunks) {
+    output.set(chunk, position);
+    position += chunk.length;
+  }
+  return output.buffer;
+}
+
+function makeXlsx(rows: Array<Record<string, unknown>>, fields: string[]): ArrayBuffer {
+  const values = [fields, ...rows.map((row) => fields.map((field) => row[field] ?? ''))];
+  const sheetRows = values.map((row, rowIndex) => `<row r="${rowIndex + 1}">${row.map((value, columnIndex) =>
+    `<c r="${xlsxColumn(columnIndex)}${rowIndex + 1}" t="inlineStr"><is><t xml:space="preserve">${xmlText(value)}</t></is></c>`,
+  ).join('')}</row>`).join('');
+  return zipXlsxParts([
+    ['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'],
+    ['_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ['xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Export" sheetId="1" r:id="rId1"/></sheets></workbook>'],
+    ['xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'],
+    ['xl/worksheets/sheet1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${sheetRows}</sheetData></worksheet>`],
+  ]);
+}
+
 function makeExportFile(rows: Array<Record<string, unknown>>, fields: string[], format: string, entityName: string): Response {
   const filtered = rows.map((row) => {
     const next: Record<string, unknown> = {};
@@ -1316,18 +1414,18 @@ function makeExportFile(rows: Array<Record<string, unknown>>, fields: string[], 
     return makeBlob(JSON.stringify(filtered, null, 2), `${entityName}.json`, 'application/json; charset=utf-8');
   }
 
-  const csv = [
-    fields.join(','),
-    ...filtered.map((row) => fields.map((field) => escapeCsv(row[field])).join(',')),
-  ].join('\n');
-
   if (format === 'xlsx') {
     return makeBlob(
-      csv,
+      makeXlsx(filtered, fields),
       `${entityName}.xlsx`,
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
   }
+
+  const csv = [
+    fields.join(','),
+    ...filtered.map((row) => fields.map((field) => escapeCsv(row[field])).join(',')),
+  ].join('\n');
 
   return makeBlob(`\uFEFF${csv}`, `${entityName}.csv`, 'text/csv; charset=utf-8');
 }
@@ -1539,9 +1637,33 @@ function toRoleItem(state: DemoState, role: DemoRole): RoleItem {
   };
 }
 
-function page<T>(items: T[], url: URL) {
+function sortUsers(items: UserItem[], url: URL): UserItem[] {
+  const sortBy = url.searchParams.get('sortBy')?.toLowerCase();
+  const direction = url.searchParams.get('sortOrder')?.toLowerCase() === 'desc' ? -1 : 1;
+  items.sort((a, b) => {
+    const compare = sortBy === 'username' ? a.username.localeCompare(b.username) :
+      sortBy === 'displayname' ? (a.displayName ?? '').localeCompare(b.displayName ?? '') :
+        sortBy === 'status' ? a.status - b.status :
+          sortBy === 'createdat' ? a.createdAt.localeCompare(b.createdAt) : a.id - b.id;
+    return direction * (compare || a.id - b.id);
+  });
+  return items;
+}
+
+function sortRoles(items: RoleItem[], url: URL): RoleItem[] {
+  const sortBy = url.searchParams.get('sortBy')?.toLowerCase();
+  const direction = url.searchParams.get('sortOrder')?.toLowerCase() === 'desc' ? -1 : 1;
+  items.sort((a, b) => {
+    const compare = sortBy === 'name' ? a.name.localeCompare(b.name) :
+      sortBy === 'createdat' ? a.createdAt.localeCompare(b.createdAt) : a.id - b.id;
+    return direction * (compare || a.id - b.id);
+  });
+  return items;
+}
+
+function page<T>(items: T[], url: URL, defaultPageSize = 10) {
   const current = Math.max(Number(url.searchParams.get('page') ?? '1'), 1);
-  const pageSize = Math.max(Number(url.searchParams.get('pageSize') ?? '10'), 1);
+  const pageSize = Math.min(Math.max(Number(url.searchParams.get('pageSize') ?? String(defaultPageSize)), 1), 100);
   const start = (current - 1) * pageSize;
   return {
     items: items.slice(start, start + pageSize),
@@ -1651,10 +1773,44 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/auth/register' && method === 'POST') {
-    return makeJson({ username: String(body.username ?? 'demo-user') }, { status: 201 });
+    const username = String(body.username ?? '').trim().toLowerCase();
+    const password = String(body.password ?? '');
+    if (!username || !password.trim()) return makeError('用户名或密码不能为空', 400);
+    const passwordError = validateImportPassword(password, state);
+    if (passwordError) return makeError(passwordError, 400);
+    if (state.users.some((user) => user.username.toLowerCase() === username)) return makeError('用户已存在', 409);
+    const passwordHash = await hashImportPassword(password);
+    state.users.push({
+      id: state.nextUserId++,
+      username,
+      displayName: null,
+      status: 0,
+      avatarMediaId: null,
+      avatarUrl: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: null,
+      roleIds: [],
+    });
+    state.passwords[username] = passwordHash;
+    writeState(storageKey, state);
+    return makeJson({ username }, { status: 201 });
   }
 
-  if (path === '/api/auth/change-password' && method === 'POST') return makeJson({ message: '密码修改成功' });
+  if (path === '/api/auth/change-password' && method === 'POST') {
+    const username = sessionUsername(request, init);
+    if (!username) return makeError('未授权', 401);
+    const expected = state.passwords[username];
+    const oldPassword = String(body.oldPassword ?? '');
+    if (!expected || !(isImportPasswordHash(expected) ? await matchesImportPassword(expected, oldPassword) : expected === oldPassword)) {
+      return makeError('旧密码错误', 401);
+    }
+    const newPassword = String(body.newPassword ?? '');
+    const passwordError = validateImportPassword(newPassword, state);
+    if (passwordError) return makeError(passwordError, 400);
+    state.passwords[username] = await hashImportPassword(newPassword);
+    writeState(storageKey, state);
+    return makeJson({ message: '密码修改成功' });
+  }
   if (path === '/api/auth/logout' && method === 'POST') return makeJson({ message: '退出成功' });
 
   if (path === '/api/menus/schema' && method === 'GET') {
@@ -1726,25 +1882,34 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
       );
     }
     if (status !== null) items = items.filter((user) => user.status === Number(status));
-    return makeJson(page(items, url));
+    return makeJson(page(sortUsers(items, url), url));
   }
 
   if (path === '/api/users' && method === 'POST') {
-    const username = String(body.username ?? '').trim();
-    if (!username) return makeError('请输入用户名');
+    const username = String(body.username ?? '').trim().toLowerCase();
+    const password = String(body.password ?? '');
+    const displayName = body.displayName == null ? null : String(body.displayName);
+    const validationError = validateImportUser(username, password, displayName, state);
+    if (validationError) return makeError(validationError, 400);
     if (state.users.some((user) => user.username === username)) return makeError('用户已存在', 409);
+    const roleIds = Array.isArray(body.roleIds) ? body.roleIds : [];
+    if (roleIds.some((id) => typeof id !== 'number' || !Number.isInteger(id) || !state.roles.some((role) => role.id === id)) || new Set(roleIds).size !== roleIds.length) {
+      return makeError('角色 ID 无效或重复', 400);
+    }
+    const passwordHash = await hashImportPassword(password);
     const user: DemoUser = {
       id: state.nextUserId++,
       username,
-      displayName: (body.displayName as string | null) ?? null,
+      displayName,
       status: 0,
       avatarMediaId: null,
       avatarUrl: null,
       createdAt: new Date().toISOString(),
       updatedAt: null,
-      roleIds: Array.isArray(body.roleIds) ? (body.roleIds as number[]) : [],
+      roleIds: roleIds as number[],
     };
     state.users.push(user);
+    state.passwords[username] = passwordHash;
     writeState(storageKey, state);
     return makeJson(toUserItem(state, user), { status: 201 });
   }
@@ -1805,10 +1970,28 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/users/batch-delete' && method === 'POST') {
-    const ids = Array.isArray(body.ids) ? (body.ids as number[]) : [];
-    state.users = state.users.filter((user) => user.username === 'admin' || !ids.includes(user.id));
+    const denied = requireMenuPermission(state, request, init, 'user:delete');
+    if (denied) return denied;
+    const ids = Array.isArray(body.ids) ? [...new Set(body.ids.map(Number).filter((id) => Number.isInteger(id) && id > 0))] : [];
+    if (!ids.length) return makeError('请选择要删除的用户', 400);
+    const users = state.users.filter((user) => ids.includes(user.id));
+    if (!users.length) return makeError('未找到任何要删除的用户', 404);
+    const username = sessionUsername(request, init);
+    if (users.some((user) => user.username.toLowerCase() === username.toLowerCase())) {
+      return makeError('不能删除当前登录用户', 400);
+    }
+    const adminRoleId = state.roles.find((role) => role.name === 'Admin')?.id;
+    if (adminRoleId !== undefined && users.some((user) => user.roleIds.includes(adminRoleId)) &&
+      !state.users.some((user) => !ids.includes(user.id) && user.roleIds.includes(adminRoleId))) {
+      return makeError('不能删除最后一个管理员用户', 400);
+    }
+    state.users = state.users.filter((user) => !ids.includes(user.id));
+    for (const user of users) {
+      delete state.passwords[user.username];
+      delete state.twoFactorByUser[user.username];
+    }
     writeState(storageKey, state);
-    return makeJson({ message: `成功删除 ${ids.length} 个用户` });
+    return makeJson({ message: `成功删除 ${users.length} 个用户` });
   }
 
   if (path === '/api/roles/permissions' && method === 'GET') return makeJson(permissions);
@@ -1819,7 +2002,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     if (keyword) {
       items = items.filter((role) => `${role.name} ${role.description ?? ''}`.toLowerCase().includes(keyword));
     }
-    return makeJson(page(items, url));
+    return makeJson(page(sortRoles(items, url), url));
   }
 
   if (path === '/api/roles' && method === 'POST') {
@@ -1886,7 +2069,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
       }
     }
     if (changedKeys.length > 0) {
-      const notificationId = `notif-setting-${Date.now()}`;
+      const notificationId = `notif-setting-${Date.now()}-${state.nextMessageSeq++}`;
       state.notifications.unshift({
         id: notificationId,
         groupKey: changedKeys.some((key) => key.startsWith('auth.')) ? 'security' : 'ops',
@@ -1923,7 +2106,8 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     const unread = url.searchParams.get('unread');
     if (groupKey) items = items.filter((item) => item.groupKey === groupKey);
     if (unread === 'true') items = items.filter((item) => !item.read);
-    return makeJson(page(items, url));
+    if (unread === 'false') items = items.filter((item) => item.read);
+    return makeJson(page(items, url, 50));
   }
 
   if (path === '/api/notifications' && method === 'POST') {
@@ -2104,7 +2288,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
 
   if (path === '/api/audit-logs' && method === 'GET') {
     const items = filterAuditLogs(state.auditLogs, url);
-    return makeJson(page(items, url));
+    return makeJson(page(items, url, 30));
   }
 
   if (path === '/api/audit-logs/retention-policy' && method === 'GET') {
@@ -2234,6 +2418,40 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     const entity = path.split('/').pop() ?? 'data';
     const format = parseExportFormat(url);
     if (format instanceof Response) return format;
+    if (entity === 'users') {
+      const keyword = url.searchParams.get('keyword')?.trim().toLowerCase();
+      const status = url.searchParams.get('status');
+      if (status !== null && status !== '0' && status !== '1') return makeError('无效的用户状态', 400);
+      let items = state.users.map((user) => toUserItem(state, user));
+      if (keyword) items = items.filter((user) => `${user.username} ${user.displayName ?? ''}`.toLowerCase().includes(keyword));
+      if (status !== null) items = items.filter((user) => user.status === Number(status));
+      const fields = parseExportFields(url.searchParams.get('fields'), USER_EXPORT_FIELDS);
+      const rows = sortUsers(items, url).slice(0, 10000).map((user) => ({
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        status: user.status === 0 ? 'Active' : 'Disabled',
+        createdAt: user.createdAt.replace('T', ' ').slice(0, 19),
+        updatedAt: user.updatedAt?.replace('T', ' ').slice(0, 19),
+        roles: user.roles.map((role) => role.name).join('; '),
+      }));
+      return makeExportFile(rows, fields, format, 'users');
+    }
+    if (entity === 'roles') {
+      const keyword = url.searchParams.get('keyword')?.trim().toLowerCase();
+      let items = state.roles.map((role) => toRoleItem(state, role));
+      if (keyword) items = items.filter((role) => `${role.name} ${role.description ?? ''}`.toLowerCase().includes(keyword));
+      const fields = parseExportFields(url.searchParams.get('fields'), ROLE_EXPORT_FIELDS);
+      const rows = sortRoles(items, url).slice(0, 10000).map((role) => ({
+        id: role.id,
+        name: role.name,
+        description: role.description,
+        createdAt: role.createdAt.replace('T', ' ').slice(0, 19),
+        permissions: role.permissions.map((permission) => permission.code).join('; '),
+        userCount: role.users.length,
+      }));
+      return makeExportFile(rows, fields, format, 'roles');
+    }
     return makeBlob(`entity,id,name\n${entity},1,static-demo\n`, `${entity}.${format}`);
   }
 
@@ -2259,7 +2477,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
         sortBy === 'type' ? a.contentType.localeCompare(b.contentType) : a.createdAt.localeCompare(b.createdAt);
       return direction * (compare || a.id - b.id);
     });
-    return makeJson(page(items, url));
+    return makeJson(page(items, url, 20));
   }
 
   if (path === '/api/media' && method === 'POST') {
@@ -2343,7 +2561,15 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/media/orphans/cleanup' && method === 'POST') {
-    return makeJson({ dryRun: body.dryRun !== false, matchedCount: 0, deletedCount: 0, items: [] });
+    const dryRun = body.dryRun !== false;
+    const orphans = state.media.filter((item) => mediaReferencesFor(state, item).length === 0);
+    const items = orphans.map((item) => ({ storedFileName: item.publicId, sizeBytes: item.sizeBytes, lastModified: item.createdAt }));
+    if (!dryRun) {
+      const ids = new Set(orphans.map((item) => item.id));
+      state.media = state.media.filter((item) => !ids.has(item.id));
+      writeState(storageKey, state);
+    }
+    return makeJson({ dryRun, matchedCount: orphans.length, deletedCount: dryRun ? 0 : orphans.length, items });
   }
 
   if (mediaDetailMatch && method === 'DELETE') {

@@ -1055,6 +1055,17 @@ export function applyApprovalAction(
   const formStep =
     item.steps.find((step) => step.key === item.currentStepKey) ??
     item.steps.find((step) => step.status === 'active');
+  if (action === 'comment') {
+    (item.history ??= []).push({ at: now, actorId: actorName, action, comment, nodeKey: item.currentStepKey, taskId: body.taskId });
+    applySubmittedFormValues(item, body.formValues, formStep);
+    const active = item.steps.find((step) => step.status === 'active') ?? item.steps.find((step) => step.key === item.currentStepKey);
+    if (active) {
+      active.comment = active.comment ? `${active.comment}\n${comment}` : comment;
+      active.time = now;
+    }
+    item.updatedAt = now;
+    return { ok: true, status: 200, detail: toDetail(item), ticketId: item.ticketId, ticketStatus: ticketStatusFor(item, action) };
+  }
   const before = toWorkflowInstance(item);
   const next = reduceWorkflowAction(before, runtime);
   if (next === before) {
@@ -1075,14 +1086,7 @@ export function applyApprovalAction(
 
   applyReduced(item, next);
   applySubmittedFormValues(item, body.formValues, formStep);
-  if (action !== 'comment') remember(item, actorName);
-  else {
-    const active = item.steps.find((step) => step.status === 'active') ?? item.steps.find((step) => step.key === item.currentStepKey);
-    if (active) {
-      active.comment = active.comment ? `${active.comment}\n${comment}` : comment;
-      active.time = now;
-    }
-  }
+  remember(item, actorName);
   item.updatedAt = now;
 
   return {
