@@ -23,8 +23,14 @@ import {
 import { findContactUser, listMockContacts } from './contacts';
 import {
   DEMO_CATALOG_VERSION,
+  formatDemoLocalDate,
   generateDemoAuditLogs,
+  generateDemoCalendarEvents,
+  generateDemoMedia,
   generateDemoNotifications,
+  generateDemoProjects,
+  generateDemoTasks,
+  generateDemoTickets,
   generateDemoUsers,
 } from './demo-catalog';
 
@@ -374,6 +380,7 @@ const DEMO_ACCOUNT_PERMISSIONS = [
 ];
 
 function initialState(): DemoState {
+  const clock = new Date();
   return {
     catalogVersion: DEMO_CATALOG_VERSION,
     users: [
@@ -458,6 +465,7 @@ function initialState(): DemoState {
       media(1, 'demo-logo', 'tigercat-logo.png', 'image/png', 42872, 'logo', 1),
       media(2, 'demo-report', 'release-checklist.pdf', 'application/pdf', 184220, 'file', 0),
       media(3, 'demo-avatar', 'admin-avatar.png', 'image/png', 24190, 'avatar', 0),
+      ...generateDemoMedia().map((item) => media(item.id, item.publicId, item.name, 'image/png', item.sizeBytes, 'png', 0)),
     ],
     notifications: [
       {
@@ -511,8 +519,9 @@ function initialState(): DemoState {
       task('task-cache-observe', '定位导出缓存命中率下降原因', '需要结合 Redis 指标与导出模板变更记录继续排查。', '平台运维', 'high', 'doing', '2026-05-28T09:30:00.000Z', 4, true, '等待 Redis 指标与导出模板变更记录交叉确认。'),
       task('task-notification-review', '通知中心交互复核', '确认分组筛选、已读切换与浮层反馈在双端一致。', '产品验收', 'medium', 'review', '2026-05-29T07:00:00.000Z', 2, false),
       task('task-audit-page', '审计日志页联调完成', '后端聚合 Redis Streams，双端页面已完成 ActivityFeed 与 Timeline 验证。', '管理后台', 'medium', 'done', '2026-05-28T06:00:00.000Z', 3, false),
+      ...generateDemoTasks(clock),
     ],
-    tickets: seedTickets(),
+    tickets: [...seedTickets(), ...generateDemoTickets(clock)],
     approvals: seedApprovals(),
     chatMessages: [
       {
@@ -555,9 +564,17 @@ function initialState(): DemoState {
         user: { name: '李工' },
         time: '2026-08-22 09:40',
       },
+      {
+        id: 'c-p-1009-1',
+        targetType: 'project',
+        targetId: '1009',
+        content: '运营周报自动化已完成目标对齐，下一步确认指标口径与订阅范围。',
+        user: { name: '赵敏' },
+        time: `${formatDemoLocalDate(clock, -1)} 16:00`,
+      },
     ],
-    projects: seedProjects(),
-    calendarEvents: seedCalendarEvents(),
+    projects: seedProjects(clock),
+    calendarEvents: [...seedCalendarEvents(clock), ...generateDemoCalendarEvents(clock)],
     articles: seedArticles(),
     jobs: seedJobs(),
     importJobs: [],
@@ -572,9 +589,9 @@ function initialState(): DemoState {
     retentionDays: 90,
     nextUserId: 49,
     nextRoleId: 4,
-    nextMediaId: 4,
-    nextTaskId: 7,
-    nextTicketNumber: 2051,
+    nextMediaId: 12,
+    nextTaskId: 13,
+    nextTicketNumber: 3016,
     nextApprovalNumber: 1100,
     nextJobNumber: 1005,
     nextImportJobNumber: 1001,
@@ -766,7 +783,7 @@ function seedTickets(): TicketItem[] {
   ];
 }
 
-function seedProjects(): ProjectItem[] {
+function seedProjects(clock: Date): ProjectItem[] {
   const wang: ProjectMemberItem = { id: 'm-wang', name: '王小虎', role: '前端', color: '#3b82f6' };
   const li: ProjectMemberItem = { id: 'm-li', name: '李工', role: '后端', color: '#22c55e' };
   const zhang: ProjectMemberItem = { id: 'm-zhang', name: '张运维', role: '运维', color: '#f59e0b' };
@@ -918,16 +935,17 @@ function seedProjects(): ProjectItem[] {
         { key: 'a2', label: '05-18 09:42', content: '孙莉 完成目录吸顶视觉', color: '#14b8a6' },
       ],
     },
+    ...generateDemoProjects(clock, [wang, li, zhang, chen, zhao, sun]),
   ];
 }
 
-function seedCalendarEvents(): CalendarEventItem[] {
+function seedCalendarEvents(clock: Date): CalendarEventItem[] {
   return [
-    { id: 'e1', date: '2026-06-29', start: '10:00', end: '11:00', title: '迭代站会', type: 'meeting', location: '线上 · 腾讯会议' },
-    { id: 'e2', date: '2026-06-29', start: '14:30', end: '15:30', title: '组件库设计评审', type: 'review', location: '会议室 A' },
-    { id: 'e3', date: '2026-06-30', start: '16:00', end: '17:00', title: 'v1.6 发布窗口', type: 'release', location: '生产环境' },
-    { id: 'e4', date: '2026-07-01', start: '09:30', end: '10:00', title: '季度 OKR 对齐', type: 'meeting', location: '会议室 B' },
-    { id: 'e5', date: '2026-07-02', start: '15:00', end: '15:30', title: '安全合规提醒', type: 'reminder', location: '—' },
+    { id: 'e1', date: formatDemoLocalDate(clock), start: '10:00', end: '11:00', title: '迭代站会', type: 'meeting', location: '线上 · 腾讯会议' },
+    { id: 'e2', date: formatDemoLocalDate(clock), start: '14:30', end: '15:30', title: '组件库设计评审', type: 'review', location: '会议室 A' },
+    { id: 'e3', date: formatDemoLocalDate(clock, 1), start: '16:00', end: '17:00', title: 'v1.6 发布窗口', type: 'release', location: '生产环境' },
+    { id: 'e4', date: formatDemoLocalDate(clock, 3), start: '09:30', end: '10:00', title: '季度 OKR 对齐', type: 'meeting', location: '会议室 B' },
+    { id: 'e5', date: formatDemoLocalDate(clock, 5), start: '15:00', end: '15:30', title: '安全合规提醒', type: 'reminder', location: '—' },
   ];
 }
 
@@ -2023,6 +2041,11 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     return makeJson({ message: `成功删除 ${users.length} 个用户` });
   }
 
+  if ((path === '/api/roles' || path === '/api/roles/permissions') && method === 'GET') {
+    const denied = requireMenuPermission(state, request, init, 'role:view');
+    if (denied) return denied;
+  }
+
   if (path === '/api/roles/permissions' && method === 'GET') return makeJson(permissions);
 
   if (path === '/api/roles' && method === 'GET') {
@@ -2084,7 +2107,11 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
     }
   }
 
-  if (path === '/api/settings' && method === 'GET') return makeJson(state.settings);
+  if (path === '/api/settings' && method === 'GET') {
+    const denied = requireMenuPermission(state, request, init, 'setting:view');
+    if (denied) return denied;
+    return makeJson(state.settings);
+  }
 
   if (path === '/api/settings' && method === 'PUT') {
     const updates = Array.isArray(body.settings) ? (body.settings as Array<{ key: string; value: string }>) : [];
@@ -2134,6 +2161,8 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/notifications' && method === 'GET') {
+    const denied = requireMenuPermission(state, request, init, 'notification:view');
+    if (denied) return denied;
     let items = [...state.notifications];
     const groupKey = url.searchParams.get('groupKey');
     const unread = url.searchParams.get('unread');
@@ -2330,6 +2359,8 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/audit-logs' && method === 'GET') {
+    const denied = requireMenuPermission(state, request, init, 'audit:view');
+    if (denied) return denied;
     const items = filterAuditLogs(state.auditLogs, url);
     return makeJson(page(items, url, 30));
   }
@@ -2729,6 +2760,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/tickets' && method === 'GET') {
+    if (!sessionUsername(request, init)) return makeError('未授权', 401);
     const keyword = url.searchParams.get('keyword')?.trim().toLowerCase();
     const status = url.searchParams.get('status')?.trim().toLowerCase();
     if (status && !TICKET_STATUSES.includes(status as TicketStatus)) {
@@ -2817,6 +2849,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/chat/messages' && method === 'GET') {
+    if (!sessionUsername(request, init)) return makeError('未授权', 401);
     return makeJson(state.chatMessages);
   }
 
@@ -2839,6 +2872,7 @@ async function handleRequest(input: RequestInfo | URL, init: RequestInit, storag
   }
 
   if (path === '/api/comments' && method === 'GET') {
+    if (!sessionUsername(request, init)) return makeError('未授权', 401);
     const targetType = url.searchParams.get('targetType')?.trim().toLowerCase();
     const targetId = url.searchParams.get('targetId')?.trim();
     if (!targetType || !COMMENT_TARGETS.includes(targetType as CommentTargetType)) {

@@ -1,4 +1,4 @@
-export const DEMO_CATALOG_VERSION = '2026.11.19.2';
+export const DEMO_CATALOG_VERSION = '2026.11.19.3';
 
 const DEMO_CATALOG_SEED = 20261119;
 const DEMO_CATALOG_SEED_TIME = Date.parse('2026-11-19T00:00:00.000Z');
@@ -34,6 +34,91 @@ const DEMO_NOTIFICATION_CONTENT = [
   { groupKey: 'security', title: '审计保留策略待确认', description: '审计日志保留策略仍为默认值，请在系统设置中确认保留天数。', toastType: 'info', linkUrl: '/settings' },
   { groupKey: 'release', title: '新版本验证已完成', description: '新版本核心流程验证已经完成，发布窗口可以继续推进。', toastType: 'success', linkUrl: '/notifications' },
 ] as const;
+
+const DEMO_TICKET_TITLES = [
+  '导出 Excel 时列顺序不一致',
+  '增加项目按负责人筛选',
+  '如何重置锁定账号',
+  '通知已读状态刷新后丢失',
+  '支持看板任务批量指派',
+  '审计导出字段如何配置',
+  '日历跨月视图显示异常',
+  '媒体库支持按格式筛选',
+  '报表导出权限如何申请',
+  '角色权限保存后未生效',
+  '项目里程碑希望支持复制',
+  '密码复杂度规则如何配置',
+  '导入失败行无法下载',
+  '工单列表增加优先级筛选',
+  '任务提醒时间如何设置',
+] as const;
+const DEMO_TICKET_STATUSES = ['open', 'accepted', 'progress', 'resolved', 'closed'] as const;
+const DEMO_TICKET_PRIORITIES = ['high', 'medium', 'low'] as const;
+const DEMO_TICKET_CATEGORIES = ['缺陷', '需求', '咨询'] as const;
+const DEMO_PEOPLE = ['王小虎', '李工', '张运维', '陈测试', '赵敏', '孙莉'] as const;
+const DEMO_PROJECT_NAMES = [
+  '运营周报自动化',
+  '权限审计专项',
+  '客户门户改版',
+  '数据质量看板',
+  '发布流程优化',
+  '组件文档站点',
+  '移动巡检助手',
+  '消息模板治理',
+  '搜索体验升级',
+  '报表订阅服务',
+] as const;
+const DEMO_PROJECT_STATUSES = ['planning', 'active', 'paused', 'done'] as const;
+const DEMO_PROJECT_DEPARTMENTS = ['平台研发部', '安全治理组', '客户成功', '数据分析', '基础设施'] as const;
+const DEMO_CALENDAR_CONTENT = [
+  { title: '运营指标对齐', type: 'meeting', start: '09:20', end: '09:50', location: '会议室 A' },
+  { title: '权限矩阵评审', type: 'review', start: '10:30', end: '11:30', location: '会议室 B' },
+  { title: '报表服务发布', type: 'release', start: '20:00', end: '21:00', location: '生产环境' },
+  { title: '备份巡检提醒', type: 'reminder', start: '16:30', end: '17:00', location: '—' },
+  { title: '项目风险同步', type: 'meeting', start: '14:00', end: '14:45', location: '线上 · 腾讯会议' },
+  { title: '看板交互评审', type: 'review', start: '15:00', end: '16:00', location: '会议室 A' },
+  { title: '通知服务发布', type: 'release', start: '19:30', end: '20:30', location: '生产环境' },
+  { title: '审计留存复核提醒', type: 'reminder', start: '11:00', end: '11:30', location: '—' },
+  { title: '媒体需求澄清', type: 'meeting', start: '10:00', end: '10:45', location: '会议室 C' },
+  { title: '导入结果页评审', type: 'review', start: '13:30', end: '14:30', location: '会议室 B' },
+  { title: '搜索服务发布', type: 'release', start: '20:30', end: '21:30', location: '生产环境' },
+  { title: '月度账单核对提醒', type: 'reminder', start: '17:00', end: '17:30', location: '—' },
+] as const;
+const DEMO_TASK_CONTENT = [
+  { title: '补充演示数据验收清单', description: '按用户、工单、项目和日历逐项核对演示种子。', assignee: '王小虎', priority: 'medium', status: 'backlog', estimateHours: 3 },
+  { title: '复核项目成员展示', description: '确认新增项目复用现有成员、角色和颜色。', assignee: '赵敏', priority: 'low', status: 'todo', estimateHours: 2 },
+  { title: '排查工单筛选边界', description: '验证五种状态切换后列表与详情保持一致。', assignee: '李工', priority: 'high', status: 'doing', estimateHours: 5 },
+  { title: '评审日历跨月展示', description: '检查今天、未来两周和跨月事件的展示。', assignee: '孙莉', priority: 'medium', status: 'review', estimateHours: 4 },
+  { title: '整理媒体图库说明', description: '补充静态演示图片与真实上传能力的区别。', assignee: '陈测试', priority: 'low', status: 'done', estimateHours: 2 },
+  { title: '完善发布前检查记录', description: '将发布窗口和健康检查结果写入任务说明。', assignee: '张运维', priority: 'high', status: 'doing', estimateHours: 3 },
+] as const;
+
+type DemoProjectMember = {
+  id: string;
+  name: string;
+  role: string;
+  color: string;
+};
+
+function pad2(value: number) {
+  return String(value).padStart(2, '0');
+}
+
+function localDateAt(clock: Date, dayOffset: number, hour = 0, minute = 0) {
+  return new Date(clock.getFullYear(), clock.getMonth(), clock.getDate() + dayOffset, hour, minute);
+}
+
+function formatLocalDate(date: Date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+export function formatDemoLocalDate(clock: Date, dayOffset = 0) {
+  return formatLocalDate(localDateAt(clock, dayOffset));
+}
+
+function formatLocalMinute(date: Date) {
+  return `${formatLocalDate(date)} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+}
 
 function mulberry32(seed: number) {
   let state = seed;
@@ -120,6 +205,97 @@ export function generateDemoNotifications() {
         source: 'demo-catalog',
         severity: content.toastType === 'warning' || content.toastType === 'error' ? 'medium' : 'low',
       },
+    };
+  });
+}
+
+export function generateDemoTickets(clock: Date) {
+  return DEMO_TICKET_TITLES.map((title, offset) => {
+    const ticketNumber = 3001 + offset;
+    const suffix = String(ticketNumber);
+    const ageDays = Math.floor(offset * 20 / (DEMO_TICKET_TITLES.length - 1));
+    const createdAt = formatLocalMinute(new Date(clock.getTime() - ageDays * DAY_MS - 3 * HOUR_MS));
+    const updatedAt = formatLocalMinute(new Date(clock.getTime() - ageDays * DAY_MS - HOUR_MS));
+    const requester = DEMO_PEOPLE[offset % DEMO_PEOPLE.length];
+    const status = DEMO_TICKET_STATUSES[offset % DEMO_TICKET_STATUSES.length];
+    return {
+      id: `TK-${suffix}`,
+      title,
+      requester,
+      category: DEMO_TICKET_CATEGORIES[offset % DEMO_TICKET_CATEGORIES.length],
+      priority: DEMO_TICKET_PRIORITIES[offset % DEMO_TICKET_PRIORITIES.length],
+      status,
+      createdAt,
+      updatedAt,
+      satisfaction: status === 'resolved' || status === 'closed' ? 4 + offset % 2 : 0,
+      description: `${title}，请在演示环境中核对复现步骤、影响范围与处理结论。`,
+      messages: [
+        { id: `m-${suffix}-1`, content: `你好，请协助跟进「${title}」。`, direction: 'other' as const, time: createdAt },
+        ...offset % 2 === 0
+          ? [{ id: `m-${suffix}-2`, content: '已记录问题，会在更新处理进展后同步给你。', direction: 'self' as const, time: updatedAt }]
+          : [],
+      ],
+    };
+  });
+}
+
+export function generateDemoProjects(clock: Date, members: DemoProjectMember[]) {
+  return DEMO_PROJECT_NAMES.map((name, offset) => {
+    const owner = members[offset % members.length];
+    const partner = members[(offset + 2) % members.length];
+    const status = DEMO_PROJECT_STATUSES[offset % DEMO_PROJECT_STATUSES.length];
+    return {
+      id: String(1009 + offset),
+      name,
+      summary: `${name}的演示项目，覆盖计划、协作、里程碑与活动记录。`,
+      owner: owner.name,
+      department: DEMO_PROJECT_DEPARTMENTS[offset % DEMO_PROJECT_DEPARTMENTS.length],
+      status,
+      progress: status === 'done' ? 100 : status === 'active' ? 45 + offset * 3 : status === 'paused' ? 36 : 12 + offset,
+      milestone: status === 'done' ? 3 : offset % 3,
+      budget: 24 + offset * 6,
+      startAt: formatDemoLocalDate(clock, -90 + offset * 7),
+      endAt: formatDemoLocalDate(clock, status === 'done' ? -7 : 30 + offset * 7),
+      members: [owner, partner],
+      activities: [
+        { key: 'a1', label: '今天 09:30', content: `${owner.name} 更新了项目计划与当前进度`, color: owner.color },
+        { key: 'a2', label: '昨天 16:00', content: `${partner.name} 完成了协同事项复核`, color: partner.color },
+      ],
+    };
+  });
+}
+
+export function generateDemoCalendarEvents(clock: Date) {
+  return DEMO_CALENDAR_CONTENT.map((event, offset) => ({
+    id: `e${offset + 6}`,
+    date: formatDemoLocalDate(clock, offset === 11 ? 12 : offset),
+    ...event,
+  }));
+}
+
+export function generateDemoTasks(clock: Date) {
+  return DEMO_TASK_CONTENT.map((item, offset) => ({
+    id: `task-catalog-${pad2(offset + 1)}`,
+    ...item,
+    dueAt: `${formatDemoLocalDate(clock, offset + 2)}T10:00:00.000Z`,
+    blocked: false,
+    blockedReason: null,
+    completionNote: item.status === 'done' ? '演示任务已完成。' : null,
+    createdBy: 'system',
+    createdAt: clock.toISOString(),
+    updatedAt: null,
+    completedAt: item.status === 'done' ? clock.toISOString() : null,
+  }));
+}
+
+export function generateDemoMedia() {
+  return Array.from({ length: 8 }, (_, offset) => {
+    const suffix = pad2(offset + 1);
+    return {
+      id: offset + 4,
+      publicId: `demo-illustration-${suffix}`,
+      name: `demo-illustration-${suffix}.png`,
+      sizeBytes: 4096 + offset * 137,
     };
   });
 }
